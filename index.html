@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BSDHA - Công cụ Y khoa</title>
+<style>
+  :root {
+    --blue: #5fa8d3;
+    --blue-light: #16293a;
+    --green: #6fcdc4;
+    --green-light: #142826;
+    --green-border: #2a5f5a;
+    --red: #ef5350;
+    --red-dark: #c23a37;
+    --amber: #fbbf24;
+    --amber-light: #3a2e0f;
+    --border: #2d3748;
+    --text: #e5e7eb;
+    --muted: #94a3b8;
+    --bg: #0b0f17;
+    --surface: #151b26;
+    --surface-2: #1c2431;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 48px 18px 60px;
+  }
+  header {
+    text-align: center;
+    margin-bottom: 36px;
+  }
+  header .logo {
+    font-size: 34px;
+    margin-bottom: 8px;
+  }
+  header h1 {
+    margin: 0 0 8px;
+    font-size: 24px;
+    font-weight: 800;
+  }
+  header p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color .15s, transform .15s, background .15s;
+  }
+  .card:hover {
+    border-color: var(--blue);
+    background: var(--surface-2);
+    transform: translateY(-2px);
+  }
+  .card .ic {
+    font-size: 26px;
+  }
+  .card h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+  }
+  .card p {
+    margin: 0;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+  .card .tag {
+    align-self: flex-start;
+    margin-top: 2px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+    background: var(--green-light);
+    color: var(--green);
+    border: 1px solid var(--green-border);
+  }
+  .card.soon {
+    opacity: 0.55;
+    cursor: default;
+  }
+  .card.soon:hover {
+    border-color: var(--border);
+    background: var(--surface);
+    transform: none;
+  }
+  .card.soon .tag {
+    background: var(--amber-light);
+    color: var(--amber);
+    border: none;
+  }
+  footer {
+    text-align: center;
+    margin-top: 42px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🩺</div>
+    <h1>BSDHA - Bộ công cụ Y khoa</h1>
+    <p>Tra cứu &amp; tính toán nhanh phục vụ khám chữa bệnh</p>
+  </header>
+
+  <div class="grid">
+    <a class="card" href="/icd10/">
+      <div class="ic">🔎</div>
+      <h2>Tra cứu ICD-10</h2>
+      <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
+      <span class="tag">Đang hoạt động</span>
+    </a>
+
+    <a class="card" href="/ldl/">
+      <div class="ic">🩸</div>
+      <h2>Tính LDL-Cholesterol</h2>
+      <p>Ước tính LDL-C theo công thức Friedewald, tự động dùng Sampson khi TG cao.</p>
+      <span class="tag">Đang hoạt động</span>
+    </a>
+
+    <div class="card soon">
+      <div class="ic">🧪</div>
+      <h2>Tính eGFR</h2>
+      <p>Ước tính mức lọc cầu thận theo công thức CKD-EPI 2021.</p>
+      <span class="tag">Sắp ra mắt</span>
+    </div>
+  </div>
+
+  <footer>© bsdha.github.io — cập nhật liên tục</footer>
+</div>
+</body>
+</html>
