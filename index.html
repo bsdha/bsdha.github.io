@@ -911,6 +911,111 @@
     font-weight: 700;
   }
 
+/* ================= KÊ ĐƠN THUỐC ================= */
+.rx-wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
+.rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.rx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rx-panel-head h1 { margin: 0; font-size: 19px; font-weight: 800; }
+.rx-h2 { margin: 0 0 14px; font-size: 16px; font-weight: 800; }
+.rx-sub { color: var(--muted); font-size: 12.5px; margin: 10px 0 16px; }
+.rx-settings-btn {
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  border-radius: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.rx-settings-btn:hover { background: #2b3646; }
+.rx-settings { display: none; margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 14px; }
+.rx-settings.show { display: block; }
+.rx-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+@media (max-width: 600px) { .rx-settings-grid, .rx-cloud-grid { grid-template-columns: 1fr; } }
+.rx-cloud-box, .rx-upload-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.rx-cloud-title { font-size: 13.5px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
+.rx-cloud-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0 0 10px; }
+.rx-sql-box {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 10px 12px;
+  font-size: 11.5px; color: var(--green); overflow-x: auto; margin: 0 0 10px; white-space: pre;
+}
+.rx-cloud-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.rx-cloud-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rx-sb-status { font-size: 12px; color: var(--muted); }
+.rx-sb-status.ok { color: var(--green); }
+.rx-sb-status.err { color: var(--red); }
+#rxExcelInput { color: var(--muted); font-size: 12.5px; }
+
+.rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.rx-col-wide { grid-column: span 2; }
+@media (max-width: 780px) {
+  .rx-form-grid { grid-template-columns: repeat(2, 1fr); }
+  .rx-col-wide { grid-column: span 2; }
+}
+.rx-form-grid .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+.rx-form-grid .field input, .rx-settings-grid .field input, .rx-cloud-grid .field input, .rx-patient-grid .field input, .rx-patient-grid .field select {
+  width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px;
+  padding: 9px 10px; color: var(--text); font-size: 14px; font-family: inherit;
+}
+.rx-form-grid .field input:focus, .rx-settings-grid .field input:focus, .rx-cloud-grid .field input:focus, .rx-patient-grid .field input:focus, .rx-patient-grid .field select:focus {
+  outline: none; border-color: var(--blue);
+}
+.rx-autocomplete-wrap { position: relative; }
+.rx-suggest {
+  display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px;
+  margin-top: 4px; max-height: 260px; overflow-y: auto; box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+}
+.rx-suggest.show { display: block; }
+.rx-suggest-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
+.rx-suggest-item:last-child { border-bottom: none; }
+.rx-suggest-item:hover, .rx-suggest-item.active { background: var(--blue-light); }
+.rx-suggest-item b { color: var(--blue); }
+.rx-suggest-item .g { color: var(--muted); font-size: 11.5px; display: block; margin-top: 1px; }
+.rx-suggest-empty { padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
+
+.rx-btn {
+  border: none; border-radius: 10px; padding: 11px 16px; font-size: 14px; font-weight: 700;
+  cursor: pointer; font-family: inherit; background: var(--green); color: #06231f;
+}
+.rx-btn:hover { filter: brightness(1.05); }
+.rx-add-btn { width: 100%; }
+.rx-btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.rx-btn-print { background: var(--blue); color: #08202f; }
+
+.rx-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+@media (max-width: 700px) { .rx-patient-grid { grid-template-columns: 1fr 1fr; } }
+.rx-patient-grid .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+
+.rx-table-wrap { overflow-x: auto; }
+.rx-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rx-table th, .rx-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.rx-table th { color: var(--muted); font-weight: 700; font-size: 11.5px; text-transform: uppercase; }
+.rx-table td.rx-del-cell { text-align: center; }
+.rx-row-del {
+  border: none; background: var(--red-dark); color: #fff; border-radius: 6px; width: 24px; height: 24px;
+  cursor: pointer; font-size: 12px; line-height: 1;
+}
+.rx-empty { display: none; text-align: center; color: var(--muted); font-size: 13px; padding: 24px 0; }
+.rx-empty.show { display: block; }
+.rx-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+.rx-warn-overlay {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 999;
+  align-items: center; justify-content: center; padding: 16px;
+}
+.rx-warn-overlay.show { display: flex; }
+.rx-warn-box {
+  background: var(--surface); border: 1px solid var(--red-border); border-radius: 16px;
+  max-width: 480px; width: 100%; padding: 22px; box-shadow: 0 10px 40px rgba(0,0,0,.5);
+}
+.rx-warn-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.rx-warn-head .ic { font-size: 24px; }
+.rx-warn-head h3 { margin: 0; font-size: 16px; color: var(--red); }
+.rx-warn-list { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.rx-warn-list li {
+  background: var(--red-light); border: 1px solid var(--red-border); border-radius: 10px;
+  padding: 10px 12px; font-size: 13px; line-height: 1.5;
+}
+.rx-warn-list li b { color: var(--red); }
+.rx-warn-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
+.rx-warn-btn-ok { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.rx-warn-btn-del { background: var(--red-dark); color: #fff; }
 </style>
 </head>
 <body>
@@ -983,12 +1088,14 @@
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
+    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
   </nav>
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> ICD-10</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
+    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
   </nav>
 
   <div class="main-content">
@@ -1023,12 +1130,12 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <div class="hcard soon">
+        <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc">
           <div class="ic">💊</div>
           <h2>Kê đơn thuốc dịch vụ</h2>
-          <p>Hỗ trợ soạn đơn thuốc dịch vụ nhanh, chuẩn hoá.</p>
-          <span class="tag">Sắp ra mắt</span>
-        </div>
+          <p>Soạn đơn thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
       </div>
 
       <footer>© bsdha.github.io — Cập nhật liên tục</footer>
@@ -1151,6 +1258,197 @@
         </div>
       </div>
     </main>
+  </div>
+
+  <div class="page" id="page-donthuoc">
+    <div class="rx-wrap">
+
+      <div class="rx-panel">
+        <div class="rx-panel-head">
+          <h1>💊 Kê đơn thuốc dịch vụ</h1>
+          <button class="rx-settings-btn" id="rxSettingsBtn">⚙ Cấu hình</button>
+        </div>
+
+        <div class="rx-settings" id="rxSettingsPanel">
+          <div class="rx-settings-grid">
+            <div class="field">
+              <label>Tên cơ quan / bệnh viện (in trên đơn)</label>
+              <input type="text" id="rxOrgName" placeholder="SỞ Y TẾ TP. HỒ CHÍ MINH - BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CƠ SỞ 2">
+            </div>
+            <div class="field">
+              <label>Tên bác sĩ ký (riêng theo máy này)</label>
+              <input type="text" id="rxDoctorName" placeholder="BS. Nguyễn Văn A">
+            </div>
+          </div>
+          <div class="rx-cloud-box">
+            <div class="rx-cloud-title">☁ Đồng bộ danh sách thuốc nhiều máy (Supabase — miễn phí)</div>
+            <p class="rx-cloud-desc">
+              Tạo 1 project miễn phí tại <b>supabase.com</b> → vào SQL Editor chạy lệnh tạo bảng bên dưới → lấy
+              <b>Project URL</b> và <b>anon public key</b> ở mục Settings → API, dán vào 2 ô dưới đây.
+              Chỉ cần làm 1 lần trên 1 máy, các máy khác nhập đúng URL + key này là dùng chung 1 danh sách thuốc.
+            </p>
+            <pre class="rx-sql-box">create table thuoc (
+  id bigint generated always as identity primary key,
+  ten_tm text not null,
+  ten_goc text default '',
+  dang_thuoc text default '',
+  created_at timestamptz default now()
+);
+alter table thuoc enable row level security;
+create policy "public read" on thuoc for select using (true);
+create policy "public insert" on thuoc for insert with check (true);</pre>
+            <div class="rx-cloud-grid">
+              <div class="field">
+                <label>Supabase Project URL</label>
+                <input type="text" id="rxSbUrl" placeholder="https://xxxxx.supabase.co">
+              </div>
+              <div class="field">
+                <label>Supabase anon public key</label>
+                <input type="text" id="rxSbKey" placeholder="eyJhbGciOi...">
+              </div>
+            </div>
+            <div class="rx-cloud-actions">
+              <button class="rx-btn" id="rxSbSaveBtn">Lưu cấu hình đồng bộ</button>
+              <span id="rxSbStatus" class="rx-sb-status"></span>
+            </div>
+          </div>
+
+          <div class="rx-upload-box">
+            <div class="rx-cloud-title">📥 Nạp danh sách thuốc từ file Excel</div>
+            <p class="rx-cloud-desc">
+              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược") và <b>Tên gốc</b>
+              (hoặc "Hoạt chất" / "Tên gốc, Hoạt chất"). Có thể có thêm cột "Dạng thuốc". Thuốc mới sẽ được
+              <b>cộng dồn</b> vào danh sách hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên.
+            </p>
+            <input type="file" id="rxExcelInput" accept=".xlsx,.xls">
+            <span id="rxExcelStatus" class="rx-sb-status"></span>
+          </div>
+        </div>
+
+        <div class="rx-sub">Tìm thuốc theo tên thương mại hoặc tên gốc/hoạt chất — nhập liều dùng — nhấn Enter ở ô cuối để thêm vào toa.</div>
+
+        <div class="rx-form-grid">
+          <div class="field rx-col-wide">
+            <label>Tên thương mại</label>
+            <div class="rx-autocomplete-wrap">
+              <input type="text" id="rxFieldBrand" placeholder="Gõ tên thương mại hoặc tên gốc để tìm..." autocomplete="off">
+              <div class="rx-suggest" id="rxSuggestBox"></div>
+            </div>
+          </div>
+          <div class="field rx-col-wide">
+            <label>Tên gốc, Hoạt chất</label>
+            <input type="text" id="rxFieldGeneric" placeholder="Tự điền khi chọn thuốc, có thể sửa">
+          </div>
+          <div class="field">
+            <label>Dạng thuốc</label>
+            <input type="text" id="rxFieldForm" placeholder="Viên, ống, gói...">
+          </div>
+          <div class="field rx-col-wide">
+            <label>Cách dùng</label>
+            <input type="text" id="rxFieldUsage" placeholder="Uống trước ăn, uống sau ăn...">
+          </div>
+          <div class="field">
+            <label>Ngày</label>
+            <input type="number" id="rxFieldDays" min="0" step="1" placeholder="VD: 7">
+          </div>
+          <div class="field">
+            <label>Sáng</label>
+            <input type="number" id="rxFieldMorning" min="0" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Trưa</label>
+            <input type="number" id="rxFieldNoon" min="0" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Chiều</label>
+            <input type="number" id="rxFieldAfternoon" min="0" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Tối</label>
+            <input type="number" id="rxFieldEvening" min="0" step="0.5" placeholder="0">
+          </div>
+          <div class="field">
+            <label>Số lượng</label>
+            <input type="number" id="rxFieldQty" min="0" step="1" placeholder="Tự tính">
+          </div>
+        </div>
+
+        <button class="rx-btn rx-add-btn" id="rxAddBtn">+ Thêm thuốc vào toa (Enter)</button>
+      </div>
+
+      <div class="rx-panel">
+        <h2 class="rx-h2">Thông tin bệnh nhân &amp; toa thuốc</h2>
+        <div class="rx-patient-grid">
+          <div class="field">
+            <label>Họ và tên bệnh nhân</label>
+            <input type="text" id="rxPatientName" placeholder="Nguyễn Văn B">
+          </div>
+          <div class="field">
+            <label>Tuổi</label>
+            <input type="text" id="rxPatientAge" placeholder="VD: 45">
+          </div>
+          <div class="field">
+            <label>Giới tính</label>
+            <select id="rxPatientSex">
+              <option value="Nam">Nam</option>
+              <option value="Nữ">Nữ</option>
+            </select>
+          </div>
+          <div class="field rx-col-wide">
+            <label>Chẩn đoán</label>
+            <input type="text" id="rxDiagnosis" placeholder="VD: Tăng huyết áp (I10)">
+          </div>
+          <div class="field">
+            <label>Ngày kê đơn</label>
+            <input type="date" id="rxDate">
+          </div>
+          <div class="field">
+            <label>Hẹn tái khám</label>
+            <input type="date" id="rxFollowup">
+          </div>
+        </div>
+
+        <div class="rx-table-wrap">
+          <table class="rx-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Tên thương mại</th>
+                <th>Tên gốc, Hoạt chất</th>
+                <th>Dạng thuốc</th>
+                <th>Cách dùng</th>
+                <th>Ngày</th>
+                <th>S</th>
+                <th>Tr</th>
+                <th>Ch</th>
+                <th>T</th>
+                <th>SL</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="rxTableBody"></tbody>
+          </table>
+          <div class="rx-empty" id="rxEmptyMsg">Chưa có thuốc nào trong toa.</div>
+        </div>
+
+        <div class="rx-actions">
+          <button class="rx-btn rx-btn-secondary" id="rxClearBtn">Xoá toàn bộ toa</button>
+          <button class="rx-btn rx-btn-print" id="rxPrintBtn">🖨 In toa (PDF)</button>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="rx-warn-overlay" id="rxWarnOverlay">
+      <div class="rx-warn-box">
+        <div class="rx-warn-head"><span class="ic">⚠️</span><h3>Cảnh báo tương tác / tương kỵ thuốc</h3></div>
+        <ul class="rx-warn-list" id="rxWarnList"></ul>
+        <div class="rx-warn-actions">
+          <button class="rx-btn rx-warn-btn-del" id="rxWarnDelBtn">Xoá thuốc vừa thêm</button>
+          <button class="rx-btn rx-warn-btn-ok" id="rxWarnOkBtn">Đã hiểu, vẫn giữ</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   </div>
@@ -3014,6 +3312,583 @@
 })();
 </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
+(function () {
+  const $ = (id) => document.getElementById(id);
+  const LS_ORG = 'rxOrgName', LS_DOCTOR = 'rxDoctorName', LS_SB_URL = 'rxSbUrl', LS_SB_KEY = 'rxSbKey', LS_DRUGS = 'rxLocalDrugs';
+  const DEFAULT_ORG = 'SỞ Y TẾ TP. HỒ CHÍ MINH - BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CƠ SỞ 2';
+
+  let drugList = []; // { brand, generic, form }
+  let rxRows = [];    // toa thuốc hiện tại
+
+  function normalize(str) {
+    return (str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim();
+  }
+  function escapeHtml(str) {
+    return (str || '').toString().replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+  }
+
+  // ---------- Cấu hình (org / doctor / supabase) ----------
+  const orgInput = $('rxOrgName'), doctorInput = $('rxDoctorName'), sbUrlInput = $('rxSbUrl'), sbKeyInput = $('rxSbKey');
+  orgInput.value = localStorage.getItem(LS_ORG) || DEFAULT_ORG;
+  doctorInput.value = localStorage.getItem(LS_DOCTOR) || '';
+  sbUrlInput.value = localStorage.getItem(LS_SB_URL) || '';
+  sbKeyInput.value = localStorage.getItem(LS_SB_KEY) || '';
+  orgInput.addEventListener('change', () => localStorage.setItem(LS_ORG, orgInput.value.trim() || DEFAULT_ORG));
+  doctorInput.addEventListener('change', () => localStorage.setItem(LS_DOCTOR, doctorInput.value.trim()));
+
+  $('rxSettingsBtn').addEventListener('click', () => $('rxSettingsPanel').classList.toggle('show'));
+
+  function getSbConfig() {
+    const url = (localStorage.getItem(LS_SB_URL) || '').replace(/\/$/, '');
+    const key = localStorage.getItem(LS_SB_KEY) || '';
+    return url && key ? { url, key } : null;
+  }
+
+  $('rxSbSaveBtn').addEventListener('click', async () => {
+    const url = sbUrlInput.value.trim().replace(/\/$/, '');
+    const key = sbKeyInput.value.trim();
+    const statusEl = $('rxSbStatus');
+    if (!url || !key) {
+      localStorage.removeItem(LS_SB_URL); localStorage.removeItem(LS_SB_KEY);
+      statusEl.textContent = 'Đã tắt đồng bộ, dùng danh sách lưu trên máy này.';
+      statusEl.className = 'rx-sb-status';
+      return;
+    }
+    statusEl.textContent = 'Đang kiểm tra kết nối...';
+    try {
+      const resp = await fetch(`${url}/rest/v1/thuoc?select=id&limit=1`, {
+        headers: { apikey: key, Authorization: `Bearer ${key}` },
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      localStorage.setItem(LS_SB_URL, url);
+      localStorage.setItem(LS_SB_KEY, key);
+      statusEl.textContent = '✓ Kết nối thành công. Đã lưu cấu hình đồng bộ.';
+      statusEl.className = 'rx-sb-status ok';
+      await loadDrugList();
+    } catch (err) {
+      statusEl.textContent = '✗ Không kết nối được. Kiểm tra URL/key và bảng "thuoc" đã tạo đúng chưa.';
+      statusEl.className = 'rx-sb-status err';
+    }
+  });
+
+  // ---------- Danh sách thuốc: tải từ cloud (nếu có cấu hình) hoặc localStorage ----------
+  async function loadDrugList() {
+    const sb = getSbConfig();
+    if (sb) {
+      try {
+        const resp = await fetch(`${sb.url}/rest/v1/thuoc?select=ten_tm,ten_goc,dang_thuoc&order=ten_tm.asc`, {
+          headers: { apikey: sb.key, Authorization: `Bearer ${sb.key}` },
+        });
+        if (resp.ok) {
+          const rows = await resp.json();
+          drugList = rows.map((r) => ({ brand: r.ten_tm || '', generic: r.ten_goc || '', form: r.dang_thuoc || '' }));
+          return;
+        }
+      } catch (e) { /* rơi về local nếu lỗi mạng */ }
+    }
+    try { drugList = JSON.parse(localStorage.getItem(LS_DRUGS) || '[]'); } catch (e) { drugList = []; }
+  }
+  loadDrugList();
+
+  function saveLocalDrugList() {
+    localStorage.setItem(LS_DRUGS, JSON.stringify(drugList));
+  }
+
+  async function mergeNewDrugs(newDrugs) {
+    const existingKeys = new Set(drugList.map((d) => normalize(d.brand) + '|' + normalize(d.generic)));
+    const toAdd = newDrugs.filter((d) => {
+      const k = normalize(d.brand) + '|' + normalize(d.generic);
+      if (!d.brand || existingKeys.has(k)) return false;
+      existingKeys.add(k);
+      return true;
+    });
+    if (toAdd.length === 0) return 0;
+
+    const sb = getSbConfig();
+    if (sb) {
+      try {
+        const resp = await fetch(`${sb.url}/rest/v1/thuoc`, {
+          method: 'POST',
+          headers: {
+            apikey: sb.key, Authorization: `Bearer ${sb.key}`,
+            'Content-Type': 'application/json', Prefer: 'return=minimal',
+          },
+          body: JSON.stringify(toAdd.map((d) => ({ ten_tm: d.brand, ten_goc: d.generic, dang_thuoc: d.form || '' }))),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        await loadDrugList();
+        return toAdd.length;
+      } catch (e) {
+        $('rxExcelStatus').textContent = '⚠ Lỗi đồng bộ cloud, đã lưu tạm trên máy này.';
+        $('rxExcelStatus').className = 'rx-sb-status err';
+      }
+    }
+    drugList = drugList.concat(toAdd);
+    saveLocalDrugList();
+    return toAdd.length;
+  }
+
+  // ---------- Upload Excel ----------
+  function pickCol(headers, candidates) {
+    const normHeaders = headers.map(normalize);
+    for (const cand of candidates) {
+      const idx = normHeaders.findIndex((h) => h.includes(normalize(cand)));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }
+
+  $('rxExcelInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = $('rxExcelStatus');
+    statusEl.textContent = 'Đang đọc file...';
+    statusEl.className = 'rx-sb-status';
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        if (rows.length < 2) { statusEl.textContent = 'File rỗng hoặc không đúng định dạng.'; statusEl.className = 'rx-sb-status err'; return; }
+
+        const headers = rows[0].map((h) => String(h || ''));
+        const brandIdx = pickCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc']);
+        const genericIdx = pickCol(headers, ['ten goc', 'hoat chat']);
+        const formIdx = pickCol(headers, ['dang thuoc', 'dvt']);
+
+        if (brandIdx === -1) {
+          statusEl.textContent = 'Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.';
+          statusEl.className = 'rx-sb-status err';
+          return;
+        }
+
+        const parsed = rows.slice(1)
+          .map((r) => ({
+            brand: String(r[brandIdx] || '').trim(),
+            generic: genericIdx !== -1 ? String(r[genericIdx] || '').trim() : '',
+            form: formIdx !== -1 ? String(r[formIdx] || '').trim() : '',
+          }))
+          .filter((d) => d.brand);
+
+        const added = await mergeNewDrugs(parsed);
+        statusEl.textContent = `✓ Đã nạp ${parsed.length} dòng, thêm mới ${added} thuốc (${parsed.length - added} trùng, đã bỏ qua).`;
+        statusEl.className = 'rx-sb-status ok';
+        e.target.value = '';
+      } catch (err) {
+        statusEl.textContent = 'Lỗi đọc file Excel: ' + err.message;
+        statusEl.className = 'rx-sb-status err';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  // ---------- Ô tìm thuốc + autocomplete ----------
+  const brandInput = $('rxFieldBrand'), genericInput = $('rxFieldGeneric'), formInput = $('rxFieldForm');
+  const suggestBox = $('rxSuggestBox');
+  let activeSuggestIndex = -1, currentSuggestList = [];
+
+  function renderSuggest(query) {
+    const q = normalize(query);
+    if (!q) { suggestBox.classList.remove('show'); return; }
+    currentSuggestList = drugList.filter((d) => normalize(d.brand).includes(q) || normalize(d.generic).includes(q)).slice(0, 30);
+    activeSuggestIndex = -1;
+    if (currentSuggestList.length === 0) {
+      suggestBox.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy thuốc phù hợp trong danh sách đã nạp.</div>';
+    } else {
+      suggestBox.innerHTML = currentSuggestList.map((d, i) =>
+        `<div class="rx-suggest-item" data-idx="${i}"><b>${escapeHtml(d.brand)}</b><span class="g">${escapeHtml(d.generic)}${d.form ? ' — ' + escapeHtml(d.form) : ''}</span></div>`
+      ).join('');
+    }
+    suggestBox.classList.add('show');
+  }
+
+  // ---------- Tự động gợi ý "Cách dùng" theo tên thuốc ----------
+  // Trả về chuỗi cách dùng phù hợp nhất, hoặc '' nếu không khớp quy tắc nào đặc biệt (dùng mặc định "Uống sau khi ăn")
+  const USAGE_RULES = [
+    // Smecta / diosmectit - uống xa bữa ăn, xa các thuốc khác
+    {
+      test: (s) => /\bsmecta\b/.test(s) || /diosmectit|dioctahedral smectit/.test(s),
+      usage: 'Uống xa bữa ăn (cách xa thức ăn và các thuốc khác ít nhất 2 giờ)',
+    },
+    // Thuốc chứa Sắt - uống sáng lúc đói
+    {
+      test: (s) => /\bsat\b/.test(s) || /\bferrous\b|\bferric\b|fumarat sat|sulfat sat|gluconat sat/.test(s),
+      usage: 'Uống buổi sáng lúc đói, uống nhiều nước, không nằm ngay sau khi uống',
+    },
+    // Ức chế bơm proton (PPI) và Gliclazide - uống trước ăn
+    {
+      test: (s) => /prazol/.test(s) || /gliclazide/.test(s),
+      usage: 'Uống trước khi ăn 30 phút',
+    },
+    // Thuốc kháng acid dạng "sữa dạ dày" - uống sau ăn 1-3 giờ
+    {
+      test: (s) => /phosphalugel|yumangel|gastropulgite|maalox|gaviscon|varogel|trimafort|susergel|nhom hydroxit|nhom hydroxyd|magnesi hydroxit|thuoc sua da day/.test(s),
+      usage: 'Uống sau ăn 1-3 giờ',
+    },
+    // Viên nhai (canxi nhai, vitamin nhai...)
+    {
+      test: (s) => /\bnhai\b|chewable/.test(s),
+      usage: 'Nhai kỹ trước khi nuốt, uống sau khi ăn',
+    },
+  ];
+  const DEFAULT_USAGE = 'Uống sau khi ăn';
+
+  function suggestUsage(brand, generic) {
+    const s = normalize(`${brand} ${generic}`);
+    for (const rule of USAGE_RULES) {
+      if (rule.test(s)) return rule.usage;
+    }
+    return DEFAULT_USAGE;
+  }
+
+  function autoFillUsage(brand, generic) {
+    const usageInput = $('rxFieldUsage');
+    if (!usageInput.value.trim() && (brand || generic)) {
+      usageInput.value = suggestUsage(brand, generic);
+    }
+  }
+
+  function pickSuggest(d) {
+    brandInput.value = d.brand;
+    genericInput.value = d.generic;
+    formInput.value = d.form || '';
+    suggestBox.classList.remove('show');
+    autoFillUsage(d.brand, d.generic);
+    $('rxFieldUsage').focus();
+  }
+
+  // Nếu người dùng gõ tay tên thuốc (không chọn từ gợi ý) thì vẫn tự điền cách dùng khi rời ô
+  genericInput.addEventListener('blur', () => autoFillUsage(brandInput.value, genericInput.value));
+  brandInput.addEventListener('blur', () => {
+    if (!suggestBox.classList.contains('show')) autoFillUsage(brandInput.value, genericInput.value);
+  });
+
+  brandInput.addEventListener('input', () => renderSuggest(brandInput.value));
+  brandInput.addEventListener('focus', () => { if (brandInput.value) renderSuggest(brandInput.value); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.rx-autocomplete-wrap')) suggestBox.classList.remove('show'); });
+
+  suggestBox.addEventListener('click', (e) => {
+    const item = e.target.closest('.rx-suggest-item');
+    if (item && currentSuggestList[item.dataset.idx]) pickSuggest(currentSuggestList[item.dataset.idx]);
+  });
+
+  // ---------- Enter chuyển ô, tự tính SL, ô cuối Enter -> thêm dòng ----------
+  const FIELD_ORDER = ['rxFieldBrand', 'rxFieldGeneric', 'rxFieldForm', 'rxFieldUsage', 'rxFieldDays', 'rxFieldMorning', 'rxFieldNoon', 'rxFieldAfternoon', 'rxFieldEvening', 'rxFieldQty'];
+
+  function recomputeQty() {
+    const days = parseFloat($('rxFieldDays').value) || 0;
+    const m = parseFloat($('rxFieldMorning').value) || 0;
+    const n = parseFloat($('rxFieldNoon').value) || 0;
+    const a = parseFloat($('rxFieldAfternoon').value) || 0;
+    const ev = parseFloat($('rxFieldEvening').value) || 0;
+    const total = (m + n + a + ev) * days;
+    if (total > 0) $('rxFieldQty').value = Number.isInteger(total) ? total : total.toFixed(1);
+  }
+  ['rxFieldDays', 'rxFieldMorning', 'rxFieldNoon', 'rxFieldAfternoon', 'rxFieldEvening'].forEach((id) => {
+    $(id).addEventListener('input', recomputeQty);
+  });
+
+  FIELD_ORDER.forEach((id, idx) => {
+    $(id).addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      if (id === 'rxFieldBrand' && suggestBox.classList.contains('show')) {
+        if (activeSuggestIndex >= 0 && currentSuggestList[activeSuggestIndex]) {
+          pickSuggest(currentSuggestList[activeSuggestIndex]);
+          return;
+        }
+        suggestBox.classList.remove('show');
+      }
+      if (idx < FIELD_ORDER.length - 1) {
+        $(FIELD_ORDER[idx + 1]).focus();
+        $(FIELD_ORDER[idx + 1]).select && $(FIELD_ORDER[idx + 1]).select();
+      } else {
+        addRxRow();
+      }
+    });
+    if (id === 'rxFieldBrand') {
+      $(id).addEventListener('keydown', (e) => {
+        if (!suggestBox.classList.contains('show')) return;
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          activeSuggestIndex = Math.min(activeSuggestIndex + 1, currentSuggestList.length - 1);
+          updateSuggestActive();
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          activeSuggestIndex = Math.max(activeSuggestIndex - 1, 0);
+          updateSuggestActive();
+        }
+      });
+    }
+  });
+
+  function updateSuggestActive() {
+    [...suggestBox.querySelectorAll('.rx-suggest-item')].forEach((el, i) => el.classList.toggle('active', i === activeSuggestIndex));
+  }
+
+  function clearRxForm() {
+    FIELD_ORDER.forEach((id) => { $(id).value = ''; });
+    brandInput.focus();
+  }
+
+  function addRxRow() {
+    const brand = brandInput.value.trim();
+    if (!brand) { brandInput.focus(); return; }
+    const generic = genericInput.value.trim();
+    const row = {
+      brand,
+      generic,
+      form: formInput.value.trim(),
+      usage: $('rxFieldUsage').value.trim() || suggestUsage(brand, generic),
+      days: $('rxFieldDays').value.trim(),
+      morning: $('rxFieldMorning').value.trim() || '0',
+      noon: $('rxFieldNoon').value.trim() || '0',
+      afternoon: $('rxFieldAfternoon').value.trim() || '0',
+      evening: $('rxFieldEvening').value.trim() || '0',
+      qty: $('rxFieldQty').value.trim(),
+    };
+    rxRows.push(row);
+    renderRxTable();
+    clearRxForm();
+    checkInteractionsAfterAdd();
+  }
+
+  $('rxAddBtn').addEventListener('click', addRxRow);
+
+  // ---------- Cảnh báo tương tác / tương kỵ thuốc ----------
+  // Mỗi thuốc trong toa được quy về chuỗi normalize(brand + ' ' + generic) để so khớp từ khóa.
+  function drugText(row) { return normalize(`${row.brand} ${row.generic}`); }
+
+  // Quy tắc tương tác thuốc - thuốc (kiểm tra giữa mọi cặp thuốc trong toa)
+  const DRUG_DRUG_RULES = [
+    {
+      a: (s) => /warfarin/.test(s),
+      b: (s) => /\baspirin\b|acid acetylsalicylic|nsaid|ibuprofen|diclofenac|meloxicam/.test(s),
+      msg: 'Warfarin + Aspirin/NSAID: tăng nguy cơ xuất huyết nghiêm trọng.',
+    },
+    {
+      a: (s) => /atorvastatin|simvastatin|rosuvastatin|statin/.test(s),
+      b: (s) => /clarithromycin|erythromycin|itraconazol|ketoconazol/.test(s),
+      msg: 'Statin + Kháng sinh nhóm Macrolid/kháng nấm Azol: tăng nguy cơ tiêu cơ vân (rhabdomyolysis).',
+    },
+    {
+      a: (s) => /enalapril|captopril|lisinopril|perindopril|losartan|valsartan|telmisartan/.test(s),
+      b: (s) => /spironolacton|kali clorua|kcl\b/.test(s),
+      msg: 'Ức chế men chuyển/ARB + Spironolacton/Kali: tăng nguy cơ tăng Kali máu.',
+    },
+    {
+      a: (s) => /doxycyclin|tetracyclin|ciprofloxacin|levofloxacin|moxifloxacin/.test(s),
+      b: (s) => /\bsat\b|ferrous|calci|canxi|nhom hydroxit|magnesi hydroxit/.test(s),
+      msg: 'Kháng sinh Tetracyclin/Quinolon + Sắt/Canxi/thuốc kháng acid: giảm hấp thu kháng sinh, nên uống cách xa nhau ≥ 2 giờ.',
+    },
+    {
+      a: (s) => /gliclazide|glimepirid|glibenclamid/.test(s),
+      b: (s) => /insulin/.test(s),
+      msg: 'Sulfonylure + Insulin: tăng nguy cơ hạ đường huyết, cần theo dõi sát.',
+    },
+    {
+      a: (s) => /domperidon/.test(s),
+      b: (s) => /erythromycin|clarithromycin|ketoconazol|itraconazol/.test(s),
+      msg: 'Domperidon + thuốc ức chế CYP3A4 mạnh: tăng nguy cơ kéo dài khoảng QT, loạn nhịp tim.',
+    },
+  ];
+
+  // Quy tắc tương kỵ theo chẩn đoán (kiểm tra chẩn đoán hiện tại với từng thuốc trong toa)
+  const DIAGNOSIS_DRUG_RULES = [
+    {
+      diag: (s) => /hen\b|hen phe quan|hen suyen|copd|benh phoi tac nghen/.test(s),
+      drug: (s) => /propranolol|beta.?blocker|atenolol(?!.*chon loc)/.test(s) || /propranolol/.test(s),
+      msg: 'Chẩn đoán Hen/COPD + chẹn Beta không chọn lọc (Propranolol...): có thể gây co thắt phế quản.',
+    },
+    {
+      diag: (s) => /loet da day|viem loet da day|xuat huyet tieu hoa/.test(s),
+      drug: (s) => /aspirin|ibuprofen|diclofenac|meloxicam|nsaid/.test(s),
+      msg: 'Chẩn đoán loét/xuất huyết dạ dày + NSAID (Aspirin, Ibuprofen, Diclofenac...): tăng nguy cơ xuất huyết tiêu hoá.',
+    },
+    {
+      diag: (s) => /suy than|suy giam chuc nang than/.test(s),
+      drug: (s) => /metformin/.test(s),
+      msg: 'Chẩn đoán suy thận + Metformin: tăng nguy cơ nhiễm toan lactic, cần đánh giá mức lọc cầu thận.',
+    },
+    {
+      diag: (s) => /suy than|suy giam chuc nang than/.test(s),
+      drug: (s) => /nsaid|ibuprofen|diclofenac|meloxicam/.test(s),
+      msg: 'Chẩn đoán suy thận + NSAID: có thể làm nặng thêm tổn thương thận.',
+    },
+    {
+      diag: (s) => /co thai|thai ky|mang thai/.test(s),
+      drug: (s) => /warfarin|isotretinoin|misoprostol|statin|atorvastatin|simvastatin/.test(s),
+      msg: 'Chẩn đoán có thai + thuốc chống chỉ định thai kỳ (Warfarin, Isotretinoin, Statin...): nguy cơ dị tật/sảy thai.',
+    },
+  ];
+
+  function collectWarnings() {
+    const warnings = [];
+    const texts = rxRows.map((r) => ({ row: r, s: drugText(r) }));
+    for (let i = 0; i < texts.length; i++) {
+      for (let j = i + 1; j < texts.length; j++) {
+        for (const rule of DRUG_DRUG_RULES) {
+          const hit = (rule.a(texts[i].s) && rule.b(texts[j].s)) || (rule.a(texts[j].s) && rule.b(texts[i].s));
+          if (hit) warnings.push(`<b>${escapeHtml(texts[i].row.brand)}</b> + <b>${escapeHtml(texts[j].row.brand)}</b>: ${rule.msg}`);
+        }
+      }
+    }
+    const diagS = normalize($('rxDiagnosis').value);
+    if (diagS) {
+      for (const { row, s } of texts) {
+        for (const rule of DIAGNOSIS_DRUG_RULES) {
+          if (rule.diag(diagS) && rule.drug(s)) {
+            warnings.push(`Chẩn đoán + <b>${escapeHtml(row.brand)}</b>: ${rule.msg}`);
+          }
+        }
+      }
+    }
+    return warnings;
+  }
+
+  const warnOverlay = $('rxWarnOverlay'), warnList = $('rxWarnList');
+  function showWarnModal(warnings) {
+    warnList.innerHTML = warnings.map((w) => `<li>${w}</li>`).join('');
+    warnOverlay.classList.add('show');
+  }
+  function hideWarnModal() { warnOverlay.classList.remove('show'); }
+
+  $('rxWarnOkBtn').addEventListener('click', hideWarnModal);
+  $('rxWarnDelBtn').addEventListener('click', () => {
+    if (rxRows.length > 0) { rxRows.pop(); renderRxTable(); }
+    hideWarnModal();
+  });
+
+  function checkInteractionsAfterAdd() {
+    const warnings = collectWarnings();
+    if (warnings.length > 0) showWarnModal(warnings);
+  }
+
+  // Kiểm tra lại khi chẩn đoán thay đổi (so với các thuốc đã có sẵn trong toa)
+  $('rxDiagnosis').addEventListener('blur', () => {
+    const warnings = collectWarnings();
+    if (warnings.length > 0) {
+      warnList.innerHTML = warnings.map((w) => `<li>${w}</li>`).join('');
+      $('rxWarnDelBtn').style.display = 'none';
+      warnOverlay.classList.add('show');
+    }
+  });
+  $('rxWarnOkBtn').addEventListener('click', () => { $('rxWarnDelBtn').style.display = ''; });
+
+  function renderRxTable() {
+    const body = $('rxTableBody');
+    const emptyMsg = $('rxEmptyMsg');
+    if (rxRows.length === 0) {
+      body.innerHTML = '';
+      emptyMsg.classList.add('show');
+      return;
+    }
+    emptyMsg.classList.remove('show');
+    body.innerHTML = rxRows.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${escapeHtml(r.brand)}</td>
+        <td>${escapeHtml(r.generic)}</td>
+        <td>${escapeHtml(r.form)}</td>
+        <td>${escapeHtml(r.usage)}</td>
+        <td>${escapeHtml(r.days)}</td>
+        <td>${escapeHtml(r.morning)}</td>
+        <td>${escapeHtml(r.noon)}</td>
+        <td>${escapeHtml(r.afternoon)}</td>
+        <td>${escapeHtml(r.evening)}</td>
+        <td>${escapeHtml(r.qty)}</td>
+        <td class="rx-del-cell"><button class="rx-row-del" data-idx="${i}" title="Xoá">✕</button></td>
+      </tr>`).join('');
+  }
+
+  $('rxTableBody').addEventListener('click', (e) => {
+    const btn = e.target.closest('.rx-row-del');
+    if (!btn) return;
+    rxRows.splice(parseInt(btn.dataset.idx, 10), 1);
+    renderRxTable();
+  });
+
+  $('rxClearBtn').addEventListener('click', () => {
+    if (rxRows.length === 0) return;
+    if (confirm('Xoá toàn bộ thuốc đang có trong toa?')) { rxRows = []; renderRxTable(); }
+  });
+
+  // ---------- Ngày mặc định ----------
+  $('rxDate').value = new Date().toISOString().slice(0, 10);
+
+  // ---------- In toa PDF ----------
+  function formatVNDate(str) {
+    if (!str) return '';
+    const [y, m, d] = str.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  $('rxPrintBtn').addEventListener('click', () => {
+    if (rxRows.length === 0) { alert('Toa thuốc chưa có thuốc nào.'); return; }
+    const org = localStorage.getItem(LS_ORG) || DEFAULT_ORG;
+    const doctor = localStorage.getItem(LS_DOCTOR) || '';
+    const name = $('rxPatientName').value.trim();
+    const age = $('rxPatientAge').value.trim();
+    const sex = $('rxPatientSex').value;
+    const diag = $('rxDiagnosis').value.trim();
+    const dateStr = formatVNDate($('rxDate').value);
+    const followupStr = formatVNDate($('rxFollowup').value);
+
+    const drugsHtml = rxRows.map((r, i) => `
+      <div class="p-drug">
+        <div class="p-drug-name"><b>${i + 1}. ${escapeHtml(r.brand)}</b>${r.generic ? ' (' + escapeHtml(r.generic) + ')' : ''} ${r.form ? '— ' + escapeHtml(r.form) : ''} ${r.qty ? '— SL: ' + escapeHtml(r.qty) : ''}</div>
+        <div class="p-drug-usage">${r.usage ? escapeHtml(r.usage) + '. ' : ''}Uống: Sáng ${escapeHtml(r.morning)} viên, Trưa ${escapeHtml(r.noon)} viên, Chiều ${escapeHtml(r.afternoon)} viên, Tối ${escapeHtml(r.evening)} viên${r.days ? ' × ' + escapeHtml(r.days) + ' ngày' : ''}.</div>
+      </div>`).join('');
+
+    const html = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Đơn thuốc</title>
+      <style>
+        @page { size: A5; margin: 14mm 12mm; }
+        body { font-family: 'Times New Roman', Times, serif; color: #111; font-size: 13px; line-height: 1.5; }
+        .p-header { text-align: center; margin-bottom: 14px; }
+        .p-org { font-weight: 700; font-size: 13px; text-transform: uppercase; }
+        .p-title { font-weight: 700; font-size: 20px; margin: 10px 0 2px; letter-spacing: 1px; }
+        .p-info { margin-bottom: 10px; }
+        .p-info div { margin-bottom: 3px; }
+        .p-diag { font-weight: 700; margin: 10px 0; }
+        .p-drug { margin-bottom: 10px; }
+        .p-drug-name { font-size: 13.5px; }
+        .p-drug-usage { font-size: 12.5px; margin-left: 14px; font-style: italic; }
+        .p-footer { display: flex; justify-content: space-between; margin-top: 30px; }
+        .p-sign { text-align: center; }
+        .p-sign .p-sign-title { font-weight: 700; margin-bottom: 60px; }
+      </style></head>
+      <body>
+        <div class="p-header">
+          <div class="p-org">${escapeHtml(org)}</div>
+          <div class="p-title">ĐƠN THUỐC</div>
+        </div>
+        <div class="p-info">
+          <div><b>Họ và tên:</b> ${escapeHtml(name)} &nbsp;&nbsp; <b>Tuổi:</b> ${escapeHtml(age)} &nbsp;&nbsp; <b>Giới tính:</b> ${escapeHtml(sex)}</div>
+          <div><b>Ngày kê đơn:</b> ${dateStr}</div>
+        </div>
+        ${diag ? `<div class="p-diag">Chẩn đoán: ${escapeHtml(diag)}</div>` : ''}
+        <div class="p-drugs">${drugsHtml}</div>
+        ${followupStr ? `<div style="margin-top:14px;"><b>Hẹn tái khám:</b> ${followupStr}</div>` : ''}
+        <div class="p-footer">
+          <div></div>
+          <div class="p-sign">
+            <div class="p-sign-title">${dateStr ? dateStr + '<br>' : ''}Bác sĩ khám và kê đơn</div>
+            <div>${escapeHtml(doctor)}</div>
+          </div>
+        </div>
+        <script>window.onload = () => { window.print(); };<\/script>
+      </body></html>`;
+
+    const w = window.open('', '_blank');
+    w.document.write(html);
+    w.document.close();
+  });
+})();
+</script>
+
 <script>
 (function () {
   // Khôi phục đường dẫn thật nếu vừa được 404.html chuyển hướng tới (kỹ thuật SPA cho GitHub Pages)
@@ -3030,8 +3905,8 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr' };
-  const KEY_PATH = { home: '/', icd: '/icd10', ldl: '/ldl', egfr: '/egfr' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
+  const KEY_PATH = { home: '/', icd: '/icd10', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
 
   function showPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
