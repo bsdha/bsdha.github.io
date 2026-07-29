@@ -977,18 +977,18 @@
 
 <div class="app-layout">
 
-  <!-- Thanh điều hướng: sidebar (desktop) / topbar (mobile) — chuyển trang không tải lại -->
+  <!-- Thanh điều hướng: sidebar (desktop) / topbar (mobile) — chuyển trang bằng pushState, không tải lại -->
   <nav class="sidebar" id="sidebarNav">
-    <button type="button" class="home-btn" data-page="home"><span class="ic">🏠</span> Trang chủ</button>
-    <button type="button" class="nav-item" data-page="icd"><span class="ic">🔎</span> Tra cứu ICD-10</button>
-    <button type="button" class="nav-item" data-page="ldl"><span class="ic">🩸</span> Tính LDL-C</button>
-    <button type="button" class="nav-item" data-page="egfr"><span class="ic">🧪</span> Tính eGFR</button>
+    <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
+    <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
+    <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
+    <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
   </nav>
   <nav class="topbar" id="topbarNav">
-    <button type="button" class="home-btn" data-page="home"><span class="ic">🏠</span> Trang chủ</button>
-    <button type="button" class="nav-item" data-page="icd"><span class="ic">🔎</span> ICD-10</button>
-    <button type="button" class="nav-item" data-page="ldl"><span class="ic">🩸</span> LDL-C</button>
-    <button type="button" class="nav-item" data-page="egfr"><span class="ic">🧪</span> eGFR</button>
+    <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
+    <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> ICD-10</a>
+    <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
+    <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
   </nav>
 
   <div class="main-content">
@@ -1002,26 +1002,26 @@
       </header>
 
       <div class="hgrid">
-        <button type="button" class="hcard" data-page="icd">
+        <a href="/icd10" class="hcard" data-page="icd" data-path="/icd10">
           <div class="ic">🔎</div>
           <h2>Tra cứu ICD-10</h2>
           <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
           <span class="tag">Đang hoạt động</span>
-        </button>
+        </a>
 
-        <button type="button" class="hcard" data-page="ldl">
+        <a href="/ldl" class="hcard" data-page="ldl" data-path="/ldl">
           <div class="ic">🩸</div>
           <h2>Tính LDL-Cholesterol</h2>
           <p>Ước tính LDL-C theo công thức Friedewald, tự động dùng Sampson khi TG cao.</p>
           <span class="tag">Đang hoạt động</span>
-        </button>
+        </a>
 
-        <button type="button" class="hcard" data-page="egfr">
+        <a href="/egfr" class="hcard" data-page="egfr" data-path="/egfr">
           <div class="ic">🧪</div>
           <h2>Tính eGFR</h2>
           <p>Ước tính mức lọc cầu thận theo công thức CKD-EPI 2021.</p>
           <span class="tag">Đang hoạt động</span>
-        </button>
+        </a>
 
         <div class="hcard soon">
           <div class="ic">💊</div>
@@ -1159,8 +1159,8 @@
   <div class="toast" id="toast"></div>
 
 <!-- Dữ liệu ICD-10 (Tây y) + Dữ liệu mã bệnh YHCT: đặt 2 file này cùng thư mục với index.html -->
-<script src="icd-data.js"></script>
-<script src="icd-yhct-data.js"></script>
+<script src="/icd-data.js"></script>
+<script src="/icd-yhct-data.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
 <script>
@@ -3016,31 +3016,50 @@
 
 <script>
 (function () {
-  const pages = document.querySelectorAll('.page');
-  const navBtns = document.querySelectorAll('[data-page]');
+  // Khôi phục đường dẫn thật nếu vừa được 404.html chuyển hướng tới (kỹ thuật SPA cho GitHub Pages)
+  (function restoreRoute() {
+    const redirect = sessionStorage.getItem('spa-redirect');
+    if (redirect) {
+      sessionStorage.removeItem('spa-redirect');
+      if (redirect !== location.pathname + location.search + location.hash) {
+        history.replaceState(null, '', redirect);
+      }
+    }
+  })();
 
-  function showPage(key) {
+  const pages = document.querySelectorAll('.page');
+  const navEls = document.querySelectorAll('[data-page]');
+
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr' };
+  const KEY_PATH = { home: '/', icd: '/icd10', ldl: '/ldl', egfr: '/egfr' };
+
+  function showPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
-    navBtns.forEach(b => {
+    navEls.forEach(b => {
       if (b.classList.contains('home-btn')) return;
       b.classList.toggle('active', b.dataset.page === key);
     });
-    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
-    if (history.replaceState) history.replaceState(null, '', '#' + key);
+    window.scrollTo({ top: 0 });
+    if (push) {
+      const path = KEY_PATH[key] || '/';
+      if (location.pathname !== path) history.pushState({ page: key }, '', path);
+    }
   }
 
-  navBtns.forEach(b => {
-    b.addEventListener('click', () => showPage(b.dataset.page));
+  navEls.forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.preventDefault();
+      showPage(el.dataset.page, true);
+    });
   });
 
-  const initial = (location.hash || '').replace('#', '');
-  const valid = ['home', 'icd', 'ldl', 'egfr'];
-  showPage(valid.includes(initial) ? initial : 'home');
-
-  window.addEventListener('hashchange', () => {
-    const key = (location.hash || '').replace('#', '');
-    if (valid.includes(key)) showPage(key);
+  window.addEventListener('popstate', () => {
+    const key = PATH_MAP[location.pathname] || 'home';
+    showPage(key, false);
   });
+
+  const initialKey = PATH_MAP[location.pathname] || 'home';
+  showPage(initialKey, false);
 })();
 </script>
 

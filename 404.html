@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Đang chuyển hướng…</title>
+<script>
+  // Lưu lại đường dẫn thật (vd: /icd10) rồi quay về trang chính (index.html duy nhất)
+  // Trang chính sẽ đọc lại đường dẫn này và tự hiển thị đúng mục.
+  sessionStorage.setItem('spa-redirect', location.pathname + location.search + location.hash);
+  location.replace('/');
+</script>
+</head>
+<body>
+  <p>Đang chuyển hướng, vui lòng đợi…</p>
+</body>
+</html>
