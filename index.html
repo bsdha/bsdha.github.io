@@ -1280,13 +1280,6 @@
               <input type="text" id="rxDoctorName" placeholder="BS. Nguyễn Văn A">
             </div>
           </div>
-          <div class="rx-cloud-box">
-            <div class="rx-cloud-title">☁ Đồng bộ danh sách thuốc nhiều máy (Supabase — miễn phí)</div>
-            <p class="rx-cloud-desc">
-              Tạo 1 project miễn phí tại <b>supabase.com</b> → vào SQL Editor chạy lệnh tạo bảng bên dưới → lấy
-              <b>Project URL</b> và <b>anon public key</b> ở mục Settings → API, dán vào 2 ô dưới đây.
-              Chỉ cần làm 1 lần trên 1 máy, các máy khác nhập đúng URL + key này là dùng chung 1 danh sách thuốc.
-            </p>
             <pre class="rx-sql-box">create table thuoc (
   id bigint generated always as identity primary key,
   ten_tm text not null,
