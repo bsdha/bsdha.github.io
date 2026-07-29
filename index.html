@@ -3,18 +3,22 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BSDHA - Công cụ Y khoa</title>
+<title>BSDHA - Bộ công cụ Y khoa</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230066FF'/%3E%3Crect x='28' y='14' width='8' height='36' rx='3' fill='white'/%3E%3Crect x='14' y='28' width='36' height='8' rx='3' fill='white'/%3E%3C/svg%3E">
 <style>
   :root {
     --blue: #5fa8d3;
     --blue-light: #16293a;
+    --blue-border: #2a4a63;
     --green: #6fcdc4;
     --green-light: #142826;
     --green-border: #2a5f5a;
     --red: #ef5350;
     --red-dark: #c23a37;
+    --red-light: #3a1a1a;
+    --red-border: #5f2a2a;
     --amber: #fbbf24;
+    --amber-dark: #d9a017;
     --amber-light: #3a2e0f;
     --border: #2d3748;
     --text: #e5e7eb;
@@ -22,6 +26,7 @@
     --bg: #0b0f17;
     --surface: #151b26;
     --surface-2: #1c2431;
+    --field: #10151f;
   }
   * { box-sizing: border-box; }
   body {
@@ -31,161 +36,3013 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     min-height: 100vh;
   }
-  .wrap {
-    max-width: 860px;
-    margin: 0 auto;
-    padding: 48px 18px 60px;
+
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+
+  #page-home .home-wrap { max-width: 860px; margin: 0 auto; padding: 20px 18px 40px; }
+  #page-home header { text-align: center; margin-bottom: 36px; }
+  #page-home header .logo { font-size: 34px; margin-bottom: 8px; }
+  #page-home header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
+  #page-home header p { margin: 0; color: var(--muted); font-size: 14px; }
+  #page-home .hgrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  #page-home .hcard {
+    display: flex; flex-direction: column; gap: 8px; text-align: left;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; text-decoration: none; color: var(--text); font-family: inherit; cursor: pointer;
+    transition: border-color .15s, transform .15s, background .15s;
   }
-  header {
-    text-align: center;
-    margin-bottom: 36px;
+  #page-home .hcard:hover { border-color: var(--blue); background: var(--surface-2); transform: translateY(-2px); }
+  #page-home .hcard .ic { font-size: 26px; }
+  #page-home .hcard h2 { margin: 0; font-size: 16px; font-weight: 700; }
+  #page-home .hcard p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  #page-home .hcard .tag {
+    align-self: flex-start; margin-top: 2px; font-size: 11px; font-weight: 700;
+    padding: 3px 9px; border-radius: 999px; background: var(--green-light); color: var(--green);
+    border: 1px solid var(--green-border);
   }
-  header .logo {
-    font-size: 34px;
-    margin-bottom: 8px;
+  #page-home .hcard.soon { opacity: 0.55; cursor: default; }
+  #page-home .hcard.soon:hover { border-color: var(--border); background: var(--surface); transform: none; }
+  #page-home .hcard.soon .tag { background: var(--amber-light); color: var(--amber); border: none; }
+  #page-home footer { text-align: center; margin-top: 42px; font-size: 12px; color: var(--muted); }
+  @media (max-width: 640px) {
+    #page-home .hgrid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    #page-home .hcard { padding: 12px 8px; border-radius: 12px; gap: 4px; text-align: center; align-items: center; }
+    #page-home .hcard .ic { font-size: 20px; }
+    #page-home .hcard h2 { font-size: 11px; line-height: 1.25; }
+    #page-home .hcard p { display: none; }
+    #page-home .hcard .tag { font-size: 8.5px; padding: 2px 6px; align-self: center; }
   }
-  header h1 {
-    margin: 0 0 8px;
-    font-size: 24px;
-    font-weight: 800;
-  }
-  header p {
-    margin: 0;
-    color: var(--muted);
-    font-size: 14px;
-  }
-  .grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 10px;
-  }
-  .card {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+
+#page-ldl .wrap { max-width: 640px; margin: 0 auto; padding: 28px 16px 60px; }#page-ldl .panel {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px;
-    text-decoration: none;
-    color: var(--text);
-    transition: border-color .15s, transform .15s, background .15s;
-  }
-  .card:hover {
-    border-color: var(--blue);
-    background: var(--surface-2);
-    transform: translateY(-2px);
-  }
-  .card .ic {
-    font-size: 26px;
-  }
-  .card h2 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 700;
-  }
-  .card p {
-    margin: 0;
-    font-size: 12.5px;
+  }#page-ldl .panel h1 { margin: 0 0 6px; font-size: 19px; font-weight: 800; }#page-ldl .sub { color: var(--muted); font-size: 13px; margin-bottom: 16px; }#page-ldl .ldl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 480px) {#page-ldl .ldl-grid { grid-template-columns: 1fr; } }#page-ldl .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 4px; }#page-ldl .field input[type="number"] {
+    width: 100%; background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 9px; padding: 9px 10px; color: var(--text); font-size: 15px; font-family: inherit;
+  }#page-ldl .field input[type="number"]:focus { outline: none; border-color: var(--blue); }#page-ldl .unit-switch { display: flex; gap: 6px; margin: 10px 0 14px; }#page-ldl .unit-btn {
+    flex: 1; border: 1.5px solid var(--border); background: var(--surface-2); color: var(--muted);
+    border-radius: 9px; padding: 8px; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }#page-ldl .unit-btn.active { border-color: var(--blue); background: var(--blue-light); color: var(--blue); }#page-ldl .ldl-calc-btn {
+    width: 100%; margin-top: 12px; background: var(--green); color: #06231f;
+    border: none; border-radius: 10px; padding: 11px; font-size: 14.5px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+  }#page-ldl .ldl-calc-btn:hover { filter: brightness(1.05); }#page-ldl .ldl-result { margin-top: 14px; }#page-ldl .ldl-result-card { border-radius: 12px; padding: 14px; border: 1px solid var(--border); background: var(--surface-2); }#page-ldl .ldl-result-card .big { font-size: 30px; font-weight: 800; color: var(--green); }#page-ldl .ldl-result-card .big .u { font-size: 14px; color: var(--muted); font-weight: 600; margin-left: 4px; }#page-ldl .ldl-result-card.invalid .big { color: var(--red); }#page-ldl .ldl-badge { display: inline-block; margin-top: 6px; font-size: 12.5px; font-weight: 700; padding: 3px 9px; border-radius: 999px; }#page-ldl .ldl-badge.optimal { background: var(--green-light); color: var(--green); }#page-ldl .ldl-badge.near { background: var(--amber-light); color: var(--amber); }#page-ldl .ldl-badge.high { background: var(--red-dark); color: #fff; }#page-ldl .ldl-note { margin-top: 10px; font-size: 12px; color: var(--muted); line-height: 1.5; }#page-ldl .ldl-warning {
+    margin-top: 10px; background: var(--amber-light); color: var(--amber);
+    border-radius: 9px; padding: 9px 11px; font-size: 12.5px; font-weight: 600; line-height: 1.5;
+  }#page-ldl .formula-box {
+    margin-top: 4px; background: var(--bg); border: 1px solid var(--border);
+    border-radius: 9px; padding: 10px 12px; font-size: 12.5px; color: var(--muted); line-height: 1.6;
+  }#page-ldl .formula-box code { color: var(--blue); font-weight: 700; }
+
+#page-egfr main {
+    flex: 1;
+    padding: 40px 24px;
+    display: flex;
+    justify-content: center;
+  }#page-egfr .panel-wrap {
+    width: 100%;
+    max-width: 640px;
+  }#page-egfr .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 26px;
+  }#page-egfr .card h1 {
+    margin: 0 0 6px;
+    font-size: 19px;
+    font-weight: 800;
+  }#page-egfr .card .sub {
+    margin: 0 0 20px;
+    font-size: 13px;
     color: var(--muted);
     line-height: 1.5;
-  }
-  .card .tag {
-    align-self: flex-start;
-    margin-top: 2px;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 9px;
+  }#page-egfr .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }#page-egfr .field label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }#page-egfr .field input, #page-egfr .field select {
+    width: 100%;
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px 12px;
+    color: var(--text);
+    font-size: 14px;
+    outline: none;
+  }#page-egfr .field input:focus, #page-egfr .field select:focus {
+    border-color: var(--blue);
+  }#page-egfr .toggle-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 18px;
+  }#page-egfr .toggle-group button {
+    flex: 1;
+    padding: 10px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--field);
+    color: var(--muted);
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+  }#page-egfr .toggle-group button.active {
+    border-color: var(--blue);
+    color: var(--blue);
+    background: var(--blue-light);
+  }#page-egfr .calc-btn {
+    width: 100%;
+    padding: 13px;
+    border: none;
+    border-radius: 10px;
+    background: var(--green);
+    color: #0b1a18;
+    font-size: 15px;
+    font-weight: 800;
+    cursor: pointer;
+    margin-bottom: 14px;
+  }#page-egfr .calc-btn:hover { filter: brightness(1.05); }#page-egfr .result {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: none;
+  }#page-egfr .result.show { display: block; }#page-egfr .result .value {
+    font-size: 30px;
+    font-weight: 800;
+    line-height: 1.1;
+  }#page-egfr .result .unit {
+    font-size: 13px;
+    color: var(--muted);
+    margin-left: 4px;
+    font-weight: 600;
+  }#page-egfr .result .stage {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 11px;
     border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+  }#page-egfr .result .desc {
+    margin: 10px 0 0;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }#page-egfr .formula-note {
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--muted);
+    background: var(--field);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+    line-height: 1.6;
+  }#page-egfr .formula-note b { color: var(--text); }#page-egfr .err {
+    color: var(--red);
+    font-size: 13px;
+    margin: -6px 0 14px;
+    display: none;
+  }#page-egfr .err.show { display: block; }
+
+#page-icd .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px;
+  }#page-icd .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }#page-icd .panel h1 {
+    font-size: 16px;
+    margin: 0 0 2px;
+  }#page-icd .panel .sub {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }#page-icd .search-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 6px 10px;
+  }#page-icd .search-row:focus-within {
+    border-color: var(--blue);
+  }#page-icd .search-row span.icon { color: var(--muted); }#page-icd .search-row input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 15px;
+    font-family: inherit;
+    background: transparent;
+    color: var(--text);
+  }#page-icd .search-row button.clear {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 16px;
+    padding: 2px 6px;
+  }#page-icd .option-row {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--muted);
+    user-select: none;
+  }#page-icd .option-row input[type="checkbox"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--blue);
+    cursor: pointer;
+  }#page-icd .option-row label {
+    cursor: pointer;
+  }#page-icd #status {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-top: 8px;
+  }#page-icd #dataStatus {
+    font-size: 12.5px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }#page-icd #dataStatus.ok { background: var(--green-light); color: var(--green); }#page-icd #dataStatus.warn { background: var(--amber-light); color: var(--amber); }#page-icd .results { display: flex; flex-direction: column; gap: 10px; }#page-icd .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }#page-icd /* --- Mã nhóm: chỉ hiện khối gợi ý --- */
+  .children-block summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 13.5px;
+    color: var(--blue);
+    list-style: none;
+  }#page-icd .children-block summary::-webkit-details-marker { display: none; }#page-icd .children-block summary::before {
+    content: "▾ ";
+  }#page-icd .child-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 8px;
+  }#page-icd .child-btn {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    text-align: left;
+    border: 1px solid var(--green-border);
+    background: var(--green-light);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 7px 10px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13.5px;
+  }#page-icd .child-btn code {
+    font-weight: 700;
+    color: var(--green);
+    white-space: nowrap;
+  }#page-icd .child-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }#page-icd .child-row .child-btn {
+    flex: 1 1 auto;
+  }#page-icd .child-row .copy-btn-inline {
+    flex: 0 0 auto;
+  }#page-icd /* --- Mã cụ thể (mã lá) hiển thị rút gọn trong danh sách --- */
+  .result-btn {
+    display: flex;
+    gap: 10px;
+    align-items: baseline;
+    text-align: left;
+    width: 100%;
+    border: none;
+    background: none;
+    color: var(--text);
+    padding: 0;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+  }#page-icd .result-btn--dropped code, #page-icd .result-btn--dropped span, #page-icd .result-btn--dropped:hover span {
+    color: var(--red);
+  }#page-icd .inline-warning {
+    margin: 8px 14px 10px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 12.5px;
+    font-weight: 600;
+  }#page-icd .inline-warning--dropped {
+    background: var(--red-dark);
+    color: #fff;
+  }#page-icd .inline-warning--not-recommended {
+    background: var(--amber-light);
+    color: var(--amber);
+  }#page-icd .result-btn code {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--blue);
+    background: var(--blue-light);
+    padding: 2px 8px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }#page-icd .result-btn span { color: var(--text); }#page-icd .result-btn:hover span { color: var(--blue); }#page-icd .result-btn .tag-yhct, #page-icd .card-top .tag-yhct {
+    font-weight: 700;
+    font-size: 11px;
+    color: #7a4a00 !important;
+    background: #ffe6b3;
+    padding: 2px 6px;
+    border-radius: 6px;
+    white-space: nowrap;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+  }#page-icd .back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 10px;
+  }#page-icd .back-btn:hover { background: #2b3646; }#page-icd /* --- Mã cụ thể (mã lá) --- */
+  .card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+  }#page-icd .code {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--blue);
+    background: var(--blue-light);
+    padding: 2px 8px;
+    border-radius: 6px;
+  }#page-icd .copy-btn {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 12px;
+    cursor: pointer;
+    color: var(--muted);
+  }#page-icd .copy-btn:hover { background: #2b3646; }#page-icd .result-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+  }#page-icd .copy-btn-inline {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }#page-icd .name { font-weight: 600; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .banner {
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12.5px;
+    margin-bottom: 6px;
+  }#page-icd .banner b { display: block; font-size: 13px; margin-bottom: 2px; }#page-icd .banner.ok { background: var(--green-light); color: var(--green); }#page-icd .banner.warn { background: var(--amber-light); color: var(--amber); }#page-icd .banner.default { background: var(--surface-2); color: var(--muted); }#page-icd .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }#page-icd .meta span {
+    font-size: 11.5px;
+    background: var(--surface-2);
+    color: var(--muted);
+    padding: 2px 7px;
+    border-radius: 999px;
+  }#page-icd .note {
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--muted);
+    white-space: pre-line;
+    border-top: 1px dashed var(--border);
+    padding-top: 6px;
+  }#page-icd .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 40px 0;
+    font-size: 13.5px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #e5e7eb;
+    color: #0b0f17;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  .toast.show { opacity: 1; }
+
+  #backToTop {
+    position: fixed;
+    right: 18px;
+    bottom: 24px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(10px);
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 999;
+  }
+  #backToTop.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  #backToTop:hover { background: #1d4ed8; }
+
+  /* --- Widget radio góc trên bên phải --- */
+  .radio-widget {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 5px 8px 5px 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.4);
+    font-size: 12px;
+  }
+  .radio-widget .radio-title {
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--blue);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .radio-widget .radio-title-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    filter: brightness(0) invert(1);
+  }
+  .radio-widget button.radio-toggle {
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .radio-widget button.radio-toggle:hover { background: #4a8fbd; }
+  .radio-widget button.radio-toggle.playing { background: var(--green); }
+  .radio-widget button.radio-toggle.playing:hover { background: #58b8ae; }
+  .radio-widget button#radioStopAll { background: var(--red); }
+  .radio-widget button#radioStopAll:hover { background: var(--red-dark); }
+  .radio-widget .mixer-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  .radio-widget .mixer-toggle input { cursor: pointer; }
+  .radio-widget button.expand-btn {
+    border: 1px solid var(--amber);
+    background: var(--amber);
+    color: #2b2107;
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .radio-widget button.expand-btn:hover { background: var(--amber-dark); border-color: var(--amber-dark); }
+  .radio-widget button.expand-btn.open { background: var(--amber-dark); color: #2b2107; border-color: var(--amber-dark); }
+  @media (max-width: 480px) {
+    .radio-widget { top: 6px; right: 6px; padding: 4px 6px 4px 8px; gap: 4px; }
+    .radio-widget .radio-title { display: none; }
+    .radio-widget .mixer-toggle span.label { display: none; }
+  }
+
+  .radio-mixer {
+    position: fixed;
+    top: 52px;
+    right: 10px;
+    bottom: 10px;
+    width: 320px;
+    max-width: calc(100vw - 20px);
+    overflow-y: auto;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    z-index: 999;
+    display: none;
+    padding: 8px;
+  }
+  .radio-mixer.show { display: block; }
+  .radio-mixer .rm-group-title {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 8px 6px 4px;
+  }
+  .track-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px;
+    border-radius: 8px;
+  }
+  .track-row:hover { background: var(--surface-2); }
+  .track-row .track-name {
+    flex: 1;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .track-row button.track-btn {
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .track-row button.track-btn.playing { background: var(--red); }
+  .track-row input.track-volume {
+    width: 72px;
+    accent-color: var(--blue);
+    flex-shrink: 0;
+  }
+  #ytNowPlaying {
+    position: sticky;
+    bottom: -8px;
+    z-index: 5;
+    box-shadow: 0 -6px 10px -4px rgba(0,0,0,0.5);
+  }
+  .yt-result-row.yt-playing {
+    background: var(--green-light) !important;
+    outline: 1px solid var(--green-border);
+  }
+  .yt-result-row .yt-playing-badge {
+    display: none;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--green);
+    white-space: nowrap;
+    margin-top: 2px;
+  }
+  .yt-result-row.yt-playing .yt-playing-badge { display: inline-block; }
+  #ytLoadMoreBtn {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 7px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  #ytLoadMoreBtn:hover { background: #2b3646; }
+  #ytLoadMoreBtn:disabled { opacity: 0.6; cursor: default; }
+
+  .marquee-container { position: relative; overflow: hidden; }
+  .marquee-track {
+    display: inline-flex;
+    white-space: nowrap;
+    width: max-content;
+  }
+  .marquee-track.animate {
+    animation: marquee-scroll linear infinite;
+  }
+  .marquee-track .marquee-copy {
+    padding-right: 32px;
+  }
+  @keyframes marquee-scroll {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  #ytMuteBtn.muted { color: var(--red); }
+
+  /* ================= NAV / LAYOUT ================= */
+  .app-layout {
+    display: flex;
+    min-height: 100vh;
+  }
+  .topbar {
+    display: none;
+  }
+  .sidebar {
+    width: 210px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 14px 10px;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .sidebar .home-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--blue-light);
+    color: var(--blue);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 13.5px;
+    font-weight: 700;
+    text-decoration: none;
+    margin-bottom: 12px;
+  }
+  .sidebar .home-btn:hover { background: #1c3a52; }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: none;
+    background: none;
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .nav-item .ic { font-size: 15px; }
+  .nav-item:hover { background: var(--surface-2); color: var(--text); }
+  .nav-item.active {
     background: var(--green-light);
     color: var(--green);
     border: 1px solid var(--green-border);
   }
-  .card.soon {
-    opacity: 0.55;
-    cursor: default;
+  .main-content { flex: 1; min-width: 0; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  @media (max-width: 780px) {
+    .app-layout { flex-direction: column; }
+    .sidebar { display: none; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 10px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      overflow-x: auto;
+    }
+    .topbar .home-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--blue-light);
+      color: var(--blue);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 12.5px;
+      font-weight: 700;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+    .topbar .nav-item {
+      padding: 7px 10px;
+      font-size: 12.5px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
   }
-  .card.soon:hover {
-    border-color: var(--border);
-    background: var(--surface);
-    transform: none;
+
+  /* ================= LDL CALCULATOR ================= */
+  .ldl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
   }
-  .card.soon .tag {
-    background: var(--amber-light);
-    color: var(--amber);
+  @media (max-width: 480px) {
+    .ldl-grid { grid-template-columns: 1fr; }
+  }
+  .field label {
+    display: block;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .field input[type="number"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 9px;
+    padding: 9px 10px;
+    color: var(--text);
+    font-size: 15px;
+    font-family: inherit;
+  }
+  .field input[type="number"]:focus {
+    outline: none;
+    border-color: var(--blue);
+  }
+  .unit-switch {
+    display: flex;
+    gap: 6px;
+    margin: 10px 0 14px;
+  }
+  .unit-btn {
+    flex: 1;
+    border: 1.5px solid var(--border);
+    background: var(--surface-2);
+    color: var(--muted);
+    border-radius: 9px;
+    padding: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .unit-btn.active {
+    border-color: var(--blue);
+    background: var(--blue-light);
+    color: var(--blue);
+  }
+  .ldl-calc-btn {
+    width: 100%;
+    margin-top: 12px;
+    background: var(--green);
+    color: #06231f;
     border: none;
+    border-radius: 10px;
+    padding: 11px;
+    font-size: 14.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
   }
-  footer {
-    text-align: center;
-    margin-top: 42px;
+  .ldl-calc-btn:hover { filter: brightness(1.05); }
+  .ldl-result {
+    margin-top: 14px;
+  }
+  .ldl-result-card {
+    border-radius: 12px;
+    padding: 14px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+  }
+  .ldl-result-card .big {
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--green);
+  }
+  .ldl-result-card .big .u {
+    font-size: 14px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-left: 4px;
+  }
+  .ldl-result-card.invalid .big { color: var(--red); }
+  .ldl-badge {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 12.5px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: 999px;
+  }
+  .ldl-badge.optimal { background: var(--green-light); color: var(--green); }
+  .ldl-badge.near { background: var(--amber-light); color: var(--amber); }
+  .ldl-badge.high { background: var(--red-dark); color: #fff; }
+  .ldl-note {
+    margin-top: 10px;
     font-size: 12px;
     color: var(--muted);
+    line-height: 1.5;
+  }
+  .ldl-warning {
+    margin-top: 10px;
+    background: var(--amber-light);
+    color: var(--amber);
+    border-radius: 9px;
+    padding: 9px 11px;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.5;
+  }
+  .formula-box {
+    margin-top: 4px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .formula-box code {
+    color: var(--blue);
+    font-weight: 700;
   }
 
-  @media (max-width: 640px) {
-    .grid { gap: 8px; }
-    .card {
-      padding: 10px 6px;
-      border-radius: 12px;
-      gap: 4px;
-      text-align: center;
-      align-items: center;
-    }
-    .card .ic { font-size: 20px; }
-    .card h2 { font-size: 11px; line-height: 1.25; }
-    .card p { display: none; }
-    .card .tag {
-      font-size: 8.5px;
-      padding: 2px 6px;
-      align-self: center;
-    }
-  }
-
-  @media (max-width: 400px) {
-    .card .ic { font-size: 17px; }
-    .card h2 { font-size: 10px; }
-  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div class="logo">🩺</div>
-    <h1>BSDHA - Bộ công cụ Y khoa</h1>
-    <p>Tra cứu &amp; tính toán nhanh phục vụ khám chữa bệnh</p>
-  </header>
 
-  <div class="grid">
-    <a class="card" href="/icd10/">
-      <div class="ic">🔎</div>
-      <h2>Tra cứu ICD-10</h2>
-      <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
-      <span class="tag">Đang hoạt động</span>
-    </a>
+<div class="radio-widget" id="radioWidget">
+  <span class="radio-title"><img src="https://www.emojiall.com/images/120/telegram/telemoji-november-2023/1f3b5.gif" alt="🎵" class="radio-title-icon"> 24/7</span>
+  <button class="radio-toggle" id="radioPlayMain" title="Phát Trữ Tình">▶</button>
+  <button class="radio-toggle" id="radioStopAll" title="Dừng tất cả">⏹</button>
+  <button class="expand-btn" id="radioExpandBtn" title="Mở danh sách âm thanh">▼</button>
+</div>
 
-    <a class="card" href="/ldl/">
-      <div class="ic">🩸</div>
-      <h2>Tính LDL-Cholesterol</h2>
-      <p>Ước tính LDL-C theo công thức Friedewald, tự động dùng Sampson khi TG cao.</p>
-      <span class="tag">Đang hoạt động</span>
-    </a>
+<div class="radio-mixer" id="radioMixer">
+  <div class="rm-group-title" style="padding-top:2px;">
+    <label class="mixer-toggle" style="font-size:12px;">
+      <input type="checkbox" id="mixerCheckbox">
+      <span class="label">Mixer (phát nhiều âm cùng lúc)</span>
+    </label>
+  </div>
+  <div class="rm-group-title" style="border-top:1px dashed var(--border); margin-top:4px; padding-top:10px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+    <span style="display:flex; align-items:center; gap:6px; white-space:nowrap;">
+      <svg width="16" height="16" viewBox="0 0 24 24" style="flex-shrink:0;"><path fill="#FF0000" d="M23.5 6.2c-.3-1.1-1.1-1.9-2.2-2.2C19.4 3.5 12 3.5 12 3.5s-7.4 0-9.3.5c-1.1.3-1.9 1.1-2.2 2.2C0 8.1 0 12 0 12s0 3.9.5 5.8c.3 1.1 1.1 1.9 2.2 2.2 1.9.5 9.3.5 9.3.5s7.4 0 9.3-.5c1.1-.3 1.9-1.1 2.2-2.2.5-1.9.5-5.8.5-5.8s0-3.9-.5-5.8z"/><path fill="#fff" d="M9.6 15.5V8.5l6.4 3.5-6.4 3.5z"/></svg>
+      <span>NGHE NHẠC TRÊN YOUTUBE</span>
+    </span>
+    <span style="display:flex; align-items:center; gap:5px; text-transform:none; letter-spacing:normal; flex-shrink:0;">
+      <button id="ytMuteBtn" title="Tắt/Bật tiếng" style="border:none; background:none; color:var(--text); font-size:14px; cursor:pointer; padding:2px; line-height:1;">🔊</button>
+      <input type="range" id="ytVolumeSlider" min="0" max="100" value="100" title="Âm lượng YouTube" style="width:64px; accent-color:var(--red); cursor:pointer;">
+    </span>
+  </div>
+  <div style="padding: 4px 6px 8px;">
+    <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;">
+      <span id="ytApiKeyStatus" style="font-size:11px; color:var(--muted);"></span>
+    </div>
+    <div style="display:flex; gap:6px; margin-bottom:6px; position:relative;">
+      <div style="flex:1; position:relative; display:flex; align-items:center;">
+        <input type="text" id="ytSearchInput" placeholder="Tìm bài hát, ca sĩ..."
+          style="width:100%; font-size:12.5px; padding:6px 26px 6px 8px; border-radius:6px; border:1px solid var(--border); background:var(--surface-2); color:var(--text);">
+        <button id="ytSearchClearBtn" title="Xóa từ khóa" style="display:none; position:absolute; right:4px; border:none; background:none; color:var(--muted); font-size:14px; cursor:pointer; padding:2px 4px; line-height:1;">✕</button>
+      </div>
+      <button id="ytSearchBtn" style="border:none; background:var(--blue); color:#fff; border-radius:6px; padding:6px 12px; font-size:12.5px; cursor:pointer;">Tìm</button>
+    </div>
+    <div id="ytStatus" style="font-size:11.5px; color:var(--muted); margin-bottom:4px;"></div>
+    <div id="ytResults" style="display:flex; flex-direction:column; gap:5px; max-height:260px; overflow-y:auto;"></div>
+    <div id="ytNowPlaying" style="display:none; flex-direction:column; gap:8px; margin-top:8px; padding:8px 10px; border-radius:8px; background:var(--green-light); color:var(--green); font-size:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
+        <span id="ytNowPlayingText" class="marquee-container" style="overflow:hidden; white-space:nowrap; flex:1;"></span>
+        <button id="ytStopBtn" style="border:none; background:var(--red); color:#fff; border-radius:6px; padding:3px 8px; font-size:11px; cursor:pointer; flex-shrink:0;">Dừng</button>
+      </div>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button id="ytPrevBtn" title="Bài trước" style="border:none; background:var(--surface-2); color:var(--green); width:20px; height:20px; border-radius:50%; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; line-height:1;">⏮</button>
+        <button id="ytPlayPauseBtn" title="Phát / Tạm dừng" style="border:none; background:var(--green); color:#08211d; width:26px; height:26px; border-radius:50%; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:11px; line-height:1;">▶</button>
+        <button id="ytNextBtn" title="Bài kế tiếp" style="border:none; background:var(--surface-2); color:var(--green); width:20px; height:20px; border-radius:50%; cursor:pointer; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:9px; line-height:1;">⏭</button>
+        <input type="range" id="ytSeekBar" min="0" max="100" value="0" step="0.1" style="flex:1; accent-color:var(--green); cursor:pointer;">
+        <span id="ytTimeLabel" title="Bấm để xem thời gian còn lại" style="font-size:11px; color:var(--green); cursor:pointer; white-space:nowrap; user-select:none; min-width:38px; text-align:right; flex-shrink:0;">0:00</span>
+      </div>
+    </div>
+    <div id="ytPlayerHost" style="position:absolute; width:1px; height:1px; overflow:hidden; pointer-events:none;"></div>
+  </div>
+  <div class="rm-group-title" style="border-top:1px dashed var(--border); margin-top:4px; padding-top:10px;">RADIO TRỰC TUYẾN</div>
+  <div id="radioTracks"></div>
+  <div class="rm-group-title">ÂM THANH THƯ GIÃN</div>
+  <div id="relaxTracks"></div>
+</div>
 
-    <a class="card" href="/egfr/">
-      <div class="ic">🧪</div>
-      <h2>Tính eGFR</h2>
-      <p>Ước tính mức lọc cầu thận theo công thức CKD-EPI 2021.</p>
-      <span class="tag">Đang hoạt động</span>
-    </a>
 
-    <div class="card soon">
-      <div class="ic">💊</div>
-      <h2>Kê đơn thuốc dịch vụ</h2>
-      <p>Hỗ trợ soạn đơn thuốc dịch vụ nhanh, chuẩn hoá.</p>
-      <span class="tag">Sắp ra mắt</span>
+<div class="app-layout">
+
+  <!-- Thanh điều hướng: sidebar (desktop) / topbar (mobile) — chuyển trang không tải lại -->
+  <nav class="sidebar" id="sidebarNav">
+    <button type="button" class="home-btn" data-page="home"><span class="ic">🏠</span> Trang chủ</button>
+    <button type="button" class="nav-item" data-page="icd"><span class="ic">🔎</span> Tra cứu ICD-10</button>
+    <button type="button" class="nav-item" data-page="ldl"><span class="ic">🩸</span> Tính LDL-C</button>
+    <button type="button" class="nav-item" data-page="egfr"><span class="ic">🧪</span> Tính eGFR</button>
+  </nav>
+  <nav class="topbar" id="topbarNav">
+    <button type="button" class="home-btn" data-page="home"><span class="ic">🏠</span> Trang chủ</button>
+    <button type="button" class="nav-item" data-page="icd"><span class="ic">🔎</span> ICD-10</button>
+    <button type="button" class="nav-item" data-page="ldl"><span class="ic">🩸</span> LDL-C</button>
+    <button type="button" class="nav-item" data-page="egfr"><span class="ic">🧪</span> eGFR</button>
+  </nav>
+
+  <div class="main-content">
+
+  <div class="page active" id="page-home">
+    <div class="home-wrap">
+      <header>
+        <div class="logo">🩺</div>
+        <h1>BSDHA - Bộ công cụ Y khoa</h1>
+        <p>Tra cứu &amp; tính toán nhanh phục vụ khám chữa bệnh</p>
+      </header>
+
+      <div class="hgrid">
+        <button type="button" class="hcard" data-page="icd">
+          <div class="ic">🔎</div>
+          <h2>Tra cứu ICD-10</h2>
+          <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
+          <span class="tag">Đang hoạt động</span>
+        </button>
+
+        <button type="button" class="hcard" data-page="ldl">
+          <div class="ic">🩸</div>
+          <h2>Tính LDL-Cholesterol</h2>
+          <p>Ước tính LDL-C theo công thức Friedewald, tự động dùng Sampson khi TG cao.</p>
+          <span class="tag">Đang hoạt động</span>
+        </button>
+
+        <button type="button" class="hcard" data-page="egfr">
+          <div class="ic">🧪</div>
+          <h2>Tính eGFR</h2>
+          <p>Ước tính mức lọc cầu thận theo công thức CKD-EPI 2021.</p>
+          <span class="tag">Đang hoạt động</span>
+        </button>
+
+        <div class="hcard soon">
+          <div class="ic">💊</div>
+          <h2>Kê đơn thuốc dịch vụ</h2>
+          <p>Hỗ trợ soạn đơn thuốc dịch vụ nhanh, chuẩn hoá.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </div>
+      </div>
+
+      <footer>© bsdha.github.io — Cập nhật liên tục</footer>
     </div>
   </div>
 
-  <footer>© bsdha.github.io — Cập nhật liên tục</footer>
+  <div class="page" id="page-icd">
+      <div class="wrap">
+        <div class="panel">
+          <h1>Tra cứu ICD-10 (Áp dụng theo TT06/2026/TT-BYT bởi DHA)</h1>
+          <div class="sub"></div>
+          <div class="search-row">
+            <span class="icon">⌕</span>
+            <input id="searchInput" placeholder="Tìm mã ICD hoặc tên bệnh: A09, E11.9, tăng huyết áp..." autocomplete="off" spellcheck="false">
+            <button class="clear" id="clearBtn" title="Xoá">✕</button>
+          </div>
+          <div class="option-row">
+            <input type="checkbox" id="yhctToggle">
+            <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
+          </div>
+          <div class="option-row">
+            <input type="checkbox" id="aiToggle">
+            <label for="aiToggle">Tìm bằng AI (nhập từ khóa, nhấn Enter)</label>
+          </div>
+          <div id="status"></div>
+        </div>
+
+        <div id="dataStatus"></div>
+
+        <div class="results" id="results"></div>
+      </div>
+  </div>
+
+  <div class="page" id="page-ldl">
+    <div class="wrap">
+      <div class="panel">
+        <h1>Tính LDL-Cholesterol (công thức Friedewald)</h1>
+        <div class="sub">Nhập Cholesterol toàn phần (TC), HDL-C và Triglycerid (TG) để ước tính LDL-C.</div>
+
+        <div class="unit-switch">
+          <button type="button" class="unit-btn active" data-unit="mmol">mmol/L</button>
+          <button type="button" class="unit-btn" data-unit="mg">mg/dL</button>
+        </div>
+
+        <div class="ldl-grid">
+          <div class="field">
+            <label for="ldlTC">Cholesterol toàn phần (TC)</label>
+            <input type="number" step="0.01" min="0" id="ldlTC" placeholder="VD: 5.80">
+          </div>
+          <div class="field">
+            <label for="ldlHDL">HDL-C</label>
+            <input type="number" step="0.01" min="0" id="ldlHDL" placeholder="VD: 1.30">
+          </div>
+          <div class="field">
+            <label for="ldlTG">Triglycerid (TG)</label>
+            <input type="number" step="0.01" min="0" id="ldlTG" placeholder="VD: 1.76">
+          </div>
+        </div>
+
+        <button class="ldl-calc-btn" id="ldlCalcBtn">Tính LDL-C</button>
+
+        <div class="ldl-result" id="ldlResult"></div>
+
+        <div class="formula-box" id="ldlFormulaBox">
+          Công thức đang dùng (mmol/L): <code>LDL-C = TC − HDL-C − TG/2.2</code><br>
+          Công thức mg/dL: <code>LDL-C = TC − HDL-C − TG/5</code>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-egfr">
+    <main>
+      <div class="panel-wrap">
+        <div class="card">
+          <h1>Tính eGFR (công thức CKD-EPI 2021)</h1>
+          <p class="sub">Ước tính mức lọc cầu thận theo Creatinin huyết thanh, không dùng yếu tố chủng tộc (race-free), theo khuyến cáo mới nhất.</p>
+
+          <div class="row">
+            <div class="field">
+              <label>Tuổi (năm)</label>
+              <input type="number" id="egfrAge" placeholder="VD: 55" min="18" max="120" inputmode="numeric">
+            </div>
+            <div class="field">
+              <label>Giới tính</label>
+              <select id="egfrSex">
+                <option value="female">Nữ</option>
+                <option value="male">Nam</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="toggle-group" id="egfrUnitToggle">
+            <button type="button" data-unit="umol" class="active">µmol/L</button>
+            <button type="button" data-unit="mgdl">mg/dL</button>
+          </div>
+
+          <div class="row" style="grid-template-columns: 1fr;">
+            <div class="field">
+              <label id="egfrScrLabel">Creatinin huyết thanh (µmol/L)</label>
+              <input type="number" id="egfrScr" placeholder="VD: 88.4" step="0.01" inputmode="decimal">
+            </div>
+          </div>
+
+          <div class="err" id="egfrErr">Vui lòng nhập đầy đủ và hợp lệ: tuổi (18-120) và creatinin (&gt; 0).</div>
+
+          <button class="calc-btn" id="egfrCalcBtn">Tính eGFR</button>
+
+          <div class="result" id="egfrResult">
+            <div><span class="value" id="egfrValue">--</span><span class="unit">mL/phút/1.73m²</span></div>
+            <span class="stage" id="egfrStageTag">--</span>
+            <p class="desc" id="egfrStageDesc"></p>
+          </div>
+
+          <div class="formula-note">
+            Áp dụng <b>CKD-EPI Creatinine 2021</b> (race-free):<br>
+            eGFR = 142 × min(Scr/κ, 1)<sup>α</sup> × max(Scr/κ, 1)<sup>-1.200</sup> × 0.9938<sup>Tuổi</sup> × (1.012 nếu Nữ)<br>
+            κ = 0.7 (Nữ) / 0.9 (Nam); α = -0.241 (Nữ) / -0.302 (Nam); Scr tính bằng mg/dL.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  </div>
 </div>
+
+  <div class="toast" id="toast"></div>
+
+<!-- Dữ liệu ICD-10 (Tây y) + Dữ liệu mã bệnh YHCT: đặt 2 file này cùng thư mục với index.html -->
+<script src="icd-data.js"></script>
+<script src="icd-yhct-data.js"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script>
+(function () {
+  const CHANNELS = [
+    { id: 'tru-tinh', name: 'Trữ Tình', type: 'stream', url: 'https://cherryradio.com.au/stream/tru-tinh.mp3' },
+    { id: 'voh-am610', name: 'VOH AM 610KHz', type: 'hls', url: 'https://1011337676.vnns.net/-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmkiOiIvaHR2Yy9WT0gtQU02MTAuYWRtLnRtcy8iLCJleHAiOjE5MjQ5MjUyMjh9.dAa1es3LlAVnvQ-oLGNBqfEI0yz7fPrjEML_rJAklMQ-/htvc/VOH-AM610.adm.tms/playlist.m3u8' },
+    { id: 'voh-fm999', name: 'VOH FM 99.9 MHz', type: 'hls', url: 'https://1011337676.vnns.net/-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmkiOiIvaHR2Yy9WT0gtRk05OS45LmFkbS50bXMvIiwiZXhwIjoxOTI0OTI1MjI4fQ.zVLoKcCW3tFLySpEQHcYh11PHIxk2ZE1pj5P-GFIm1I-/htvc/VOH-FM99.9.adm.tms/playlist.m3u8' },
+    { id: 'voh-fm925', name: 'VOH-M FM 92-92.5 MHz', type: 'hls', url: 'https://1011337676.vnns.net/-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmkiOiIvaHR2Yy9WT0gtRk05Mi41LmFkbS50bXMvIiwiZXhwIjoxOTI0OTI1MjI4fQ.u5XcdU9KljAz3HgehDbCBbNEvSzWNAQTEKkU-DwH2K8-/htvc/VOH-FM92.5.adm.tms/playlist.m3u8' },
+    { id: 'voh-fm956', name: 'VOH FM 95.6MHz', type: 'hls', url: 'https://1011337676.vnns.net/-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmkiOiIvaHR2Yy9WT0gtRk05NS42LmFkbS50bXMvIiwiZXhwIjoxOTI0OTI1MjI4fQ.isr2nlUkXOPGSxT-KT8FcZQFCcXn58RZrCyqoB3zDGg-/htvc/VOH-FM95.6.adm.tms/playlist.m3u8' },
+    { id: 'voh-fm877', name: 'VOH FM 87.7MHz', type: 'hls', url: 'https://1011337676.vnns.net/-eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1cmkiOiIvaHR2Yy9WT0gtRk04Ny43LmFkbS50bXMvIiwiZXhwIjoxOTI0OTI1MjI4fQ.uqGbd46T32wvTu5qrL2cOng9Vsf7ZHbSTE10PHpP2bE-/htvc/VOH-FM87.7.adm.tms/playlist.m3u8' },
+  ];
+  const RELAX = [
+    { id: 'td-song-bien-nhe-nhang', name: 'Sóng Biển nhẹ nhàng', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-song-bien-nhe-nhang-www_tiengdong_com.mp3' },
+    { id: 'td-song-bien', name: 'Sóng Biển', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-song-bien-www_tiengdong_com.mp3' },
+    { id: 'td-song-bien-vo-bo', name: 'Sóng Biển vỗ bờ', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/tieng-song-bien-vo-bo-www_tiengdong_com.mp3' },
+    { id: 'td-song-hai-au', name: 'Sóng biển & Hải Âu', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-song-bien-va-tieng-hai-au-keu-www_tiengdong_com.mp3' },
+    { id: 'td-mua-bai-bien', name: 'Mưa trên Bãi biển', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-mua-tren-bai-bien-www_tiengdong_com.mp3' },
+    { id: 'td-song-ri-rao', name: 'Sóng Biển rì rào', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Am-thanh-tieng-song-bien-ri-rao-www_tiengdong_com.mp3' },
+    { id: 'td-am-thanh-thien-nhien', name: 'Âm thanh Thiên Nhiên', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Am-thanh-thien-nhien-www_tiengdong_com.mp3' },
+    { id: 'td-dong-que', name: 'Đồng Quê thanh bình', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-dong-que-thanh-binh-www_tiengdong_com.mp3' },
+    { id: 'td-buoi-sang-trong-lanh', name: 'Buổi sáng Trong lành', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Am-thanh-buoi-sang-trong-lanh-www_tiengdong_com.mp3' },
+    { id: 'td-chim-hot-suoi-chay', name: 'Chim hót & Suối chảy', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-chim-hot-va-tieng-suoi-chay-trong-rung-www_tiengdong_com.mp3' },
+    { id: 'td-nhac-piano-nhe-nhang', name: 'Nhạc nền Piano nhẹ nhàng', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Nhac-nen-tinh-yeu-dep-cam-dong-nhe-nhang-piano-www_tiengdong_com.mp3' },
+    { id: 'td-song-cuon', name: 'Sóng Cuộn', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-song-cuon-www_tiengdong_com.mp3' },
+    { id: 'td-chim-hai-au-song-bien', name: 'Chim Hải Âu & Sóng Biển', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-chim-hai-au-keu-va-tieng-song-bien-www_tiengdong_com.mp3' },
+    { id: 'td-gio-bien-song-mua-he', name: 'Gió biển và Sóng mùa hè', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Am-thanh-gio-bien-va-song-mua-he-www_tiengdong_com.mp3' },
+    { id: 'td-song-bien-vo-vao-bo', name: 'Sóng biển Vỗ vào bờ', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-song-bien-vo-vao-bo-www_tiengdong_com.mp3' },
+    { id: 'td-mua-dot-mai-gac-xep', name: 'Mưa dột mái Gác xép', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-nuoc-mua-dot-mai-ben-trong-can-gac-xep-www_tiengdong_com.mp3' },
+    { id: 'td-troi-mua-nhe', name: 'Trời Mưa nhẹ', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-troi-mua-nhe-www_tiengdong_com.mp3' },
+    { id: 'td-moi-truong-rung', name: 'Môi trường Tự nhiên trong Rừng', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Am-thanh-moi-truong-tu-nhien-trong-rung-www_tiengdong_com.mp3' },
+    { id: 'td-dong-vat-rung-ram', name: 'Kêu của các loài Động Vật trong rừng rậm', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/Tieng-keu-cua-cac-loai-dong-vat-khac-nhau-trong-rung-ram-www_tiengdong_com.mp3' },
+    { id: 'td-chim-hot-cong-vien', name: 'Chim hót trong Công viên thành phố', type: 'mp3', url: 'https://tiengdong.com/wp-content/uploads/tieng-chim-hot-trong-cong-vien-thanh-pho-www_tiengdong_com.mp3' },
+  ];
+
+  function showToast(msg) {
+    const toastEl = document.getElementById('toast');
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 1500);
+  }
+
+  let audioCtx = null;
+  function getCtx() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  }
+
+  function makeNoiseBuffer(ctx, kind) {
+    const seconds = 4;
+    const len = ctx.sampleRate * seconds;
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    if (kind === 'brown') {
+      let last = 0;
+      for (let i = 0; i < len; i++) {
+        const white = Math.random() * 2 - 1;
+        last = (last + 0.02 * white) / 1.02;
+        data[i] = last * 3.5;
+      }
+    } else if (kind === 'pink') {
+      let b0=0,b1=0,b2=0,b3=0,b4=0,b5=0,b6=0;
+      for (let i = 0; i < len; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886*b0 + white*0.0555179;
+        b1 = 0.99332*b1 + white*0.0750759;
+        b2 = 0.96900*b2 + white*0.1538520;
+        b3 = 0.86650*b3 + white*0.3104856;
+        b4 = 0.55000*b4 + white*0.5329522;
+        b5 = -0.7616*b5 - white*0.0168980;
+        const out = b0+b1+b2+b3+b4+b5+b6+white*0.5362;
+        b6 = white*0.115926;
+        data[i] = out * 0.11;
+      }
+    } else {
+      for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  }
+
+  // --- Lịch phát sự kiện ngẫu nhiên (crackle, sấm, tiếng dế/ếch...) ---
+  function scheduleEvents(genEvent, minGapMs, maxGapMs) {
+    let stopped = false;
+    let timer = null;
+    function tick() {
+      if (stopped) return;
+      try { genEvent(); } catch (e) {}
+      const wait = minGapMs + Math.random() * (maxGapMs - minGapMs);
+      timer = setTimeout(tick, wait);
+    }
+    timer = setTimeout(tick, minGapMs + Math.random() * (maxGapMs - minGapMs));
+    return {
+      stop() {
+        stopped = true;
+        if (timer) clearTimeout(timer);
+      },
+    };
+  }
+
+  // Tiếng nổ lách tách ngắn (lò sưởi)
+  function playCrackle(ctx, dest, opts) {
+    const o = opts || {};
+    const freqMin = o.freqMin || 900, freqMax = o.freqMax || 3200;
+    const durMin = o.durMin || 0.02, durMax = o.durMax || 0.07;
+    const gainMin = o.gainMin || 0.08, gainMax = o.gainMax || 0.3;
+    const dur = durMin + Math.random() * (durMax - durMin);
+    const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = freqMin + Math.random() * (freqMax - freqMin);
+    bp.Q.value = 4 + Math.random() * 4;
+    const g = ctx.createGain();
+    const peak = gainMin + Math.random() * (gainMax - gainMin);
+    const now = ctx.currentTime;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(peak, now + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    src.connect(bp); bp.connect(g); g.connect(dest);
+    src.start(now);
+    src.stop(now + dur + 0.02);
+  }
+
+  // Tiếng sấm xa (giông bão)
+  function playThunder(ctx, dest) {
+    const dur = 2 + Math.random() * 3;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    let last = 0;
+    for (let i = 0; i < len; i++) {
+      const white = Math.random() * 2 - 1;
+      last = (last + 0.02 * white) / 1.02;
+      data[i] = last * 3.5;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buffer;
+    const lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass';
+    lp.frequency.value = 150 + Math.random() * 100;
+    const g = ctx.createGain();
+    const now = ctx.currentTime;
+    const peak = 0.4 + Math.random() * 0.3;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(peak, now + 0.3 + Math.random() * 0.5);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    src.connect(lp); lp.connect(g); g.connect(dest);
+    src.start(now);
+    src.stop(now + dur + 0.1);
+  }
+
+  // Một tiếng "chip" ngắn (dùng cho dế/ếch)
+  function playChirp(ctx, dest, opts) {
+    const o = opts || {};
+    const freq = o.freq || 4200;
+    const dur = o.dur || 0.06;
+    const gainVal = o.gain || 0.15;
+    const glide = o.glide || 0;
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    const now = ctx.currentTime;
+    osc.frequency.setValueAtTime(freq, now);
+    if (glide) osc.frequency.linearRampToValueAtTime(freq + glide, now + dur * 0.7);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(gainVal, now + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+    osc.connect(g); g.connect(dest);
+    osc.start(now);
+    osc.stop(now + dur + 0.02);
+  }
+
+  // Một cụm tiếng dế kêu rộ (nhiều chip liên tiếp rất nhanh)
+  function playCricketBurst(ctx, dest) {
+    const n = 4 + Math.floor(Math.random() * 5);
+    const baseFreq = 4000 + Math.random() * 600;
+    for (let i = 0; i < n; i++) {
+      setTimeout(() => {
+        playChirp(ctx, dest, { freq: baseFreq + (Math.random() * 100 - 50), dur: 0.035, gain: 0.12 });
+      }, i * 33);
+    }
+  }
+
+  // Một tiếng ếch kêu (peep), cao và có lướt nhẹ lên
+  function playPeep(ctx, dest) {
+    const freq = 2800 + Math.random() * 500;
+    playChirp(ctx, dest, { freq, dur: 0.22, gain: 0.18, glide: freq * 0.15 });
+  }
+
+  function buildNoiseGraph(ctx, kind, gainNode) {
+    // Các âm nhiễu liên tục cơ bản
+    if (kind === 'white' || kind === 'pink' || kind === 'brown') {
+      const src = ctx.createBufferSource();
+      src.buffer = makeNoiseBuffer(ctx, kind);
+      src.loop = true;
+      src.connect(gainNode);
+      src.start();
+      return { stop() { try { src.stop(); } catch (e) {} } };
+    }
+
+    if (kind === 'rain') {
+      const src = ctx.createBufferSource();
+      src.buffer = makeNoiseBuffer(ctx, 'white');
+      src.loop = true;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1200;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 6000;
+      src.connect(hp); hp.connect(lp); lp.connect(gainNode);
+      src.start();
+      return { stop() { try { src.stop(); } catch (e) {} } };
+    }
+
+    if (kind === 'waves') {
+      const src = ctx.createBufferSource();
+      src.buffer = makeNoiseBuffer(ctx, 'white');
+      src.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 500;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 0.15;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 300;
+      lfo.connect(lfoGain); lfoGain.connect(lp.frequency);
+      lfo.start();
+      src.connect(lp); lp.connect(gainNode);
+      src.start();
+      return { stop() { try { src.stop(); } catch (e) {} try { lfo.stop(); } catch (e) {} } };
+    }
+
+    // Tiếng ồn nâu làm mượt: lọc thông thấp mạnh hơn cho êm tai khi nghe lâu
+    if (kind === 'brown-smooth') {
+      const src = ctx.createBufferSource();
+      src.buffer = makeNoiseBuffer(ctx, 'brown');
+      src.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 700;
+      src.connect(lp); lp.connect(gainNode);
+      src.start();
+      return { stop() { try { src.stop(); } catch (e) {} } };
+    }
+
+    // Tiếng ồn nâu sâu kèm lớp tinh chỉnh 432 Hz rất nhẹ
+    if (kind === 'brown-432hz') {
+      const src = ctx.createBufferSource();
+      src.buffer = makeNoiseBuffer(ctx, 'brown');
+      src.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 550;
+      src.connect(lp); lp.connect(gainNode);
+      src.start();
+
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 432;
+      const toneGain = ctx.createGain();
+      toneGain.gain.value = 0.05;
+      osc.connect(toneGain); toneGain.connect(gainNode);
+      osc.start();
+
+      return {
+        stop() {
+          try { src.stop(); } catch (e) {}
+          try { osc.stop(); } catch (e) {}
+        },
+      };
+    }
+
+    // Lò sưởi: nền rì rầm trầm + tiếng nổ lách tách ngẫu nhiên
+    if (kind === 'fireplace') {
+      const rumbleSrc = ctx.createBufferSource();
+      rumbleSrc.buffer = makeNoiseBuffer(ctx, 'brown');
+      rumbleSrc.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 280;
+      const rumbleGain = ctx.createGain();
+      rumbleGain.gain.value = 0.35;
+      rumbleSrc.connect(lp); lp.connect(rumbleGain); rumbleGain.connect(gainNode);
+      rumbleSrc.start();
+
+      const scheduler = scheduleEvents(() => {
+        playCrackle(ctx, gainNode, { freqMin: 900, freqMax: 3200, durMin: 0.02, durMax: 0.07, gainMin: 0.08, gainMax: 0.3 });
+      }, 90, 320);
+
+      return {
+        stop() {
+          try { rumbleSrc.stop(); } catch (e) {}
+          scheduler.stop();
+        },
+      };
+    }
+
+    // Giông bão: mưa liên tục + tiếng sấm xa thỉnh thoảng
+    if (kind === 'thunderstorm') {
+      const rainSrc = ctx.createBufferSource();
+      rainSrc.buffer = makeNoiseBuffer(ctx, 'white');
+      rainSrc.loop = true;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 1200;
+      const lpRain = ctx.createBiquadFilter();
+      lpRain.type = 'lowpass';
+      lpRain.frequency.value = 6000;
+      const rainGain = ctx.createGain();
+      rainGain.gain.value = 0.6;
+      rainSrc.connect(hp); hp.connect(lpRain); lpRain.connect(rainGain); rainGain.connect(gainNode);
+      rainSrc.start();
+
+      const scheduler = scheduleEvents(() => {
+        playThunder(ctx, gainNode);
+      }, 7000, 18000);
+
+      return {
+        stop() {
+          try { rainSrc.stop(); } catch (e) {}
+          scheduler.stop();
+        },
+      };
+    }
+
+    // Đêm — tiếng dế: nền không khí đêm tĩnh + từng cụm dế kêu
+    if (kind === 'night') {
+      const bedSrc = ctx.createBufferSource();
+      bedSrc.buffer = makeNoiseBuffer(ctx, 'brown');
+      bedSrc.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 400;
+      const bedGain = ctx.createGain();
+      bedGain.gain.value = 0.12;
+      bedSrc.connect(lp); lp.connect(bedGain); bedGain.connect(gainNode);
+      bedSrc.start();
+
+      const scheduler = scheduleEvents(() => {
+        playCricketBurst(ctx, gainNode);
+      }, 500, 1600);
+
+      return {
+        stop() {
+          try { bedSrc.stop(); } catch (e) {}
+          scheduler.stop();
+        },
+      };
+    }
+
+    // Quán cà phê: tiếng nhiễu lọc dải trung, âm lượng lên xuống chậm như tiếng trò chuyện rì rầm
+    if (kind === 'people') {
+      const src = ctx.createBufferSource();
+      src.buffer = makeNoiseBuffer(ctx, 'white');
+      src.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      bp.frequency.value = 1100;
+      bp.Q.value = 0.6;
+      const murmurGain = ctx.createGain();
+      murmurGain.gain.value = 0.5;
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 0.15;
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 0.2;
+      lfo.connect(lfoGain); lfoGain.connect(murmurGain.gain);
+      lfo.start();
+      src.connect(bp); bp.connect(murmurGain); murmurGain.connect(gainNode);
+      src.start();
+
+      return {
+        stop() {
+          try { src.stop(); } catch (e) {}
+          try { lfo.stop(); } catch (e) {}
+        },
+      };
+    }
+
+    // Tiếng ếch ban đêm: nền không khí đêm nhẹ + từng tiếng ếch kêu cao vút
+    if (kind === 'spring-peeper') {
+      const bedSrc = ctx.createBufferSource();
+      bedSrc.buffer = makeNoiseBuffer(ctx, 'brown');
+      bedSrc.loop = true;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 350;
+      const bedGain = ctx.createGain();
+      bedGain.gain.value = 0.1;
+      bedSrc.connect(lp); lp.connect(bedGain); bedGain.connect(gainNode);
+      bedSrc.start();
+
+      const scheduler = scheduleEvents(() => {
+        playPeep(ctx, gainNode);
+      }, 650, 1300);
+
+      return {
+        stop() {
+          try { bedSrc.stop(); } catch (e) {}
+          scheduler.stop();
+        },
+      };
+    }
+
+    // Dự phòng: tiếng ồn trắng thường
+    const src = ctx.createBufferSource();
+    src.buffer = makeNoiseBuffer(ctx, 'white');
+    src.loop = true;
+    src.connect(gainNode);
+    src.start();
+    return { stop() { try { src.stop(); } catch (e) {} } };
+  }
+
+  function createHtmlRow(track, container, playRow, defaultVolume) {
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.dataset.trackId = track.id;
+    const dv = typeof defaultVolume === 'number' ? defaultVolume : 70;
+    row.innerHTML =
+      '<button class="track-btn" title="Phát/Dừng">▶</button>' +
+      '<span class="track-name">' + track.name + '</span>' +
+      '<input type="range" class="track-volume" min="0" max="100" value="' + dv + '">';
+    container.appendChild(row);
+    const btn = row.querySelector('.track-btn');
+    const vol = row.querySelector('.track-volume');
+    btn.addEventListener('click', () => playRow(track, btn, vol));
+    vol.addEventListener('input', () => {
+      const active = activeTracks[track.id];
+      if (active && active.setVolume) active.setVolume(vol.value / 100);
+    });
+    return { row, btn, vol };
+  }
+
+  const radioTrackEls = document.getElementById('radioTracks');
+  const relaxTrackEls = document.getElementById('relaxTracks');
+  const mixerCheckbox = document.getElementById('mixerCheckbox');
+  const mainPlayBtn = document.getElementById('radioPlayMain');
+
+  const activeTracks = {}; // id -> {stop, btn, setVolume}
+  const rowRefs = {}; // id -> {btn, vol}
+
+  function updateMainButton() {
+    const anyPlaying = Object.keys(activeTracks).length > 0;
+    mainPlayBtn.textContent = anyPlaying ? '⏸' : '▶';
+    mainPlayBtn.classList.toggle('playing', anyPlaying);
+  }
+
+  function setBtnPlaying(id, playing) {
+    const ref = rowRefs[id];
+    if (ref) {
+      ref.btn.textContent = playing ? '⏹' : '▶';
+      ref.btn.classList.toggle('playing', playing);
+    }
+    updateMainButton();
+  }
+
+  function stopTrack(id) {
+    const t = activeTracks[id];
+    if (!t) return;
+    t.stop();
+    delete activeTracks[id];
+    setBtnPlaying(id, false);
+  }
+
+  function stopAllExcept(exceptId) {
+    Object.keys(activeTracks).forEach((id) => { if (id !== exceptId) stopTrack(id); });
+  }
+
+  function stopAll() { stopAllExcept(null); }
+
+  // Radio channel rows
+  const channelAudioEls = {};
+  function playChannel(ch, volValue) {
+    if (!mixerCheckbox.checked) stopAllExcept(null);
+    let entry = channelAudioEls[ch.id];
+    if (!entry) {
+      const audioEl = new Audio();
+      audioEl.preload = 'none';
+      let hls = null;
+      if (ch.type === 'hls') {
+        if (window.Hls && Hls.isSupported()) {
+          hls = new Hls();
+          hls.loadSource(ch.url);
+          hls.attachMedia(audioEl);
+        } else if (audioEl.canPlayType('application/vnd.apple.mpegurl')) {
+          audioEl.src = ch.url;
+        } else {
+          showToast('Trình duyệt không hỗ trợ phát kênh này');
+          return;
+        }
+      } else {
+        audioEl.src = ch.url;
+        audioEl.loop = true;
+      }
+      entry = { audioEl };
+      channelAudioEls[ch.id] = entry;
+    }
+    entry.audioEl.volume = volValue;
+    entry.audioEl.play().catch(() => {
+      showToast('Không phát được kênh ' + ch.name);
+      stopTrack(ch.id);
+    });
+    activeTracks[ch.id] = {
+      stop: () => { entry.audioEl.pause(); },
+      setVolume: (v) => { entry.audioEl.volume = v; },
+    };
+    setBtnPlaying(ch.id, true);
+  }
+
+  CHANNELS.forEach((ch) => {
+    const refs = createHtmlRow(ch, radioTrackEls, (track, btn, volEl) => {
+      if (activeTracks[ch.id]) { stopTrack(ch.id); return; }
+      playChannel(ch, volEl.value / 100);
+    });
+    rowRefs[ch.id] = refs;
+  });
+
+  // Nhóm "Âm thanh thư giãn" — phát mp3 giống kênh radio
+  RELAX.forEach((track) => {
+    const refs = createHtmlRow(track, relaxTrackEls, (t, btn, volEl) => {
+      if (activeTracks[t.id]) { stopTrack(t.id); return; }
+      playChannel(t, volEl.value / 100);
+    }, 70);
+    rowRefs[track.id] = refs;
+  });
+
+  document.getElementById('radioStopAll').addEventListener('click', stopAll);
+
+  // Nút Play chính -> phát/dừng kênh Trữ Tình mặc định
+  mainPlayBtn.addEventListener('click', () => {
+    const activeIds = Object.keys(activeTracks);
+    if (activeIds.length > 0) {
+      activeIds.forEach(stopTrack);
+    } else {
+      const ch = CHANNELS.find((c) => c.id === 'tru-tinh');
+      const ref = rowRefs['tru-tinh'];
+      playChannel(ch, ref ? ref.vol.value / 100 : 0.7);
+    }
+  });
+
+  // Mixer checkbox: turning OFF while several tracks play -> keep only the first one playing
+  mixerCheckbox.addEventListener('change', () => {
+    if (!mixerCheckbox.checked) {
+      const ids = Object.keys(activeTracks);
+      if (ids.length > 1) {
+        ids.slice(1).forEach(stopTrack);
+      }
+    }
+  });
+
+  // Expand/collapse mixer panel
+  const expandBtn = document.getElementById('radioExpandBtn');
+  const mixerPanel = document.getElementById('radioMixer');
+  expandBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isOpen = mixerPanel.classList.toggle('show');
+    expandBtn.textContent = isOpen ? '▲' : '▼';
+    expandBtn.classList.toggle('open', isOpen);
+  });
+  document.addEventListener('click', (e) => {
+    if (!mixerPanel.classList.contains('show')) return;
+    const insidePanel = mixerPanel.contains(e.target);
+    const insideWidget = document.getElementById('radioWidget').contains(e.target);
+    if (!insidePanel && !insideWidget) {
+      mixerPanel.classList.remove('show');
+      expandBtn.textContent = '▼';
+      expandBtn.classList.remove('open');
+    }
+  });
+
+  // ===== Tìm & nghe nhạc YouTube (audio-only) =====
+  // API key được nhúng cứng sẵn — ai mở file này cũng dùng được ngay, không cần nhập.
+  // Nhiều API key được nhúng cứng sẵn — tự động xoay vòng khi 1 key hết quota trong ngày.
+  const YT_API_KEYS = [
+    'AIzaSyDsKyNxabV3opwnWaknID3XApEr3kpTRwU',
+    'AIzaSyDh9nos35nE7_0nZ9-wlLSvGw-onTaFH2U',
+    'AIzaSyBFJb4JCQH77VzjnV863YvSUn6Xnx4OJrM',
+    'AIzaSyBeyLXr9aeINdFsJTX56dCXUtkAkWvD1Jk',
+    'AIzaSyAbB2Gqpa4U6QX4gWSwuCAro16zDGQ-I2Q',
+  ];
+  const YT_KEY_INDEX_STORAGE = 'ytApiKeyIndex';
+  let ytKeyIndex = parseInt(localStorage.getItem(YT_KEY_INDEX_STORAGE) || '0', 10);
+  if (isNaN(ytKeyIndex) || ytKeyIndex < 0 || ytKeyIndex >= YT_API_KEYS.length) ytKeyIndex = 0;
+  const ytApiKeyStatus = document.getElementById('ytApiKeyStatus');
+  const ytSearchInput = document.getElementById('ytSearchInput');
+  const ytSearchBtn = document.getElementById('ytSearchBtn');
+  const ytStatus = document.getElementById('ytStatus');
+  const ytResults = document.getElementById('ytResults');
+  const ytNowPlaying = document.getElementById('ytNowPlaying');
+  const ytNowPlayingText = document.getElementById('ytNowPlayingText');
+  const ytStopBtn = document.getElementById('ytStopBtn');
+  const ytPlayerHost = document.getElementById('ytPlayerHost');
+  const ytPlayPauseBtn = document.getElementById('ytPlayPauseBtn');
+  const ytPrevBtn = document.getElementById('ytPrevBtn');
+  const ytNextBtn = document.getElementById('ytNextBtn');
+  const ytSeekBar = document.getElementById('ytSeekBar');
+  const ytTimeLabel = document.getElementById('ytTimeLabel');
+  const ytVolumeSlider = document.getElementById('ytVolumeSlider');
+  const ytMuteBtn = document.getElementById('ytMuteBtn');
+  const ytSearchClearBtn = document.getElementById('ytSearchClearBtn');
+
+  if (ytApiKeyStatus) ytApiKeyStatus.textContent = '';
+
+  let ytPlayer = null; // instance YouTube IFrame Player
+  let ytApiReady = false;
+  let pendingVideoToPlay = null;
+  let ytUpdateTimer = null;
+  let ytIsSeeking = false;
+  let ytShowRemaining = false; // false = hiện thời gian đã chạy, true = hiện thời gian đếm lùi
+  let ytShouldBePlaying = false; // ý định của người dùng: có nên đang phát hay không
+  let ytUserPaused = false; // người dùng chủ động bấm Tạm dừng (khác với bị hệ điều hành tạm dừng khi chạy nền)
+  let ytCurrentPlayingVid = null; // videoId đang phát, dùng để đánh dấu "Đang phát" trong danh sách
+  let ytCurrentQuery = '';       // từ khóa đang tìm, dùng cho "Xem thêm"
+  let ytNextPageToken = '';      // pageToken cho trang kết quả tiếp theo
+  let ytIsMuted = false;
+  let ytVolumeBeforeMute = 100;
+  let ytWatchdogTimer = null;    // giữ nhạc chạy nền: kiểm tra định kỳ, tự phát lại nếu bị hệ điều hành tạm dừng
+  let ytWakeLock = null;         // Wake Lock: hạn chế màn hình tự khóa khi đang nghe nhạc
+  let ytPlaylist = [];           // danh sách bài hát hiện có trong kết quả tìm kiếm (theo đúng thứ tự hiển thị)
+  let ytPlaylistIndex = -1;      // vị trí bài đang phát trong ytPlaylist, dùng cho nút Trước/Sau + tự phát bài kế
+
+  function escapeYtHtml(str) {
+    return (str || '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+
+  // Hiện chữ chạy trượt (marquee) khi tên bài dài hơn khung hiển thị, lặp vô hạn
+  let ytMarqueeTokenCounter = 0;
+  function setMarqueeText(container, text) {
+    if (!container) return;
+    const token = ++ytMarqueeTokenCounter;
+    container.dataset.marqueeToken = String(token);
+    container.innerHTML = `<span class="marquee-track"><span class="marquee-copy">${escapeYtHtml(text)}</span></span>`;
+    requestAnimationFrame(() => {
+      // Nếu trong lúc chờ đo kích thước, ô này đã bị đổi nội dung khác (đổi bài, hết marquee...) thì bỏ qua
+      if (container.dataset.marqueeToken !== String(token)) return;
+      const track = container.querySelector('.marquee-track');
+      const copy = container.querySelector('.marquee-copy');
+      if (!track || !copy) return;
+      if (copy.scrollWidth > container.clientWidth) {
+        track.innerHTML =
+          `<span class="marquee-copy">${escapeYtHtml(text)}</span>` +
+          `<span class="marquee-copy">${escapeYtHtml(text)}</span>`;
+        const dur = Math.max(6, copy.scrollWidth / 40); // ~40px/giây
+        track.style.animationDuration = dur + 's';
+        track.classList.add('animate');
+      } else {
+        track.classList.remove('animate');
+      }
+    });
+  }
+
+  function formatYtTime(sec) {
+    sec = Math.max(0, Math.floor(sec || 0));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
+  function updateYtTimeUI() {
+    if (!ytPlayer || !ytPlayer.getCurrentTime) return;
+    const cur = ytPlayer.getCurrentTime() || 0;
+    const dur = ytPlayer.getDuration() || 0;
+    if (!ytIsSeeking) {
+      ytSeekBar.max = dur || 0;
+      ytSeekBar.value = cur;
+    }
+    ytTimeLabel.textContent = ytShowRemaining
+      ? '-' + formatYtTime(dur - cur)
+      : formatYtTime(cur);
+  }
+
+  function startYtTimeUpdates() {
+    stopYtTimeUpdates();
+    ytUpdateTimer = setInterval(updateYtTimeUI, 500);
+  }
+  function stopYtTimeUpdates() {
+    if (ytUpdateTimer) { clearInterval(ytUpdateTimer); ytUpdateTimer = null; }
+  }
+
+  // ----- Giữ phát nhạc chạy nền (khi khóa màn hình / chuyển app khác) -----
+  async function requestYtWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        ytWakeLock = await navigator.wakeLock.request('screen');
+        ytWakeLock.addEventListener('release', () => { ytWakeLock = null; });
+      }
+    } catch (e) { /* một số trình duyệt/điều kiện không hỗ trợ, bỏ qua */ }
+  }
+  function releaseYtWakeLock() {
+    if (ytWakeLock) { try { ytWakeLock.release(); } catch (e) {} ytWakeLock = null; }
+  }
+
+  // Theo dõi định kỳ: nếu nhạc đang bật ý định phát mà bị hệ điều hành/trình duyệt
+  // tự tạm dừng khi chạy nền (khóa màn hình, chuyển app khác...) thì tự phát lại ngay.
+  function startYtWatchdog() {
+    stopYtWatchdog();
+    ytWatchdogTimer = setInterval(() => {
+      if (!ytShouldBePlaying || ytUserPaused || !ytPlayer || !ytPlayer.getPlayerState) return;
+      const st = ytPlayer.getPlayerState();
+      if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING) {
+        try { ytPlayer.playVideo(); } catch (e) {}
+      }
+    }, 3000);
+  }
+  function stopYtWatchdog() {
+    if (ytWatchdogTimer) { clearInterval(ytWatchdogTimer); ytWatchdogTimer = null; }
+  }
+
+  function setupYtMediaSession(title) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: title || 'Đang phát nhạc',
+        artist: 'YouTube',
+        album: 'ICD 10 BY DHA',
+      });
+      navigator.mediaSession.setActionHandler('play', () => { if (ytPlayer) ytPlayer.playVideo(); });
+      navigator.mediaSession.setActionHandler('pause', () => { if (ytPlayer) ytPlayer.pauseVideo(); });
+      navigator.mediaSession.setActionHandler('stop', () => { ytStopBtn.click(); });
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (ytPlayer && ytPlayer.seekTo && typeof details.seekTime === 'number') {
+          ytPlayer.seekTo(details.seekTime, true);
+        }
+      });
+    } catch (e) {}
+  }
+
+  function onYtPlayerStateChange(e) {
+    const state = e.data;
+    if (state === YT.PlayerState.PLAYING) {
+      ytPlayPauseBtn.textContent = '⏸';
+      ytShouldBePlaying = true;
+      startYtTimeUpdates();
+      updateYtTimeUI();
+      startYtWatchdog();
+      requestYtWakeLock();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing';
+    } else if (state === YT.PlayerState.PAUSED) {
+      ytPlayPauseBtn.textContent = '▶';
+      stopYtTimeUpdates();
+      if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused';
+    } else if (state === YT.PlayerState.ENDED) {
+      ytPlayPauseBtn.textContent = '▶';
+      ytShouldBePlaying = false;
+      stopYtTimeUpdates();
+      ytSeekBar.value = 0;
+      // Tự động phát bài tiếp theo trong danh sách kết quả (nếu có)
+      if (ytPlaylistIndex >= 0 && ytPlaylistIndex + 1 < ytPlaylist.length) {
+        const next = ytPlaylist[ytPlaylistIndex + 1];
+        playYoutubeAudioOnly(next.vid, next.title);
+      } else {
+        stopYtWatchdog();
+        releaseYtWakeLock();
+      }
+    }
+  }
+
+  function playYtByIndex(index) {
+    if (index < 0 || index >= ytPlaylist.length) return;
+    const t = ytPlaylist[index];
+    playYoutubeAudioOnly(t.vid, t.title);
+  }
+
+  if (ytPrevBtn) {
+    ytPrevBtn.addEventListener('click', () => {
+      if (ytPlaylistIndex > 0) playYtByIndex(ytPlaylistIndex - 1);
+    });
+  }
+  if (ytNextBtn) {
+    ytNextBtn.addEventListener('click', () => {
+      if (ytPlaylistIndex >= 0 && ytPlaylistIndex + 1 < ytPlaylist.length) playYtByIndex(ytPlaylistIndex + 1);
+    });
+  }
+
+  // Khi quay lại tab/app sau khi chạy nền, nếu người dùng chưa chủ động tạm dừng
+  // mà YouTube bị hệ điều hành/tab tạm dừng thì tự phát lại để tránh gián đoạn.
+  // Wake Lock tự động bị hủy khi ẩn trang nên cần xin cấp lại khi quay lại.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    if (ytShouldBePlaying && !ytUserPaused) requestYtWakeLock();
+    if (!ytShouldBePlaying || ytUserPaused || !ytPlayer || !ytPlayer.getPlayerState) return;
+    const st = ytPlayer.getPlayerState();
+    if (st !== YT.PlayerState.PLAYING && st !== YT.PlayerState.BUFFERING) {
+      ytPlayer.playVideo();
+    }
+  });
+
+  ytPlayPauseBtn.addEventListener('click', () => {
+    if (!ytPlayer || !ytPlayer.getPlayerState) return;
+    const st = ytPlayer.getPlayerState();
+    if (st === YT.PlayerState.PLAYING) {
+      ytUserPaused = true;
+      ytPlayer.pauseVideo();
+      releaseYtWakeLock();
+    } else {
+      ytUserPaused = false;
+      ytPlayer.playVideo();
+      requestYtWakeLock();
+    }
+  });
+
+  ytSeekBar.addEventListener('input', () => { ytIsSeeking = true; });
+  ytSeekBar.addEventListener('change', () => {
+    if (ytPlayer && ytPlayer.seekTo) ytPlayer.seekTo(parseFloat(ytSeekBar.value), true);
+    ytIsSeeking = false;
+  });
+
+  ytTimeLabel.addEventListener('click', () => {
+    ytShowRemaining = !ytShowRemaining;
+    updateYtTimeUI();
+  });
+
+  if (ytVolumeSlider) {
+    ytVolumeSlider.addEventListener('input', () => {
+      const vol = parseInt(ytVolumeSlider.value, 10);
+      if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(vol);
+      // Người dùng tự kéo âm lượng nghĩa là muốn nghe -> tự bỏ trạng thái Mute
+      if (ytIsMuted && vol > 0) {
+        ytIsMuted = false;
+        if (ytPlayer && ytPlayer.unMute) ytPlayer.unMute();
+        if (ytMuteBtn) { ytMuteBtn.textContent = '🔊'; ytMuteBtn.classList.remove('muted'); }
+      }
+    });
+  }
+
+  // Bấm icon loa: Tắt tiếng / Bật lại âm lượng trước đó
+  if (ytMuteBtn) {
+    ytMuteBtn.addEventListener('click', () => {
+      ytIsMuted = !ytIsMuted;
+      if (ytIsMuted) {
+        ytVolumeBeforeMute = parseInt(ytVolumeSlider.value, 10) || 100;
+        if (ytPlayer && ytPlayer.mute) ytPlayer.mute();
+        ytMuteBtn.textContent = '🔇';
+        ytMuteBtn.classList.add('muted');
+      } else {
+        if (ytPlayer && ytPlayer.unMute) ytPlayer.unMute();
+        const restoreVol = ytVolumeBeforeMute || 100;
+        if (ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(restoreVol);
+        ytVolumeSlider.value = restoreVol;
+        ytMuteBtn.textContent = '🔊';
+        ytMuteBtn.classList.remove('muted');
+      }
+    });
+  }
+
+  // Nút "x" xóa từ khóa tìm kiếm YouTube
+  if (ytSearchClearBtn) {
+    ytSearchClearBtn.addEventListener('click', () => {
+      ytSearchInput.value = '';
+      ytSearchClearBtn.style.display = 'none';
+      ytResults.innerHTML = '';
+      ytStatus.textContent = '';
+      ytCurrentQuery = '';
+      ytNextPageToken = '';
+      ytSearchInput.focus();
+    });
+    ytSearchInput.addEventListener('input', () => {
+      ytSearchClearBtn.style.display = ytSearchInput.value ? 'block' : 'none';
+    });
+  }
+
+  // Nạp YouTube IFrame API (chỉ 1 lần, khi cần dùng)
+  function ensureYtIframeApi(cb) {
+    if (window.YT && window.YT.Player) { ytApiReady = true; cb(); return; }
+    if (!document.getElementById('ytIframeApiScript')) {
+      const tag = document.createElement('script');
+      tag.id = 'ytIframeApiScript';
+      tag.src = 'https://www.youtube.com/iframe_api';
+      document.head.appendChild(tag);
+    }
+    window.onYouTubeIframeAPIReady = function () {
+      ytApiReady = true;
+      cb();
+    };
+    // Nếu script đã có sẵn nhưng chưa fire callback, chờ vòng lặp ngắn
+    const waitInterval = setInterval(() => {
+      if (window.YT && window.YT.Player) {
+        clearInterval(waitInterval);
+        if (!ytApiReady) { ytApiReady = true; cb(); }
+      }
+    }, 300);
+  }
+
+  function playYoutubeAudioOnly(videoId, title) {
+    // Dừng các kênh radio/relax khác để tránh chồng âm thanh
+    stopAll();
+    ytUserPaused = false;
+    ytShowRemaining = false;
+    ytCurrentPlayingVid = videoId;
+    const idx = ytPlaylist.findIndex((t) => t.vid === videoId);
+    ytPlaylistIndex = idx;
+    refreshYtPlayingHighlight();
+    setupYtMediaSession(title);
+    ensureYtIframeApi(() => {
+      if (ytPlayer) {
+        ytPlayer.loadVideoById(videoId);
+        if (ytPlayer.setVolume && ytVolumeSlider) ytPlayer.setVolume(parseInt(ytVolumeSlider.value, 10));
+        if (ytIsMuted && ytPlayer.mute) ytPlayer.mute();
+      } else {
+        const playerVars = {
+          autoplay: 1,
+          controls: 0,
+          // playsinline: bắt buộc trên iOS để video phát ẩn/âm thanh không tự bật
+          // toàn màn hình — đây là nguyên nhân khiến app/PWA bị "văng" ra ngoài
+          // (thoát về trang chủ) khi phát nhạc trên điện thoại.
+          playsinline: 1,
+          rel: 0,
+          modestbranding: 1,
+          iv_load_policy: 3,
+          cc_load_policy: 0,
+          fs: 0,
+          disablekb: 1,
+        };
+        if (location.protocol === 'http:' || location.protocol === 'https:') {
+          playerVars.origin = location.origin;
+        }
+        ytPlayer = new YT.Player(ytPlayerHost.id || (ytPlayerHost.id = 'ytPlayerHost'), {
+          height: '1',
+          width: '1',
+          videoId: videoId,
+          playerVars: playerVars,
+          events: {
+            onReady: (e) => {
+              e.target.playVideo();
+              if (ytVolumeSlider) e.target.setVolume(parseInt(ytVolumeSlider.value, 10));
+              if (ytIsMuted && e.target.mute) e.target.mute();
+            },
+            onStateChange: onYtPlayerStateChange,
+          },
+        });
+      }
+      ytNowPlaying.style.display = 'flex';
+      setMarqueeText(ytNowPlayingText, '▶ ' + title);
+    });
+  }
+
+  ytStopBtn.addEventListener('click', () => {
+    if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+    ytNowPlaying.style.display = 'none';
+    ytShouldBePlaying = false;
+    ytUserPaused = false;
+    stopYtTimeUpdates();
+    stopYtWatchdog();
+    releaseYtWakeLock();
+    ytSeekBar.value = 0;
+    ytTimeLabel.textContent = '0:00';
+    ytPlayPauseBtn.textContent = '▶';
+    ytCurrentPlayingVid = null;
+    refreshYtPlayingHighlight();
+    if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'none';
+  });
+
+  function ytRowHtml(it) {
+    const vid = it.id.videoId;
+    const title = it.snippet.title;
+    const channel = it.snippet.channelTitle;
+    const thumb = it.snippet.thumbnails && it.snippet.thumbnails.default ? it.snippet.thumbnails.default.url : '';
+    const isPlaying = vid === ytCurrentPlayingVid;
+    return `
+      <div class="yt-result-row${isPlaying ? ' yt-playing' : ''}" data-vid="${vid}" data-title="${title.replace(/"/g, '&quot;')}"
+        style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:5px; border-radius:6px; background:var(--surface-2);">
+        <img src="${thumb}" alt="" style="width:44px; height:33px; border-radius:4px; object-fit:cover; flex-shrink:0;">
+        <div style="overflow:hidden; flex:1; min-width:0;">
+          <div class="yt-row-title" style="font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeYtHtml(title)}</div>
+          <div style="font-size:11px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeYtHtml(channel)}</div>
+          <div class="yt-playing-badge">▶ Đang phát</div>
+        </div>
+      </div>`;
+  }
+
+  // Bật/tắt chữ chạy trượt cho tiêu đề bài trong danh sách tùy theo có đang phát hay không
+  function applyRowTitleDisplay(row, isPlaying) {
+    const titleEl = row.querySelector('.yt-row-title, .yt-row-title-marquee');
+    if (!titleEl) return;
+    const title = row.dataset.title || '';
+    if (isPlaying) {
+      // Vô hiệu marquee cũ (nếu có) đang chờ đo kích thước, rồi thiết lập lại từ đầu
+      delete titleEl.dataset.marqueeToken;
+      titleEl.className = 'yt-row-title-marquee marquee-container';
+      titleEl.removeAttribute('style');
+      titleEl.style.cssText = 'font-size:12px; font-weight:600; color:var(--text);';
+      setMarqueeText(titleEl, title);
+    } else {
+      // Vô hiệu token marquee đang chờ để callback cũ (nếu có) không ghi đè lại nội dung này
+      delete titleEl.dataset.marqueeToken;
+      titleEl.className = 'yt-row-title';
+      titleEl.removeAttribute('style');
+      titleEl.style.cssText = 'font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;';
+      titleEl.textContent = title;
+    }
+  }
+
+  function attachYtRowHandlers(container) {
+    container.querySelectorAll('[data-vid]').forEach((row) => {
+      row.addEventListener('click', () => {
+        playYoutubeAudioOnly(row.dataset.vid, row.dataset.title);
+      });
+      applyRowTitleDisplay(row, row.classList.contains('yt-playing'));
+    });
+  }
+
+  function renderYtLoadMoreButton() {
+    const old = document.getElementById('ytLoadMoreBtn');
+    if (old) old.remove();
+    if (!ytNextPageToken) return;
+    const btn = document.createElement('button');
+    btn.id = 'ytLoadMoreBtn';
+    btn.textContent = 'Xem thêm';
+    btn.addEventListener('click', doYtLoadMore);
+    ytResults.appendChild(btn);
+  }
+
+  function renderYtResults(items, append) {
+    const html = items.map(ytRowHtml).join('');
+    if (append) {
+      const oldBtn = document.getElementById('ytLoadMoreBtn');
+      if (oldBtn) oldBtn.remove();
+      ytResults.insertAdjacentHTML('beforeend', html);
+      ytPlaylist = ytPlaylist.concat(items.map((it) => ({ vid: it.id.videoId, title: it.snippet.title })));
+    } else {
+      ytResults.innerHTML = html;
+      ytPlaylist = items.map((it) => ({ vid: it.id.videoId, title: it.snippet.title }));
+    }
+    attachYtRowHandlers(ytResults);
+    renderYtLoadMoreButton();
+  }
+
+  // Cập nhật lại dấu "Đang phát" trên các mục đã hiển thị mà không cần tải lại danh sách
+  function refreshYtPlayingHighlight() {
+    ytResults.querySelectorAll('.yt-result-row').forEach((row) => {
+      const isPlaying = row.dataset.vid === ytCurrentPlayingVid;
+      row.classList.toggle('yt-playing', isPlaying);
+      applyRowTitleDisplay(row, isPlaying);
+    });
+  }
+
+  async function ytFetchWithKeyRotation(buildUrl) {
+    let lastErrorMsg = '';
+    for (let attempt = 0; attempt < YT_API_KEYS.length; attempt++) {
+      const key = YT_API_KEYS[ytKeyIndex];
+      const url = buildUrl(key);
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+        if (data.error) {
+          const reason = (data.error.errors && data.error.errors[0] && data.error.errors[0].reason) || '';
+          const isQuotaIssue = reason === 'quotaExceeded' || reason === 'dailyLimitExceeded' || reason === 'rateLimitExceeded';
+          if (isQuotaIssue && attempt < YT_API_KEYS.length - 1) {
+            // Key này hết quota -> chuyển sang key kế tiếp và thử lại
+            ytKeyIndex = (ytKeyIndex + 1) % YT_API_KEYS.length;
+            localStorage.setItem(YT_KEY_INDEX_STORAGE, String(ytKeyIndex));
+            lastErrorMsg = data.error.message;
+            continue;
+          }
+          lastErrorMsg = data.error.message || 'Lỗi không xác định.';
+          return { error: lastErrorMsg };
+        }
+        return { data };
+      } catch (err) {
+        lastErrorMsg = 'Lỗi kết nối mạng.';
+      }
+    }
+    return { error: lastErrorMsg || 'Tất cả API key đều không dùng được.' };
+  }
+
+  async function doYtSearch() {
+    const q = ytSearchInput.value.trim();
+    if (!q) { ytStatus.textContent = 'Nhập từ khóa tìm kiếm.'; return; }
+    ytStatus.textContent = 'Đang tìm...';
+    ytResults.innerHTML = '';
+    ytCurrentQuery = q;
+    ytNextPageToken = '';
+    const result = await ytFetchWithKeyRotation((key) =>
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&q=${encodeURIComponent(q)}&key=${encodeURIComponent(key)}`
+    );
+    if (result.error) {
+      ytStatus.textContent = 'Lỗi: ' + result.error;
+      return;
+    }
+    const items = result.data.items || [];
+    if (items.length === 0) {
+      ytStatus.textContent = 'Không tìm thấy kết quả.';
+      return;
+    }
+    ytNextPageToken = result.data.nextPageToken || '';
+    ytStatus.textContent = `Tìm thấy ${items.length} kết quả.`;
+    renderYtResults(items, false);
+  }
+
+  async function doYtLoadMore() {
+    if (!ytCurrentQuery || !ytNextPageToken) return;
+    const btn = document.getElementById('ytLoadMoreBtn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Đang tải...'; }
+    const result = await ytFetchWithKeyRotation((key) =>
+      `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&maxResults=10&pageToken=${encodeURIComponent(ytNextPageToken)}&q=${encodeURIComponent(ytCurrentQuery)}&key=${encodeURIComponent(key)}`
+    );
+    if (result.error) {
+      ytStatus.textContent = 'Lỗi: ' + result.error;
+      if (btn) { btn.disabled = false; btn.textContent = 'Xem thêm'; }
+      return;
+    }
+    const items = result.data.items || [];
+    ytNextPageToken = result.data.nextPageToken || '';
+    renderYtResults(items, true);
+  }
+
+  ytSearchBtn.addEventListener('click', doYtSearch);
+  ytSearchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') doYtSearch();
+  });
+})();
+</script>
+
+
+<script>
+(function () {
+  const ICD_DATA = (window.ICD_DATA || []);
+  const YHCT_DATA = (window.ICD_YHCT_DATA || []);
+
+  const dataStatusEl = document.getElementById('dataStatus');
+  if (ICD_DATA.length === 0 && YHCT_DATA.length === 0) {
+    dataStatusEl.className = 'warn';
+    dataStatusEl.textContent =
+      '⚠ Chưa có dữ liệu. Hãy dùng script "extract-icd-data.js" để trích xuất dữ liệu từ trang gốc, ' +
+      'lưu thành file "icd-data.js" / "icd-yhct-data.js" và đặt cùng thư mục với file HTML này.';
+  } else {
+    dataStatusEl.style.display = 'none';
+  }
+
+  // Chuẩn hoá chuỗi tiếng Việt để tìm kiếm không dấu
+  function normalize(str) {
+    return (str || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/g, 'd');
+  }
+
+  // Tiền xử lý: tạo trường tìm kiếm chuẩn hoá 1 lần cho hiệu năng
+  // Mỗi phần tử được gắn thêm `_type` để phân biệt mã Tây y ('icd') và mã YHCT ('yhct')
+  const searchIndex = [
+    ...ICD_DATA.map((item) => ({
+      item: { ...item, _type: 'icd' },
+      codeNorm: normalize(item.code),
+      nameNorm: normalize(item.name),
+      enNorm: normalize(item.en),
+    })),
+    ...YHCT_DATA.map((item) => ({
+      item: { ...item, _type: 'yhct' },
+      codeNorm: normalize(item.code),
+      // với mã YHCT, tìm theo cả tên YHCT, tên bệnh hiện đại và mã ICD-10 tương ứng
+      nameNorm: normalize(item.name) + ' ' + normalize(item.modernName) + ' ' + normalize(item.icd10),
+      enNorm: '',
+    })),
+  ];
+
+  const input = document.getElementById('searchInput');
+  const clearBtn = document.getElementById('clearBtn');
+  const yhctToggle = document.getElementById('yhctToggle');
+  const aiToggle = document.getElementById('aiToggle');
+  const resultsEl = document.getElementById('results');
+  const statusEl = document.getElementById('status');
+  const toastEl = document.getElementById('toast');
+
+  function showToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(() => toastEl.classList.remove('show'), 1200);
+  }
+
+  function copyText(text) {
+    navigator.clipboard?.writeText(text).then(() => showToast('Đã copy: ' + text));
+  }
+
+  function renderYhctListItem(item) {
+    const isRemoved = !!item.removed;
+    const warnClass = isRemoved ? ' result-btn--dropped' : '';
+    const inlineWarningHtml = isRemoved
+      ? `<div class="inline-warning inline-warning--dropped">${escapeHtml(item.statusTitle || 'Không sử dụng')}${item.removedNote ? ' — ' + escapeHtml(item.removedNote) : ''}</div>`
+      : '';
+    return `
+      <div class="card">
+        <div class="result-row">
+          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="yhct">
+            <span class="tag-yhct">YHCT</span>
+            <code>${escapeHtml(item.code)}</code>
+            <span>${escapeHtml(item.name)}${item.modernName ? ' — ' + escapeHtml(item.modernName) : ''}</span>
+          </button>
+          ${!isRemoved ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
+        </div>
+        ${inlineWarningHtml}
+      </div>`;
+  }
+
+  function renderListItem(item) {
+    if (item._type === 'yhct') {
+      return renderYhctListItem(item);
+    }
+
+    const hasChildren = item.children && item.children.length > 0;
+
+    if (hasChildren) {
+      // Mã nhóm -> chỉ hiện khối gợi ý mã cụ thể hơn
+      const childrenHtml = item.children
+        .map(
+          (c) =>
+            `<div class="child-row">
+               <button class="child-btn" data-code="${escapeAttr(c.code)}">
+                 <code>${escapeHtml(c.code)}</code>
+                 <span>${escapeHtml(c.name)}</span>
+               </button>
+               <button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(c.code)}">Copy mã</button>
+             </div>`
+        )
+        .join('');
+      return `
+        <div class="card">
+          <details class="children-block" open>
+            <summary>Gợi ý mã cụ thể hơn có thể dùng làm bệnh chính (${item.children.length})</summary>
+            <div class="child-list">${childrenHtml}</div>
+          </details>
+        </div>`;
+    }
+
+    // Mã cụ thể (mã lá) -> chỉ hiện rút gọn, bấm vào mới xem chi tiết
+    // Nếu mã có cảnh báo (statusTitle) thì hiện luôn ngoài danh sách, không cần bấm vào chi tiết
+    const isDropped = item.statusTitle === 'Cần chọn mã cụ thể hơn';
+    const isNotRecommended = item.statusTitle === 'Không khuyến khích dùng làm bệnh chính';
+    const warnClass = isDropped ? ' result-btn--dropped' : (isNotRecommended ? ' result-btn--not-recommended' : '');
+    const inlineWarningHtml = isDropped
+      ? '<div class="inline-warning inline-warning--dropped">Đã bỏ mã, cần chọn mã cụ thể hơn</div>'
+      : (isNotRecommended
+          ? '<div class="inline-warning inline-warning--not-recommended">Không khuyến khích dùng làm bệnh chính</div>'
+          : '');
+
+    return `
+      <div class="card">
+        <div class="result-row">
+          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}">
+            <code>${escapeHtml(item.code)}</code>
+            <span>${escapeHtml(item.name)}</span>
+          </button>
+          ${!isDropped ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
+        </div>
+        ${inlineWarningHtml}
+      </div>`;
+  }
+
+  function renderYhctDetail(item) {
+    const bannerClass = item.removed ? 'warn' : (item.status === 'warn' ? 'warn' : 'ok');
+    const bannerHtml = item.statusTitle
+      ? `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
+          (item.statusDesc || item.removedNote)
+            ? '<span>' + escapeHtml(item.statusDesc || '') + (item.removedNote ? ' ' + escapeHtml(item.removedNote) : '') + '</span>'
+            : ''
+        }</div>`
+      : '';
+    return `
+      <button class="back-btn" id="backToListBtn" title="Quay lại danh sách kết quả">← Quay lại</button>
+      <div class="card">
+        <div class="card-top">
+          <span class="tag-yhct">YHCT</span>
+          <span class="code">${escapeHtml(item.code)}</span>
+          <button class="copy-btn" data-copy="${escapeAttr(item.code)}">Copy mã</button>
+        </div>
+        <div class="name">${escapeHtml(item.name)}</div>
+        ${item.modernName ? `<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>` : ''}
+        ${item.icd10 ? `<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>` : ''}
+        ${bannerHtml}
+      </div>`;
+  }
+
+  function renderDetail(item) {
+    if (item._type === 'yhct') {
+      return renderYhctDetail(item);
+    }
+    const bannerClass =
+      item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : 'default';
+    const bannerHtml = item.statusTitle
+      ? `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
+          item.statusDesc ? '<span>' + escapeHtml(item.statusDesc) + '</span>' : ''
+        }</div>`
+      : '';
+    const metaHtml = (item.meta || [])
+      .map((m) => `<span>${escapeHtml(m)}</span>`)
+      .join('');
+    const noteHtml = item.note ? `<div class="note">${item.note}</div>` : '';
+
+    return `
+      <button class="back-btn" id="backToListBtn" title="Quay lại danh sách kết quả">← Quay lại</button>
+      <div class="card">
+        <div class="card-top">
+          <span class="code">${escapeHtml(item.code)}</span>
+          <button class="copy-btn" data-copy="${escapeAttr(item.code)}">Copy mã</button>
+        </div>
+        <div class="name">${escapeHtml(item.name)}</div>
+        ${item.en ? `<div class="en">${escapeHtml(item.en)}</div>` : ''}
+        ${bannerHtml}
+        <div class="meta">${metaHtml}</div>
+        ${noteHtml}
+      </div>`;
+  }
+
+  function escapeHtml(str) {
+    return (str || '').replace(/[&<>"']/g, (c) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    }[c]));
+  }
+  function escapeAttr(str) { return escapeHtml(str); }
+
+  let currentMatches = [];
+  let isAiResultsMode = false;
+
+  function doSearch(query) {
+    isAiResultsMode = false;
+    const q = normalize(query.trim());
+    if (!q) {
+      currentMatches = [];
+      resultsEl.innerHTML = '';
+      statusEl.textContent = '';
+      return;
+    }
+
+    const yhctOnly = !!(yhctToggle && yhctToggle.checked);
+    const matches = searchIndex.filter(
+      (row) =>
+        (!yhctOnly || row.item._type === 'yhct') &&
+        (row.codeNorm.includes(q) || row.nameNorm.includes(q) || row.enNorm.includes(q))
+    );
+
+    // Nếu 1 mã nhóm (có children) khớp tìm kiếm, ẩn bớt các mã con của nó
+    // để tránh hiện trùng lặp (mã con đã nằm trong khối gợi ý màu xanh lá).
+    const childCodesToHide = new Set();
+    matches.forEach((row) => {
+      if (row.item.children && row.item.children.length > 0) {
+        row.item.children.forEach((c) => childCodesToHide.add(c.code));
+      }
+    });
+    const dedupedMatches = matches.filter(
+      (row) =>
+        (row.item.children && row.item.children.length > 0) ||
+        !childCodesToHide.has(row.item.code)
+    );
+    currentMatches = dedupedMatches;
+
+    statusEl.textContent = `Tìm thấy ${dedupedMatches.length.toLocaleString('vi-VN')} kết quả cho "${query}"`;
+
+    if (dedupedMatches.length === 0) {
+      resultsEl.innerHTML = '<div class="empty">Không tìm thấy mã hoặc bệnh phù hợp.</div>';
+      return;
+    }
+
+    showList(dedupedMatches);
+  }
+
+  function showList(matches) {
+    // Giới hạn hiển thị để không lag khi query quá ngắn / trùng nhiều
+    const MAX_SHOW = 200;
+    const shown = matches.slice(0, MAX_SHOW);
+    resultsEl.innerHTML = shown.map((row) => renderListItem(row.item)).join('');
+    if (matches.length > MAX_SHOW) {
+      resultsEl.insertAdjacentHTML(
+        'beforeend',
+        `<div class="empty">Chỉ hiển thị ${MAX_SHOW} / ${matches.length} kết quả đầu tiên. Hãy nhập cụ thể hơn.</div>`
+      );
+    }
+  }
+
+  function showDetail(item) {
+    resultsEl.innerHTML = renderDetail(item);
+  }
+
+  // ----- Tìm kiếm bằng AI (qua Cloudflare Worker proxy -> Vertex AI Gemini) -----
+  // TODO: Dán URL Worker của bạn vào đây, dạng:
+  // https://icd10-ai-proxy.<ten-cua-ban>.workers.dev
+  const AI_PROXY_URL = 'https://icd10-ai-proxy.dhabolero.workers.dev/';
+
+  // Lọc sơ bộ theo từ khóa để chỉ gửi 1 phần dữ liệu liên quan cho AI,
+  // tránh vượt giới hạn token miễn phí khi gửi toàn bộ hàng chục nghìn mã mỗi lần tìm.
+  const MAX_AI_CANDIDATES = 250;
+  const AI_STOPWORDS = new Set(['bi', 'bị', 'roi', 'rồi', 'va', 'và', 'la', 'là', 'thi', 'thì', 'do', 'khi', 'cua', 'của', 'de', 'để', 'con', 'còn', 'nen', 'nên']);
+  function buildAiCandidateList(query) {
+    const qNorm = normalize(query);
+    const words = qNorm.split(/\s+/).filter((w) => w.length >= 2 && !AI_STOPWORDS.has(w));
+
+    let candidates = searchIndex;
+    if (words.length > 0) {
+      // Chấm điểm theo số từ khóa khớp, để mã liên quan nhất luôn được ưu tiên
+      // giữ lại trước khi cắt bớt (tránh bị mất mã đúng chỉ vì nằm ở cuối danh sách).
+      const scored = [];
+      searchIndex.forEach((row) => {
+        let score = 0;
+        words.forEach((w) => {
+          if (row.nameNorm.includes(w)) score += 1;
+          if (row.codeNorm.includes(w)) score += 1;
+        });
+        if (score > 0) scored.push({ row, score });
+      });
+      if (scored.length > 0) {
+        scored.sort((a, b) => b.score - a.score);
+        candidates = scored.map((s) => s.row);
+      }
+    }
+
+    if (candidates.length > MAX_AI_CANDIDATES) {
+      candidates = candidates.slice(0, MAX_AI_CANDIDATES);
+    }
+
+    return candidates
+      .map((row) => {
+        const it = row.item;
+        if (it._type === 'yhct') {
+          return `${it.code}|${it.name}${it.modernName ? ' (' + it.modernName + ')' : ''}${it.icd10 ? ' ~' + it.icd10 : ''}`;
+        }
+        return `${it.code}|${it.name}`;
+      })
+      .join('\n');
+  }
+
+  // Hiển thị kết quả AI dạng phẳng, gọn: chỉ mã + tên (giống kiểu Google AI Overview),
+  // không gộp nhóm "mã cha - mã con" như kết quả tìm kiếm thường.
+  function renderAiListItem(item) {
+    const tagHtml = item._type === 'yhct' ? '<span class="tag-yhct">YHCT</span>' : '';
+    const extraName =
+      item._type === 'yhct'
+        ? `${item.modernName ? ' — ' + escapeHtml(item.modernName) : ''}`
+        : '';
+    const isDropped = item.statusTitle === 'Cần chọn mã cụ thể hơn';
+    const warnClass = isDropped ? ' result-btn--dropped' : '';
+    const inlineWarningHtml = isDropped
+      ? '<div class="inline-warning inline-warning--dropped">Đã bỏ mã, cần chọn mã cụ thể hơn</div>'
+      : '';
+    return `
+      <div class="card">
+        <div class="result-row">
+          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="${item._type}">
+            ${tagHtml}
+            <code>${escapeHtml(item.code)}</code>
+            <span>${escapeHtml(item.name)}${extraName}</span>
+          </button>
+          ${!isDropped ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
+        </div>
+        ${inlineWarningHtml}
+      </div>`;
+  }
+
+  function showAiList(matches) {
+    resultsEl.innerHTML = matches.map((row) => renderAiListItem(row.item)).join('');
+  }
+
+  async function doAiSearch(query) {
+    const q = query.trim();
+    if (!q) {
+      currentMatches = [];
+      resultsEl.innerHTML = '';
+      statusEl.textContent = '';
+      return;
+    }
+
+    if (!AI_PROXY_URL || AI_PROXY_URL.indexOf('DÁN_URL_WORKER') !== -1) {
+      statusEl.textContent = 'Chưa cấu hình AI_PROXY_URL cho tìm kiếm AI.';
+      resultsEl.innerHTML = '<div class="empty">Chưa cấu hình AI_PROXY_URL trong file HTML. Xem hướng dẫn ở đầu hàm doAiSearch.</div>';
+      return;
+    }
+
+    statusEl.textContent = `Đang tìm bằng AI cho "${query}"...`;
+    resultsEl.innerHTML = '<div class="empty">Đang tìm bằng AI…</div>';
+
+    try {
+      const list = buildAiCandidateList(q);
+      const prompt =
+        'Bạn là công cụ tra cứu mã ICD-10 / YHCT. Dưới đây là danh sách mã hợp lệ, mỗi dòng "mã|tên":\n' +
+        list +
+        '\n\nCHỈ được chọn mã có trong danh sách trên, không tự tạo mã mới. ' +
+        `Từ khóa người dùng nhập: "${q}". ` +
+        'Trả về tối đa 15 mã phù hợp nhất, xếp theo độ liên quan giảm dần. ' +
+        'Chỉ trả lời JSON dạng {"codes":["mãA","mãB",...]}, không thêm chữ nào khác, không dùng markdown.';
+
+      const response = await fetch(AI_PROXY_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+      const text = (data.text || '').replace(/```json|```/g, '').trim();
+
+      let codes = [];
+      try {
+        codes = JSON.parse(text).codes || [];
+      } catch (e) {
+        codes = [];
+      }
+
+      if (codes.length === 0) {
+        currentMatches = [];
+        statusEl.textContent = `AI không tìm thấy mã phù hợp cho "${query}"`;
+        resultsEl.innerHTML = '<div class="empty">AI không tìm thấy mã phù hợp. Hãy thử từ khóa khác hoặc tắt "Tìm bằng AI".</div>';
+        return;
+      }
+
+      // Giữ đúng thứ tự AI trả về, đối chiếu lại với dữ liệu gốc để lấy đầy đủ thông tin
+      const found = [];
+      codes.forEach((code) => {
+        const row = searchIndex.find((r) => r.item.code === code);
+        if (row) found.push(row);
+      });
+
+      currentMatches = found;
+      statusEl.textContent = `AI gợi ý ${found.length.toLocaleString('vi-VN')} mã cho "${query}" — vui lòng tự đối chiếu trước khi dùng`;
+
+      if (found.length === 0) {
+        resultsEl.innerHTML = '<div class="empty">Không đối chiếu được mã AI trả về với dữ liệu hiện có.</div>';
+        return;
+      }
+
+      isAiResultsMode = true;
+      showAiList(found);
+    } catch (err) {
+      statusEl.textContent = 'Lỗi khi tìm bằng AI: ' + (err.message || err);
+      resultsEl.innerHTML = '<div class="empty">Lỗi khi gọi AI proxy. Kiểm tra URL Worker / cấu hình rồi thử lại.</div>';
+    }
+  }
+
+  input.addEventListener('input', () => {
+    if (aiToggle && aiToggle.checked) return; // Chế độ AI: chỉ tìm khi nhấn Enter
+    doSearch(input.value);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && aiToggle && aiToggle.checked) {
+      e.preventDefault();
+      doAiSearch(input.value);
+    }
+  });
+  if (yhctToggle) {
+    yhctToggle.addEventListener('change', () => {
+      if (!(aiToggle && aiToggle.checked)) doSearch(input.value);
+    });
+  }
+  if (aiToggle) {
+    aiToggle.addEventListener('change', () => {
+      if (aiToggle.checked) {
+        if (input.value.trim()) {
+          doAiSearch(input.value);
+        } else {
+          statusEl.textContent = 'Đã bật tìm bằng AI. Nhập từ khóa và nhấn Enter.';
+          resultsEl.innerHTML = '';
+        }
+      } else {
+        doSearch(input.value);
+      }
+    });
+  }
+  clearBtn.addEventListener('click', () => {
+    input.value = '';
+    if (aiToggle && aiToggle.checked) {
+      statusEl.textContent = '';
+      resultsEl.innerHTML = '';
+    } else {
+      doSearch('');
+    }
+    input.focus();
+  });
+
+  // Click vào mã con gợi ý -> tìm luôn mã đó
+  resultsEl.addEventListener('click', (e) => {
+    const backBtn = e.target.closest('#backToListBtn');
+    if (backBtn) {
+      if (isAiResultsMode) {
+        showAiList(currentMatches);
+      } else {
+        showList(currentMatches);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    const resultBtn = e.target.closest('.result-btn');
+    if (resultBtn) {
+      const code = resultBtn.dataset.code;
+      const type = resultBtn.dataset.type || 'icd';
+      const found = searchIndex.find((row) => row.item.code === code && row.item._type === type);
+      if (found) {
+        showDetail(found.item);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+
+    const childBtn = e.target.closest('.child-btn');
+    if (childBtn) {
+      const code = childBtn.dataset.code;
+      // Mã con gợi ý luôn thuộc dữ liệu ICD-10 (Tây y)
+      const found = searchIndex.find((row) => row.item.code === code && row.item._type === 'icd');
+      if (found) {
+        showDetail(found.item);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+      return;
+    }
+    const copyBtn = e.target.closest('.copy-btn');
+    if (copyBtn) {
+      copyText(copyBtn.dataset.copy);
+    }
+  });
+
+  // Phím tắt "/" để focus ô tìm kiếm
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== input) {
+      e.preventDefault();
+      input.focus();
+    }
+  });
+
+  input.focus();
+
+  // Nút cuộn lên đầu trang
+  const backToTopBtn = document.getElementById('backToTop');
+  function toggleBackToTop() {
+    if (window.scrollY > 300) {
+      backToTopBtn.classList.add('show');
+    } else {
+      backToTopBtn.classList.remove('show');
+    }
+  }
+  window.addEventListener('scroll', toggleBackToTop, { passive: true });
+  toggleBackToTop();
+  backToTopBtn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+})();
+</script>
+
+<script>
+(function () {
+  const tcInput = document.getElementById('ldlTC');
+  const hdlInput = document.getElementById('ldlHDL');
+  const tgInput = document.getElementById('ldlTG');
+  const calcBtn = document.getElementById('ldlCalcBtn');
+  const resultEl = document.getElementById('ldlResult');
+  const formulaBox = document.getElementById('ldlFormulaBox');
+  const unitBtns = document.querySelectorAll('#page-ldl .unit-btn[data-unit]');
+
+  let unit = 'mmol';
+
+  function updateFormulaBox() {
+    formulaBox.innerHTML =
+      unit === 'mmol'
+        ? 'Công thức đang dùng (mmol/L): <code>LDL-C = TC − HDL-C − TG/2.2</code>'
+        : 'Công thức đang dùng (mg/dL): <code>LDL-C = TC − HDL-C − TG/5</code>';
+  }
+
+  unitBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      unit = btn.dataset.unit;
+      unitBtns.forEach((b) => b.classList.toggle('active', b === btn));
+      updateFormulaBox();
+      resultEl.innerHTML = '';
+    });
+  });
+  updateFormulaBox();
+
+  function classify(ldl, unitUsed) {
+    const mgdl = unitUsed === 'mmol' ? ldl * 38.67 : ldl;
+    if (mgdl < 100) return { label: 'Tối ưu', cls: 'optimal' };
+    if (mgdl < 130) return { label: 'Gần tối ưu', cls: 'optimal' };
+    if (mgdl < 160) return { label: 'Giới hạn cao', cls: 'near' };
+    if (mgdl < 190) return { label: 'Cao', cls: 'high' };
+    return { label: 'Rất cao', cls: 'high' };
+  }
+
+  const CHOL_FACTOR = 38.67;
+  const TG_FACTOR = 88.57;
+
+  function sampsonLDL(tcMg, hdlMg, tgMg) {
+    const nonHDL = tcMg - hdlMg;
+    return (
+      tcMg / 0.948 -
+      hdlMg / 0.971 -
+      (tgMg / 8.56 + (tgMg * nonHDL) / 2140 - (tgMg * tgMg) / 16100) -
+      9.44
+    );
+  }
+
+  function calc() {
+    const tc = parseFloat(tcInput.value);
+    const hdl = parseFloat(hdlInput.value);
+    const tg = parseFloat(tgInput.value);
+
+    if (isNaN(tc) || isNaN(hdl) || isNaN(tg)) {
+      resultEl.innerHTML = '<div class="ldl-warning">Vui lòng nhập đầy đủ và hợp lệ cả 3 chỉ số TC, HDL-C, TG.</div>';
+      return;
+    }
+
+    const tgLimit = unit === 'mmol' ? 4.5 : 400;
+    const divisor = unit === 'mmol' ? 2.2 : 5;
+    const unitLabel = unit === 'mmol' ? 'mmol/L' : 'mg/dL';
+
+    const ldl = tc - hdl - tg / divisor;
+    const overLimit = tg >= tgLimit;
+    const negative = ldl < 0;
+    const invalid = overLimit || negative;
+
+    const cardClass = invalid ? 'ldl-result-card invalid' : 'ldl-result-card';
+    const badge = invalid ? '' : (() => {
+      const c = classify(ldl, unit);
+      return `<span class="ldl-badge ${c.cls}">${c.label}</span>`;
+    })();
+
+    let warningHtml = '';
+    if (overLimit) {
+      warningHtml = `<div class="ldl-warning">⚠ TG = ${tg} ${unitLabel} ≥ ${tgLimit} ${unitLabel}. Công thức Friedewald KHÔNG chính xác trong trường hợp này.</div>`;
+    } else if (negative) {
+      warningHtml = `<div class="ldl-warning">⚠ Kết quả tính ra âm, không có ý nghĩa lâm sàng. Vui lòng kiểm tra lại số liệu đầu vào hoặc định lượng LDL-C trực tiếp.</div>`;
+    }
+
+    let sampsonHtml = '';
+    if (overLimit) {
+      const tcMg = unit === 'mmol' ? tc * CHOL_FACTOR : tc;
+      const hdlMg = unit === 'mmol' ? hdl * CHOL_FACTOR : hdl;
+      const tgMg = unit === 'mmol' ? tg * TG_FACTOR : tg;
+      const sampsonMg = sampsonLDL(tcMg, hdlMg, tgMg);
+      const sampsonDisplay = unit === 'mmol' ? sampsonMg / CHOL_FACTOR : sampsonMg;
+
+      if (sampsonMg < 0) {
+        sampsonHtml = `
+          <div class="ldl-result-card invalid" style="margin-top:10px;">
+            <div class="ldl-note" style="margin-top:0;">Công thức Sampson (thay thế): kết quả âm, nên định lượng LDL-C trực tiếp bằng xét nghiệm.</div>
+          </div>`;
+      } else {
+        const c = classify(sampsonDisplay, unit);
+        sampsonHtml = `
+          <div class="ldl-result-card" style="margin-top:10px;">
+            <div class="ldl-note" style="margin-top:0; color:var(--text); font-weight:700;">Ước tính bằng công thức Sampson (phù hợp hơn Friedewald khi TG cao)</div>
+            <div class="big" style="font-size:24px; margin-top:6px;">${sampsonDisplay.toFixed(2)}<span class="u">${unitLabel}</span></div>
+            <span class="ldl-badge ${c.cls}">${c.label}</span>
+            <div class="ldl-note">Nếu có điều kiện, vẫn nên ưu tiên định lượng LDL-C trực tiếp bằng xét nghiệm khi TG cao.</div>
+          </div>`;
+      }
+    }
+
+    resultEl.innerHTML = `
+      <div class="${cardClass}">
+        <div class="big">${invalid ? '—' : ldl.toFixed(2)}<span class="u">${unitLabel}</span></div>
+        ${badge}
+        ${warningHtml}
+        <div class="ldl-note">
+          Công thức Friedewald chỉ đáng tin cậy khi TG &lt; ${tgLimit} ${unitLabel} và bệnh nhân nhịn ăn trước lấy máu.
+          Không dùng cho rối loạn lipoprotein đặc biệt (VD: dysbetalipoproteinemia).
+        </div>
+      </div>
+      ${sampsonHtml}`;
+  }
+
+  calcBtn.addEventListener('click', calc);
+  [tcInput, hdlInput, tgInput].forEach((el) => {
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') calc(); });
+  });
+})();
+</script>
+
+<script>
+(function () {
+  const unitToggle = document.getElementById('egfrUnitToggle');
+  const scrLabel = document.getElementById('egfrScrLabel');
+  const scrInput = document.getElementById('egfrScr');
+  let unit = 'umol';
+
+  unitToggle.addEventListener('click', (e) => {
+    const btn = e.target.closest('button');
+    if (!btn) return;
+    unit = btn.dataset.unit;
+    [...unitToggle.children].forEach(b => b.classList.toggle('active', b === btn));
+    if (unit === 'umol') {
+      scrLabel.textContent = 'Creatinin huyết thanh (µmol/L)';
+      scrInput.placeholder = 'VD: 88.4';
+    } else {
+      scrLabel.textContent = 'Creatinin huyết thanh (mg/dL)';
+      scrInput.placeholder = 'VD: 1.00';
+    }
+    document.getElementById('egfrResult').classList.remove('show');
+  });
+
+  function classifyStage(egfr) {
+    if (egfr >= 90) return { tag: 'G1', color: 'var(--green)', bg: 'var(--green-light)', border: 'var(--green-border)', desc: 'Chức năng thận bình thường hoặc cao (G1). Nếu có tổn thương thận kèm theo (protein niệu...), cần đánh giá thêm.' };
+    if (egfr >= 60) return { tag: 'G2', color: 'var(--green)', bg: 'var(--green-light)', border: 'var(--green-border)', desc: 'Giảm nhẹ mức lọc cầu thận (G2). Thường chưa có ý nghĩa lâm sàng nếu không kèm tổn thương thận.' };
+    if (egfr >= 45) return { tag: 'G3a', color: 'var(--amber)', bg: 'var(--amber-light)', border: '#5f4a1a', desc: 'Giảm nhẹ - trung bình (G3a). Cần theo dõi định kỳ chức năng thận.' };
+    if (egfr >= 30) return { tag: 'G3b', color: 'var(--amber)', bg: 'var(--amber-light)', border: '#5f4a1a', desc: 'Giảm trung bình - nặng (G3b). Nên hội chẩn chuyên khoa Thận nếu chưa theo dõi.' };
+    if (egfr >= 15) return { tag: 'G4', color: 'var(--red)', bg: 'var(--red-light)', border: 'var(--red-border)', desc: 'Giảm nặng (G4). Cần theo dõi sát và chuẩn bị các phương án điều trị thay thế thận.' };
+    return { tag: 'G5', color: 'var(--red)', bg: 'var(--red-light)', border: 'var(--red-border)', desc: 'Suy thận giai đoạn cuối (G5). Cần đánh giá điều trị thay thế thận (lọc máu/ghép thận).' };
+  }
+
+  document.getElementById('egfrCalcBtn').addEventListener('click', () => {
+    const age = parseFloat(document.getElementById('egfrAge').value);
+    const sex = document.getElementById('egfrSex').value;
+    let scrRaw = parseFloat(scrInput.value);
+    const errEl = document.getElementById('egfrErr');
+    const resultEl = document.getElementById('egfrResult');
+
+    const valid = Number.isFinite(age) && age >= 18 && age <= 120 && Number.isFinite(scrRaw) && scrRaw > 0;
+    if (!valid) {
+      errEl.classList.add('show');
+      resultEl.classList.remove('show');
+      return;
+    }
+    errEl.classList.remove('show');
+
+    let scrMgdl = unit === 'umol' ? scrRaw / 88.4 : scrRaw;
+
+    const isFemale = sex === 'female';
+    const kappa = isFemale ? 0.7 : 0.9;
+    const alpha = isFemale ? -0.241 : -0.302;
+
+    const ratio = scrMgdl / kappa;
+    const minPart = Math.pow(Math.min(ratio, 1), alpha);
+    const maxPart = Math.pow(Math.max(ratio, 1), -1.200);
+    let egfr = 142 * minPart * maxPart * Math.pow(0.9938, age);
+    if (isFemale) egfr *= 1.012;
+
+    const rounded = Math.round(egfr * 10) / 10;
+    const stage = classifyStage(rounded);
+
+    document.getElementById('egfrValue').textContent = rounded.toFixed(1);
+    const tagEl = document.getElementById('egfrStageTag');
+    tagEl.textContent = stage.tag;
+    tagEl.style.color = stage.color;
+    tagEl.style.background = stage.bg;
+    tagEl.style.border = `1px solid ${stage.border}`;
+    document.getElementById('egfrStageDesc').textContent = stage.desc;
+
+    resultEl.classList.add('show');
+  });
+
+  scrInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('egfrCalcBtn').click();
+  });
+  document.getElementById('egfrAge').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') document.getElementById('egfrCalcBtn').click();
+  });
+})();
+</script>
+
+<script>
+(function () {
+  const pages = document.querySelectorAll('.page');
+  const navBtns = document.querySelectorAll('[data-page]');
+
+  function showPage(key) {
+    pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
+    navBtns.forEach(b => {
+      if (b.classList.contains('home-btn')) return;
+      b.classList.toggle('active', b.dataset.page === key);
+    });
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    if (history.replaceState) history.replaceState(null, '', '#' + key);
+  }
+
+  navBtns.forEach(b => {
+    b.addEventListener('click', () => showPage(b.dataset.page));
+  });
+
+  const initial = (location.hash || '').replace('#', '');
+  const valid = ['home', 'icd', 'ldl', 'egfr'];
+  showPage(valid.includes(initial) ? initial : 'home');
+
+  window.addEventListener('hashchange', () => {
+    const key = (location.hash || '').replace('#', '');
+    if (valid.includes(key)) showPage(key);
+  });
+})();
+</script>
+
 </body>
 </html>
