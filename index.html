@@ -3371,6 +3371,8 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/bsdha/bsdha.github.io@main/icd-data.js"></script>
+<script src="https://cdn.jsdelivr.net/gh/bsdha/bsdha.github.io@main/icd-yhct-data.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
@@ -4040,48 +4042,44 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     return parts.filter(Boolean).join(', ');
   }
 
-  // ---------- Chẩn đoán theo ICD-10 (tự động gợi ý mã bệnh thường gặp) ----------
-  // Đây là danh mục rút gọn các mã ICD-10 phổ biến trong kê đơn ngoại trú.
-  // Nếu cần đầy đủ trọn bộ ICD-10 giống trang bsdha.github.io/icd10, gửi mình file dữ liệu (json/csv)
-  // đang dùng ở trang đó là mình nạp thẳng vào đây, danh mục sẽ chính xác và đầy đủ hơn nhiều.
-  const ICD10_LIST = [
-    ['I10', 'Tăng huyết áp vô căn (nguyên phát)'], ['I11', 'Bệnh tim do tăng huyết áp'],
-    ['I20', 'Đau thắt ngực'], ['I21', 'Nhồi máu cơ tim cấp'], ['I25', 'Bệnh tim thiếu máu cục bộ mạn'],
-    ['I48', 'Rung nhĩ và cuồng nhĩ'], ['I50', 'Suy tim'], ['I63', 'Nhồi máu não'], ['I64', 'Đột quỵ không xác định'],
-    ['E10', 'Đái tháo đường típ 1'], ['E11', 'Đái tháo đường típ 2'], ['E78', 'Rối loạn chuyển hoá lipoprotein (mỡ máu)'],
-    ['E03', 'Suy giáp'], ['E05', 'Cường giáp'], ['E66', 'Béo phì'],
-    ['J00', 'Viêm mũi họng cấp (cảm lạnh)'], ['J02', 'Viêm họng cấp'], ['J03', 'Viêm amidan cấp'],
-    ['J06', 'Nhiễm khuẩn hô hấp trên cấp'], ['J18', 'Viêm phổi'], ['J20', 'Viêm phế quản cấp'],
-    ['J40', 'Viêm phế quản'], ['J44', 'Bệnh phổi tắc nghẽn mạn tính (COPD)'], ['J45', 'Hen phế quản'],
-    ['K21', 'Trào ngược dạ dày thực quản (GERD)'], ['K25', 'Loét dạ dày'], ['K26', 'Loét tá tràng'],
-    ['K29', 'Viêm dạ dày'], ['K30', 'Khó tiêu chức năng'], ['K58', 'Hội chứng ruột kích thích'],
-    ['K59', 'Rối loạn chức năng ruột khác (táo bón...)'], ['K76', 'Bệnh gan khác (gan nhiễm mỡ...)'],
-    ['N18', 'Bệnh thận mạn'], ['N30', 'Viêm bàng quang'], ['N39', 'Nhiễm khuẩn đường tiết niệu'],
-    ['N40', 'Tăng sản tuyến tiền liệt lành tính'],
-    ['M15', 'Thoái hoá khớp nhiều vị trí'], ['M17', 'Thoái hoá khớp gối'], ['M19', 'Thoái hoá khớp khác'],
-    ['M54', 'Đau lưng'], ['M25', 'Đau khớp'], ['M79', 'Đau cơ, đau mô mềm khác'],
-    ['G43', 'Đau nửa đầu (Migraine)'], ['G44', 'Đau đầu khác'], ['G47', 'Rối loạn giấc ngủ'],
-    ['F32', 'Giai đoạn trầm cảm'], ['F41', 'Rối loạn lo âu'], ['F45', 'Rối loạn dạng cơ thể'],
-    ['F51', 'Rối loạn giấc ngủ không thực tổn'],
-    ['R50', 'Sốt chưa rõ nguyên nhân'], ['R51', 'Đau đầu'], ['R05', 'Ho'], ['R11', 'Buồn nôn, nôn'],
-    ['R10', 'Đau bụng, đau vùng chậu'], ['R42', 'Chóng mặt, choáng váng'], ['R53', 'Mệt mỏi, khó chịu'],
-    ['L20', 'Viêm da cơ địa (chàm)'], ['L23', 'Viêm da tiếp xúc dị ứng'], ['L30', 'Viêm da khác'],
-    ['H10', 'Viêm kết mạc'], ['H66', 'Viêm tai giữa'],
-    ['J30', 'Viêm mũi dị ứng, vận mạch'], ['J32', 'Viêm xoang mạn'],
-    ['B34', 'Nhiễm virus chưa xác định vị trí (cảm cúm...)'], ['A09', 'Tiêu chảy, viêm dạ dày ruột nhiễm khuẩn'],
-    ['E86', 'Giảm thể tích (mất nước)'], ['D50', 'Thiếu máu do thiếu sắt'],
-    ['O26', 'Chăm sóc thai phụ khác'], ['Z34', 'Theo dõi thai nghén bình thường'],
+  // ---------- Chẩn đoán theo ICD-10 (dữ liệu đầy đủ nạp trực tiếp từ bsdha.github.io) ----------
+  // Nguồn: window.ICD_DATA (~16.146 mã ICD-10 Tây y) và window.ICD_YHCT_DATA (mã Y học cổ truyền, tra chéo sang ICD-10)
+  // được nạp qua thẻ script (script src=...) ở đầu file. Nếu vì lý do mạng mà không tải được, dùng danh mục rút gọn dự phòng.
+  const FALLBACK_ICD10 = [
+    ['I10', 'Tăng huyết áp vô căn (nguyên phát)'], ['E11', 'Đái tháo đường típ 2'],
+    ['J18', 'Viêm phổi'], ['K21', 'Trào ngược dạ dày thực quản (GERD)'], ['J45', 'Hen phế quản'],
+    ['M54', 'Đau lưng'], ['N39', 'Nhiễm khuẩn đường tiết niệu'], ['J02', 'Viêm họng cấp'],
   ];
+  function buildIcdSearchIndex() {
+    const list = [];
+    if (Array.isArray(window.ICD_DATA)) {
+      for (const e of window.ICD_DATA) {
+        if (e && e.code && e.name) list.push({ code: e.code, text: e.name, source: '' });
+      }
+    }
+    if (Array.isArray(window.ICD_YHCT_DATA)) {
+      for (const e of window.ICD_YHCT_DATA) {
+        if (e && e.icd10 && e.modernName) {
+          list.push({ code: e.icd10, text: e.modernName, source: `YHCT: ${e.name}` });
+        }
+      }
+    }
+    if (list.length === 0) {
+      for (const [code, text] of FALLBACK_ICD10) list.push({ code, text, source: '' });
+    }
+    return list;
+  }
+  const ICD_SEARCH_INDEX = buildIcdSearchIndex();
   const diagInput = $('rxDiagnosis'), icdSuggest = $('rxIcdSuggest'), icdToggle = $('rxIcdToggle');
   function renderIcdSuggest(q) {
     const nq = normalize(q);
     if (!nq) { icdSuggest.classList.remove('show'); return; }
-    const matches = ICD10_LIST.filter(([code, text]) => normalize(code).includes(nq) || normalize(text).includes(nq)).slice(0, 20);
+    const matches = ICD_SEARCH_INDEX.filter((it) => normalize(it.code).includes(nq) || normalize(it.text).includes(nq)).slice(0, 25);
     if (matches.length === 0) {
-      icdSuggest.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy mã ICD-10 phù hợp trong danh mục rút gọn.</div>';
+      icdSuggest.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy mã ICD-10 phù hợp.</div>';
     } else {
-      icdSuggest.innerHTML = matches.map(([code, text]) =>
-        `<div class="rx-suggest-item" data-code="${escapeHtml(code)}" data-text="${escapeHtml(text)}"><b>${escapeHtml(code)}</b><span class="g">${escapeHtml(text)}</span></div>`
+      icdSuggest.innerHTML = matches.map((it) =>
+        `<div class="rx-suggest-item" data-code="${escapeHtml(it.code)}" data-text="${escapeHtml(it.text)}"><b>${escapeHtml(it.code)}</b><span class="g">${escapeHtml(it.text)}${it.source ? ' — ' + escapeHtml(it.source) : ''}</span></div>`
       ).join('');
     }
     icdSuggest.classList.add('show');
