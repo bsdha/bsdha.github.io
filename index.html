@@ -928,6 +928,18 @@
 .rx-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
 @media (max-width: 600px) { .rx-settings-grid, .rx-cloud-grid { grid-template-columns: 1fr; } }
 .rx-cloud-box, .rx-upload-box { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+.rx-doctor-row { display: flex; gap: 6px; align-items: center; }
+.rx-doctor-row select { flex: 1; }
+.rx-doctor-btn {
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  border-radius: 8px; width: 34px; height: 34px; flex: none; cursor: pointer; font-size: 14px; font-family: inherit;
+}
+.rx-doctor-btn:hover { border-color: var(--blue); }
+.rx-doctor-def-btn.is-default { background: var(--amber-light); color: var(--amber); border-color: var(--amber-dark); }
+.rx-doctor-del-btn:hover { border-color: var(--red-dark); color: var(--red); }
+.rx-age-hint { display: block; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+.rx-logo-preview-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.rx-logo-preview { max-height: 56px; max-width: 120px; border-radius: 6px; background: #fff; padding: 4px; }
 .rx-cloud-title { font-size: 13.5px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
 .rx-cloud-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0 0 10px; }
 .rx-sql-box {
@@ -1272,14 +1284,40 @@
         <div class="rx-settings" id="rxSettingsPanel">
           <div class="rx-settings-grid">
             <div class="field">
-              <label>Tên cơ quan / bệnh viện (in trên đơn)</label>
-              <input type="text" id="rxOrgName" placeholder="SỞ Y TẾ TP. HỒ CHÍ MINH - BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CƠ SỞ 2">
-            </div>
-            <div class="field">
-              <label>Tên bác sĩ ký (riêng theo máy này)</label>
-              <input type="text" id="rxDoctorName" placeholder="BS. Nguyễn Văn A">
+              <label>Logo bệnh viện (góc trên trái đơn thuốc)</label>
+              <input type="file" id="rxOrgLogoInput" accept="image/*">
+              <div class="rx-logo-preview-row">
+                <img id="rxOrgLogoPreview" class="rx-logo-preview" alt="logo" style="display:none;">
+                <button type="button" class="rx-doctor-btn" id="rxOrgLogoClearBtn" title="Xoá logo">✕</button>
+              </div>
             </div>
           </div>
+          <div class="rx-settings-grid">
+            <div class="field">
+              <label>Dòng 1 (Sở Y tế...)</label>
+              <input type="text" id="rxOrgLine1" placeholder="SỞ Y TẾ TP. HỒ CHÍ MINH">
+            </div>
+            <div class="field">
+              <label>Dòng 2 (Tên bệnh viện)</label>
+              <input type="text" id="rxOrgLine2" placeholder="BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CS2">
+            </div>
+            <div class="field">
+              <label>Bác sĩ ký (riêng theo máy này)</label>
+              <div class="rx-doctor-row">
+                <select id="rxDoctorSelect"></select>
+                <button type="button" class="rx-doctor-btn" id="rxDoctorAddBtn" title="Thêm bác sĩ mới">+</button>
+                <button type="button" class="rx-doctor-btn rx-doctor-def-btn" id="rxDoctorDefBtn" title="Đặt làm mặc định">☆</button>
+                <button type="button" class="rx-doctor-btn rx-doctor-del-btn" id="rxDoctorDelBtn" title="Xoá bác sĩ này">✕</button>
+              </div>
+            </div>
+          </div>
+          <div class="rx-cloud-box">
+            <div class="rx-cloud-title">☁ Đồng bộ danh sách thuốc nhiều máy (Supabase — miễn phí)</div>
+            <p class="rx-cloud-desc">
+              Tạo 1 project miễn phí tại <b>supabase.com</b> → vào SQL Editor chạy lệnh tạo bảng bên dưới → lấy
+              <b>Project URL</b> và <b>anon public key</b> ở mục Settings → API, dán vào 2 ô dưới đây.
+              Chỉ cần làm 1 lần trên 1 máy, các máy khác nhập đúng URL + key này là dùng chung 1 danh sách thuốc.
+            </p>
             <pre class="rx-sql-box">create table thuoc (
   id bigint generated always as identity primary key,
   ten_tm text not null,
@@ -1377,8 +1415,9 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
             <input type="text" id="rxPatientName" placeholder="Nguyễn Văn B">
           </div>
           <div class="field">
-            <label>Tuổi</label>
-            <input type="text" id="rxPatientAge" placeholder="VD: 45">
+            <label>Ngày sinh</label>
+            <input type="date" id="rxPatientDob">
+            <span class="rx-age-hint" id="rxPatientAgeHint"></span>
           </div>
           <div class="field">
             <label>Giới tính</label>
@@ -1394,6 +1433,10 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
           <div class="field">
             <label>Ngày kê đơn</label>
             <input type="date" id="rxDate">
+          </div>
+          <div class="field rx-col-wide">
+            <label>Lời dặn của bác sĩ</label>
+            <input type="text" id="rxNote" placeholder="VD: Hẹn khám lại sau khi hết thuốc. Không dùng rượu, bia...">
           </div>
           <div class="field">
             <label>Hẹn tái khám</label>
@@ -1426,7 +1469,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
 
         <div class="rx-actions">
           <button class="rx-btn rx-btn-secondary" id="rxClearBtn">Xoá toàn bộ toa</button>
-          <button class="rx-btn rx-btn-print" id="rxPrintBtn">🖨 In toa (PDF)</button>
+          <button class="rx-btn rx-btn-print" id="rxPrintBtn">⬇ Tải đơn thuốc (PDF)</button>
         </div>
       </div>
 
@@ -3306,11 +3349,16 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
 </script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
-  const LS_ORG = 'rxOrgName', LS_DOCTOR = 'rxDoctorName', LS_SB_URL = 'rxSbUrl', LS_SB_KEY = 'rxSbKey', LS_DRUGS = 'rxLocalDrugs';
-  const DEFAULT_ORG = 'SỞ Y TẾ TP. HỒ CHÍ MINH - BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CƠ SỞ 2';
+  const LS_ORG1 = 'rxOrgLine1', LS_ORG2 = 'rxOrgLine2', LS_LOGO = 'rxOrgLogo';
+  const LS_SB_URL = 'rxSbUrl', LS_SB_KEY = 'rxSbKey', LS_DRUGS = 'rxLocalDrugs';
+  const LS_DOCTORS = 'rxDoctorList', LS_DOCTOR_DEFAULT = 'rxDoctorDefault';
+  const DEFAULT_ORG1 = 'SỞ Y TẾ TP. HỒ CHÍ MINH';
+  const DEFAULT_ORG2 = 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CS2';
 
   let drugList = []; // { brand, generic, form }
   let rxRows = [];    // toa thuốc hiện tại
@@ -3322,14 +3370,94 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     return (str || '').toString().replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
   }
 
-  // ---------- Cấu hình (org / doctor / supabase) ----------
-  const orgInput = $('rxOrgName'), doctorInput = $('rxDoctorName'), sbUrlInput = $('rxSbUrl'), sbKeyInput = $('rxSbKey');
-  orgInput.value = localStorage.getItem(LS_ORG) || DEFAULT_ORG;
-  doctorInput.value = localStorage.getItem(LS_DOCTOR) || '';
+  // ---------- Cấu hình (org / logo / doctor / supabase) ----------
+  const org1Input = $('rxOrgLine1'), org2Input = $('rxOrgLine2'), sbUrlInput = $('rxSbUrl'), sbKeyInput = $('rxSbKey');
+  org1Input.value = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
+  org2Input.value = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
   sbUrlInput.value = localStorage.getItem(LS_SB_URL) || '';
   sbKeyInput.value = localStorage.getItem(LS_SB_KEY) || '';
-  orgInput.addEventListener('change', () => localStorage.setItem(LS_ORG, orgInput.value.trim() || DEFAULT_ORG));
-  doctorInput.addEventListener('change', () => localStorage.setItem(LS_DOCTOR, doctorInput.value.trim()));
+  org1Input.addEventListener('change', () => localStorage.setItem(LS_ORG1, org1Input.value.trim() || DEFAULT_ORG1));
+  org2Input.addEventListener('change', () => localStorage.setItem(LS_ORG2, org2Input.value.trim() || DEFAULT_ORG2));
+
+  // ---------- Logo bệnh viện ----------
+  const logoInput = $('rxOrgLogoInput'), logoPreview = $('rxOrgLogoPreview');
+  function refreshLogoPreview() {
+    const data = localStorage.getItem(LS_LOGO);
+    if (data) { logoPreview.src = data; logoPreview.style.display = ''; }
+    else { logoPreview.style.display = 'none'; }
+  }
+  refreshLogoPreview();
+  logoInput.addEventListener('change', () => {
+    const file = logoInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      localStorage.setItem(LS_LOGO, ev.target.result);
+      refreshLogoPreview();
+      logoInput.value = '';
+    };
+    reader.readAsDataURL(file);
+  });
+  $('rxOrgLogoClearBtn').addEventListener('click', () => {
+    localStorage.removeItem(LS_LOGO);
+    refreshLogoPreview();
+  });
+
+  // ---------- Danh sách bác sĩ ký (thêm / xoá / đặt mặc định) ----------
+  const doctorSelect = $('rxDoctorSelect'), doctorDefBtn = $('rxDoctorDefBtn');
+  function loadDoctorList() {
+    try { return JSON.parse(localStorage.getItem(LS_DOCTORS) || '[]'); } catch (e) { return []; }
+  }
+  function saveDoctorList(list) { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); }
+
+  function renderDoctorSelect(selectValue) {
+    const list = loadDoctorList();
+    const def = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
+    if (list.length === 0) {
+      doctorSelect.innerHTML = '<option value="">(chưa có bác sĩ nào, bấm + để thêm)</option>';
+      doctorDefBtn.classList.remove('is-default');
+      return;
+    }
+    doctorSelect.innerHTML = list.map((name) =>
+      `<option value="${escapeHtml(name)}">${escapeHtml(name)}${name === def ? ' ★ (mặc định)' : ''}</option>`
+    ).join('');
+    const toSelect = selectValue && list.includes(selectValue) ? selectValue : (def && list.includes(def) ? def : list[0]);
+    doctorSelect.value = toSelect;
+    doctorDefBtn.classList.toggle('is-default', doctorSelect.value === def && !!def);
+  }
+  renderDoctorSelect();
+
+  doctorSelect.addEventListener('change', () => {
+    const def = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
+    doctorDefBtn.classList.toggle('is-default', doctorSelect.value === def && !!def);
+  });
+
+  $('rxDoctorAddBtn').addEventListener('click', () => {
+    const name = prompt('Nhập tên bác sĩ mới (VD: BS. Nguyễn Văn A):');
+    if (!name || !name.trim()) return;
+    const trimmed = name.trim();
+    const list = loadDoctorList();
+    if (!list.includes(trimmed)) {
+      list.push(trimmed);
+      saveDoctorList(list);
+    }
+    renderDoctorSelect(trimmed);
+  });
+
+  $('rxDoctorDefBtn').addEventListener('click', () => {
+    if (!doctorSelect.value) return;
+    localStorage.setItem(LS_DOCTOR_DEFAULT, doctorSelect.value);
+    renderDoctorSelect(doctorSelect.value);
+  });
+
+  $('rxDoctorDelBtn').addEventListener('click', () => {
+    if (!doctorSelect.value) return;
+    if (!confirm(`Xoá bác sĩ "${doctorSelect.value}" khỏi danh sách?`)) return;
+    const list = loadDoctorList().filter((n) => n !== doctorSelect.value);
+    saveDoctorList(list);
+    if (localStorage.getItem(LS_DOCTOR_DEFAULT) === doctorSelect.value) localStorage.removeItem(LS_DOCTOR_DEFAULT);
+    renderDoctorSelect();
+  });
 
   $('rxSettingsBtn').addEventListener('click', () => $('rxSettingsPanel').classList.toggle('show'));
 
@@ -3812,72 +3940,170 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   // ---------- Ngày mặc định ----------
   $('rxDate').value = new Date().toISOString().slice(0, 10);
 
-  // ---------- In toa PDF ----------
+  // ---------- Tuổi tự tính từ ngày sinh ----------
+  function calcAge(dobStr) {
+    if (!dobStr) return null;
+    const dob = new Date(dobStr);
+    if (isNaN(dob.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - dob.getFullYear();
+    const m = now.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+    return age >= 0 ? age : null;
+  }
+  const dobInput = $('rxPatientDob'), ageHint = $('rxPatientAgeHint');
+  dobInput.addEventListener('input', () => {
+    const age = calcAge(dobInput.value);
+    ageHint.textContent = age !== null ? `Tuổi: ${age}` : '';
+  });
+
+  // ---------- Tạo PDF đơn thuốc (xuất file PDF thật, không dùng cửa sổ in) ----------
   function formatVNDate(str) {
     if (!str) return '';
     const [y, m, d] = str.split('-');
     return `${d}/${m}/${y}`;
   }
+  function formatVNDateWords(str) {
+    if (!str) return '';
+    const [y, m, d] = str.split('-');
+    return `Ngày ${parseInt(d, 10)} tháng ${parseInt(m, 10)} năm ${y}`;
+  }
+  function usageLine(r) {
+    const parts = [];
+    if (parseFloat(r.morning) > 0) parts.push(`Sáng ${r.morning} viên`);
+    if (parseFloat(r.noon) > 0) parts.push(`trưa ${r.noon} viên`);
+    if (parseFloat(r.afternoon) > 0) parts.push(`chiều ${r.afternoon} viên`);
+    if (parseFloat(r.evening) > 0) parts.push(`tối ${r.evening} viên`);
+    let dosing = parts.join(', ');
+    if (dosing) dosing = dosing.charAt(0).toUpperCase() + dosing.slice(1);
+    if (r.days) dosing += (dosing ? ' — ' : '') + `dùng trong ${r.days} ngày`;
+    const usage = r.usage ? r.usage.trim() : '';
+    if (usage && dosing) return `${usage}: ${dosing}.`;
+    if (usage) return `${usage}.`;
+    return dosing ? `${dosing}.` : '';
+  }
 
-  $('rxPrintBtn').addEventListener('click', () => {
+  $('rxPrintBtn').addEventListener('click', async () => {
     if (rxRows.length === 0) { alert('Toa thuốc chưa có thuốc nào.'); return; }
-    const org = localStorage.getItem(LS_ORG) || DEFAULT_ORG;
-    const doctor = localStorage.getItem(LS_DOCTOR) || '';
-    const name = $('rxPatientName').value.trim();
-    const age = $('rxPatientAge').value.trim();
-    const sex = $('rxPatientSex').value;
-    const diag = $('rxDiagnosis').value.trim();
-    const dateStr = formatVNDate($('rxDate').value);
-    const followupStr = formatVNDate($('rxFollowup').value);
+    const btn = $('rxPrintBtn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Đang tạo PDF...';
 
-    const drugsHtml = rxRows.map((r, i) => `
-      <div class="p-drug">
-        <div class="p-drug-name"><b>${i + 1}. ${escapeHtml(r.brand)}</b>${r.generic ? ' (' + escapeHtml(r.generic) + ')' : ''} ${r.form ? '— ' + escapeHtml(r.form) : ''} ${r.qty ? '— SL: ' + escapeHtml(r.qty) : ''}</div>
-        <div class="p-drug-usage">${r.usage ? escapeHtml(r.usage) + '. ' : ''}Uống: Sáng ${escapeHtml(r.morning)} viên, Trưa ${escapeHtml(r.noon)} viên, Chiều ${escapeHtml(r.afternoon)} viên, Tối ${escapeHtml(r.evening)} viên${r.days ? ' × ' + escapeHtml(r.days) + ' ngày' : ''}.</div>
-      </div>`).join('');
+    try {
+      const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
+      const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
+      const logo = localStorage.getItem(LS_LOGO) || '';
+      const doctor = doctorSelect.value || '';
+      const name = $('rxPatientName').value.trim();
+      const age = calcAge(dobInput.value);
+      const sex = $('rxPatientSex').value;
+      const diag = $('rxDiagnosis').value.trim();
+      const note = $('rxNote').value.trim();
+      const dateStr = formatVNDate($('rxDate').value);
+      const dateWords = formatVNDateWords($('rxDate').value) || formatVNDateWords(new Date().toISOString().slice(0, 10));
+      const followupStr = formatVNDate($('rxFollowup').value);
 
-    const html = `<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Đơn thuốc</title>
-      <style>
-        @page { size: A5; margin: 14mm 12mm; }
-        body { font-family: 'Times New Roman', Times, serif; color: #111; font-size: 13px; line-height: 1.5; }
-        .p-header { text-align: center; margin-bottom: 14px; }
-        .p-org { font-weight: 700; font-size: 13px; text-transform: uppercase; }
-        .p-title { font-weight: 700; font-size: 20px; margin: 10px 0 2px; letter-spacing: 1px; }
-        .p-info { margin-bottom: 10px; }
-        .p-info div { margin-bottom: 3px; }
-        .p-diag { font-weight: 700; margin: 10px 0; }
-        .p-drug { margin-bottom: 10px; }
-        .p-drug-name { font-size: 13.5px; }
-        .p-drug-usage { font-size: 12.5px; margin-left: 14px; font-style: italic; }
-        .p-footer { display: flex; justify-content: space-between; margin-top: 30px; }
-        .p-sign { text-align: center; }
-        .p-sign .p-sign-title { font-weight: 700; margin-bottom: 60px; }
-      </style></head>
-      <body>
-        <div class="p-header">
-          <div class="p-org">${escapeHtml(org)}</div>
-          <div class="p-title">ĐƠN THUỐC</div>
+      const drugsHtml = rxRows.map((r, i) => `
+        <div class="p-drug">
+          <div class="p-drug-row">
+            <div class="p-drug-name">${i + 1}. ${escapeHtml(r.brand)}${r.generic ? ' (' + escapeHtml(r.generic) + ')' : ''}</div>
+            <div class="p-drug-qty">${r.qty ? escapeHtml(r.qty) + ' viên' : ''}</div>
+          </div>
+          ${usageLine(r) ? `<div class="p-drug-usage">${escapeHtml(usageLine(r))}</div>` : ''}
+        </div>`).join('');
+
+      const container = document.createElement('div');
+      container.id = 'rxPdfRoot';
+      container.style.cssText = 'position:fixed; left:-99999px; top:0; width:560px; background:#ffffff; color:#111; font-family:"Times New Roman",Times,serif; padding:26px 28px; box-sizing:border-box;';
+      container.innerHTML = `
+        <style>
+          #rxPdfRoot * { box-sizing: border-box; }
+          #rxPdfRoot .p-header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+          #rxPdfRoot .p-logo { width: 52px; height: 52px; object-fit: contain; flex: none; }
+          #rxPdfRoot .p-org-lines { line-height: 1.35; }
+          #rxPdfRoot .p-org-lines .l1 { font-weight: 700; font-size: 12px; text-transform: uppercase; }
+          #rxPdfRoot .p-org-lines .l2 { font-weight: 700; font-size: 12.5px; text-transform: uppercase; }
+          #rxPdfRoot .p-title-wrap { text-align: center; margin: 10px 0 14px; }
+          #rxPdfRoot .p-title { font-weight: 800; font-size: 19px; letter-spacing: 1px; }
+          #rxPdfRoot .p-section-h { font-weight: 700; font-size: 12.5px; text-decoration: underline; margin: 10px 0 6px; }
+          #rxPdfRoot .p-info div { font-size: 12.5px; margin-bottom: 4px; line-height: 1.5; }
+          #rxPdfRoot .p-drugs { margin-top: 4px; }
+          #rxPdfRoot .p-drug { margin-bottom: 9px; }
+          #rxPdfRoot .p-drug-row { display: flex; justify-content: space-between; gap: 8px; }
+          #rxPdfRoot .p-drug-name { font-size: 13px; font-weight: 700; }
+          #rxPdfRoot .p-drug-qty { font-size: 13px; font-weight: 700; white-space: nowrap; }
+          #rxPdfRoot .p-drug-usage { font-size: 12px; margin-left: 14px; font-style: italic; color: #333; }
+          #rxPdfRoot .p-note { font-size: 10.5px; color: #444; margin-top: 14px; line-height: 1.5; }
+          #rxPdfRoot .p-footer { display: flex; justify-content: space-between; margin-top: 24px; }
+          #rxPdfRoot .p-sign { text-align: center; min-width: 200px; }
+          #rxPdfRoot .p-sign .p-sign-date { font-size: 12px; margin-bottom: 2px; }
+          #rxPdfRoot .p-sign .p-sign-title { font-weight: 700; font-size: 12.5px; margin-bottom: 56px; }
+          #rxPdfRoot .p-sign .p-sign-name { font-weight: 700; font-size: 12.5px; }
+        </style>
+        <div class="p-header-top">
+          ${logo ? `<img class="p-logo" src="${logo}">` : ''}
+          <div class="p-org-lines">
+            <div class="l1">${escapeHtml(org1)}</div>
+            <div class="l2">${escapeHtml(org2)}</div>
+          </div>
         </div>
+        <div class="p-title-wrap"><div class="p-title">ĐƠN THUỐC DỊCH VỤ</div></div>
+
+        <div class="p-section-h">I. THÔNG TIN BỆNH NHÂN:</div>
         <div class="p-info">
-          <div><b>Họ và tên:</b> ${escapeHtml(name)} &nbsp;&nbsp; <b>Tuổi:</b> ${escapeHtml(age)} &nbsp;&nbsp; <b>Giới tính:</b> ${escapeHtml(sex)}</div>
+          <div><b>Họ và tên:</b> ${escapeHtml(name)} &nbsp;&nbsp; <b>Tuổi:</b> ${age !== null ? age : ''} &nbsp;&nbsp; <b>Giới tính:</b> ${escapeHtml(sex)}</div>
+          ${diag ? `<div><b>Chẩn đoán:</b> ${escapeHtml(diag)}</div>` : ''}
           <div><b>Ngày kê đơn:</b> ${dateStr}</div>
         </div>
-        ${diag ? `<div class="p-diag">Chẩn đoán: ${escapeHtml(diag)}</div>` : ''}
+
+        <div class="p-section-h">II. THÔNG TIN ĐƠN THUỐC:</div>
         <div class="p-drugs">${drugsHtml}</div>
-        ${followupStr ? `<div style="margin-top:14px;"><b>Hẹn tái khám:</b> ${followupStr}</div>` : ''}
+
+        ${followupStr ? `<div class="p-info"><div><b>Hẹn tái khám:</b> ${followupStr}</div></div>` : ''}
+        ${note ? `<div class="p-note">Lời dặn của bác sĩ: ${escapeHtml(note)}</div>` : ''}
+
         <div class="p-footer">
           <div></div>
           <div class="p-sign">
-            <div class="p-sign-title">${dateStr ? dateStr + '<br>' : ''}Bác sĩ khám và kê đơn</div>
-            <div>${escapeHtml(doctor)}</div>
+            <div class="p-sign-date">${escapeHtml(dateWords)}</div>
+            <div class="p-sign-title">Bác sĩ khám bệnh</div>
+            <div class="p-sign-name">${escapeHtml(doctor)}</div>
           </div>
         </div>
-        <script>window.onload = () => { window.print(); };<\/script>
-      </body></html>`;
+      `;
+      document.body.appendChild(container);
 
-    const w = window.open('', '_blank');
-    w.document.write(html);
-    w.document.close();
+      const canvas = await html2canvas(container, { scale: 3, backgroundColor: '#ffffff', useCORS: true });
+      const imgData = canvas.toDataURL('image/png');
+      document.body.removeChild(container);
+
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'mm', format: 'a5' });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const imgHeight = (canvas.height * pageWidth) / canvas.width;
+
+      let heightLeft = imgHeight;
+      let position = 0;
+      pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+      heightLeft -= pageHeight;
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pageWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
+      const fileDate = $('rxDate').value || new Date().toISOString().slice(0, 10);
+      pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
+    } catch (err) {
+      alert('Có lỗi khi tạo PDF: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalLabel;
+    }
   });
 })();
 </script>
