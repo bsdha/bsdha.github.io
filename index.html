@@ -913,11 +913,11 @@
 
 /* ================= KÊ ĐƠN THUỐC ================= */
 .rx-wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
-.rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 20px; }
+.rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; font-size: 13px; }
 .rx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.rx-panel-head h1 { margin: 0; font-size: 19px; font-weight: 800; }
-.rx-h2 { margin: 0 0 14px; font-size: 16px; font-weight: 800; }
-.rx-sub { color: var(--muted); font-size: 12.5px; margin: 10px 0 16px; }
+.rx-panel-head h1 { margin: 0; font-size: 16.5px; font-weight: 800; }
+.rx-h2 { margin: 0 0 12px; font-size: 14.5px; font-weight: 800; }
+.rx-sub { color: var(--muted); font-size: 11.5px; margin: 8px 0 12px; }
 .rx-settings-btn {
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
   border-radius: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
@@ -939,11 +939,49 @@
 .rx-doctor-del-btn:hover { border-color: var(--red-dark); color: var(--red); }
 .rx-age-hint { display: block; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
 .rx-logo-preview-row { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.rx-logo-size-row { margin-top: 10px; }
+.rx-logo-size-row label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; }
+.rx-logo-size-row input[type="range"] { width: 100%; }
+.rx-settings-topbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.rx-note-field { margin-top: 14px; }
+.rx-input-clear-wrap { position: relative; }
+.rx-input-clear-wrap input { width: 100%; padding-right: 30px; }
+.rx-input-clear-btn {
+  display: none; position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  border: none; background: none; color: var(--muted); cursor: pointer; font-size: 13px; padding: 4px;
+}
+.rx-input-clear-btn.show { display: block; }
+.rx-input-clear-btn:hover { color: var(--red); }
+.rx-note-row { display: flex; gap: 6px; align-items: flex-end; }
+.rx-note-row input { flex: 1; }
+.rx-note-del-btn {
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  border-radius: 8px; width: 34px; height: 34px; flex: none; cursor: pointer; font-size: 14px;
+}
+.rx-note-del-btn:hover { border-color: var(--red-dark); color: var(--red); }
+.rx-toast-inline {
+  display: none; margin-top: 8px; padding: 8px 12px; border-radius: 8px; font-size: 12.5px;
+  background: var(--red-light); border: 1px solid var(--red-border); color: var(--red);
+}
+.rx-toast-inline.show { display: block; }
 .rx-logo-preview { max-height: 56px; max-width: 120px; border-radius: 6px; background: #fff; padding: 4px; }
-.rx-inline-check { font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 10px; cursor: pointer; }
+.rx-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: nowrap; margin-bottom: 4px; }
+.rx-label-row label { margin-bottom: 0 !important; white-space: nowrap; }
+.rx-inline-check { font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 10px; cursor: pointer; white-space: nowrap; }
 .rx-inline-check input { margin-right: 4px; vertical-align: middle; }
-.rx-address-new { display: flex; gap: 8px; margin-top: 8px; }
-.rx-address-new select { flex: 1; }
+.rx-address-new { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.rx-uppercase-input { text-transform: uppercase; }
+.rx-row-move { display: inline-flex; flex-direction: column; gap: 2px; vertical-align: middle; margin-right: 4px; }
+.rx-row-move button {
+  border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
+  border-radius: 4px; width: 18px; height: 16px; line-height: 1; font-size: 9px; cursor: pointer; padding: 0;
+}
+.rx-row-move button:hover { border-color: var(--blue); }
+.rx-row-move button:disabled { opacity: .3; cursor: default; }
+.rx-table tbody tr { cursor: grab; }
+.rx-table tbody tr.dragging { opacity: .4; background: var(--blue-light); }
+.rx-table tbody tr.drag-over { border-top: 2px solid var(--blue); }
+.rx-drag-handle { cursor: grab; color: var(--muted); margin-right: 4px; user-select: none; }
 .rx-doctor-field { max-width: 420px; margin: 4px 0 14px; }
 .rx-cloud-title { font-size: 13.5px; font-weight: 700; color: var(--blue); margin-bottom: 6px; }
 .rx-cloud-desc { font-size: 12px; color: var(--muted); line-height: 1.6; margin: 0 0 10px; }
@@ -958,7 +996,7 @@
 .rx-sb-status.err { color: var(--red); }
 #rxExcelInput { color: var(--muted); font-size: 12.5px; }
 
-.rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+.rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
 .rx-col-wide { grid-column: span 2; }
 @media (max-width: 780px) {
   .rx-form-grid { grid-template-columns: repeat(2, 1fr); }
@@ -981,7 +1019,9 @@
 .rx-suggest.show { display: block; }
 .rx-suggest-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
 .rx-suggest-item:last-child { border-bottom: none; }
-.rx-suggest-item:hover, .rx-suggest-item.active { background: var(--blue-light); }
+.rx-suggest-item:hover { background: var(--blue-light); }
+.rx-suggest-item.active { background: var(--blue); color: #08202f; }
+.rx-suggest-item.active b, .rx-suggest-item.active .g { color: #08202f; }
 .rx-suggest-item b { color: var(--blue); }
 .rx-suggest-item .g { color: var(--muted); font-size: 11.5px; display: block; margin-top: 1px; }
 .rx-suggest-empty { padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
@@ -991,7 +1031,9 @@
   cursor: pointer; font-family: inherit; background: var(--green); color: #06231f;
 }
 .rx-btn:hover { filter: brightness(1.05); }
-.rx-add-btn { width: 100%; }
+.rx-add-btn { white-space: nowrap; padding: 8px 12px; font-size: 12.5px; }
+.rx-qty-add-row { display: flex; gap: 6px; }
+.rx-qty-add-row input { flex: 1; min-width: 0; }
 .rx-btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 .rx-btn-print { background: var(--blue); color: #08202f; }
 
@@ -1000,10 +1042,17 @@
 .rx-patient-grid .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 
 .rx-table-wrap { overflow-x: auto; }
-.rx-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.rx-table th, .rx-table td { padding: 8px 8px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
-.rx-table th { color: var(--muted); font-weight: 700; font-size: 11.5px; text-transform: uppercase; }
-.rx-table td.rx-del-cell { text-align: center; }
+.rx-table { width: 100%; border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
+.rx-table th, .rx-table td { padding: 6px 5px; border-bottom: 1px solid var(--border); text-align: left; overflow-wrap: break-word; }
+.rx-table th { color: var(--muted); font-weight: 700; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
+.rx-table th:first-child, .rx-table td:first-child.rx-idx-cell { width: 64px; white-space: nowrap; }
+.rx-idx-cell { display: flex; align-items: center; gap: 3px; border-bottom: 1px solid var(--border); padding: 6px 5px; }
+.rx-table th:nth-child(6), .rx-table td:nth-child(6),
+.rx-table th:nth-child(7), .rx-table td:nth-child(7),
+.rx-table th:nth-child(8), .rx-table td:nth-child(8),
+.rx-table th:nth-child(9), .rx-table td:nth-child(9),
+.rx-table th:nth-child(10), .rx-table td:nth-child(10) { width: 46px; text-align: center; }
+.rx-table td.rx-del-cell { text-align: center; width: 26px; }
 .rx-row-del {
   border: none; background: var(--red-dark); color: #fff; border-radius: 6px; width: 24px; height: 24px;
   cursor: pointer; font-size: 12px; line-height: 1;
@@ -1033,6 +1082,16 @@
 .rx-warn-actions { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; }
 .rx-warn-btn-ok { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
 .rx-warn-btn-del { background: var(--red-dark); color: #fff; }
+.rx-pw-box { max-width: 340px; }
+.rx-pw-input {
+  width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 14px; margin-bottom: 8px;
+}
+.rx-pw-error { color: var(--red); font-size: 12px; min-height: 16px; margin-bottom: 6px; }
+.rx-pw-forgot {
+  display: block; width: 100%; text-align: center; margin-top: 12px; background: none; border: none;
+  color: var(--blue); font-size: 12.5px; cursor: pointer; text-decoration: underline; font-family: inherit;
+}
 </style>
 </head>
 <body>
@@ -1280,135 +1339,12 @@
   <div class="page" id="page-donthuoc">
     <div class="rx-wrap">
 
-      <div class="rx-panel">
-        <div class="rx-panel-head">
-          <h1>💊 Kê đơn thuốc dịch vụ</h1>
-          <button class="rx-settings-btn" id="rxSettingsBtn">⚙ Cấu hình</button>
-        </div>
-
-        <div class="rx-settings" id="rxSettingsPanel">
-          <div class="rx-settings-grid">
-            <div class="field">
-              <label>Logo bệnh viện (góc trên trái đơn thuốc)</label>
-              <input type="file" id="rxOrgLogoInput" accept="image/*">
-              <div class="rx-logo-preview-row">
-                <img id="rxOrgLogoPreview" class="rx-logo-preview" alt="logo" style="display:none;">
-                <button type="button" class="rx-doctor-btn" id="rxOrgLogoClearBtn" title="Khôi phục logo mặc định">↺</button>
-              </div>
-            </div>
-          </div>
-          <div class="rx-settings-grid">
-            <div class="field">
-              <label>Dòng 1 (Sở Y tế...)</label>
-              <input type="text" id="rxOrgLine1" placeholder="SỞ Y TẾ TP. HỒ CHÍ MINH">
-            </div>
-            <div class="field">
-              <label>Dòng 2 (Tên bệnh viện)</label>
-              <input type="text" id="rxOrgLine2" placeholder="BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CS2">
-            </div>
-          </div>
-          <div class="rx-cloud-box">
-            <div class="rx-cloud-title">☁ Đồng bộ danh sách thuốc nhiều máy (Supabase — miễn phí)</div>
-            <p class="rx-cloud-desc">
-              Tạo 1 project miễn phí tại <b>supabase.com</b> → vào SQL Editor chạy lệnh tạo bảng bên dưới → lấy
-              <b>Project URL</b> và <b>anon public key</b> ở mục Settings → API, dán vào 2 ô dưới đây.
-              Chỉ cần làm 1 lần trên 1 máy, các máy khác nhập đúng URL + key này là dùng chung 1 danh sách thuốc.
-            </p>
-            <pre class="rx-sql-box">create table thuoc (
-  id bigint generated always as identity primary key,
-  ten_tm text not null,
-  ten_goc text default '',
-  dang_thuoc text default '',
-  created_at timestamptz default now()
-);
-alter table thuoc enable row level security;
-create policy "public read" on thuoc for select using (true);
-create policy "public insert" on thuoc for insert with check (true);</pre>
-            <div class="rx-cloud-grid">
-              <div class="field">
-                <label>Supabase Project URL</label>
-                <input type="text" id="rxSbUrl" placeholder="https://xxxxx.supabase.co">
-              </div>
-              <div class="field">
-                <label>Supabase anon public key</label>
-                <input type="text" id="rxSbKey" placeholder="eyJhbGciOi...">
-              </div>
-            </div>
-            <div class="rx-cloud-actions">
-              <button class="rx-btn" id="rxSbSaveBtn">Lưu cấu hình đồng bộ</button>
-              <span id="rxSbStatus" class="rx-sb-status"></span>
-            </div>
-          </div>
-
-          <div class="rx-upload-box">
-            <div class="rx-cloud-title">📥 Nạp danh sách thuốc từ file Excel</div>
-            <p class="rx-cloud-desc">
-              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược") và <b>Tên gốc</b>
-              (hoặc "Hoạt chất" / "Tên gốc, Hoạt chất"). Có thể có thêm cột "Dạng thuốc". Thuốc mới sẽ được
-              <b>cộng dồn</b> vào danh sách hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên.
-            </p>
-            <input type="file" id="rxExcelInput" accept=".xlsx,.xls">
-            <span id="rxExcelStatus" class="rx-sb-status"></span>
-          </div>
-        </div>
-
-        <div class="rx-sub">Tìm thuốc theo tên thương mại hoặc tên gốc/hoạt chất — nhập liều dùng — nhấn Enter ở ô cuối để thêm vào toa.</div>
-
-        <div class="rx-form-grid">
-          <div class="field rx-col-wide">
-            <label>Tên thương mại</label>
-            <div class="rx-autocomplete-wrap">
-              <input type="text" id="rxFieldBrand" placeholder="Gõ tên thương mại hoặc tên gốc để tìm..." autocomplete="off">
-              <div class="rx-suggest" id="rxSuggestBox"></div>
-            </div>
-          </div>
-          <div class="field rx-col-wide">
-            <label>Tên gốc, Hoạt chất</label>
-            <input type="text" id="rxFieldGeneric" placeholder="Tự điền khi chọn thuốc, có thể sửa">
-          </div>
-          <div class="field">
-            <label>Dạng thuốc</label>
-            <input type="text" id="rxFieldForm" placeholder="Viên, ống, gói...">
-          </div>
-          <div class="field rx-col-wide">
-            <label>Cách dùng</label>
-            <input type="text" id="rxFieldUsage" placeholder="Uống trước ăn, uống sau ăn...">
-          </div>
-          <div class="field">
-            <label>Ngày</label>
-            <input type="number" id="rxFieldDays" min="0" step="1" placeholder="VD: 7">
-          </div>
-          <div class="field">
-            <label>Sáng</label>
-            <input type="number" id="rxFieldMorning" min="0" step="0.5" placeholder="0">
-          </div>
-          <div class="field">
-            <label>Trưa</label>
-            <input type="number" id="rxFieldNoon" min="0" step="0.5" placeholder="0">
-          </div>
-          <div class="field">
-            <label>Chiều</label>
-            <input type="number" id="rxFieldAfternoon" min="0" step="0.5" placeholder="0">
-          </div>
-          <div class="field">
-            <label>Tối</label>
-            <input type="number" id="rxFieldEvening" min="0" step="0.5" placeholder="0">
-          </div>
-          <div class="field">
-            <label>Số lượng</label>
-            <input type="number" id="rxFieldQty" min="0" step="1" placeholder="Tự tính">
-          </div>
-        </div>
-
-        <button class="rx-btn rx-add-btn" id="rxAddBtn">+ Thêm thuốc vào toa (Enter)</button>
-      </div>
-
-      <div class="rx-panel">
-        <h2 class="rx-h2">Thông tin bệnh nhân &amp; toa thuốc</h2>
+      <div class="rx-panel" id="rxPatientPanel">
+        <h2 class="rx-h2">Thông tin bệnh nhân</h2>
         <div class="rx-patient-grid">
           <div class="field">
             <label>Họ và tên bệnh nhân</label>
-            <input type="text" id="rxPatientName" placeholder="Nguyễn Văn B">
+            <input type="text" id="rxPatientName" placeholder="NGUYỄN VĂN B" class="rx-uppercase-input">
           </div>
           <div class="field">
             <label>Ngày sinh</label>
@@ -1423,73 +1359,207 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
             </select>
           </div>
           <div class="field rx-col-wide">
-            <label>
-              Chẩn đoán
+            <div class="rx-label-row">
+              <label>Địa chỉ</label>
+              <label class="rx-inline-check"><input type="checkbox" id="rxAddrNewToggle"> Nhập địa chỉ theo đơn vị hành chính mới</label>
+            </div>
+            <input type="text" id="rxAddress" placeholder="Số nhà, tên đường...">
+            <div class="rx-address-new" id="rxAddressNewBox" style="display:none;">
+              <div class="rx-autocomplete-wrap">
+                <div class="rx-input-clear-wrap">
+                  <input type="text" id="rxProvinceSearch" placeholder="🔎 Tìm Tỉnh/Thành..." autocomplete="off">
+                  <button type="button" class="rx-input-clear-btn" id="rxProvinceClearBtn" title="Xoá">✕</button>
+                </div>
+                <div class="rx-suggest" id="rxProvinceSuggest"></div>
+              </div>
+              <div class="rx-autocomplete-wrap">
+                <div class="rx-input-clear-wrap">
+                  <input type="text" id="rxWardSearch" placeholder="🔎 Tìm Xã/Phường..." autocomplete="off" disabled>
+                  <button type="button" class="rx-input-clear-btn" id="rxWardClearBtn" title="Xoá">✕</button>
+                </div>
+                <div class="rx-suggest" id="rxWardSuggest"></div>
+              </div>
+            </div>
+          </div>
+          <div class="field rx-col-wide">
+            <div class="rx-label-row">
+              <label>Chẩn đoán</label>
               <label class="rx-inline-check"><input type="checkbox" id="rxIcdToggle"> Nhập theo ICD-10</label>
-            </label>
+            </div>
             <div class="rx-autocomplete-wrap">
               <input type="text" id="rxDiagnosis" placeholder="VD: Tăng huyết áp (I10)" autocomplete="off">
               <div class="rx-suggest" id="rxIcdSuggest"></div>
             </div>
           </div>
-          <div class="field rx-col-wide">
-            <label>
-              Địa chỉ
-              <label class="rx-inline-check"><input type="checkbox" id="rxAddrNewToggle"> Nhập địa chỉ theo đơn vị hành chính mới</label>
-            </label>
-            <input type="text" id="rxAddress" placeholder="Số nhà, tên đường...">
-            <div class="rx-address-new" id="rxAddressNewBox" style="display:none;">
-              <select id="rxProvinceSelect"><option value="">-- Chọn Tỉnh/Thành --</option></select>
-              <select id="rxWardSelect" disabled><option value="">-- Chọn Xã/Phường --</option></select>
-            </div>
-          </div>
-          <input type="hidden" id="rxDate">
-          <div class="field rx-col-wide">
-            <label>Lời dặn của bác sĩ</label>
-            <input type="text" id="rxNote" placeholder="VD: Hẹn khám lại sau khi hết thuốc. Không dùng rượu, bia...">
+          <div class="field">
+            <label>Mạch (lần/phút)</label>
+            <input type="number" id="rxVitalPulse" min="0" step="1" placeholder="VD: 80">
           </div>
           <div class="field">
-            <label>Hẹn tái khám</label>
-            <input type="date" id="rxFollowup">
+            <label>Huyết áp (mmHg)</label>
+            <input type="text" id="rxVitalBp" placeholder="VD: 120/80">
+          </div>
+          <div class="field">
+            <label>Nhiệt độ (°C)</label>
+            <input type="number" id="rxVitalTemp" min="30" max="45" step="0.1" placeholder="VD: 37">
+          </div>
+          <div class="field">
+            <label>Nhịp thở (lần/phút)</label>
+            <input type="number" id="rxVitalResp" min="0" step="1" placeholder="VD: 18">
+          </div>
+          <div class="field">
+            <label>Cân nặng (kg)</label>
+            <input type="number" id="rxVitalWeight" min="0" step="0.1" placeholder="VD: 60">
+          </div>
+          <input type="hidden" id="rxDate">
+        </div>
+      </div>
+
+      <div class="rx-panel" id="rxDrugPanel">
+        <div class="rx-panel-head">
+          <h1>💊 Kê đơn thuốc dịch vụ</h1>
+          <button class="rx-settings-btn" id="rxSettingsBtn">⚙ Cấu hình</button>
+        </div>
+
+        <div class="rx-settings" id="rxSettingsPanel">
+          <div class="rx-settings-topbar">
+            <button type="button" class="rx-btn rx-btn-secondary" id="rxSettingsCloseBtn">✕ Đóng cấu hình, quay lại kê đơn</button>
+            <button type="button" class="rx-btn rx-btn-secondary" id="rxPwResetBtn">Khôi phục mật khẩu mặc định</button>
+          </div>
+          <div class="rx-settings-grid">
+            <div class="field">
+              <label>Logo bệnh viện (góc trên trái đơn thuốc)</label>
+              <input type="file" id="rxOrgLogoInput" accept="image/*">
+              <div class="rx-logo-preview-row">
+                <img id="rxOrgLogoPreview" class="rx-logo-preview" alt="logo" style="display:none;">
+                <button type="button" class="rx-doctor-btn" id="rxOrgLogoClearBtn" title="Khôi phục logo mặc định">↺</button>
+              </div>
+              <div class="rx-logo-size-row">
+                <label for="rxLogoSize">Kích thước logo trong đơn: <b id="rxLogoSizeVal">52px</b></label>
+                <input type="range" id="rxLogoSize" min="28" max="120" step="2" value="52">
+              </div>
+            </div>
+          </div>
+          <div class="rx-settings-grid">
+            <div class="field">
+              <label>Dòng 1 (Sở Y tế...)</label>
+              <input type="text" id="rxOrgLine1" placeholder="SỞ Y TẾ TP. HỒ CHÍ MINH">
+            </div>
+            <div class="field">
+              <label>Dòng 2 (Tên bệnh viện)</label>
+              <input type="text" id="rxOrgLine2" placeholder="BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CS2">
+            </div>
+          </div>
+          <div class="rx-upload-box">
+            <div class="rx-cloud-title">📥 Nạp danh sách thuốc từ file Excel</div>
+            <p class="rx-cloud-desc">
+              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược") và <b>Tên gốc</b>
+              (hoặc "Hoạt chất" / "Tên gốc, Hoạt chất"). Có thể có thêm cột "Dạng thuốc". Thuốc mới sẽ được
+              <b>cộng dồn</b> vào danh sách hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên.
+            </p>
+            <input type="file" id="rxExcelInput" accept=".xlsx,.xls">
+            <span id="rxExcelStatus" class="rx-sb-status"></span>
           </div>
         </div>
 
-        <div class="rx-table-wrap">
-          <table class="rx-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Tên thương mại</th>
-                <th>Tên gốc, Hoạt chất</th>
-                <th>Dạng thuốc</th>
-                <th>Cách dùng</th>
-                <th>Ngày</th>
-                <th>S</th>
-                <th>Tr</th>
-                <th>Ch</th>
-                <th>T</th>
-                <th>SL</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="rxTableBody"></tbody>
-          </table>
-          <div class="rx-empty" id="rxEmptyMsg">Chưa có thuốc nào trong toa.</div>
-        </div>
+        <div id="rxDrugFormArea">
+          <div class="rx-sub">Tìm thuốc theo tên thương mại hoặc tên gốc/hoạt chất — nhập liều dùng — nhấn Enter ở ô cuối để thêm vào toa.</div>
 
-        <div class="field rx-doctor-field">
-          <label>Bác sĩ ký</label>
-          <div class="rx-doctor-row">
-            <select id="rxDoctorSelect"></select>
-            <button type="button" class="rx-doctor-btn" id="rxDoctorAddBtn" title="Thêm bác sĩ mới">+</button>
-            <button type="button" class="rx-doctor-btn rx-doctor-def-btn" id="rxDoctorDefBtn" title="Đặt làm mặc định">☆</button>
-            <button type="button" class="rx-doctor-btn rx-doctor-del-btn" id="rxDoctorDelBtn" title="Xoá bác sĩ này">✕</button>
+          <div class="rx-form-grid">
+            <div class="field rx-col-wide">
+              <label>Tên thương mại</label>
+              <div class="rx-autocomplete-wrap">
+                <input type="text" id="rxFieldBrand" placeholder="Gõ tên thương mại hoặc tên gốc để tìm..." autocomplete="off">
+                <div class="rx-suggest" id="rxSuggestBox"></div>
+              </div>
+            </div>
+            <div class="field rx-col-wide">
+              <label>Tên gốc, Hoạt chất</label>
+              <input type="text" id="rxFieldGeneric" placeholder="Tự điền khi chọn thuốc, có thể sửa">
+            </div>
+            <div class="field">
+              <label>Dạng thuốc</label>
+              <input type="text" id="rxFieldForm" placeholder="Viên, ống, gói...">
+            </div>
+            <div class="field rx-col-wide">
+              <label>Cách dùng</label>
+              <input type="text" id="rxFieldUsage" placeholder="Uống trước ăn, uống sau ăn...">
+            </div>
+            <div class="field">
+              <label>Ngày</label>
+              <input type="number" id="rxFieldDays" min="0" step="1" placeholder="VD: 7">
+            </div>
+            <div class="field">
+              <label>Sáng</label>
+              <input type="number" id="rxFieldMorning" min="0" step="0.5" placeholder="0">
+            </div>
+            <div class="field">
+              <label>Trưa</label>
+              <input type="number" id="rxFieldNoon" min="0" step="0.5" placeholder="0">
+            </div>
+            <div class="field">
+              <label>Chiều</label>
+              <input type="number" id="rxFieldAfternoon" min="0" step="0.5" placeholder="0">
+            </div>
+            <div class="field">
+              <label>Tối</label>
+              <input type="number" id="rxFieldEvening" min="0" step="0.5" placeholder="0">
+            </div>
+            <div class="field">
+              <label>Số lượng</label>
+              <div class="rx-qty-add-row">
+                <input type="number" id="rxFieldQty" min="0" step="1" placeholder="Tự tính">
+                <button class="rx-btn rx-add-btn" id="rxAddBtn" title="Thêm thuốc vào toa (Enter)">+ Thêm (Enter)</button>
+              </div>
+            </div>
           </div>
-        </div>
+          <div class="rx-toast-inline" id="rxDupWarning">⚠ Thuốc này đã có trong toa, không thể thêm trùng.</div>
 
-        <div class="rx-actions">
-          <button class="rx-btn rx-btn-secondary" id="rxClearBtn">Xoá toàn bộ toa</button>
-          <button class="rx-btn rx-btn-print" id="rxPrintBtn">⬇ Tải đơn thuốc (PDF)</button>
+          <div class="rx-table-wrap">
+            <table class="rx-table">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Tên thương mại</th>
+                  <th>Tên gốc, Hoạt chất</th>
+                  <th>Dạng thuốc</th>
+                  <th>Cách dùng</th>
+                  <th>Ngày</th>
+                  <th>Sáng</th>
+                  <th>Trưa</th>
+                  <th>Chiều</th>
+                  <th>Tối</th>
+                  <th>Số lượng</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="rxTableBody"></tbody>
+            </table>
+            <div class="rx-empty" id="rxEmptyMsg">Chưa có thuốc nào trong toa.</div>
+          </div>
+
+          <div class="field rx-note-field">
+            <label>Lời dặn của bác sĩ</label>
+            <div class="rx-note-row">
+              <input type="text" id="rxNote" placeholder="VD: Hẹn khám lại sau khi hết thuốc. Không dùng rượu, bia...">
+              <button type="button" class="rx-note-del-btn" id="rxNoteDelBtn" title="Xoá lời dặn">✕</button>
+            </div>
+          </div>
+
+          <div class="field rx-doctor-field">
+            <label>Bác sĩ ký</label>
+            <div class="rx-doctor-row">
+              <select id="rxDoctorSelect"></select>
+              <button type="button" class="rx-doctor-btn" id="rxDoctorAddBtn" title="Thêm bác sĩ mới">+</button>
+              <button type="button" class="rx-doctor-btn rx-doctor-def-btn" id="rxDoctorDefBtn" title="Đặt làm mặc định">☆</button>
+              <button type="button" class="rx-doctor-btn rx-doctor-del-btn" id="rxDoctorDelBtn" title="Xoá bác sĩ này">✕</button>
+            </div>
+          </div>
+
+          <div class="rx-actions">
+            <button class="rx-btn rx-btn-secondary" id="rxClearBtn">Xoá toàn bộ toa</button>
+            <button class="rx-btn rx-btn-print" id="rxPrintBtn">⬇ Tải đơn thuốc (PDF)</button>
+          </div>
         </div>
       </div>
 
@@ -1505,9 +1575,23 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
         </div>
       </div>
     </div>
+
+    <div class="rx-warn-overlay" id="rxPwOverlay">
+      <div class="rx-warn-box rx-pw-box">
+        <div class="rx-warn-head"><span class="ic">🔒</span><h3>Nhập mật khẩu để vào Cấu hình</h3></div>
+        <input type="password" id="rxPwInput" class="rx-pw-input" placeholder="Mật khẩu" autocomplete="off">
+        <div class="rx-pw-error" id="rxPwError"></div>
+        <div class="rx-warn-actions">
+          <button class="rx-btn rx-warn-btn-ok" id="rxPwCancelBtn">Huỷ</button>
+          <button class="rx-btn rx-btn-print" id="rxPwOkBtn">Đăng nhập</button>
+        </div>
+        <button type="button" class="rx-pw-forgot" id="rxPwForgotBtn">Quên mật khẩu?</button>
+      </div>
+    </div>
   </div>
 
   </div>
+
 </div>
 
   <div class="toast" id="toast"></div>
@@ -3376,8 +3460,15 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
 <script>
 (function () {
   const $ = (id) => document.getElementById(id);
-  const LS_ORG1 = 'rxOrgLine1', LS_ORG2 = 'rxOrgLine2', LS_LOGO = 'rxOrgLogo';
-  const LS_SB_URL = 'rxSbUrl', LS_SB_KEY = 'rxSbKey', LS_DRUGS = 'rxLocalDrugs';
+  const LS_ORG1 = 'rxOrgLine1', LS_ORG2 = 'rxOrgLine2', LS_LOGO = 'rxOrgLogo', LS_LOGO_SIZE = 'rxOrgLogoSize';
+  const LS_DRUGS = 'rxLocalDrugs';
+  const LS_ADMIN_PW = 'rxAdminPw';
+  const DEFAULT_ADMIN_PW = 'KKB2-DHA';
+  const ADMIN_EMAIL = 'dhabolero@gmail.com';
+  const ADMIN_PHONE = '+84868919790';
+  // Supabase dùng chung cố định cho toàn bộ công cụ (không cần cấu hình lại trên từng máy)
+  const SUPABASE_URL = 'https://bihsqhjyobbktzmwnbdx.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaHNxaGp5b2Jia3R6bXduYmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjgwNTgsImV4cCI6MjEwMDkwNDA1OH0.UZxojIHCrd8D8vUI6f-TWqZX_qmZjPJXlNT5ljn4Gp0';
   const LS_DOCTORS = 'rxDoctorList', LS_DOCTOR_DEFAULT = 'rxDoctorDefault';
   const WARD_DATA = {"Thành phố Cần Thơ":["Phường An Bình","Phường Bình Thủy","Phường Cái Khế","Phường Cái Răng","Phường Đại Thành","Phường Hưng Phú","Phường Khánh Hòa","Phường Long Bình","Phường Long Mỹ","Phường Long Phú 1","Phường Long Tuyền","Phường Mỹ Quới","Phường Mỹ Xuyên","Phường Ngã Bảy","Phường Ngã Năm","Phường Ninh Kiều","Phường Ô Môn","Phường Phú Lợi","Phường Phước Thới","Phường Sóc Trăng","Phường Tân An","Phường Tân Lộc","Phường Thới An Đông","Phường Thới Long","Phường Thốt Nốt","Phường Thuận Hưng","Phường Trung Nhứt","Phường Vị Tân","Phường Vị Thanh","Phường Vĩnh Châu","Phường Vĩnh Phước","Xã  Vĩnh Tường","Xã An Lạc Thôn","Xã An Ninh","Xã An Thạnh","Xã Châu Thành","Xã Cờ Đỏ","Xã Cù Lao Dung","Xã Đại Hải","Xã Đại Ngãi","Xã Đông Hiệp","Xã Đông Phước","Xã Đông Thuận","Xã Gia Hòa","Xã Hiệp Hưng","Xã Hồ Đắc Kiện","Xã Hòa An","Xã Hỏa Lựu","Xã Hòa Tú","Xã Kế Sách","Xã Lai Hòa","Xã Lâm Tân","Xã Lịch Hội Thượng","Xã Liêu Tú","Xã Long Hưng","Xã Long Phú","Xã Lương Tâm","Xã Mỹ Hương","Xã Mỹ Phước","Xã Mỹ Tú","Xã Ngọc Tố","Xã Nhơn Ái","Xã Nhơn Mỹ","Xã Nhu Gia","Xã Phong Điền","Xã Phong Nẫm","Xã Phú Hữu","Xã Phú Lộc","Xã Phú Tâm","Xã Phụng Hiệp","Xã Phương Bình","Xã Tài Văn","Xã Tân Bình","Xã Tân Hòa","Xã Tân Long","Xã Tân Phước Hưng","Xã Tân Thạnh","Xã Thạnh An","Xã Thạnh Hòa","Xã Thạnh Phú","Xã Thạnh Quới","Xã Thạnh Thới An","Xã Thạnh Xuân","Xã Thới An Hội","Xã Thới Hưng","Xã Thới Lai","Xã Thuận Hòa","Xã Trần Đề","Xã Trung Hưng","Xã Trường Khánh","Xã Trường Long","Xã Trường Long Tây","Xã Trường Thành","Xã Trường Xuân","Xã Vị Thanh 1","Xã Vị Thủy","Xã Vĩnh Hải","Xã Vĩnh Lợi","Xã Vĩnh Thạnh","Xã Vĩnh Thuận Đông","Xã Vĩnh Trinh","Xã Vĩnh Viễn","Xã Xà Phiên"],"Thành phố Đà Nẵng":["Đặc khu Hoàng Sa","Phường An Hải","Phường An Khê","Phường An Thắng","Phường Bàn Thạch","Phường Cẩm Lệ","Phường Điện Bàn","Phường Điện Bàn Bắc","Phường Điện Bàn Đông","Phường Hải Châu","Phường Hải Vân","Phường Hòa Cường","Phường Hòa Khánh","Phường Hòa Xuân","Phường Hội An","Phường Hội An Đông","Phường Hội An Tây","Phường Hương Trà","Phường Liên Chiểu","Phường Ngũ Hành Sơn","Phường Quảng Phú","Phường Sơn Trà","Phường Tam Kỳ","Phường Thanh Khê","Xã Avương","Xã Bà Nà","Xã Bến Giằng","Xã Bến Hiên","Xã Chiên Đàn","Xã Đắc Pring","Xã Đại Lộc","Xã Điện Bàn Tây","Xã Đồng Dương","Xã Đông Giang","Xã Đức Phú","Xã Duy Nghĩa","Xã Duy Xuyên","Xã Gò Nổi","Xã Hà Nha","Xã Hiệp Đức","Xã Hòa Tiến","Xã Hòa Vang","Xã Hùng Sơn","Xã Khâm Đức","Xã La Dêê","Xã La Êê","Xã Lãnh Ngọc","Xã Nam Giang","Xã Nam Phước","Xã Nam Trà My","Xã Nông Sơn","Xã Núi Thành","Xã Phú Ninh","Xã Phú Thuận","Xã Phước Chánh","Xã Phước Hiệp","Xã Phước Năng","Xã Phước Thành","Xã Phước Trà","Xã Quế Phước","Xã Quế Sơn","Xã Quế Sơn Trung","Xã Sơn Cẩm Hà","Xã Sông Kôn","Xã Sông Vàng","Xã Tam Anh","Xã Tam Hải","Xã Tam Mỹ","Xã Tam Xuân","Xã Tân Hiệp","Xã Tây Giang","Xã Tây Hồ","Xã Thăng An","Xã Thăng Bình","Xã Thăng Điền","Xã Thăng Phú","Xã Thăng Trường","Xã Thạnh Bình","Xã Thạnh Mỹ","Xã Thu Bồn","Xã Thượng Đức","Xã Tiên Phước","Xã Trà Đốc","Xã Trà Giáp","Xã Trà Leng","Xã Trà Liên","Xã Trà Linh","Xã Trà My","Xã Trà Tân","Xã Trà Tập","Xã Trà Vân","Xã Việt An","Xã Vu Gia","Xã Xuân Phú"],"Thành phố Hà Nội":["Phường Ba Đình","Phường Bạch Mai","Phường Bồ Đề","Phường Cầu Giấy","Phường Chương Mỹ","Phường Cửa Nam","Phường Đại Mỗ","Phường Định Công","Phường Đống Đa","Phường Đông Ngạc","Phường Dương Nội","Phường Giảng Võ","Phường Hà Đông","Phường Hai Bà Trưng","Phường Hoàn Kiếm","Phường Hoàng Liệt","Phường Hoàng Mai","Phường Hồng Hà","Phường Khương Đình","Phường Kiến Hưng","Phường Kim Liên","Phường Láng","Phường Lĩnh Nam","Phường Long Biên","Phường Nghĩa Đô","Phường Ngọc Hà","Phường Ô Chợ Dừa","Phường Phú Diễn","Phường Phú Lương","Phường Phú Thượng","Phường Phúc Lợi","Phường Phương Liệt","Phường Sơn Tây","Phường Tây Hồ","Phường Tây Mỗ","Phường Tây Tựu","Phường Thanh Liệt","Phường Thanh Xuân","Phường Thượng Cát","Phường Từ Liêm","Phường Tùng Thiện","Phường Tương Mai","Phường Văn Miếu - Quốc Tử Giám","Phường Việt Hưng","Phường Vĩnh Hưng","Phường Vĩnh Tuy","Phường Xuân Đỉnh","Phường Xuân Phương","Phường Yên Hòa","Phường Yên Nghĩa","Phường Yên Sở","Xã An Khánh","Xã Ba Vì","Xã Bất Bạt","Xã Bát Tràng","Xã Bình Minh","Xã Chương Dương","Xã Chuyên Mỹ","Xã Cổ Đô","Xã Đa Phúc","Xã Đại Thanh","Xã Đại Xuyên","Xã Dân Hòa","Xã Đan Phượng","Xã Đoài Phương","Xã Đông Anh","Xã Dương Hòa","Xã Gia Lâm","Xã Hạ Bằng","Xã Hát Môn","Xã Hòa Lạc","Xã Hòa Phú","Xã Hòa Xá","Xã Hoài Đức","Xã Hồng Sơn","Xã Hồng Vân","Xã Hưng Đạo","Xã Hương Sơn","Xã Kiều Phú","Xã Kim Anh","Xã Liên Minh","Xã Mê Linh","Xã Minh Châu","Xã Mỹ Đức","Xã Nam Phù","Xã Ngọc Hồi","Xã Nội Bài","Xã Ô Diên","Xã Phú Cát","Xã Phù Đổng","Xã Phú Nghĩa","Xã Phú Xuyên","Xã Phúc Lộc","Xã Phúc Sơn","Xã Phúc Thịnh","Xã Phúc Thọ","Xã Phượng Dực","Xã Quảng Bị","Xã Quang Minh","Xã Quảng Oai","Xã Quốc Oai","Xã Sóc Sơn","Xã Sơn Đồng","Xã Suối Hai","Xã Tam Hưng","Xã Tây Phương","Xã Thạch Thất","Xã Thanh Oai","Xã Thanh Trì","Xã Thiên Lộc","Xã Thư Lâm","Xã Thuận An","Xã Thượng Phúc","Xã Thường Tín","Xã Tiến Thắng","Xã Trần Phú","Xã Trung Giã","Xã Ứng Hòa","Xã Ứng Thiên","Xã Vân Đình","Xã Vật Lại","Xã Vĩnh Thanh","Xã Xuân Mai","Xã Yên Bài","Xã Yên Lãng","Xã Yên Xuân"],"Thành phố Hải Phòng":["Đặc khu Bạch Long Vĩ","Đặc khu Cát Hải","Phường Ái Quốc","Phường An Biên","Phường An Dương","Phường An Hải","Phường An Phong","Phường Bắc An Phụ","Phường Bạch Đằng","Phường Chí Linh","Phường Chu Văn An","Phường Đồ Sơn","Phường Đông Hải","Phường Dương Kinh","Phường Gia Viên","Phường Hải An","Phường Hải Dương","Phường Hòa Bình","Phường Hồng An","Phường Hồng Bàng","Phường Hưng Đạo","Phường Kiến An","Phường Kinh Môn","Phường Lê Chân","Phường Lê Đại Hành","Phường Lê Ích Mộc","Phường Lê Thanh Nghị","Phường Lưu Kiếm","Phường Nam Đồ Sơn","Phường Nam Đồng","Phường Nam Triệu","Phường Ngô Quyền","Phường Nguyễn Đại Năng","Phường Nguyễn Trãi","Phường Nhị Chiểu","Phường Phạm Sư Mạnh","Phường Phù Liễn","Phường Tân Hưng","Phường Thạch Khôi","Phường Thành Đông","Phường Thiên Hương","Phường Thủy Nguyên","Phường Trần Hưng Đạo","Phường Trần Liễu","Phường Trần Nhân Tông","Phường Tứ Minh","Phường Việt Hòa","Xã An Hưng","Xã An Khánh","Xã An Lão","Xã An Phú","Xã An Quang","Xã An Thành","Xã An Trường","Xã Bắc Thanh Miện","Xã Bình Giang","Xã Cẩm Giang","Xã Cẩm Giàng","Xã Chấn Hưng","Xã Chí Minh","Xã Đại Sơn","Xã Đường An","Xã Gia Lộc","Xã Gia Phúc","Xã Hà Bắc","Xã Hà Đông","Xã Hà Nam","Xã Hà Tây","Xã Hải Hưng","Xã Hồng Châu","Xã Hợp Tiến","Xã Hùng Thắng","Xã Kẻ Sặt","Xã Khúc Thừa Dụ","Xã Kiến Hải","Xã Kiến Hưng","Xã Kiến Minh","Xã Kiến Thụy","Xã Kim Thành","Xã Lạc Phượng","Xã Lai Khê","Xã Mao Điền","Xã Nam An Phụ","Xã Nam Sách","Xã Nam Thanh Miện","Xã Nghi Dương","Xã Nguyễn Bỉnh Khiêm","Xã Nguyên Giáp","Xã Nguyễn Lương Bằng","Xã Ninh Giang","Xã Phú Thái","Xã Quyết Thắng","Xã Tân An","Xã Tân Kỳ","Xã Tân Minh","Xã Thái Tân","Xã Thanh Hà","Xã Thanh Miện","Xã Thượng Hồng","Xã Tiên Lãng","Xã Tiên Minh","Xã Trần Phú","Xã Trường Tân","Xã Tứ Kỳ","Xã Tuệ Tĩnh","Xã Việt Khê","Xã Vĩnh Am","Xã Vĩnh Bảo","Xã Vĩnh Hải","Xã Vĩnh Hòa","Xã Vĩnh Lại","Xã Vĩnh Thịnh","Xã Vĩnh Thuận","Xã Yết Kiêu"],"Thành phố Hồ Chí Minh":["Đặc khu Côn Đảo","Phường An Đông","Phường An Hội Đông","Phường An Hội Tây","Phường An Khánh","Phường An Lạc","Phường An Nhơn","Phường An Phú","Phường An Phú Đông","Phường Bà Rịa","Phường Bàn Cờ","Phường Bảy Hiền","Phường Bến Cát","Phường Bến Thành","Phường Bình Cơ","Phường Bình Đông","Phường Bình Dương","Phường Bình Hòa","Phường Bình Hưng Hòa","Phường Bình Lợi Trung","Phường Bình Phú","Phường Bình Quới","Phường Bình Tân","Phường Bình Tây","Phường Bình Thạnh","Phường Bình Thới","Phường Bình Tiên","Phường Bình Trị Đông","Phường Bình Trưng","Phường Cát Lái","Phường Cầu Kiệu","Phường Cầu Ông Lãnh","Phường Chánh Hiệp","Phường Chánh Hưng","Phường Chánh Phú Hòa","Phường Chợ Lớn","Phường Chợ Quán","Phường Dĩ An","Phường Diên Hồng","Phường Đông Hòa","Phường Đông Hưng Thuận","Phường Đức Nhuận","Phường Gia Định","Phường Gò Vấp","Phường Hạnh Thông","Phường Hiệp Bình","Phường Hòa Bình","Phường Hòa Hưng","Phường Hòa Lợi","Phường Khánh Hội","Phường Lái Thiêu","Phường Linh Xuân","Phường Long Bình","Phường Long Hương","Phường Long Nguyên","Phường Long Phước","Phường Long Trường","Phường Minh Phụng","Phường Nhiêu Lộc","Phường Phú An","Phường Phú Định","Phường Phú Lâm","Phường Phú Lợi","Phường Phú Mỹ","Phường Phú Nhuận","Phường Phú Thạnh","Phường Phú Thọ","Phường Phú Thọ Hòa","Phường Phú Thuận","Phường Phước Long","Phường Phước Thắng","Phường Rạch Dừa","Phường Sài Gòn","Phường Tam Bình","Phường Tam Long","Phường Tam Thắng","Phường Tân Bình","Phường Tân Định","Phường Tân Đông Hiệp","Phường Tân Hải","Phường Tân Hiệp","Phường Tân Hòa","Phường Tân Hưng","Phường Tân Khánh","Phường Tân Mỹ","Phường Tân Phú","Phường Tân Phước","Phường Tân Sơn","Phường Tân Sơn Hòa","Phường Tân Sơn Nhất","Phường Tân Sơn Nhì","Phường Tân Tạo","Phường Tân Thành","Phường Tân Thới Hiệp","Phường Tân Thuận","Phường Tân Uyên","Phường Tăng Nhơn Phú","Phường Tây Nam","Phường Tây Thạnh","Phường Thạnh Mỹ Tây","Phường Thới An","Phường Thới Hòa","Phường Thông Tây Hội","Phường Thủ Dầu Một","Phường Thủ Đức","Phường Thuận An","Phường Thuận Giao","Phường Trung Mỹ Tây","Phường Vĩnh Hội","Phường Vĩnh Tân","Phường Vũng Tàu","Phường Vườn Lài","Phường Xóm Chiếu","Phường Xuân Hòa","Xã An Long","Xã An Nhơn Tây","Xã An Thới Đông","Xã Bà Điểm","Xã Bắc Tân Uyên","Xã Bàu Bàng","Xã Bàu Lâm","Xã Bình Chánh","Xã Bình Châu","Xã Bình Giã","Xã Bình Hưng","Xã Bình Khánh","Xã Bình Lợi","Xã Bình Mỹ","Xã Cần Giờ","Xã Châu Đức","Xã Châu Pha","Xã Củ Chi","Xã Đất Đỏ","Xã Dầu Tiếng","Xã Đông Thạnh","Xã Hiệp Phước","Xã Hồ Tràm","Xã Hòa Hiệp","Xã Hòa Hội","Xã Hóc Môn","Xã Hưng Long","Xã Kim Long","Xã Long Điền","Xã Long Hải","Xã Long Hòa","Xã Long Sơn","Xã Minh Thạnh","Xã Ngãi Giao","Xã Nghĩa Thành","Xã Nhà Bè","Xã Nhuận Đức","Xã Phú Giáo","Xã Phú Hòa Đông","Xã Phước Hải","Xã Phước Hòa","Xã Phước Thành","Xã Tân An Hội","Xã Tân Nhựt","Xã Tân Vĩnh Lộc","Xã Thái Mỹ","Xã Thanh An","Xã Thạnh An","Xã Thường Tân","Xã Trừ Văn Thố","Xã Vĩnh Lộc","Xã Xuân Sơn","Xã Xuân Thới Sơn","Xã Xuyên Mộc"],"Thành phố Huế":["Phường An Cựu","Phường Dương Nỗ","Phường Hóa Châu","Phường Hương An","Phường Hương Thủy","Phường Hương Trà","Phường Kim Long","Phường Kim Trà","Phường Mỹ Thượng","Phường Phong Điền","Phường Phong Dinh","Phường Phong Phú","Phường Phong Quảng","Phường Phong Thái","Phường Phú Bài","Phường Phú Xuân","Phường Thanh Thủy","Phường Thuận An","Phường Thuận Hóa","Phường Thủy Xuân","Phường Vỹ Dạ","Xã A Lưới 1","Xã A Lưới 2","Xã A Lưới 3","Xã A Lưới 4","Xã A Lưới 5","Xã Bình Điền","Xã Chân Mây - Lăng Cô","Xã Đan Điền","Xã Hưng Lộc","Xã Khe Tre","Xã Lộc An","Xã Long Quảng","Xã Nam Đông","Xã Phú Hồ","Xã Phú Lộc","Xã Phú Vang","Xã Phú Vinh","Xã Quảng Điền","Xã Vinh Lộc"],"Tỉnh An Giang":["Đặc khu Kiên Hải","Đặc khu Phú Quốc","Đặc khu Thổ Châu","Phường Bình Đức","Phường Châu Đốc","Phường Chi Lăng","Phường Hà Tiên","Phường Long Phú","Phường Long Xuyên","Phường Mỹ Thới","Phường Rạch Giá","Phường Tân Châu","Phường Thới Sơn","Phường Tịnh Biên","Phường Tô Châu","Phường Vĩnh Tế","Phường Vĩnh Thông","Xã An Biên","Xã An Châu","Xã An Cư","Xã An Minh","Xã An Phú","Xã Ba Chúc","Xã Bình An","Xã Bình Giang","Xã Bình Hòa","Xã Bình Mỹ","Xã Bình Sơn","Xã Bình Thạnh Đông","Xã Cần Đăng","Xã Châu Phong","Xã Châu Phú","Xã Châu Thành","Xã Chợ Mới","Xã Chợ Vàm","Xã Cô Tô","Xã Cù Lao Giêng","Xã Định Hòa","Xã Định Mỹ","Xã Đông Hòa","Xã Đông Hưng","Xã Đông Thái","Xã Giang Thành","Xã Giồng Riềng","Xã Gò Quao","Xã Hòa Điền","Xã Hòa Hưng","Xã Hòa Lạc","Xã Hòa Thuận","Xã Hội An","Xã Hòn Đất","Xã Hòn Nghệ","Xã Khánh Bình","Xã Kiên Lương","Xã Long Điền","Xã Long Kiến","Xã Long Thạnh","Xã Mỹ Đức","Xã Mỹ Hòa Hưng","Xã Mỹ Thuận","Xã Ngọc Chúc","Xã Nhơn Hội","Xã Nhơn Mỹ","Xã Núi Cấm","Xã Ô Lâm","Xã Óc Eo","Xã Phú An","Xã Phú Hòa","Xã Phú Hữu","Xã Phú Lâm","Xã Phú Tân","Xã Sơn Hải","Xã Sơn Kiên","Xã Tân An","Xã Tân Hiệp","Xã Tân Hội","Xã Tân Thạnh","Xã Tây Phú","Xã Tây Yên","Xã Thạnh Đông","Xã Thạnh Hưng","Xã Thạnh Lộc","Xã Thạnh Mỹ Tây","Xã Thoại Sơn","Xã Tiên Hải","Xã Tri Tôn","Xã U Minh Thượng","Xã Vân Khánh","Xã Vĩnh An","Xã Vĩnh Bình","Xã Vĩnh Điều","Xã Vĩnh Gia","Xã Vĩnh Hanh","Xã Vĩnh Hậu","Xã Vĩnh Hòa","Xã Vĩnh Hòa Hưng","Xã Vĩnh Phong","Xã Vĩnh Thạnh Trung","Xã Vĩnh Thuận","Xã Vĩnh Trạch","Xã Vĩnh Tuy","Xã Vĩnh Xương"],"Tỉnh Bắc Ninh":["Phường Bắc Giang","Phường Bồng Lai","Phường Cảnh Thụy","Phường Chũ","Phường Đa Mai","Phường Đào Viên","Phường Đồng Nguyên","Phường Hạp Lĩnh","Phường Kinh Bắc","Phường Mão Điền","Phường Nam Sơn","Phường Nếnh","Phường Nhân Hòa","Phường Ninh Xá","Phường Phù Khê","Phường Phương Liễu","Phường Phượng Sơn","Phường Quế Võ","Phường Song Liễu","Phường Tam Sơn","Phường Tân An","Phường Tân Tiến","Phường Thuận Thành","Phường Tiền Phong","Phường Trạm Lộ","Phường Trí Quả","Phường Tự Lạn","Phường Từ Sơn","Phường Vân Hà","Phường Việt Yên","Phường Võ Cường","Phường Vũ Ninh","Phường Yên Dũng","Xã An Lạc","Xã Bắc Lũng","Xã Bảo Đài","Xã Biển Động","Xã Biên Sơn","Xã Bố Hạ","Xã Cẩm Lý","Xã Cao Đức","Xã Chi Lăng","Xã Đại Đồng","Xã Đại Lai","Xã Đại Sơn","Xã Đèo Gia","Xã Đông Cứu","Xã Đồng Kỳ","Xã Đông Phú","Xã Đồng Việt","Xã Dương Hưu","Xã Gia Bình","Xã Hiệp Hoà","Xã Hoàng Vân","Xã Hợp Thịnh","Xã Kép","Xã Kiên Lao","Xã Lâm Thao","Xã Lạng Giang","Xã Liên Bão","Xã Lục Nam","Xã Lục Ngạn","Xã Lục Sơn","Xã Lương Tài","Xã Mỹ Thái","Xã Nam Dương","Xã Nghĩa Phương","Xã Ngọc Thiện","Xã Nhã Nam","Xã Nhân Thắng","Xã Phật Tích","Xã Phù Lãng","Xã Phúc Hòa","Xã Quang Trung","Xã Sa Lý","Xã Sơn Động","Xã Sơn Hải","Xã Tam Đa","Xã Tam Giang","Xã Tam Tiến","Xã Tân Chi","Xã Tân Dĩnh","Xã Tân Sơn","Xã Tân Yên","Xã Tây Yên Tử","Xã Tiên Du","Xã Tiên Lục","Xã Trung Chính","Xã Trung Kênh","Xã Trường Sơn","Xã Tuấn Đạo","Xã Văn Môn","Xã Vân Sơn","Xã Xuân Cẩm","Xã Xuân Lương","Xã Yên Định","Xã Yên Phong","Xã Yên Thế","Xã Yên Trung"],"Tỉnh Cà Mau":["Phường An Xuyên","Phường Bạc Liêu","Phường Giá Rai","Phường Hiệp Thành","Phường Hòa Thành","Phường Láng Tròn","Phường Lý Văn Lâm","Phường Tân Thành","Phường Vĩnh Trạch","Xã An Trạch","Xã Biển Bạch","Xã Cái Đôi Vàm","Xã Cái Nước","Xã Châu Thới","Xã Đá Bạc","Xã Đầm Dơi","Xã Đất Mới","Xã Đất Mũi","Xã Định Thành","Xã Đông Hải","Xã Gành Hào","Xã Hồ Thị Kỷ","Xã Hòa Bình","Xã Hồng Dân","Xã Hưng Hội","Xã Hưng Mỹ","Xã Khánh An","Xã Khánh Bình","Xã Khánh Hưng","Xã Khánh Lâm","Xã Long Điền","Xã Lương Thế Trân","Xã Năm Căn","Xã Nguyễn Phích","Xã Nguyễn Việt Khái","Xã Ninh Quới","Xã Ninh Thạnh Lợi","Xã Phan Ngọc Hiển","Xã Phong Hiệp","Xã Phong Thạnh","Xã Phú Mỹ","Xã Phú Tân","Xã Phước Long","Xã Quách Phẩm","Xã Sông Đốc","Xã Tạ An Khương","Xã Tam Giang","Xã Tân Ân","Xã Tân Hưng","Xã Tân Lộc","Xã Tân Thuận","Xã Tân Tiến","Xã Thanh Tùng","Xã Thới Bình","Xã Trần Phán","Xã Trần Văn Thời","Xã Trí Phải","Xã U Minh","Xã Vĩnh Hậu","Xã Vĩnh Lộc","Xã Vĩnh Lợi","Xã Vĩnh Mỹ","Xã Vĩnh Phước","Xã Vĩnh Thanh"],"Tỉnh Cao Bằng":["Phường Nùng Trí Cao","Phường Tân Giang","Phường Thục Phán","Xã Bạch Đằng","Xã Bảo Lạc","Xã Bảo Lâm","Xã Bế Văn Đàn","Xã Ca Thành","Xã Cần Yên","Xã Canh Tân","Xã Cô Ba","Xã Cốc Pàng","Xã Đàm Thủy","Xã Đình Phong","Xã Đoài Dương","Xã Độc Lập","Xã Đông Khê","Xã Đức Long","Xã Hạ Lang","Xã Hà Quảng","Xã Hạnh Phúc","Xã Hòa An","Xã Hưng Đạo","Xã Huy Giáp","Xã Khánh Xuân","Xã Kim Đồng","Xã Lũng Nặm","Xã Lý Bôn","Xã Lý Quốc","Xã Minh Khai","Xã Minh Tâm","Xã Nam Quang","Xã Nam Tuấn","Xã Nguyên Bình","Xã Nguyễn Huệ","Xã Phan Thanh","Xã Phục Hòa","Xã Quang Hán","Xã Quảng Lâm","Xã Quang Long","Xã Quang Trung","Xã Quảng Uyên","Xã Sơn Lộ","Xã Tam Kim","Xã Thạch An","Xã Thành Công","Xã Thanh Long","Xã Thông Nông","Xã Tĩnh Túc","Xã Tổng Cọt","Xã Trà Lĩnh","Xã Trùng Khánh","Xã Trường Hà","Xã Vinh Quý","Xã Xuân Trường","Xã Yên Thổ"],"Tỉnh Đắk Lắk":["Phường Bình Kiến","Phường Buôn Hồ","Phường Buôn Ma Thuột","Phường Cư Bao","Phường Đông Hòa","Phường Ea Kao","Phường Hòa Hiệp","Phường Phú Yên","Phường Sông Cầu","Phường Tân An","Phường Tân Lập","Phường Thành Nhất","Phường Tuy Hòa","Phường Xuân Đài","Xã Buôn Đôn","Xã Cư M’gar","Xã Cư M’ta","Xã Cư Pơng","Xã Cư Prao","Xã Cư Pui","Xã Cư Yang","Xã Cuôr Đăng","Xã Đắk Liêng","Xã Đắk Phơi","Xã Dang Kang","Xã Dliê Ya","Xã Đồng Xuân","Xã Dray Bhăng","Xã Đức Bình","Xã Dur Kmăl","Xã Ea Bá","Xã Ea Bung","Xã Ea Drăng","Xã Ea Drông","Xã Ea Hiao","Xã Ea H’Leo","Xã Ea Kar","Xã Ea Khăl","Xã Ea Kiết","Xã Ea Kly","Xã Ea Knốp","Xã Ea Knuếc","Xã Ea Ktur","Xã Ea Ly","Xã Ea M’Droh","Xã Ea Na","Xã Ea Ning","Xã Ea Nuôl","Xã Ea Ô","Xã Ea Păl","Xã Ea Phê","Xã Ea Riêng","Xã Ea Rốk","Xã Ea Súp","Xã Ea Trang","Xã Ea Tul","Xã Ea Wer","Xã Ea Wy","Xã Hòa Mỹ","Xã Hòa Phú","Xã Hòa Sơn","Xã Hòa Thịnh","Xã Hòa Xuân","Xã Ia Lốp","Xã Ia Rvê","Xã Krông Á","Xã Krông Ana","Xã Krông Bông","Xã Krông Búk","Xã Krông Năng","Xã Krông Nô","Xã Krông Pắc","Xã Liên Sơn Lắk","Xã M’Drắk","Xã Nam Ka","Xã Ô Loan","Xã Phú Hòa 1","Xã Phú Hòa 2","Xã Phú Mỡ","Xã Phú Xuân","Xã Pơng Drang","Xã Quảng Phú","Xã Sơn Hòa","Xã Sơn Thành","Xã Sông Hinh","Xã Suối Trai","Xã Tam Giang","Xã Tân Tiến","Xã Tây Hòa","Xã Tây Sơn","Xã Tuy An Bắc","Xã Tuy An Đông","Xã Tuy An Nam","Xã Tuy An Tây","Xã Vân Hòa","Xã Vụ Bổn","Xã Xuân Cảnh","Xã Xuân Lãnh","Xã Xuân Lộc","Xã Xuân Phước","Xã Xuân Thọ","Xã Yang Mao"],"Tỉnh Điện Biên":["Phường Điện Biên Phủ","Phường Mường Lay","Phường Mường Thanh","Xã Búng Lao","Xã Chà Tở","Xã Chiềng Sinh","Xã Mường Ảng","Xã Mường Chà","Xã Mường Lạn","Xã Mường Luân","Xã Mường Mùn","Xã Mường Nhà","Xã Mường Nhé","Xã Mường Phăng","Xã Mường Pồn","Xã Mường Toong","Xã Mường Tùng","Xã Nà Bủng","Xã Nà Hỳ","Xã Na Sang","Xã Na Son","Xã Nà Tấu","Xã Nậm Kè","Xã Nậm Nèn","Xã Núa Ngam","Xã Pa Ham","Xã Phình Giàng","Xã Pu Nhi","Xã Pú Nhung","Xã Quài Tở","Xã Quảng Lâm","Xã Sam Mứn","Xã Sáng Nhè","Xã Si Pa Phìn","Xã Sín Chải","Xã Sín Thầu","Xã Sính Phình","Xã Thanh An","Xã Thanh Nưa","Xã Thanh Yên","Xã Tìa Dình","Xã Tủa Chùa","Xã Tủa Thàng","Xã Tuần Giáo","Xã Xa Dung"],"Tỉnh Đồng Nai":["Phường An Lộc","Phường Bảo Vinh","Phường Biên Hòa","Phường Bình Lộc","Phường Bình Long","Phường Bình Phước","Phường Chơn Thành","Phường Đồng Xoài","Phường Hàng Gòn","Phường Hố Nai","Phường Long Bình","Phường Long Hưng","Phường Long Khánh","Phường Minh Hưng","Phường Phước Bình","Phường Phước Long","Phường Phước Tân","Phường Tam Hiệp","Phường Tam Phước","Phường Tân Triều","Phường Trấn Biên","Phường Trảng Dài","Phường Xuân Lập","Xã An Phước","Xã An Viễn","Xã Bàu Hàm","Xã Bình An","Xã Bình Minh","Xã Bình Tân","Xã Bom Bo","Xã Bù Đăng","Xã Bù Gia Mập","Xã Cẩm Mỹ","Xã Đa Kia","Xã Đại Phước","Xã Đak Lua","Xã Đak Nhau","Xã Đăk Ơ","Xã Dầu Giây","Xã Định Quán","Xã Đồng Phú","Xã Đồng Tâm","Xã Gia Kiệm","Xã Hưng Phước","Xã Hưng Thịnh","Xã La Ngà","Xã Lộc Hưng","Xã Lộc Ninh","Xã Lộc Quang","Xã Lộc Tấn","Xã Lộc Thạnh","Xã Lộc Thành","Xã Long Hà","Xã Long Phước","Xã Long Thành","Xã Minh Đức","Xã Nam Cát Tiên","Xã Nghĩa Trung","Xã Nha Bích","Xã Nhơn Trạch","Xã Phú Hòa","Xã Phú Lâm","Xã Phú Lý","Xã Phú Nghĩa","Xã Phú Riềng","Xã Phú Trung","Xã Phú Vinh","Xã Phước An","Xã Phước Sơn","Xã Phước Thái","Xã Sông Ray","Xã Tà Lài","Xã Tân An","Xã Tân Hưng","Xã Tân Khai","Xã Tân Lợi","Xã Tân Phú","Xã Tân Quan","Xã Tân Tiến","Xã Thanh Sơn","Xã Thiện Hưng","Xã Thọ Sơn","Xã Thống Nhất","Xã Thuận Lợi","Xã Trảng Bom","Xã Trị An","Xã Xuân Bắc","Xã Xuân Định","Xã Xuân Đông","Xã Xuân Đường","Xã Xuân Hòa","Xã Xuân Lộc","Xã Xuân Phú","Xã Xuân Quế","Xã Xuân Thành"],"Tỉnh Đồng Tháp":["Phường An Bình","Phường Bình Xuân","Phường Cai Lậy","Phường Cao Lãnh","Phường Đạo Thạnh","Phường Gò Công","Phường Hồng Ngự","Phường Long Thuận","Phường Mỹ Ngãi","Phường Mỹ Phong","Phường Mỹ Phước Tây","Phường Mỹ Tho","Phường Mỹ Trà","Phường Nhị Quý","Phường Sa Đéc","Phường Sơn Qui","Phường Thanh Hòa","Phường Thới Sơn","Phường Thường Lạc","Phường Trung An","Xã An Hòa","Xã An Hữu","Xã An Long","Xã An Phước","Xã An Thạnh Thủy","Xã Ba Sao","Xã Bình Hàng Trung","Xã Bình Ninh","Xã Bình Phú","Xã Bình Thành","Xã Bình Trưng","Xã Cái Bè","Xã Châu Thành","Xã Chợ Gạo","Xã Đốc Binh Kiều","Xã Đồng Sơn","Xã Gia Thuận","Xã Gò Công Đông","Xã Hậu Mỹ","Xã Hiệp Đức","Xã Hòa Long","Xã Hội Cư","Xã Hưng Thạnh","Xã Kim Sơn","Xã Lai Vung","Xã Lấp Vò","Xã Long Bình","Xã Long Định","Xã Long Hưng","Xã Long Khánh","Xã Long Phú Thuận","Xã Long Tiên","Xã Lương Hòa Lạc","Xã Mỹ An Hưng","Xã Mỹ Đức Tây","Xã Mỹ Hiệp","Xã Mỹ Lợi","Xã Mỹ Quí","Xã Mỹ Thành","Xã Mỹ Thiện","Xã Mỹ Thọ","Xã Mỹ Tịnh An","Xã Ngũ Hiệp","Xã Phong Hòa","Xã Phong Mỹ","Xã Phú Cường","Xã Phú Hựu","Xã Phú Thành","Xã Phú Thọ","Xã Phương Thịnh","Xã Tam Nông","Xã Tân Điền","Xã Tân Đông","Xã Tân Dương","Xã Tân Hộ Cơ","Xã Tân Hòa","Xã Tân Hồng","Xã Tân Hương","Xã Tân Khánh Trung","Xã Tân Long","Xã Tân Nhuận Đông","Xã Tân Phú","Xã Tân Phú Đông","Xã Tân Phú Trung","Xã Tân Phước 1","Xã Tân Phước 2","Xã Tân Phước 3","Xã Tân Thành","Xã Tân Thạnh","Xã Tân Thới","Xã Tân Thuận Bình","Xã Thanh Bình","Xã Thanh Hưng","Xã Thanh Mỹ","Xã Thạnh Phú","Xã Tháp Mười","Xã Thường Phước","Xã Tràm Chim","Xã Trường Xuân","Xã Vĩnh Bình","Xã Vĩnh Hựu","Xã Vĩnh Kim"],"Tỉnh Gia Lai":["Phường An Bình","Phường An Khê","Phường An Nhơn","Phường An Nhơn Bắc","Phường An Nhơn Đông","Phường An Nhơn Nam","Phường An Phú","Phường Ayun Pa","Phường Bình Định","Phường Bồng Sơn","Phường Diên Hồng","Phường Hoài Nhơn","Phường Hoài Nhơn Bắc","Phường Hoài Nhơn Đông","Phường Hoài Nhơn Nam","Phường Hoài Nhơn Tây","Phường Hội Phú","Phường Pleiku","Phường Quy Nhơn","Phường Quy Nhơn Bắc","Phường Quy Nhơn Đông","Phường Quy Nhơn Nam","Phường Quy Nhơn Tây","Phường Tam Quan","Phường Thống Nhất","Xã Al Bá","Xã Ân Hảo","Xã An Hòa","Xã An Lão","Xã An Lương","Xã An Nhơn Tây","Xã An Toàn","Xã Ân Tường","Xã An Vinh","Xã Ayun","Xã Bàu Cạn","Xã Biển Hồ","Xã Bình An","Xã Bình Dương","Xã Bình Hiệp","Xã Bình Khê","Xã Bình Phú","Xã Bờ Ngoong","Xã Canh Liên","Xã Canh Vinh","Xã Cát Tiến","Xã Chơ Long","Xã Chư A Thai","Xã Chư Krey","Xã Chư Păh","Xã Chư Prông","Xã Chư Pưh","Xã Chư Sê","Xã Cửu An","Xã Đak Đoa","Xã Đak Pơ","Xã Đak Rong","Xã Đak Sơmei","Xã Đăk Song","Xã Đề Gi","Xã Đức Cơ","Xã Gào","Xã Hòa Hội","Xã Hoài Ân","Xã Hội Sơn","Xã Hra","Xã Ia Băng","Xã Ia Boòng","Xã Ia Chia","Xã Ia Dơk","Xã Ia Dom","Xã Ia Dreh","Xã Ia Grai","Xã Ia Hiao","Xã Ia Hrú","Xã Ia Hrung","Xã Ia Khươl","Xã Ia Ko","Xã Ia Krái","Xã Ia Krêl","Xã Ia Lâu","Xã Ia Le","Xã Ia Ly","Xã Ia Mơ","Xã Ia Nan","Xã Ia O","Xã Ia Pa","Xã Ia Phí","Xã Ia Pia","Xã Ia Pnôn","Xã Ia Púch","Xã Ia Rbol","Xã Ia Rsai","Xã Ia Sao","Xã Ia Tôr","Xã Ia Tul","Xã Kbang","Xã KDang","Xã Kim Sơn","Xã Kon Chiêng","Xã Kon Gang","Xã Kông Bơ La","Xã Kông Chro","Xã Krong","Xã Lơ Pang","Xã Mang Yang","Xã Ngô Mây","Xã Nhơn Châu","Xã Phù Cát","Xã Phù Mỹ","Xã Phù Mỹ Bắc","Xã Phù Mỹ Đông","Xã Phù Mỹ Nam","Xã Phù Mỹ Tây","Xã Phú Thiện","Xã Phú Túc","Xã Pờ Tó","Xã Sơn Lang","Xã SRó","Xã Tây Sơn","Xã Tơ Tung","Xã Tuy Phước","Xã Tuy Phước Bắc","Xã Tuy Phước Đông","Xã Tuy Phước Tây","Xã Uar","Xã Vân Canh","Xã Vạn Đức","Xã Vĩnh Quang","Xã Vĩnh Sơn","Xã Vĩnh Thạnh","Xã Vĩnh Thịnh","Xã Xuân An","Xã Ya Hội","Xã Ya Ma"],"Tỉnh Hà Tĩnh":["Phường Bắc Hồng Lĩnh","Phường Hà Huy Tập","Phường Hải Ninh","Phường Hoành Sơn","Phường Nam Hồng Lĩnh","Phường Sông Trí","Phường Thành Sen","Phường Trần Phú","Phường Vũng Áng","Xã Cẩm Bình","Xã Cẩm Duệ","Xã Cẩm Hưng","Xã Cẩm Lạc","Xã Cẩm Trung","Xã Cẩm Xuyên","Xã Can Lộc","Xã Cổ Đạm","Xã Đan Hải","Xã Đông Kinh","Xã Đồng Lộc","Xã Đồng Tiến","Xã Đức Đồng","Xã Đức Minh","Xã Đức Quang","Xã Đức Thịnh","Xã Đức Thọ","Xã Gia Hanh","Xã Hà Linh","Xã Hồng Lộc","Xã Hương Bình","Xã Hương Đô","Xã Hương Khê","Xã Hương Phố","Xã Hương Sơn","Xã Hương Xuân","Xã Kim Hoa","Xã Kỳ Anh","Xã Kỳ Hoa","Xã Kỳ Khang","Xã Kỳ Lạc","Xã Kỳ Thượng","Xã Kỳ Văn","Xã Kỳ Xuân","Xã Lộc Hà","Xã Mai Hoa","Xã Mai Phụ","Xã Nghi Xuân","Xã Phúc Trạch","Xã Sơn Giang","Xã Sơn Hồng","Xã Sơn Kim 1","Xã Sơn Kim 2","Xã Sơn Tây","Xã Sơn Tiến","Xã Thạch Hà","Xã Thạch Khê","Xã Thạch Lạc","Xã Thạch Xuân","Xã Thiên Cầm","Xã Thượng Đức","Xã Tiên Điền","Xã Toàn Lưu","Xã Trường Lưu","Xã Tứ Mỹ","Xã Tùng Lộc","Xã Việt Xuyên","Xã Vũ Quang","Xã Xuân Lộc","Xã Yên Hòa"],"Tỉnh Hưng Yên":["Phường Đường Hào","Phường Hồng Châu","Phường Mỹ Hào","Phường Phố Hiến","Phường Sơn Nam","Phường Thái Bình","Phường Thượng Hồng","Phường Trà Lý","Phường Trần Hưng Đạo","Phường Trần Lãm","Phường Vũ Phúc","Xã A Sào","Xã Ái Quốc","Xã Ân Thi","Xã Bắc Đông Hưng","Xã Bắc Đông Quan","Xã Bắc Thái Ninh","Xã Bắc Thụy Anh","Xã Bắc Tiên Hưng","Xã Bình Định","Xã Bình Nguyên","Xã Bình Thanh","Xã Châu Ninh","Xã Chí Minh","Xã Đại Đồng","Xã Diên Hà","Xã Đoàn Đào","Xã Đồng Bằng","Xã Đồng Châu","Xã Đông Hưng","Xã Đông Quan","Xã Đông Thái Ninh","Xã Đông Thụy Anh","Xã Đông Tiền Hải","Xã Đông Tiên Hưng","Xã Đức Hợp","Xã Hiệp Cường","Xã Hoàn Long","Xã Hoàng Hoa Thám","Xã Hồng Minh","Xã Hồng Quang","Xã Hồng Vũ","Xã Hưng Hà","Xã Hưng Phú","Xã Khoái Châu","Xã Kiến Xương","Xã Lạc Đạo","Xã Lê Lợi","Xã Lê Quý Đôn","Xã Long Hưng","Xã Lương Bằng","Xã Mễ Sở","Xã Minh Thọ","Xã Nam Cường","Xã Nam Đông Hưng","Xã Nam Thái Ninh","Xã Nam Thụy Anh","Xã Nam Tiền Hải","Xã Nam Tiên Hưng","Xã Nghĩa Dân","Xã Nghĩa Trụ","Xã Ngọc Lâm","Xã Ngự Thiên","Xã Nguyễn Du","Xã Nguyễn Trãi","Xã Nguyễn Văn Linh","Xã Như Quỳnh","Xã Phạm Ngũ Lão","Xã Phụ Dực","Xã Phụng Công","Xã Quang Hưng","Xã Quang Lịch","Xã Quỳnh An","Xã Quỳnh Phụ","Xã Tân Hưng","Xã Tân Thuận","Xã Tân Tiến","Xã Tây Thái Ninh","Xã Tây Thụy Anh","Xã Tây Tiền Hải","Xã Thái Ninh","Xã Thái Thụy","Xã Thần Khê","Xã Thư Trì","Xã Thư Vũ","Xã Thụy Anh","Xã Tiền Hải","Xã Tiên Hoa","Xã Tiên Hưng","Xã Tiên La","Xã Tiên Lữ","Xã Tiên Tiến","Xã Tống Trân","Xã Trà Giang","Xã Triệu Việt Vương","Xã Văn Giang","Xã Vạn Xuân","Xã Việt Tiến","Xã Việt Yên","Xã Vũ Quý","Xã Vũ Thư","Xã Vũ Tiên","Xã Xuân Trúc","Xã Yên Mỹ"],"Tỉnh Khánh Hòa":["Đặc khu Trường Sa","Phường Ba Ngòi","Phường Bắc Cam Ranh","Phường Bắc Nha Trang","Phường Bảo An","Phường Cam Linh","Phường Cam Ranh","Phường Đô Vinh","Phường Đông Hải","Phường Đông Ninh Hòa","Phường Hòa Thắng","Phường Nam Nha Trang","Phường Nha Trang","Phường Ninh Chử","Phường Ninh Hòa","Phường Phan Rang","Phường Tây Nha Trang","Xã Anh Dũng","Xã Bác Ái","Xã Bác Ái Đông","Xã Bác Ái Tây","Xã Bắc Khánh Vĩnh","Xã Bắc Ninh Hòa","Xã Cà Ná","Xã Cam An","Xã Cam Hiệp","Xã Cam Lâm","Xã Công Hải","Xã Đại Lãnh","Xã Diên Điền","Xã Diên Khánh","Xã Diên Lạc","Xã Diên Lâm","Xã Diên Thọ","Xã Đông Khánh Sơn","Xã Hòa Trí","Xã Khánh Sơn","Xã Khánh Vĩnh","Xã Lâm Sơn","Xã Mỹ Sơn","Xã Nam Cam Ranh","Xã Nam Khánh Vĩnh","Xã Nam Ninh Hòa","Xã Ninh Hải","Xã Ninh Phước","Xã Ninh Sơn","Xã Phước Dinh","Xã Phước Hà","Xã Phước Hậu","Xã Phước Hữu","Xã Suối Dầu","Xã Suối Hiệp","Xã Tân Định","Xã Tây Khánh Sơn","Xã Tây Khánh Vĩnh","Xã Tây Ninh Hòa","Xã Thuận Bắc","Xã Thuận Nam","Xã Trung Khánh Vĩnh","Xã Tu Bông","Xã Vạn Hưng","Xã Vạn Ninh","Xã Vạn Thắng","Xã Vĩnh Hải","Xã Xuân Hải"],"Tỉnh Lai Châu":["Phường Đoàn Kết","Phường Tân Phong","Xã Bản Bo","Xã Bình Lư","Xã Bum Nưa","Xã Bum Tở","Xã Dào San","Xã Hồng Thu","Xã Hua Bum","Xã Khoen On","Xã Khổng Lào","Xã Khun Há","Xã Lê Lợi","Xã Mù Cả","Xã Mường Khoa","Xã Mường Kim","Xã Mường Mô","Xã Mường Tè","Xã Mường Than","Xã Nậm Cuổi","Xã Nậm Hàng","Xã Nậm Mạ","Xã Nậm Sỏ","Xã Nậm Tăm","Xã Pa Tần","Xã Pa Ủ","Xã Pắc Ta","Xã Phong Thổ","Xã Pu Sam Cáp","Xã Sì Lở Lầu","Xã Sìn Hồ","Xã Sin Suối Hồ","Xã Tả Lèng","Xã Tà Tổng","Xã Tân Uyên","Xã Than Uyên","Xã Thu Lũm","Xã Tủa Sín Chải"],"Tỉnh Lâm Đồng":["Đặc khu Phú Quý","Phường 1 Bảo Lộc","Phường 2 Bảo Lộc","Phường 3 Bảo Lộc","Phường Bắc Gia Nghĩa","Phường Bình Thuận","Phường B’Lao","Phường Cam Ly - Đà Lạt","Phường Đông Gia Nghĩa","Phường Hàm Thắng","Phường La Gi","Phường Lâm Viên - Đà Lạt","Phường Lang Biang - Đà Lạt","Phường Mũi Né","Phường Nam Gia Nghĩa","Phường Phan Thiết","Phường Phú Thuỷ","Phường Phước Hội","Phường Tiến Thành","Phường Xuân Hương - Đà Lạt","Phường Xuân Trường - Đà Lạt","Xã Bắc Bình","Xã Bắc Ruộng","Xã Bảo Lâm 1","Xã Bảo Lâm 2","Xã Bảo Lâm 3","Xã Bảo Lâm 4","Xã Bảo Lâm 5","Xã Bảo Thuận","Xã Cát Tiên","Xã Cát Tiên 2","Xã Cát Tiên 3","Xã Cư Jút","Xã Đạ Huoai","Xã Đạ Huoai 2","Xã Đạ Huoai 3","Xã Đạ Tẻh","Xã Đạ Tẻh 2","Xã Đạ Tẻh 3","Xã Đắk Mil","Xã Đắk Sắk","Xã Đắk Song","Xã Đắk Wil","Xã Đam Rông 1","Xã Đam Rông 2","Xã Đam Rông 3","Xã Đam Rông 4","Xã Di Linh","Xã Đinh Trang Thượng","Xã Đinh Văn Lâm Hà","Xã Đơn Dương","Xã Đông Giang","Xã Đồng Kho","Xã Đức An","Xã Đức Lập","Xã Đức Linh","Xã Đức Trọng","Xã D’Ran","Xã Gia Hiệp","Xã Hải Ninh","Xã Hàm Kiệm","Xã Hàm Liêm","Xã Hàm Tân","Xã Hàm Thạnh","Xã Hàm Thuận","Xã Hàm Thuận Bắc","Xã Hàm Thuận Nam","Xã Hiệp Thạnh","Xã Hòa Bắc","Xã Hòa Ninh","Xã Hòa Thắng","Xã Hoài Đức","Xã Hồng Sơn","Xã Hồng Thái","Xã Ka Đô","Xã Kiến Đức","Xã Krông Nô","Xã La Dạ","Xã Lạc Dương","Xã Liên Hương","Xã Lương Sơn","Xã Nam Ban Lâm Hà","Xã Nam Đà","Xã Nam Dong","Xã Nam Hà Lâm Hà","Xã Nâm Nung","Xã Nam Thành","Xã Nghị Đức","Xã Nhân Cơ","Xã Ninh Gia","Xã Phan Rí Cửa","Xã Phan Sơn","Xã Phú Sơn Lâm Hà","Xã Phúc Thọ Lâm Hà","Xã Quảng Hòa","Xã Quảng Khê","Xã Quảng Lập","Xã Quảng Phú","Xã Quảng Sơn","Xã Quảng Tân","Xã Quảng Tín","Xã Quảng Trực","Xã Sơn Điền","Xã Sơn Mỹ","Xã Sông Lũy","Xã Suối Kiết","Xã Tà Đùng","Xã Tà Hine","Xã Tà Năng","Xã Tân Hà Lâm Hà","Xã Tân Hải","Xã Tân Hội","Xã Tân Lập","Xã Tân Minh","Xã Tân Thành","Xã Tánh Linh","Xã Thuận An","Xã Thuận Hạnh","Xã Trà Tân","Xã Trường Xuân","Xã Tuy Đức","Xã Tuy Phong","Xã Tuyên Quang","Xã Vĩnh Hảo"],"Tỉnh Lạng Sơn":["Phường Đông Kinh","Phường Kỳ Lừa","Phường Lương Văn Tri","Phường Tam Thanh","Xã Ba Sơn","xã Bắc Sơn","Xã Bằng Mạc","Xã Bình Gia","Xã Cai Kinh","Xã Cao Lộc","Xã Châu Sơn","Xã Chi Lăng","Xã Chiến Thắng","Xã Công Sơn","Xã Điềm He","Xã Đình Lập","Xã Đoàn Kết","Xã Đồng Đăng","Xã Hoa Thám","Xã Hoàng Văn Thụ","Xã Hội Hoan","Xã Hồng Phong","Xã Hưng Vũ","Xã Hữu Liên","Xã Hữu Lũng","Xã Kháng Chiến","Xã Khánh Khê","Xã Khuất Xá","Xã Kiên Mộc","Xã Lộc Bình","Xã Lợi Bác","Xã Mẫu Sơn","Xã Na Dương","Xã Na Sầm","Xã Nhân Lý","Xã Nhất Hòa","Xã Quan Sơn","Xã Quốc Khánh","Xã Quốc Việt","Xã Quý Hòa","Xã Tân Đoàn","Xã Tân Thành","Xã Tân Tiến","Xã Tân Tri","Xã Tân Văn","Xã Thái Bình","Xã Thất Khê","Xã Thiện Hòa","Xã Thiện Long","Xã Thiện Tân","Xã Thiện Thuật","Xã Thống Nhất","Xã Thụy Hùng","Xã Tràng Định","Xã Tri Lễ","Xã Tuấn Sơn","Xã Văn Lãng","Xã Vạn Linh","Xã Vân Nham","Xã Văn Quan","Xã Vũ Lăng","Xã Vũ Lễ","Xã Xuân Dương","Xã Yên Bình","Xã Yên Phúc"],"Tỉnh Lào Cai":["Phường Âu Lâu","Phường Cam Đường","Phường Cầu Thia","Phường Lào Cai","Phường Nam Cường","Phường Nghĩa Lộ","Phường Sa Pa","Phường Trung Tâm","Phường Văn Phú","Phường Yên Bái","Xã A Mú Sung","Xã Bắc Hà","Xã Bản Hồ","Xã Bản Lầu","Xã Bản Liền","Xã Bản Xèo","Xã Bảo Ái","Xã Bảo Hà","Xã Bảo Nhai","Xã Bảo Thắng","Xã Bảo Yên","Xã Bát Xát","Xã Cảm Nhân","Xã Cao Sơn","Xã Cát Thịnh","Xã Chấn Thịnh","Xã Châu Quế","Xã Chế Tạo","Xã Chiềng Ken","Xã Cốc Lầu","Xã Cốc San","Xã Dền Sáng","Xã Đông Cuông","Xã Dương Quỳ","Xã Gia Hội","Xã Gia Phú","Xã Hạnh Phúc","Xã Hợp Thành","Xã Hưng Khánh","Xã Khánh Hòa","Xã Khánh Yên","Xã Khao Mang","Xã Lâm Giang","Xã Lâm Thượng","Xã Lao Chải","Xã Liên Sơn","Xã Lục Yên","Xã Lùng Phình","Xã Lương Thịnh","Xã Mậu A","Xã Minh Lương","Xã Mỏ Vàng","Xã Mù Cang Chải","Xã Mường Bo","Xã Mường Hum","Xã Mường Khương","Xã Mường Lai","Xã Nậm Chày","Xã Nậm Có","Xã Nậm Xé","Xã Nghĩa Đô","Xã Nghĩa Tâm","Xã Ngũ Chỉ Sơn","Xã Pha Long","Xã Phình Hồ","Xã Phong Dụ Hạ","Xã Phong Dụ Thượng","Xã Phong Hải","Xã Phúc Khánh","Xã Phúc Lợi","Xã Púng Luông","Xã Quy Mông","Xã Si Ma Cai","Xã Sín Chéng","Xã Sơn Lương","Xã Tả Củ Tỷ","Xã Tả Phìn","Xã Tả Van","Xã Tà Xi Láng","Xã Tân Hợp","Xã Tân Lĩnh","Xã Tằng Loỏng","Xã Thác Bà","Xã Thượng Bằng La","Xã Thượng Hà","Xã Trạm Tấu","Xã Trấn Yên","Xã Trịnh Tường","Xã Tú Lệ","Xã Văn Bàn","Xã Văn Chấn","Xã Việt Hồng","Xã Võ Lao","Xã Xuân Ái","Xã Xuân Hòa","Xã Xuân Quang","Xã Y Tý","Xã Yên Bình","Xã Yên Thành"],"Tỉnh Nghệ An":["Phường Cửa Lò","Phường Hoàng Mai","Phường Quỳnh Mai","Phường Tân Mai","Phường Tây Hiếu","Phường Thái Hòa","Phường Thành Vinh","Phường Trường Vinh","Phường Vinh Hưng","Phường Vinh Lộc","Phường Vinh Phú","Xã An Châu","Xã Anh Sơn","Xã Anh Sơn Đông","Xã Bắc Lý","Xã Bạch Hà","Xã Bạch Ngọc","Xã Bích Hào","Xã Bình Chuẩn","Xã Bình Minh","Xã Cam Phục","Xã Cát Ngạn","Xã Châu Bình","Xã Châu Hồng","Xã Châu Khê","Xã Châu Lộc","Xã Châu Tiến","Xã Chiêu Lưu","Xã Con Cuông","Xã Đại Đồng","Xã Đại Huệ","Xã Diễn Châu","Xã Đô Lương","Xã Đông Hiếu","Xã Đông Lộc","Xã Đông Thành","Xã Đức Châu","Xã Giai Lạc","Xã Giai Xuân","Xã Hải Châu","Xã Hải Lộc","Xã Hạnh Lâm","Xã Hoa Quân","Xã Hợp Minh","Xã Hùng Chân","Xã Hùng Châu","Xã Hưng Nguyên","Xã Hưng Nguyên Nam","Xã Huồi Tụ","Xã Hữu Khuông","Xã Hữu Kiệm","Xã Keng Đu","Xã Kim Bảng","Xã Kim Liên","Xã Lam Thành","Xã Lượng Minh","Xã Lương Sơn","Xã Mậu Thạch","Xã Minh Châu","Xã Minh Hợp","Xã Môn Sơn","Xã Mường Chọng","Xã Mường Ham","Xã Mường Lống","Xã Mường Quàng","Xã Mường Típ","Xã Mường Xén","Xã Mỹ Lý","Xã Na Loi","Xã Na Ngoi","Xã Nậm Cắn","Xã Nam Đàn","Xã Nga My","Xã Nghi Lộc","Xã Nghĩa Đàn","Xã Nghĩa Đồng","Xã Nghĩa Hành","Xã Nghĩa Hưng","Xã Nghĩa Khánh","Xã Nghĩa Lâm","Xã Nghĩa Lộc","Xã Nghĩa Mai","Xã Nghĩa Thọ","Xã Nhân Hòa","Xã Nhôn Mai","Xã Phúc Lộc","Xã Quan Thành","Xã Quảng Châu","Xã Quang Đồng","Xã Quế Phong","Xã Quỳ Châu","Xã Quỳ Hợp","Xã Quỳnh Anh","Xã Quỳnh Lưu","Xã Quỳnh Phú","Xã Quỳnh Sơn","Xã Quỳnh Tam","Xã Quỳnh Thắng","Xã Quỳnh Văn","Xã Sơn Lâm","Xã Tam Đồng","Xã Tam Hợp","Xã Tam Quang","Xã Tam Thái","Xã Tân An","Xã Tân Châu","Xã Tân Kỳ","Xã Tân Phú","Xã Thần Lĩnh","Xã Thành Bình Thọ","Xã Thiên Nhẫn","Xã Thông Thụ","Xã Thuần Trung","Xã Tiên Đồng","Xã Tiền Phong","Xã Tri Lễ","Xã Trung Lộc","Xã Tương Dương","Xã Vạn An","Xã Vân Du","Xã Văn Hiến","Xã Văn Kiều","Xã Vân Tụ","Xã Vĩnh Tường","Xã Xuân Lâm","Xã Yên Hòa","Xã Yên Na","Xã Yên Thành","Xã Yên Trung","Xã Yên Xuân"],"Tỉnh Ninh Bình":["Phường Châu Sơn","Phường Đông A","Phường Đông Hoa Lư","Phường Đồng Văn","Phường Duy Hà","Phường Duy Tân","Phường Duy Tiên","Phường Hà Nam","Phường Hoa Lư","Phường Hồng Quang","Phường Kim Bảng","Phường Kim Thanh","Phường Lê Hồ","Phường Liêm Tuyền","Phường Lý Thường Kiệt","Phường Mỹ Lộc","Phường Nam Định","Phường Nam Hoa Lư","Phường Nguyễn Uý","Phường Phủ Lý","Phường Phù Vân","Phường Tam Chúc","Phường Tam Điệp","Phường Tây Hoa Lư","Phường Thành Nam","Phường Thiên Trường","Phường Tiên Sơn","Phường Trung Sơn","Phường Trường Thi","Phường Vị Khê","Phường Yên Sơn","Phường Yên Thắng","Xã Bắc Lý","Xã Bình An","Xã Bình Giang","Xã Bình Lục","Xã Bình Minh","Xã Bình Mỹ","Xã Bình Sơn","Xã Cát Thành","Xã Chất Bình","Xã Cổ Lễ","Xã Cúc Phương","Xã Đại Hoàng","Xã Định Hóa","Xã Đồng Thái","Xã Đồng Thịnh","Xã Gia Hưng","Xã Gia Lâm","Xã Gia Phong","Xã Gia Trấn","Xã Gia Tường","Xã Gia Vân","Xã Gia Viễn","Xã Giao Bình","Xã Giao Hoà","Xã Giao Hưng","Xã Giao Minh","Xã Giao Ninh","Xã Giao Phúc","Xã Giao Thuỷ","Xã Hải An","Xã Hải Anh","Xã Hải Hậu","Xã Hải Hưng","Xã Hải Quang","Xã Hải Thịnh","Xã Hải Tiến","Xã Hải Xuân","Xã Hiển Khánh","Xã Hồng Phong","Xã Khánh Hội","Xã Khánh Nhạc","Xã Khánh Thiện","Xã Khánh Trung","Xã Kim Đông","Xã Kim Sơn","Xã Lai Thành","Xã Liêm Hà","Xã Liên Minh","Xã Lý Nhân","Xã Minh Tân","Xã Minh Thái","Xã Nam Đồng","Xã Nam Hồng","Xã Nam Lý","Xã Nam Minh","Xã Nam Ninh","Xã Nam Trực","Xã Nam Xang","Xã Nghĩa Hưng","Xã Nghĩa Lâm","Xã Nghĩa Sơn","Xã Nhân Hà","Xã Nho Quan","Xã Ninh Cường","Xã Ninh Giang","Xã Phát Diệm","Xã Phong Doanh","Xã Phú Long","Xã Phú Sơn","Xã Quang Hưng","Xã Quang Thiện","Xã Quỹ Nhất","Xã Quỳnh Lưu","Xã Rạng Đông","Xã Tân Minh","Xã Tân Thanh","Xã Thanh Bình","Xã Thanh Lâm","Xã Thanh Liêm","Xã Thanh Sơn","Xã Trần Thương","Xã Trực Ninh","Xã Vạn Thắng","Xã Vĩnh Trụ","Xã Vụ Bản","Xã Vũ Dương","Xã Xuân Giang","Xã Xuân Hồng","Xã Xuân Hưng","Xã Xuân Trường","Xã Ý Yên","Xã Yên Cường","Xã Yên Đồng","Xã Yên Khánh","Xã Yên Mạc","Xã Yên Mô","Xã Yên Từ"],"Tỉnh Phú Thọ":["Phường Âu Cơ","Phường Hòa Bình","Phường Kỳ Sơn","Phường Nông Trang","Phường Phong Châu","Phường Phú Thọ","Phường Phúc Yên","Phường Tân Hòa","Phường Thanh Miếu","Phường Thống Nhất","Phường Vân Phú","Phường Việt Trì","Phường Vĩnh Phúc","Phường Vĩnh Yên","Phường Xuân Hòa","Xã An Bình","Xã An Nghĩa","Xã Bản Nguyên","Xã Bằng Luân","Xã Bao La","Xã Bình Nguyên","Xã Bình Phú","Xã Bình Tuyền","Xã Bình Xuyên","Xã Cẩm Khê","Xã Cao Dương","Xã Cao Phong","Xã Cao Sơn","Xã Chân Mộng","Xã Chí Đám","Xã Chí Tiên","Xã Cự Đồng","Xã Đà Bắc","Xã Đại Đình","Xã Đại Đồng","Xã Dân Chủ","Xã Đan Thượng","Xã Đạo Trù","Xã Đào Xá","Xã Đoan Hùng","Xã Đồng Lương","Xã Đông Thành","Xã Đức Nhàn","Xã Dũng Tiến","Xã Hạ Hòa","Xã Hải Lựu","Xã Hiền Lương","Xã Hiền Quan","Xã Hoàng An","Xã Hoàng Cương","Xã Hội Thịnh","Xã Hợp Kim","Xã Hợp Lý","Xã Hùng Việt","Xã Hương Cần","Xã Hy Cương","Xã Khả Cửu","Xã Kim Bôi","Xã Lạc Lương","Xã Lạc Sơn","Xã Lạc Thủy","Xã Lai Đồng","Xã Lâm Thao","Xã Lập Thạch","Xã Liên Châu","Xã Liên Hòa","Xã Liên Minh","Xã Liên Sơn","Xã Long Cốc","Xã Lương Sơn","Xã Mai Châu","Xã Mai Hạ","Xã Minh Đài","Xã Minh Hòa","Xã Mường Bi","Xã Mường Động","Xã Mường Hoa","Xã Mường Thàng","Xã Mường Vang","Xã Nật Sơn","Xã Ngọc Sơn","Xã Nguyệt Đức","Xã Nhân Nghĩa","Xã Pà Cò","Xã Phú Khê","Xã Phú Mỹ","Xã Phù Ninh","Xã Phùng Nguyên","Xã Quảng Yên","Xã Quy Đức","Xã Quyết Thắng","Xã Sơn Đông","Xã Sơn Lương","Xã Sông Lô","Xã Tam Đảo","Xã Tam Dương","Xã Tam Dương Bắc","Xã Tam Hồng","Xã Tam Nông","Xã Tam Sơn","Xã Tân Lạc","Xã Tân Mai","Xã Tân Pheo","Xã Tân Sơn","Xã Tây Cốc","Xã Tề Lỗ","Xã Thái Hòa","Xã Thanh Ba","Xã Thanh Sơn","Xã Thanh Thủy","Xã Thịnh Minh","Xã Thổ Tang","Xã Thọ Văn","Xã Thu Cúc","Xã Thung Nai","Xã Thượng Cốc","Xã Thượng Long","Xã Tiên Lữ","Xã Tiên Lương","Xã Tiền Phong","Xã Toàn Thắng","Xã Trạm Thản","Xã Trung Sơn","Xã Tu Vũ","Xã Vân Bán","Xã Văn Lang","Xã Văn Miếu","Xã Vân Sơn","Xã Vạn Xuân","Xã Vĩnh An","Xã Vĩnh Chân","Xã Vĩnh Hưng","Xã Vĩnh Phú","Xã Vĩnh Thành","Xã Vĩnh Tường","Xã Võ Miếu","Xã Xuân Đài","Xã Xuân Lãng","Xã Xuân Lũng","Xã Xuân Viên","Xã Yên Kỳ","Xã Yên Lạc","Xã Yên Lãng","Xã Yên Lập","Xã Yên Phú","Xã Yên Sơn","Xã Yên Thủy","Xã Yên Trị"],"Tỉnh Quảng Ngãi":["Đặc khu Lý Sơn","Phường Cẩm Thành","Phường Đăk Bla","Phường Đăk Cấm","Phường Đức Phổ","Phường Kon Tum","Phường Nghĩa Lộ","Phường Sa Huỳnh","Phường Trà Câu","Phường Trương Quang Trọng","Xã An Phú","Xã Ba Dinh","Xã Ba Động","Xã Ba Gia","Xã Ba Tơ","Xã Ba Tô","Xã Ba Vì","Xã Ba Vinh","Xã Ba Xa","Xã Bình Chương","Xã Bình Minh","Xã Bình Sơn","Xã Bờ Y","Xã Cà Đam","Xã Đăk Hà","Xã Đăk Kôi","Xã Đăk Long","Xã Đăk Mar","Xã Đăk Môn","Xã Đăk Pék","Xã Đăk Plô","Xã Đăk Pxi","Xã Đăk Rơ Wa","Xã Đăk Rve","Xã Đăk Sao","Xã Đăk Tô","Xã Đăk Tờ Kan","Xã Đăk Ui","Xã Đặng Thùy Trâm","Xã Đình Cương","Xã Đông Sơn","Xã Đông Trà Bồng","Xã Dục Nông","Xã Ia Chim","Xã Ia Đal","Xã Ia Tơi","Xã Khánh Cường","Xã Kon Braih","Xã Kon Đào","Xã Kon Plông","Xã Lân Phong","Xã Long Phụng","Xã Măng Bút","Xã Măng Đen","Xã Măng Ri","Xã Minh Long","Xã Mỏ Cày","Xã Mộ Đức","Xã Mô Rai","Xã Nghĩa Giang","Xã Nghĩa Hành","Xã Ngọc Linh","Xã Ngọk Bay","Xã Ngọk Réo","Xã Ngọk Tụ","Xã Nguyễn Nghiêm","Xã Phước Giang","Xã Rờ Kơi","Xã Sa Bình","Xã Sa Loong","Xã Sa Thầy","Xã Sơn Hà","Xã Sơn Hạ","Xã Sơn Kỳ","Xã Sơn Linh","Xã Sơn Mai","Xã Sơn Tây","Xã Sơn Tây Hạ","Xã Sơn Tây Thượng","Xã Sơn Thủy","Xã Sơn Tịnh","Xã Tây Trà","Xã Tây Trà Bồng","Xã Thanh Bồng","Xã Thiện Tín","Xã Thọ Phong","Xã Tịnh Khê","Xã Trà Bồng","Xã Trà Giang","Xã Trường Giang","Xã Tu Mơ Rông","Xã Tư Nghĩa","Xã Vạn Tường","Xã Vệ Giang","Xã Xốp","Xã Ya Ly"],"Tỉnh Quảng Ninh":["Đặc khu Cô Tô","Đặc khu Vân Đồn","Phường An Sinh","Phường Bãi Cháy","Phường Bình Khê","Phường Cẩm Phả","Phường Cao Xanh","Phường Cửa Ông","Phường Đông Mai","Phường Đông Triều","Phường Hà An","Phường Hà Lầm","Phường Hạ Long","Phường Hà Tu","Phường Hiệp Hòa","Phường Hoàng Quế","Phường Hoành Bồ","Phường Hồng Gai","Phường Liên Hòa","Phường Mạo Khê","Phường Móng Cái 1","Phường Móng Cái 2","Phường Móng Cái 3","Phường Mông Dương","Phường Phong Cốc","Phường Quang Hanh","Phường Quảng Yên","Phường Tuần Châu","Phường Uông Bí","Phường Vàng Danh","Phường Việt Hưng","Phường Yên Tử","Xã Ba Chẽ","Xã Bình Liêu","Xã Cái Chiên","Xã Đầm Hà","Xã Điền Xá","Xã Đông Ngũ","Xã Đường Hoa","Xã Hải Hòa","Xã Hải Lạng","Xã Hải Ninh","Xã Hải Sơn","Xã Hoành Mô","Xã Kỳ Thượng","Xã Lục Hồn","Xã Lương Minh","Xã Quảng Đức","Xã Quảng Hà","Xã Quảng La","Xã Quảng Tân","Xã Thống Nhất","Xã Tiên Yên","Xã Vĩnh Thực"],"Tỉnh Quảng Trị":["Đặc khu Cồn Cỏ","Phường Ba Đồn","Phường Bắc Gianh","Phường Đông Hà","Phường Đồng Hới","Phường Đồng Sơn","Phường Đồng Thuận","Phường Nam Đông Hà","Phường Quảng Trị","Xã A Dơi","Xã Ái Tử","Xã Ba Lòng","Xã Bắc Trạch","Xã Bến Hải","Xã Bến Quan","Xã Bố Trạch","Xã Cam Hồng","Xã Cam Lộ","Xã Cồn Tiên","Xã Cửa Tùng","Xã Cửa Việt","Xã Đakrông","Xã Dân Hóa","Xã Diên Sanh","Xã Đồng Lê","Xã Đông Trạch","Xã Gio Linh","Xã Hải Lăng","Xã Hiếu Giang","Xã Hòa Trạch","Xã Hoàn Lão","Xã Hướng Hiệp","Xã Hướng Lập","Xã Hướng Phùng","Xã Khe Sanh","Xã Kim Điền","Xã Kim Ngân","Xã Kim Phú","Xã La Lay","Xã Lao Bảo","Xã Lệ Ninh","Xã Lệ Thủy","Xã Lìa","Xã Minh Hóa","Xã Mỹ Thủy","Xã Nam Ba Đồn","Xã Nam Cửa Việt","Xã Nam Gianh","Xã Nam Hải Lăng","Xã Nam Trạch","Xã Ninh Châu","Xã Phong Nha","Xã Phú Trạch","Xã Quảng Ninh","Xã Quảng Trạch","Xã Sen Ngư","Xã Tà Rụt","Xã Tân Gianh","Xã Tân Lập","Xã Tân Mỹ","Xã Tân Thành","Xã Thượng Trạch","Xã Triệu Bình","Xã Triệu Cơ","Xã Triệu Phong","Xã Trung Thuần","Xã Trường Ninh","Xã Trường Phú","Xã Trường Sơn","Xã Tuyên Bình","Xã Tuyên Hóa","Xã Tuyên Lâm","Xã Tuyên Phú","Xã Tuyên Sơn","Xã Vĩnh Định","Xã Vĩnh Hoàng","Xã Vĩnh Linh","Xã Vĩnh Thủy"],"Tỉnh Sơn La":["Phường Chiềng An","Phường Chiềng Cơi","Phường Chiềng Sinh","Phường Mộc Châu","Phường Mộc Sơn","Phường Thảo Nguyên","Phường Tô Hiệu","Phường Vân Sơn","Xã Bắc Yên","Xã Bình Thuận","Xã Bó Sinh","Xã Chiềng Hặc","Xã Chiềng Hoa","Xã Chiềng Khoong","Xã Chiềng Khương","Xã Chiềng La","Xã Chiềng Lao","Xã Chiềng Mai","Xã Chiềng Mung","Xã Chiềng Sại","Xã Chiềng Sơ","Xã Chiềng Sơn","Xã Chiềng Sung","Xã Co Mạ","Xã Đoàn Kết","Xã Gia Phù","Xã Huổi Một","Xã Kim Bon","Xã Long Hẹ","Xã Lóng Phiêng","Xã Lóng Sập","Xã Mai Sơn","Xã Muổi Nọi","Xã Mường Bám","Xã Mường Bang","Xã Mường Bú","Xã Mường Chanh","Xã Mường Chiên","Xã Mường Cơi","Xã Mường É","Xã Mường Giôn","Xã Mường Hung","Xã Mường Khiêng","Xã Mường La","Xã Mường Lầm","Xã Mường Lạn","Xã Mường Lèo","Xã Mường Sại","Xã Nậm Lầu","Xã Nậm Ty","Xã Ngọc Chiến","Xã Pắc Ngà","Xã Phiêng Cằm","Xã Phiêng Khoài","Xã Phiêng Pằn","Xã Phù Yên","Xã Púng Bánh","Xã Quỳnh Nhai","Xã Song Khủa","Xã Sông Mã","Xã Sốp Cộp","Xã Suối Tọ","Xã Tà Hộc","Xã Tạ Khoa","Xã Tà Xùa","Xã Tân Phong","Xã Tân Yên","Xã Thuận Châu","Xã Tô Múa","Xã Tường Hạ","Xã Vân Hồ","Xã Xím Vàng","Xã Xuân Nha","Xã Yên Châu","Xã Yên Sơn"],"Tỉnh Tây Ninh":["Phường An Tịnh","Phường Bình Minh","Phường Gia Lộc","Phường Gò Dầu","Phường Hòa Thành","Phường Khánh Hậu","Phường Kiến Tường","Phường Long An","Phường Long Hoa","Phường Ninh Thạnh","Phường Tân An","Phường Tân Ninh","Phường Thanh Điền","Phường Trảng Bàng","Xã An Lục Long","Xã An Ninh","Xã Bến Cầu","Xã Bến Lức","Xã Bình Đức","Xã Bình Hiệp","Xã Bình Hòa","Xã Bình Thành","Xã Cần Đước","Xã Cần Giuộc","Xã Cầu Khởi","Xã Châu Thành","Xã Đông Thành","Xã Đức Hòa","Xã Đức Huệ","Xã Đức Lập","Xã Dương Minh Châu","Xã Hảo Đước","Xã Hậu Nghĩa","Xã Hậu Thạnh","Xã Hiệp Hòa","Xã Hòa Hội","Xã Hòa Khánh","Xã Hưng Điền","Xã Hưng Thuận","Xã Khánh Hưng","Xã Lộc Ninh","Xã Long Cang","Xã Long Chữ","Xã Long Hựu","Xã Long Thuận","Xã Lương Hòa","Xã Mộc Hóa","Xã Mỹ An","Xã Mỹ Hạnh","Xã Mỹ Lệ","Xã Mỹ Lộc","Xã Mỹ Quý","Xã Mỹ Thạnh","Xã Mỹ Yên","Xã Nhơn Hòa Lập","Xã Nhơn Ninh","Xã Nhựt Tảo","Xã Ninh Điền","Xã Phước Chỉ","Xã Phước Lý","Xã Phước Thạnh","Xã Phước Vinh","Xã Phước Vĩnh Tây","Xã Rạch Kiến","Xã Tầm Vu","Xã Tân Biên","Xã Tân Châu","Xã Tân Đông","Xã Tân Hòa","Xã Tân Hội","Xã Tân Hưng","Xã Tân Lân","Xã Tân Lập","Xã Tân Long","Xã Tân Phú","Xã Tân Tập","Xã Tân Tây","Xã Tân Thành","Xã Tân Thạnh","Xã Tân Trụ","Xã Thạnh Bình","Xã Thạnh Đức","Xã Thạnh Hóa","Xã Thạnh Lợi","Xã Thạnh Phước","Xã Thủ Thừa","Xã Thuận Mỹ","Xã Trà Vong","Xã Truông Mít","Xã Tuyên Bình","Xã Tuyên Thạnh","Xã Vàm Cỏ","Xã Vĩnh Châu","Xã Vĩnh Công","Xã Vĩnh Hưng","Xã Vĩnh Thạnh"],"Tỉnh Thái Nguyên":["Phường Bá Xuyên","Phường Bắc Kạn","Phường Bách Quang","Phường Đức Xuân","Phường Gia Sàng","Phường Linh Sơn","Phường Phan Đình Phùng","Phường Phổ Yên","Phường Phúc Thuận","Phường Quan Triều","Phường Quyết Thắng","Phường Sông Công","Phường Tích Lương","Phường Trung Thành","Phường Vạn Xuân","Xã An Khánh","Xã Ba Bể","Xã Bạch Thông","Xã Bằng Thành","Xã Bằng Vân","Xã Bình Thành","Xã Bình Yên","Xã Cẩm Giàng","Xã Cao Minh","Xã Chợ Đồn","Xã Chợ Mới","Xã Chợ Rã","Xã Côn Minh","Xã Cường Lợi","Xã Đại Phúc","Xã Đại Từ","Xã Dân Tiến","Xã Điềm Thụy","Xã Định Hóa","Xã Đồng Hỷ","Xã Đồng Phúc","Xã Đức Lương","Xã Hiệp Lực","Xã Hợp Thành","Xã Kha Sơn","Xã Kim Phượng","Xã La Bằng","Xã La Hiên","Xã Lam Vỹ","Xã Nà Phặc","Xã Na Rì","Xã Nam Cường","Xã Nam Hòa","Xã Ngân Sơn","Xã Nghĩa Tá","Xã Nghiên Loan","Xã Nghinh Tường","Xã Phong Quang","Xã Phú Bình","Xã Phú Đình","Xã Phú Lạc","Xã Phú Lương","Xã Phú Thịnh","Xã Phủ Thông","Xã Phú Xuyên","Xã Phúc Lộc","Xã Phượng Tiến","Xã Quân Chu","Xã Quảng Bạch","Xã Quang Sơn","Xã Sảng Mộc","Xã Tân Cương","Xã Tân Khánh","Xã Tân Kỳ","Xã Tân Thành","Xã Thần Sa","Xã Thành Công","Xã Thanh Mai","Xã Thanh Thịnh","Xã Thượng Minh","Xã Thượng Quan","Xã Trại Cau","Xã Trần Phú","Xã Tràng Xá","Xã Trung Hội","Xã Văn Hán","Xã Văn Lang","Xã Văn Lăng","Xã Vạn Phú","Xã Vĩnh Thông","Xã Võ Nhai","Xã Vô Tranh","Xã Xuân Dương","Xã Yên Bình","Xã Yên Phong","Xã Yên Thịnh","Xã Yên Trạch"],"Tỉnh Thanh Hóa":["Phường Bỉm Sơn","Phường Đào Duy Từ","Phường Đông Quang","Phường Đông Sơn","Phường Đông Tiến","Phường Hạc Thành","Phường Hải Bình","Phường Hải Lĩnh","Phường Hàm Rồng","Phường Nam Sầm Sơn","Phường Nghi Sơn","Phường Ngọc Sơn","Phường Nguyệt Viên","Phường Quảng Phú","Phường Quang Trung","Phường Sầm Sơn","Phường Tân Dân","Phường Tĩnh Gia","Phường Trúc Lâm","Xã An Nông","Xã Ba Đình","Xã Bá Thước","Xã Bát Mọt","Xã Biện Thượng","Xã Các Sơn","Xã Cẩm Tân","Xã Cẩm Thạch","Xã Cẩm Thủy","Xã Cẩm Tú","Xã Cẩm Vân","Xã Cổ Lũng","Xã Công Chính","Xã Điền Lư","Xã Điền Quang","Xã Định Hòa","Xã Định Tân","Xã Đồng Lương","Xã Đông Thành","Xã Đồng Tiến","Xã Giao An","Xã Hà Long","Xã Hà Trung","Xã Hậu Lộc","Xã Hiền Kiệt","Xã Hồ Vương","Xã Hoa Lộc","Xã Hóa Quỳ","Xã Hoằng Châu","Xã Hoằng Giang","Xã Hoằng Hóa","Xã Hoằng Lộc","Xã Hoằng Phú","Xã Hoằng Sơn","Xã Hoằng Thanh","Xã Hoằng Tiến","Xã Hoạt Giang","Xã Hồi Xuân","Xã Hợp Tiến","Xã Kiên Thọ","Xã Kim Tân","Xã Lam Sơn","Xã Linh Sơn","Xã Lĩnh Toại","Xã Luận Thành","Xã Lương Sơn","Xã Lưu Vệ","Xã Mậu Lâm","Xã Minh Sơn","Xã Mường Chanh","Xã Mường Lát","Xã Mường Lý","Xã Mường Mìn","Xã Na Mèo","Xã Nam Xuân","Xã Nga An","Xã Nga Sơn","Xã Nga Thắng","Xã Ngọc Lặc","Xã Ngọc Liên","Xã Ngọc Trạo","Xã Nguyệt Ấn","Xã Nhi Sơn","Xã Như Thanh","Xã Như Xuân","Xã Nông Cống","Xã Phú Lệ","Xã Phú Xuân","Xã Pù Luông","Xã Pù Nhi","Xã Quan Sơn","Xã Quảng Bình","Xã Quang Chiểu","Xã Quảng Chính","Xã Quảng Ngọc","Xã Quảng Ninh","Xã Quảng Yên","Xã Quý Lộc","Xã Quý Lương","Xã Sao Vàng","Xã Sơn Điện","Xã Sơn Thủy","Xã Tam Chung","Xã Tam Lư","Xã Tam Thanh","Xã Tân Ninh","Xã Tân Thành","Xã Tân Tiến","Xã Tây Đô","Xã Thạch Bình","Xã Thạch Lập","Xã Thạch Quảng","Xã Thăng Bình","Xã Thắng Lộc","Xã Thắng Lợi","Xã Thanh Kỳ","Xã Thanh Phong","Xã Thanh Quân","Xã Thành Vinh","Xã Thiên Phủ","Xã Thiết Ống","Xã Thiệu Hóa","Xã Thiệu Quang","Xã Thiệu Tiến","Xã Thiệu Toán","Xã Thiệu Trung","Xã Thọ Bình","Xã Thọ Lập","Xã Thọ Long","Xã Thọ Ngọc","Xã Thọ Phú","Xã Thọ Xuân","Xã Thượng Ninh","Xã Thường Xuân","Xã Tiên Trang","Xã Tống Sơn","Xã Triệu Lộc","Xã Triệu Sơn","Xã Trung Chính","Xã Trung Hạ","Xã Trung Lý","Xã Trung Sơn","Xã Trung Thành","Xã Trường Lâm","Xã Trường Văn","Xã Tượng Lĩnh","Xã Vân Du","Xã Vạn Lộc","Xã Văn Nho","Xã Văn Phú","Xã Vạn Xuân","Xã Vĩnh Lộc","Xã Xuân Bình","Xã Xuân Chinh","Xã Xuân Du","Xã Xuân Hòa","Xã Xuân Lập","Xã Xuân Thái","Xã Xuân Tín","Xã Yên Định","Xã Yên Khương","Xã Yên Nhân","Xã Yên Ninh","Xã Yên Phú","Xã Yên Thắng","Xã Yên Thọ","Xã Yên Trường"],"Tỉnh Tuyên Quang":["Phường An Tường","Phường Bình Thuận","Phường Hà Giang 1","Phường Hà Giang 2","Phường Minh Xuân","Phường Mỹ Lâm","Phường Nông Tiến","Xã Bắc Mê","Xã Bắc Quang","Xã Bạch Đích","Xã Bạch Ngọc","Xã Bạch Xa","Xã Bản Máy","Xã Bằng Hành","Xã Bằng Lang","Xã Bình An","Xã Bình Ca","Xã Bình Xa","Xã Cán Tỷ","Xã Cao Bồ","Xã Chiêm Hoá","Xã Côn Lôn","Xã Đồng Tâm","Xã Đông Thọ","Xã Đồng Văn","Xã Đồng Yên","Xã Du Già","Xã Đường Hồng","Xã Đường Thượng","Xã Giáp Trung","Xã Hàm Yên","Xã Hồ Thầu","Xã Hoà An","Xã Hoàng Su Phì","Xã Hồng Sơn","Xã Hồng Thái","Xã Hùng An","Xã Hùng Đức","Xã Hùng Lợi","Xã Khâu Vai","Xã Khuôn Lùng","Xã Kiên Đài","Xã Kiến Thiết","Xã Kim Bình","Xã Lâm Bình","Xã Lao Chải","Xã Liên Hiệp","Xã Linh Hồ","Xã Lực Hành","Xã Lũng Cú","Xã Lũng Phìn","Xã Lùng Tám","Xã Mậu Duệ","Xã Mèo Vạc","Xã Minh Ngọc","Xã Minh Quang","Xã Minh Sơn","Xã Minh Tân","Xã Minh Thanh","Xã Nà Hang","Xã Nấm Dẩn","Xã Nậm Dịch","Xã Nghĩa Thuận","Xã Ngọc Đường","Xã Ngọc Long","Xã Nhữ Khê","Xã Niêm Sơn","Xã Pà Vầy Sủ","Xã Phố Bảng","Xã Phú Linh","Xã Phú Lương","Xã Phù Lưu","Xã Pờ Ly Ngài","Xã Quản Bạ","Xã Quang Bình","Xã Quảng Nguyên","Xã Sà Phìn","Xã Sơn Dương","Xã Sơn Thuỷ","Xã Sơn Vĩ","Xã Sủng Máng","Xã Tân An","Xã Tân Long","Xã Tân Mỹ","Xã Tân Quang","Xã Tân Thanh","Xã Tân Tiến","Xã Tân Trào","Xã Tân Trịnh","Xã Tát Ngà","Xã Thái Bình","Xã Thái Hoà","Xã Thái Sơn","Xã Thắng Mố","Xã Thàng Tín","Xã Thanh Thủy","Xã Thông Nguyên","Xã Thuận Hoà","Xã Thượng Lâm","Xã Thượng Nông","Xã Thượng Sơn","Xã Tiên Nguyên","Xã Tiên Yên","Xã Tri Phú","Xã Trung Hà","Xã Trung Sơn","Xã Trung Thịnh","Xã Trường Sinh","Xã Tùng Bá","Xã Tùng Vài","Xã Vị Xuyên","Xã Việt Lâm","Xã Vĩnh Tuy","Xã Xín Mần","Xã Xuân Giang","Xã Xuân Vân","Xã Yên Cường","Xã Yên Hoa","Xã Yên Lập","Xã Yên Minh","Xã Yên Nguyên","Xã Yên Phú","Xã Yên Sơn","Xã Yên Thành"],"Tỉnh Vĩnh Long":["Phường An Hội","Phường Bến Tre","Phường Bình Minh","Phường Cái Vồn","Phường Đông Thành","Phường Duyên Hải","Phường Hòa Thuận","Phường Long Châu","Phường Long Đức","Phường Nguyệt Hóa","Phường Phú Khương","Phường Phú Tân","Phường Phước Hậu","Phường Sơn Đông","Phường Tân Hạnh","Phường Tân Ngãi","Phường Thanh Đức","Phường Trà Vinh","Phường Trường Long Hòa","Xã An Bình","Xã An Định","Xã An Hiệp","Xã An Ngãi Trung","Xã An Phú Tân","Xã An Qui","Xã An Trường","Xã Ba Tri","Xã Bảo Thạnh","Xã Bình Đại","Xã Bình Phú","Xã Bình Phước","Xã Cái Ngang","Xã Cái Nhum","Xã Càng Long","Xã Cầu Kè","Xã Cầu Ngang","Xã Châu Hòa","Xã Châu Hưng","Xã Châu Thành","Xã Chợ Lách","Xã Đại An","Xã Đại Điền","Xã Đôn Châu","Xã Đông Hải","Xã Đồng Khởi","Xã Giao Long","Xã Giồng Trôm","Xã Hàm Giang","Xã Hiệp Mỹ","Xã Hiếu Phụng","Xã Hiếu Thành","Xã Hòa Bình","Xã Hòa Hiệp","Xã Hòa Minh","Xã Hùng Hòa","Xã Hưng Khánh Trung","Xã Hưng Mỹ","Xã Hưng Nhượng","Xã Hương Mỹ","Xã Lộc Thuận","Xã Long Hiệp","Xã Long Hồ","Xã Long Hòa","Xã Long Hữu","Xã Long Thành","Xã Long Vĩnh","Xã Lục Sĩ Thành","Xã Lương Hòa","Xã Lương Phú","Xã Lưu Nghiệp Anh","Xã Mỏ Cày","Xã Mỹ Chánh Hòa","Xã Mỹ Long","Xã Mỹ Thuận","Xã Ngãi Tứ","Xã Ngũ Lạc","Xã Nhị Long","Xã Nhị Trường","Xã Nhơn Phú","Xã Nhuận Phú Tân","Xã Phong Thạnh","Xã Phú Phụng","Xã Phú Quới","Xã Phú Thuận","Xã Phú Túc","Xã Phước Long","Xã Phước Mỹ Trung","Xã Quới An","Xã Quới Điền","Xã Quới Thiện","Xã Song Lộc","Xã Song Phú","Xã Tam Bình","Xã Tam Ngãi","Xã Tân An","Xã Tân Hào","Xã Tân Hòa","Xã Tân Long Hội","Xã Tân Lược","Xã Tân Phú","Xã Tân Quới","Xã Tân Thành Bình","Xã Tân Thủy","Xã Tân Xuân","Xã Tập Ngãi","Xã Tập Sơn","Xã Thạnh Hải","Xã Thạnh Phong","Xã Thạnh Phú","Xã Thạnh Phước","Xã Thành Thới","Xã Thạnh Trị","Xã Thới Thuận","Xã Tiên Thủy","Xã Tiểu Cần","Xã Trà Côn","Xã Trà Cú","Xã Trà Ôn","Xã Trung Hiệp","Xã Trung Ngãi","Xã Trung Thành","Xã Vinh Kim","Xã Vĩnh Thành","Xã Vĩnh Xuân"]};
   const DEFAULT_LOGO_B64 = 'data:image/png;base64,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';
@@ -3395,11 +3486,9 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   }
 
   // ---------- Cấu hình (org / logo / doctor / supabase) ----------
-  const org1Input = $('rxOrgLine1'), org2Input = $('rxOrgLine2'), sbUrlInput = $('rxSbUrl'), sbKeyInput = $('rxSbKey');
+  const org1Input = $('rxOrgLine1'), org2Input = $('rxOrgLine2');
   org1Input.value = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
   org2Input.value = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
-  sbUrlInput.value = localStorage.getItem(LS_SB_URL) || '';
-  sbKeyInput.value = localStorage.getItem(LS_SB_KEY) || '';
   org1Input.addEventListener('change', () => localStorage.setItem(LS_ORG1, org1Input.value.trim() || DEFAULT_ORG1));
   org2Input.addEventListener('change', () => localStorage.setItem(LS_ORG2, org2Input.value.trim() || DEFAULT_ORG2));
 
@@ -3483,40 +3572,70 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     renderDoctorSelect();
   });
 
-  $('rxSettingsBtn').addEventListener('click', () => $('rxSettingsPanel').classList.toggle('show'));
-
+  // ---------- Cấu hình Supabase cố định (không cần nhập lại trên từng máy) ----------
   function getSbConfig() {
-    const url = (localStorage.getItem(LS_SB_URL) || '').replace(/\/$/, '');
-    const key = localStorage.getItem(LS_SB_KEY) || '';
-    return url && key ? { url, key } : null;
+    return { url: SUPABASE_URL, key: SUPABASE_ANON_KEY };
   }
 
-  $('rxSbSaveBtn').addEventListener('click', async () => {
-    const url = sbUrlInput.value.trim().replace(/\/$/, '');
-    const key = sbKeyInput.value.trim();
-    const statusEl = $('rxSbStatus');
-    if (!url || !key) {
-      localStorage.removeItem(LS_SB_URL); localStorage.removeItem(LS_SB_KEY);
-      statusEl.textContent = 'Đã tắt đồng bộ, dùng danh sách lưu trên máy này.';
-      statusEl.className = 'rx-sb-status';
-      return;
-    }
-    statusEl.textContent = 'Đang kiểm tra kết nối...';
-    try {
-      const resp = await fetch(`${url}/rest/v1/thuoc?select=id&limit=1`, {
-        headers: { apikey: key, Authorization: `Bearer ${key}` },
-      });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      localStorage.setItem(LS_SB_URL, url);
-      localStorage.setItem(LS_SB_KEY, key);
-      statusEl.textContent = '✓ Kết nối thành công. Đã lưu cấu hình đồng bộ.';
-      statusEl.className = 'rx-sb-status ok';
-      await loadDrugList();
-    } catch (err) {
-      statusEl.textContent = '✗ Không kết nối được. Kiểm tra URL/key và bảng "thuoc" đã tạo đúng chưa.';
-      statusEl.className = 'rx-sb-status err';
+  // ---------- Kích thước logo (Admin cấu hình, áp dụng chung khi in) ----------
+  const logoSizeSlider = $('rxLogoSize'), logoSizeVal = $('rxLogoSizeVal');
+  function currentLogoSize() { return parseInt(localStorage.getItem(LS_LOGO_SIZE), 10) || 52; }
+  logoSizeSlider.value = currentLogoSize();
+  logoSizeVal.textContent = currentLogoSize() + 'px';
+  logoSizeSlider.addEventListener('input', () => {
+    logoSizeVal.textContent = logoSizeSlider.value + 'px';
+    localStorage.setItem(LS_LOGO_SIZE, logoSizeSlider.value);
+  });
+
+  // ---------- Bảo vệ mục Cấu hình bằng mật khẩu ----------
+  const patientPanel = $('rxPatientPanel'), drugFormArea = $('rxDrugFormArea'), settingsPanel = $('rxSettingsPanel');
+  const pwOverlay = $('rxPwOverlay'), pwInput = $('rxPwInput'), pwError = $('rxPwError');
+
+  function getAdminPw() { return localStorage.getItem(LS_ADMIN_PW) || DEFAULT_ADMIN_PW; }
+
+  function openSettingsUnlocked() {
+    patientPanel.style.display = 'none';
+    drugFormArea.style.display = 'none';
+    settingsPanel.classList.add('show');
+  }
+  function closeSettings() {
+    patientPanel.style.display = '';
+    drugFormArea.style.display = '';
+    settingsPanel.classList.remove('show');
+  }
+  function showPwModal() {
+    pwInput.value = '';
+    pwError.textContent = '';
+    pwOverlay.classList.add('show');
+    setTimeout(() => pwInput.focus(), 50);
+  }
+  function hidePwModal() { pwOverlay.classList.remove('show'); }
+
+  $('rxSettingsBtn').addEventListener('click', () => {
+    if (settingsPanel.classList.contains('show')) { closeSettings(); return; }
+    showPwModal();
+  });
+  $('rxSettingsCloseBtn').addEventListener('click', closeSettings);
+  $('rxPwCancelBtn').addEventListener('click', hidePwModal);
+  $('rxPwOkBtn').addEventListener('click', () => {
+    if (pwInput.value === getAdminPw()) {
+      hidePwModal();
+      openSettingsUnlocked();
+    } else {
+      pwError.textContent = 'Sai mật khẩu, vui lòng thử lại.';
     }
   });
+  pwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') $('rxPwOkBtn').click(); });
+  $('rxPwForgotBtn').addEventListener('click', () => {
+    localStorage.setItem(LS_ADMIN_PW, DEFAULT_ADMIN_PW);
+    hidePwModal();
+    alert(`Mật khẩu đã được khôi phục về mặc định: ${DEFAULT_ADMIN_PW}\n\nLưu ý: trang này chạy tĩnh trên trình duyệt nên không tự gửi được email/SMS thật. Nếu cần hỗ trợ thêm, liên hệ:\n📧 ${ADMIN_EMAIL}\n📞 ${ADMIN_PHONE}`);
+  });
+  $('rxPwResetBtn').addEventListener('click', () => {
+    localStorage.setItem(LS_ADMIN_PW, DEFAULT_ADMIN_PW);
+    alert(`Đã khôi phục mật khẩu Cấu hình về mặc định: ${DEFAULT_ADMIN_PW}`);
+  });
+
 
   // ---------- Danh sách thuốc: tải từ cloud (nếu có cấu hình) hoặc localStorage ----------
   async function loadDrugList() {
@@ -3763,7 +3882,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
           updateSuggestActive();
         } else if (e.key === 'ArrowUp') {
           e.preventDefault();
-          activeSuggestIndex = Math.max(activeSuggestIndex - 1, 0);
+          activeSuggestIndex = activeSuggestIndex <= 0 ? currentSuggestList.length - 1 : activeSuggestIndex - 1;
           updateSuggestActive();
         }
       });
@@ -3771,7 +3890,9 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   });
 
   function updateSuggestActive() {
-    [...suggestBox.querySelectorAll('.rx-suggest-item')].forEach((el, i) => el.classList.toggle('active', i === activeSuggestIndex));
+    const items = [...suggestBox.querySelectorAll('.rx-suggest-item')];
+    items.forEach((el, i) => el.classList.toggle('active', i === activeSuggestIndex));
+    if (activeSuggestIndex >= 0 && items[activeSuggestIndex]) items[activeSuggestIndex].scrollIntoView({ block: 'nearest' });
   }
 
   function clearRxForm() {
@@ -3779,10 +3900,23 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     brandInput.focus();
   }
 
+  let dupWarnTimer = null;
+  function showDupWarning() {
+    const el = $('rxDupWarning');
+    el.classList.add('show');
+    clearTimeout(dupWarnTimer);
+    dupWarnTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  }
+
   function addRxRow() {
     const brand = brandInput.value.trim();
     if (!brand) { brandInput.focus(); return; }
     const generic = genericInput.value.trim();
+    const isDup = rxRows.some((r) => normalize(r.brand) === normalize(brand) && normalize(r.generic) === normalize(generic));
+    if (isDup) {
+      showDupWarning();
+      return;
+    }
     const row = {
       brand,
       generic,
@@ -3934,8 +4068,14 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     }
     emptyMsg.classList.remove('show');
     body.innerHTML = rxRows.map((r, i) => `
-      <tr>
-        <td>${i + 1}</td>
+      <tr draggable="true" data-idx="${i}">
+        <td class="rx-idx-cell">
+          <span class="rx-drag-handle" title="Kéo để sắp xếp lại">⠿</span><span>${i + 1}</span>
+          <span class="rx-row-move">
+            <button type="button" class="rx-move-up" data-idx="${i}" title="Lên" ${i === 0 ? 'disabled' : ''}>▲</button>
+            <button type="button" class="rx-move-down" data-idx="${i}" title="Xuống" ${i === rxRows.length - 1 ? 'disabled' : ''}>▼</button>
+          </span>
+        </td>
         <td>${escapeHtml(r.brand)}</td>
         <td>${escapeHtml(r.generic)}</td>
         <td>${escapeHtml(r.form)}</td>
@@ -3951,12 +4091,52 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     updateAutoNote();
   }
 
-  $('rxTableBody').addEventListener('click', (e) => {
-    const btn = e.target.closest('.rx-row-del');
-    if (!btn) return;
-    rxRows.splice(parseInt(btn.dataset.idx, 10), 1);
+  function moveRow(from, to) {
+    if (to < 0 || to >= rxRows.length || from === to) return;
+    const [item] = rxRows.splice(from, 1);
+    rxRows.splice(to, 0, item);
     renderRxTable();
+  }
+
+  $('rxTableBody').addEventListener('click', (e) => {
+    const delBtn = e.target.closest('.rx-row-del');
+    if (delBtn) { rxRows.splice(parseInt(delBtn.dataset.idx, 10), 1); renderRxTable(); return; }
+    const upBtn = e.target.closest('.rx-move-up');
+    if (upBtn) { moveRow(parseInt(upBtn.dataset.idx, 10), parseInt(upBtn.dataset.idx, 10) - 1); return; }
+    const downBtn = e.target.closest('.rx-move-down');
+    if (downBtn) { moveRow(parseInt(downBtn.dataset.idx, 10), parseInt(downBtn.dataset.idx, 10) + 1); return; }
   });
+
+  // ---------- Kéo thả để sắp xếp lại thứ tự thuốc trong toa ----------
+  let dragFromIdx = null;
+  $('rxTableBody').addEventListener('dragstart', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    dragFromIdx = parseInt(tr.dataset.idx, 10);
+    tr.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  $('rxTableBody').addEventListener('dragend', (e) => {
+    const tr = e.target.closest('tr');
+    if (tr) tr.classList.remove('dragging');
+    [...$('rxTableBody').querySelectorAll('tr')].forEach((row) => row.classList.remove('drag-over'));
+  });
+  $('rxTableBody').addEventListener('dragover', (e) => {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    [...$('rxTableBody').querySelectorAll('tr')].forEach((row) => row.classList.remove('drag-over'));
+    tr.classList.add('drag-over');
+  });
+  $('rxTableBody').addEventListener('drop', (e) => {
+    e.preventDefault();
+    const tr = e.target.closest('tr');
+    if (!tr || dragFromIdx === null) return;
+    const toIdx = parseInt(tr.dataset.idx, 10);
+    moveRow(dragFromIdx, toIdx);
+    dragFromIdx = null;
+  });
+
 
   $('rxClearBtn').addEventListener('click', () => {
     if (rxRows.length === 0) return;
@@ -3964,7 +4144,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   });
 
   // ---------- Ngày mặc định ----------
-  $('rxDate').value = new Date().toISOString().slice(0, 10);
+  $('rxDate').value = todayLocalISO();
 
   // ---------- Tuổi tự tính từ ngày sinh ----------
   function calcAge(dobStr) {
@@ -3977,6 +4157,14 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
     if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
     return age >= 0 ? age : null;
   }
+  // ---------- Họ và tên bệnh nhân luôn hiển thị/lưu dạng viết hoa ----------
+  const nameInput = $('rxPatientName');
+  nameInput.addEventListener('input', () => {
+    const start = nameInput.selectionStart, end = nameInput.selectionEnd;
+    nameInput.value = nameInput.value.toUpperCase();
+    try { nameInput.setSelectionRange(start, end); } catch (e) {}
+  });
+
   const dobInput = $('rxPatientDob'), ageHint = $('rxPatientAgeHint');
   dobInput.addEventListener('input', () => {
     const age = calcAge(dobInput.value);
@@ -4009,35 +4197,165 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   noteInput.addEventListener('input', () => {
     if (noteInput.value !== lastAutoNote) lastAutoNote = '__custom__';
   });
+  $('rxNoteDelBtn').addEventListener('click', () => {
+    noteInput.value = '';
+    lastAutoNote = '__custom__';
+    noteInput.focus();
+  });
 
 
   // ---------- Địa chỉ theo đơn vị hành chính mới (34 tỉnh/thành, 3.321 xã/phường — theo danh sách chính thức) ----------
-  const provinceSelect = $('rxProvinceSelect'), wardSelect = $('rxWardSelect'), addrNewBox = $('rxAddressNewBox');
   const PROVINCE_NAMES = Object.keys(WARD_DATA);
-  provinceSelect.innerHTML = '<option value="">-- Chọn Tỉnh/Thành --</option>' +
-    PROVINCE_NAMES.map((p) => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
+  const addrNewBox = $('rxAddressNewBox');
+  const provinceSearch = $('rxProvinceSearch'), provinceSuggest = $('rxProvinceSuggest'), provinceClearBtn = $('rxProvinceClearBtn');
+  const wardSearch = $('rxWardSearch'), wardSuggest = $('rxWardSuggest'), wardClearBtn = $('rxWardClearBtn');
+  let selectedProvince = '', selectedWard = '';
+  let provinceMatches = [], provinceActiveIndex = -1;
+  let wardMatches = [], wardActiveIndex = -1;
+
+  function refreshClearBtn(inputEl, btnEl) { btnEl.classList.toggle('show', !!inputEl.value); }
+
+  function makeSuggestList(boxEl, items, activeIndexRef) {
+    if (items.length === 0) {
+      boxEl.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy kết quả phù hợp.</div>';
+    } else {
+      boxEl.innerHTML = items.map((name, i) => `<div class="rx-suggest-item" data-idx="${i}">${escapeHtml(name)}</div>`).join('');
+    }
+    boxEl.classList.add('show');
+  }
+  function updateActive(boxEl, activeIndex) {
+    const items = [...boxEl.querySelectorAll('.rx-suggest-item')];
+    items.forEach((el, i) => el.classList.toggle('active', i === activeIndex));
+    if (activeIndex >= 0 && items[activeIndex]) items[activeIndex].scrollIntoView({ block: 'nearest' });
+  }
+
+  function renderProvinceSuggest(q) {
+    const nq = normalize(q);
+    provinceActiveIndex = -1;
+    provinceMatches = nq ? PROVINCE_NAMES.filter((p) => normalize(p).includes(nq)) : PROVINCE_NAMES;
+    makeSuggestList(provinceSuggest, provinceMatches, provinceActiveIndex);
+  }
+  function pickProvince(name) {
+    selectedProvince = name;
+    provinceSearch.value = name;
+    provinceSuggest.classList.remove('show');
+    selectedWard = '';
+    wardSearch.value = '';
+    wardSearch.disabled = false;
+    refreshClearBtn(provinceSearch, provinceClearBtn);
+    refreshClearBtn(wardSearch, wardClearBtn);
+  }
+  provinceSearch.addEventListener('focus', () => renderProvinceSuggest(provinceSearch.value));
+  provinceSearch.addEventListener('input', () => {
+    if (provinceSearch.value !== selectedProvince) { selectedProvince = ''; selectedWard = ''; wardSearch.value = ''; wardSearch.disabled = true; }
+    renderProvinceSuggest(provinceSearch.value);
+    refreshClearBtn(provinceSearch, provinceClearBtn);
+    refreshClearBtn(wardSearch, wardClearBtn);
+  });
+  provinceClearBtn.addEventListener('click', () => {
+    provinceSearch.value = '';
+    selectedProvince = '';
+    selectedWard = '';
+    wardSearch.value = '';
+    wardSearch.disabled = true;
+    refreshClearBtn(provinceSearch, provinceClearBtn);
+    refreshClearBtn(wardSearch, wardClearBtn);
+    provinceSuggest.classList.remove('show');
+    provinceSearch.focus();
+  });
+  provinceSearch.addEventListener('keydown', (e) => {
+    if (!provinceSuggest.classList.contains('show')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      provinceActiveIndex = provinceActiveIndex >= provinceMatches.length - 1 ? 0 : provinceActiveIndex + 1;
+      updateActive(provinceSuggest, provinceActiveIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      provinceActiveIndex = provinceActiveIndex <= 0 ? provinceMatches.length - 1 : provinceActiveIndex - 1;
+      updateActive(provinceSuggest, provinceActiveIndex);
+    } else if (e.key === 'Enter') {
+      if (provinceActiveIndex >= 0 && provinceMatches[provinceActiveIndex]) {
+        e.preventDefault();
+        pickProvince(provinceMatches[provinceActiveIndex]);
+      } else {
+        provinceSuggest.classList.remove('show');
+      }
+    } else if (e.key === 'Escape') {
+      provinceSuggest.classList.remove('show');
+    }
+  });
+  provinceSuggest.addEventListener('click', (e) => {
+    const item = e.target.closest('.rx-suggest-item');
+    if (item && provinceMatches[item.dataset.idx]) pickProvince(provinceMatches[item.dataset.idx]);
+  });
+
+  function renderWardSuggest(q) {
+    const nq = normalize(q);
+    wardActiveIndex = -1;
+    const wards = WARD_DATA[selectedProvince] || [];
+    wardMatches = nq ? wards.filter((w) => normalize(w).includes(nq)) : wards;
+    makeSuggestList(wardSuggest, wardMatches, wardActiveIndex);
+  }
+  function pickWard(name) {
+    selectedWard = name;
+    wardSearch.value = name;
+    wardSuggest.classList.remove('show');
+    refreshClearBtn(wardSearch, wardClearBtn);
+  }
+  wardSearch.addEventListener('focus', () => { if (!wardSearch.disabled) renderWardSuggest(wardSearch.value); });
+  wardSearch.addEventListener('input', () => {
+    if (wardSearch.value !== selectedWard) selectedWard = '';
+    renderWardSuggest(wardSearch.value);
+    refreshClearBtn(wardSearch, wardClearBtn);
+  });
+  wardClearBtn.addEventListener('click', () => {
+    wardSearch.value = '';
+    selectedWard = '';
+    refreshClearBtn(wardSearch, wardClearBtn);
+    wardSuggest.classList.remove('show');
+    wardSearch.focus();
+  });
+  wardSearch.addEventListener('keydown', (e) => {
+    if (!wardSuggest.classList.contains('show')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      wardActiveIndex = wardActiveIndex >= wardMatches.length - 1 ? 0 : wardActiveIndex + 1;
+      updateActive(wardSuggest, wardActiveIndex);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      wardActiveIndex = wardActiveIndex <= 0 ? wardMatches.length - 1 : wardActiveIndex - 1;
+      updateActive(wardSuggest, wardActiveIndex);
+    } else if (e.key === 'Enter') {
+      if (wardActiveIndex >= 0 && wardMatches[wardActiveIndex]) {
+        e.preventDefault();
+        pickWard(wardMatches[wardActiveIndex]);
+      } else {
+        wardSuggest.classList.remove('show');
+      }
+    } else if (e.key === 'Escape') {
+      wardSuggest.classList.remove('show');
+    }
+  });
+  wardSuggest.addEventListener('click', (e) => {
+    const item = e.target.closest('.rx-suggest-item');
+    if (item && wardMatches[item.dataset.idx]) pickWard(wardMatches[item.dataset.idx]);
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#rxProvinceSearch') && !e.target.closest('#rxProvinceSuggest')) provinceSuggest.classList.remove('show');
+    if (!e.target.closest('#rxWardSearch') && !e.target.closest('#rxWardSuggest')) wardSuggest.classList.remove('show');
+  });
 
   $('rxAddrNewToggle').addEventListener('change', (e) => {
     addrNewBox.style.display = e.target.checked ? '' : 'none';
-  });
-  provinceSelect.addEventListener('change', () => {
-    const wards = WARD_DATA[provinceSelect.value] || [];
-    if (wards.length === 0) {
-      wardSelect.innerHTML = '<option value="">-- Chọn Xã/Phường --</option>';
-      wardSelect.disabled = true;
-    } else {
-      wardSelect.innerHTML = '<option value="">-- Chọn Xã/Phường --</option>' +
-        wards.map((w) => `<option value="${escapeHtml(w)}">${escapeHtml(w)}</option>`).join('');
-      wardSelect.disabled = false;
-    }
   });
 
   function getFullAddress() {
     const base = $('rxAddress').value.trim();
     const parts = [base];
     if ($('rxAddrNewToggle').checked) {
-      if (wardSelect.value) parts.push(wardSelect.value);
-      if (provinceSelect.value) parts.push(provinceSelect.value);
+      if (selectedWard) parts.push(selectedWard);
+      if (selectedProvince) parts.push(selectedProvince);
     }
     return parts.filter(Boolean).join(', ');
   }
@@ -4071,26 +4389,57 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   }
   const ICD_SEARCH_INDEX = buildIcdSearchIndex();
   const diagInput = $('rxDiagnosis'), icdSuggest = $('rxIcdSuggest'), icdToggle = $('rxIcdToggle');
+  let icdMatches = [], icdActiveIndex = -1;
   function renderIcdSuggest(q) {
     const nq = normalize(q);
+    icdActiveIndex = -1;
     if (!nq) { icdSuggest.classList.remove('show'); return; }
-    const matches = ICD_SEARCH_INDEX.filter((it) => normalize(it.code).includes(nq) || normalize(it.text).includes(nq)).slice(0, 25);
-    if (matches.length === 0) {
+    icdMatches = ICD_SEARCH_INDEX.filter((it) => normalize(it.code).includes(nq) || normalize(it.text).includes(nq)).slice(0, 25);
+    if (icdMatches.length === 0) {
       icdSuggest.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy mã ICD-10 phù hợp.</div>';
     } else {
-      icdSuggest.innerHTML = matches.map((it) =>
-        `<div class="rx-suggest-item" data-code="${escapeHtml(it.code)}" data-text="${escapeHtml(it.text)}"><b>${escapeHtml(it.code)}</b><span class="g">${escapeHtml(it.text)}${it.source ? ' — ' + escapeHtml(it.source) : ''}</span></div>`
+      icdSuggest.innerHTML = icdMatches.map((it, i) =>
+        `<div class="rx-suggest-item" data-idx="${i}"><b>${escapeHtml(it.code)}</b><span class="g">${escapeHtml(it.text)}${it.source ? ' — ' + escapeHtml(it.source) : ''}</span></div>`
       ).join('');
     }
     icdSuggest.classList.add('show');
   }
+  function updateIcdActive() {
+    const items = [...icdSuggest.querySelectorAll('.rx-suggest-item')];
+    items.forEach((el, i) => el.classList.toggle('active', i === icdActiveIndex));
+    if (icdActiveIndex >= 0 && items[icdActiveIndex]) items[icdActiveIndex].scrollIntoView({ block: 'nearest' });
+  }
+  function pickIcd(it) {
+    diagInput.value = `${it.code} - ${it.text}`;
+    icdSuggest.classList.remove('show');
+  }
   diagInput.addEventListener('input', () => { if (icdToggle.checked) renderIcdSuggest(diagInput.value); });
   diagInput.addEventListener('focus', () => { if (icdToggle.checked && diagInput.value) renderIcdSuggest(diagInput.value); });
+  diagInput.addEventListener('keydown', (e) => {
+    if (!icdToggle.checked || !icdSuggest.classList.contains('show')) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      icdActiveIndex = icdActiveIndex >= icdMatches.length - 1 ? 0 : icdActiveIndex + 1;
+      updateIcdActive();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      icdActiveIndex = icdActiveIndex <= 0 ? icdMatches.length - 1 : icdActiveIndex - 1;
+      updateIcdActive();
+    } else if (e.key === 'Enter') {
+      if (icdActiveIndex >= 0 && icdMatches[icdActiveIndex]) {
+        e.preventDefault();
+        pickIcd(icdMatches[icdActiveIndex]);
+      } else {
+        icdSuggest.classList.remove('show');
+      }
+    } else if (e.key === 'Escape') {
+      icdSuggest.classList.remove('show');
+    }
+  });
   icdSuggest.addEventListener('click', (e) => {
     const item = e.target.closest('.rx-suggest-item');
-    if (!item || !item.dataset.code) return;
-    diagInput.value = `${item.dataset.code} - ${item.dataset.text}`;
-    icdSuggest.classList.remove('show');
+    if (!item || !icdMatches[item.dataset.idx]) return;
+    pickIcd(icdMatches[item.dataset.idx]);
   });
   document.addEventListener('click', (e) => { if (!e.target.closest('#rxDiagnosis') && !e.target.closest('#rxIcdSuggest')) icdSuggest.classList.remove('show'); });
   icdToggle.addEventListener('change', () => {
@@ -4099,6 +4448,13 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   });
 
   // ---------- Tạo PDF đơn thuốc (xuất file PDF thật, không dùng cửa sổ in) ----------
+  function todayLocalISO() {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
   function formatVNDate(str) {
     if (!str) return '';
     const [y, m, d] = str.split('-');
@@ -4107,7 +4463,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
   function formatVNDateWords(str) {
     if (!str) return '';
     const [y, m, d] = str.split('-');
-    return `Ngày ${parseInt(d, 10)} tháng ${parseInt(m, 10)} năm ${y}`;
+    return `Ngày ${d} tháng ${m} năm ${y}`;
   }
   function usageLine(r) {
     const parts = [];
@@ -4135,16 +4491,28 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
       const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
       const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
       const logo = currentLogo();
+      const logoSize = currentLogoSize();
       const doctor = doctorSelect.value || '';
       const name = $('rxPatientName').value.trim();
       const age = calcAge(dobInput.value);
       const sex = $('rxPatientSex').value;
       const diag = $('rxDiagnosis').value.trim();
       const address = getFullAddress();
+      const vPulse = $('rxVitalPulse').value.trim();
+      const vBp = $('rxVitalBp').value.trim();
+      const vTemp = $('rxVitalTemp').value.trim();
+      const vResp = $('rxVitalResp').value.trim();
+      const vWeight = $('rxVitalWeight').value.trim();
+      const vitalsParts = [];
+      if (vPulse) vitalsParts.push(`Mạch: ${escapeHtml(vPulse)} lần/phút`);
+      if (vBp) vitalsParts.push(`Huyết áp: ${escapeHtml(vBp)} mmHg`);
+      if (vTemp) vitalsParts.push(`Nhiệt độ: ${escapeHtml(vTemp)}°C`);
+      if (vResp) vitalsParts.push(`Nhịp thở: ${escapeHtml(vResp)} lần/phút`);
+      if (vWeight) vitalsParts.push(`Cân nặng: ${escapeHtml(vWeight)} kg`);
+      const vitalsLine = vitalsParts.map((p) => `<span class="p-vital-item">${p}</span>`).join('');
       const note = $('rxNote').value.trim();
       const dateStr = formatVNDate($('rxDate').value);
-      const dateWords = formatVNDateWords($('rxDate').value) || formatVNDateWords(new Date().toISOString().slice(0, 10));
-      const followupStr = formatVNDate($('rxFollowup').value);
+      const dateWords = formatVNDateWords($('rxDate').value) || formatVNDateWords(todayLocalISO());
 
       const drugsHtml = rxRows.map((r, i) => `
         <div class="p-drug">
@@ -4162,7 +4530,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
         <style>
           #rxPdfRoot * { box-sizing: border-box; }
           #rxPdfRoot .p-header-top { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
-          #rxPdfRoot .p-logo { width: 52px; height: 52px; object-fit: contain; flex: none; }
+          #rxPdfRoot .p-logo { object-fit: contain; flex: none; }
           #rxPdfRoot .p-org-lines { line-height: 1.35; }
           #rxPdfRoot .p-org-lines .l1 { font-weight: 700; font-size: 12px; text-transform: uppercase; }
           #rxPdfRoot .p-org-lines .l2 { font-weight: 700; font-size: 12.5px; text-transform: uppercase; }
@@ -4171,6 +4539,8 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
           #rxPdfRoot .p-section-h { margin: 10px 0 8px; }
           #rxPdfRoot .p-section-h span { font-weight: 700; font-size: 12.5px; padding-bottom: 3px; border-bottom: 1px solid #111; }
           #rxPdfRoot .p-info div { font-size: 12.5px; margin-bottom: 4px; line-height: 1.5; }
+          #rxPdfRoot .p-vitals { display: flex; flex-wrap: wrap; gap: 4px 22px; }
+          #rxPdfRoot .p-vital-item { white-space: nowrap; }
           #rxPdfRoot .p-drugs { margin-top: 4px; }
           #rxPdfRoot .p-drug { margin-bottom: 9px; }
           #rxPdfRoot .p-drug-row { display: flex; justify-content: space-between; gap: 8px; }
@@ -4185,7 +4555,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
           #rxPdfRoot .p-sign .p-sign-name { font-weight: 700; font-size: 12.5px; }
         </style>
         <div class="p-header-top">
-          ${logo ? `<img class="p-logo" src="${logo}">` : ''}
+          ${logo ? `<img class="p-logo" style="width:${logoSize}px;height:${logoSize}px;" src="${logo}">` : ''}
           <div class="p-org-lines">
             <div class="l1">${escapeHtml(org1)}</div>
             <div class="l2">${escapeHtml(org2)}</div>
@@ -4197,13 +4567,13 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
         <div class="p-info">
           <div><b>Họ và tên:</b> ${escapeHtml(name)} &nbsp;&nbsp; <b>Tuổi:</b> ${age !== null ? age : ''} &nbsp;&nbsp; <b>Giới tính:</b> ${escapeHtml(sex)}</div>
           ${address ? `<div><b>Địa chỉ:</b> ${escapeHtml(address)}</div>` : ''}
+          ${vitalsLine ? `<div class="p-vitals">${vitalsLine}</div>` : ''}
           ${diag ? `<div><b>Chẩn đoán:</b> ${escapeHtml(diag)}</div>` : ''}
         </div>
 
         <div class="p-section-h"><span>II. THÔNG TIN ĐƠN THUỐC:</span></div>
         <div class="p-drugs">${drugsHtml}</div>
 
-        ${followupStr ? `<div class="p-info"><div><b>Hẹn tái khám:</b> ${followupStr}</div></div>` : ''}
         ${note ? `<div class="p-note">Lời dặn của bác sĩ: ${escapeHtml(note)}</div>` : ''}
 
         <div class="p-footer">
@@ -4239,7 +4609,7 @@ create policy "public insert" on thuoc for insert with check (true);</pre>
       }
 
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
-      const fileDate = $('rxDate').value || new Date().toISOString().slice(0, 10);
+      const fileDate = $('rxDate').value || todayLocalISO();
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
     } catch (err) {
       alert('Có lỗi khi tạo PDF: ' + err.message);
