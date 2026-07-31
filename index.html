@@ -732,6 +732,7 @@
     font-size: 13.5px;
     font-weight: 600;
     text-align: left;
+    text-decoration: none;
     cursor: pointer;
     font-family: inherit;
   }
@@ -965,7 +966,7 @@
 }
 .rx-toast-inline.show { display: block; }
 .rx-logo-preview { max-height: 56px; max-width: 120px; border-radius: 6px; background: #fff; padding: 4px; }
-.rx-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: nowrap; margin-bottom: 4px; }
+.rx-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
 .rx-label-row label { margin-bottom: 0 !important; white-space: nowrap; }
 .rx-inline-check { font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 10px; cursor: pointer; white-space: nowrap; }
 .rx-inline-check input { margin-right: 4px; vertical-align: middle; }
@@ -998,16 +999,26 @@
 
 .rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
 .rx-col-wide { grid-column: span 2; }
+.rx-drugname-row { display: grid; grid-template-columns: 1.4fr 1.4fr 0.8fr; gap: 8px; margin-bottom: 10px; }
+@media (max-width: 700px) { .rx-drugname-row { grid-template-columns: 1fr; } }
+.rx-dosing-row { display: grid; grid-template-columns: 1.8fr repeat(6, 0.65fr) 1fr; gap: 6px; align-items: end; margin-bottom: 4px; }
+.rx-dosing-row .field label { font-size: 11px; }
+.rx-dosing-row .field input { padding: 6px 7px; font-size: 12px; }
+.rx-add-btn-field .rx-add-btn { width: 100%; padding: 7px 8px; font-size: 12px; }
+@media (max-width: 900px) { .rx-dosing-row { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 560px) { .rx-dosing-row { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 780px) {
   .rx-form-grid { grid-template-columns: repeat(2, 1fr); }
   .rx-col-wide { grid-column: span 2; }
 }
-.rx-form-grid .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
-.rx-form-grid .field input, .rx-settings-grid .field input, .rx-cloud-grid .field input, .rx-patient-grid .field input, .rx-patient-grid .field select {
-  width: 100%; background: var(--bg); border: 1.5px solid var(--border); border-radius: 9px;
+.rx-form-grid .field label, .rx-drugname-row .field label, .rx-dosing-row .field label, .rx-patient-grid .field label { display: block; font-size: 12px; color: #ffffff; margin-bottom: 4px; }
+.rx-form-grid .field input, .rx-settings-grid .field input, .rx-cloud-grid .field input, .rx-patient-grid .field input, .rx-patient-grid .field select,
+.rx-drugname-row .field input, .rx-dosing-row .field input {
+  width: 100%; background: var(--bg); border: 1.5px solid #ffffff; border-radius: 9px;
   padding: 9px 10px; color: var(--text); font-size: 14px; font-family: inherit;
 }
-.rx-form-grid .field input:focus, .rx-settings-grid .field input:focus, .rx-cloud-grid .field input:focus, .rx-patient-grid .field input:focus, .rx-patient-grid .field select:focus {
+.rx-form-grid .field input:focus, .rx-settings-grid .field input:focus, .rx-cloud-grid .field input:focus, .rx-patient-grid .field input:focus, .rx-patient-grid .field select:focus,
+.rx-drugname-row .field input:focus, .rx-dosing-row .field input:focus {
   outline: none; border-color: var(--blue);
 }
 .rx-autocomplete-wrap { position: relative; }
@@ -1039,12 +1050,17 @@
 
 .rx-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
 @media (max-width: 700px) { .rx-patient-grid { grid-template-columns: 1fr 1fr; } }
+.rx-col-full { grid-column: 1 / -1; }
+.rx-vitals-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+@media (max-width: 900px) { .rx-vitals-row { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .rx-vitals-row { grid-template-columns: repeat(2, 1fr); } }
 .rx-patient-grid .field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
 
 .rx-table-wrap { overflow-x: auto; }
 .rx-table { width: 100%; border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
-.rx-table th, .rx-table td { padding: 6px 5px; border-bottom: 1px solid var(--border); text-align: left; overflow-wrap: break-word; }
-.rx-table th { color: var(--muted); font-weight: 700; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
+.rx-truncate-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; cursor: help; }
+.rx-table th, .rx-table td { padding: 6px 5px; border-bottom: 1px solid #ffffff; text-align: left; overflow-wrap: break-word; }
+.rx-table th { color: #ffffff; font-weight: 700; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
 .rx-table th:first-child, .rx-table td:first-child.rx-idx-cell { width: 64px; white-space: nowrap; }
 .rx-idx-cell { display: flex; align-items: center; gap: 3px; border-bottom: 1px solid var(--border); padding: 6px 5px; }
 .rx-table th:nth-child(6), .rx-table td:nth-child(6),
@@ -1358,7 +1374,7 @@
               <option value="Nữ">Nữ</option>
             </select>
           </div>
-          <div class="field rx-col-wide">
+          <div class="field rx-col-full">
             <div class="rx-label-row">
               <label>Địa chỉ</label>
               <label class="rx-inline-check"><input type="checkbox" id="rxAddrNewToggle"> Nhập địa chỉ theo đơn vị hành chính mới</label>
@@ -1381,7 +1397,7 @@
               </div>
             </div>
           </div>
-          <div class="field rx-col-wide">
+          <div class="field rx-col-full">
             <div class="rx-label-row">
               <label>Chẩn đoán</label>
               <label class="rx-inline-check"><input type="checkbox" id="rxIcdToggle"> Nhập theo ICD-10</label>
@@ -1391,25 +1407,27 @@
               <div class="rx-suggest" id="rxIcdSuggest"></div>
             </div>
           </div>
-          <div class="field">
-            <label>Mạch (lần/phút)</label>
-            <input type="number" id="rxVitalPulse" min="0" step="1" placeholder="VD: 80">
-          </div>
-          <div class="field">
-            <label>Huyết áp (mmHg)</label>
-            <input type="text" id="rxVitalBp" placeholder="VD: 120/80">
-          </div>
-          <div class="field">
-            <label>Nhiệt độ (°C)</label>
-            <input type="number" id="rxVitalTemp" min="30" max="45" step="0.1" placeholder="VD: 37">
-          </div>
-          <div class="field">
-            <label>Nhịp thở (lần/phút)</label>
-            <input type="number" id="rxVitalResp" min="0" step="1" placeholder="VD: 18">
-          </div>
-          <div class="field">
-            <label>Cân nặng (kg)</label>
-            <input type="number" id="rxVitalWeight" min="0" step="0.1" placeholder="VD: 60">
+          <div class="rx-vitals-row rx-col-full">
+            <div class="field">
+              <label>Mạch (lần/phút)</label>
+              <input type="number" id="rxVitalPulse" min="0" step="1" placeholder="VD: 80">
+            </div>
+            <div class="field">
+              <label>Huyết áp (mmHg)</label>
+              <input type="text" id="rxVitalBp" placeholder="VD: 120/80">
+            </div>
+            <div class="field">
+              <label>Nhiệt độ (°C)</label>
+              <input type="number" id="rxVitalTemp" min="30" max="45" step="0.1" placeholder="VD: 37">
+            </div>
+            <div class="field">
+              <label>Nhịp thở (lần/phút)</label>
+              <input type="number" id="rxVitalResp" min="0" step="1" placeholder="VD: 18">
+            </div>
+            <div class="field">
+              <label>Cân nặng (kg)</label>
+              <input type="number" id="rxVitalWeight" min="0" step="0.1" placeholder="VD: 60">
+            </div>
           </div>
           <input type="hidden" id="rxDate">
         </div>
@@ -1465,15 +1483,15 @@
         <div id="rxDrugFormArea">
           <div class="rx-sub">Tìm thuốc theo tên thương mại hoặc tên gốc/hoạt chất — nhập liều dùng — nhấn Enter ở ô cuối để thêm vào toa.</div>
 
-          <div class="rx-form-grid">
-            <div class="field rx-col-wide">
+          <div class="rx-drugname-row">
+            <div class="field">
               <label>Tên thương mại</label>
               <div class="rx-autocomplete-wrap">
                 <input type="text" id="rxFieldBrand" placeholder="Gõ tên thương mại hoặc tên gốc để tìm..." autocomplete="off">
                 <div class="rx-suggest" id="rxSuggestBox"></div>
               </div>
             </div>
-            <div class="field rx-col-wide">
+            <div class="field">
               <label>Tên gốc, Hoạt chất</label>
               <input type="text" id="rxFieldGeneric" placeholder="Tự điền khi chọn thuốc, có thể sửa">
             </div>
@@ -1481,7 +1499,10 @@
               <label>Dạng thuốc</label>
               <input type="text" id="rxFieldForm" placeholder="Viên, ống, gói...">
             </div>
-            <div class="field rx-col-wide">
+          </div>
+
+          <div class="rx-dosing-row">
+            <div class="field">
               <label>Cách dùng</label>
               <input type="text" id="rxFieldUsage" placeholder="Uống trước ăn, uống sau ăn...">
             </div>
@@ -1507,10 +1528,11 @@
             </div>
             <div class="field">
               <label>Số lượng</label>
-              <div class="rx-qty-add-row">
-                <input type="number" id="rxFieldQty" min="0" step="1" placeholder="Tự tính">
-                <button class="rx-btn rx-add-btn" id="rxAddBtn" title="Thêm thuốc vào toa (Enter)">+ Thêm (Enter)</button>
-              </div>
+              <input type="number" id="rxFieldQty" min="0" step="1" placeholder="Tự tính">
+            </div>
+            <div class="field rx-add-btn-field">
+              <label>&nbsp;</label>
+              <button class="rx-btn rx-add-btn" id="rxAddBtn" title="Thêm thuốc vào toa (Enter)">+ Thêm (Enter)</button>
             </div>
           </div>
           <div class="rx-toast-inline" id="rxDupWarning">⚠ Thuốc này đã có trong toa, không thể thêm trùng.</div>
@@ -3218,10 +3240,12 @@
 
   // Phím tắt "/" để focus ô tìm kiếm
   document.addEventListener('keydown', (e) => {
-    if (e.key === '/' && document.activeElement !== input) {
-      e.preventDefault();
-      input.focus();
-    }
+    if (e.key !== '/') return;
+    const ae = document.activeElement;
+    const isTyping = ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable);
+    if (isTyping || ae === input) return;
+    e.preventDefault();
+    input.focus();
   });
 
   input.focus();
@@ -4076,8 +4100,8 @@
             <button type="button" class="rx-move-down" data-idx="${i}" title="Xuống" ${i === rxRows.length - 1 ? 'disabled' : ''}>▼</button>
           </span>
         </td>
-        <td>${escapeHtml(r.brand)}</td>
-        <td>${escapeHtml(r.generic)}</td>
+        <td class="rx-truncate-cell" title="${escapeHtml(r.brand)}">${escapeHtml(r.brand)}</td>
+        <td class="rx-truncate-cell" title="${escapeHtml(r.generic)}">${escapeHtml(r.generic)}</td>
         <td>${escapeHtml(r.form)}</td>
         <td>${escapeHtml(r.usage)}</td>
         <td>${escapeHtml(r.days)}</td>
