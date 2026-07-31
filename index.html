@@ -7,26 +7,26 @@
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230066FF'/%3E%3Crect x='28' y='14' width='8' height='36' rx='3' fill='white'/%3E%3Crect x='14' y='28' width='36' height='8' rx='3' fill='white'/%3E%3C/svg%3E">
 <style>
   :root {
-    --blue: #5fa8d3;
-    --blue-light: #16293a;
-    --blue-border: #2a4a63;
-    --green: #6fcdc4;
-    --green-light: #142826;
-    --green-border: #2a5f5a;
-    --red: #ef5350;
+    --blue: #1c6fd1;
+    --blue-light: #e8f1fc;
+    --blue-border: #b7d3f2;
+    --green: #1f9c8f;
+    --green-light: #e6f7f5;
+    --green-border: #b6e6df;
+    --red: #d8433f;
     --red-dark: #c23a37;
-    --red-light: #3a1a1a;
-    --red-border: #5f2a2a;
-    --amber: #fbbf24;
-    --amber-dark: #d9a017;
-    --amber-light: #3a2e0f;
-    --border: #2d3748;
-    --text: #e5e7eb;
-    --muted: #94a3b8;
-    --bg: #0b0f17;
-    --surface: #151b26;
-    --surface-2: #1c2431;
-    --field: #10151f;
+    --red-light: #fbe9e8;
+    --red-border: #f3c3c1;
+    --amber: #b8860b;
+    --amber-dark: #9c7209;
+    --amber-light: #fbf1da;
+    --border: #1a1a1a;
+    --text: #111111;
+    --muted: #5a5a5a;
+    --bg: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f2f2f2;
+    --field: #ffffff;
   }
   * { box-sizing: border-box; }
   body {
@@ -383,7 +383,7 @@
     font-size: 13px;
     cursor: pointer;
     margin-bottom: 10px;
-  }#page-icd .back-btn:hover { background: #2b3646; }#page-icd /* --- Mã cụ thể (mã lá) --- */
+  }#page-icd .back-btn:hover { background: var(--surface-2); }#page-icd /* --- Mã cụ thể (mã lá) --- */
   .card-top {
     display: flex;
     justify-content: space-between;
@@ -404,7 +404,7 @@
     font-size: 12px;
     cursor: pointer;
     color: var(--muted);
-  }#page-icd .copy-btn:hover { background: #2b3646; }#page-icd .result-row {
+  }#page-icd .copy-btn:hover { background: var(--surface-2); }#page-icd .result-row {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
@@ -663,7 +663,7 @@
     font-size: 12px;
     cursor: pointer;
   }
-  #ytLoadMoreBtn:hover { background: #2b3646; }
+  #ytLoadMoreBtn:hover { background: var(--surface-2); }
   #ytLoadMoreBtn:disabled { opacity: 0.6; cursor: default; }
 
   .marquee-container { position: relative; overflow: hidden; }
@@ -719,7 +719,7 @@
     text-decoration: none;
     margin-bottom: 12px;
   }
-  .sidebar .home-btn:hover { background: #1c3a52; }
+  .sidebar .home-btn:hover { background: var(--blue-border); }
   .nav-item {
     display: flex;
     align-items: center;
@@ -923,7 +923,7 @@
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text);
   border-radius: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
 }
-.rx-settings-btn:hover { background: #2b3646; }
+.rx-settings-btn:hover { background: var(--surface-2); }
 .rx-settings { display: none; margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 14px; }
 .rx-settings.show { display: block; }
 .rx-settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
@@ -967,8 +967,8 @@
 .rx-toast-inline.show { display: block; }
 .rx-logo-preview { max-height: 56px; max-width: 120px; border-radius: 6px; background: #fff; padding: 4px; }
 .rx-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
-.rx-label-row label { margin-bottom: 0 !important; white-space: nowrap; }
-.rx-inline-check { font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 10px; cursor: pointer; white-space: nowrap; }
+.rx-label-row label { margin-bottom: 0 !important; }
+.rx-inline-check { font-weight: 400; font-size: 11.5px; color: var(--muted); margin-left: 10px; cursor: pointer; }
 .rx-inline-check input { margin-right: 4px; vertical-align: middle; }
 .rx-address-new { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .rx-uppercase-input { text-transform: uppercase; }
@@ -1011,10 +1011,10 @@
   .rx-form-grid { grid-template-columns: repeat(2, 1fr); }
   .rx-col-wide { grid-column: span 2; }
 }
-.rx-form-grid .field label, .rx-drugname-row .field label, .rx-dosing-row .field label, .rx-patient-grid .field label { display: block; font-size: 12px; color: #ffffff; margin-bottom: 4px; }
+.rx-form-grid .field label, .rx-drugname-row .field label, .rx-dosing-row .field label, .rx-patient-grid .field label { display: block; font-size: 12px; color: #000000; margin-bottom: 4px; }
 .rx-form-grid .field input, .rx-settings-grid .field input, .rx-cloud-grid .field input, .rx-patient-grid .field input, .rx-patient-grid .field select,
 .rx-drugname-row .field input, .rx-dosing-row .field input {
-  width: 100%; background: var(--bg); border: 1.5px solid #ffffff; border-radius: 9px;
+  width: 100%; background: var(--bg); border: 1.5px solid #000000; border-radius: 9px;
   padding: 9px 10px; color: var(--text); font-size: 14px; font-family: inherit;
 }
 .rx-form-grid .field input:focus, .rx-settings-grid .field input:focus, .rx-cloud-grid .field input:focus, .rx-patient-grid .field input:focus, .rx-patient-grid .field select:focus,
@@ -1022,6 +1022,7 @@
   outline: none; border-color: var(--blue);
 }
 .rx-autocomplete-wrap { position: relative; }
+#rxFieldGeneric[readonly] { opacity: .65; cursor: default; }
 .rx-suggest {
   display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 30;
   background: var(--surface-2); border: 1px solid var(--border); border-radius: 9px;
@@ -1031,8 +1032,8 @@
 .rx-suggest-item { padding: 8px 12px; cursor: pointer; font-size: 13px; border-bottom: 1px solid var(--border); }
 .rx-suggest-item:last-child { border-bottom: none; }
 .rx-suggest-item:hover { background: var(--blue-light); }
-.rx-suggest-item.active { background: var(--blue); color: #08202f; }
-.rx-suggest-item.active b, .rx-suggest-item.active .g { color: #08202f; }
+.rx-suggest-item.active { background: var(--blue); color: #ffffff; }
+.rx-suggest-item.active b, .rx-suggest-item.active .g { color: #ffffff; }
 .rx-suggest-item b { color: var(--blue); }
 .rx-suggest-item .g { color: var(--muted); font-size: 11.5px; display: block; margin-top: 1px; }
 .rx-suggest-empty { padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
@@ -1046,10 +1047,11 @@
 .rx-qty-add-row { display: flex; gap: 6px; }
 .rx-qty-add-row input { flex: 1; min-width: 0; }
 .rx-btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
-.rx-btn-print { background: var(--blue); color: #08202f; }
+.rx-btn-print { background: var(--blue); color: #ffffff; }
 
 .rx-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
 @media (max-width: 700px) { .rx-patient-grid { grid-template-columns: 1fr 1fr; } }
+.rx-patient-grid .field, .rx-form-grid .field, .rx-drugname-row .field, .rx-dosing-row .field, .rx-vitals-row .field { min-width: 0; }
 .rx-col-full { grid-column: 1 / -1; }
 .rx-vitals-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 @media (max-width: 900px) { .rx-vitals-row { grid-template-columns: repeat(3, 1fr); } }
@@ -1059,8 +1061,8 @@
 .rx-table-wrap { overflow-x: auto; }
 .rx-table { width: 100%; border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
 .rx-truncate-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; cursor: help; }
-.rx-table th, .rx-table td { padding: 6px 5px; border-bottom: 1px solid #ffffff; text-align: left; overflow-wrap: break-word; }
-.rx-table th { color: #ffffff; font-weight: 700; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
+.rx-table th, .rx-table td { padding: 6px 5px; border-bottom: 1px solid #000000; text-align: left; overflow-wrap: break-word; }
+.rx-table th { color: #000000; font-weight: 700; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
 .rx-table th:first-child, .rx-table td:first-child.rx-idx-cell { width: 64px; white-space: nowrap; }
 .rx-idx-cell { display: flex; align-items: center; gap: 3px; border-bottom: 1px solid var(--border); padding: 6px 5px; }
 .rx-table th:nth-child(6), .rx-table td:nth-child(6),
@@ -3845,11 +3847,11 @@
     formInput.value = d.form || '';
     suggestBox.classList.remove('show');
     autoFillUsage(d.brand, d.generic);
-    $('rxFieldUsage').focus();
+    $('rxFieldDays').focus();
+    $('rxFieldDays').select();
   }
 
   // Nếu người dùng gõ tay tên thuốc (không chọn từ gợi ý) thì vẫn tự điền cách dùng khi rời ô
-  genericInput.addEventListener('blur', () => autoFillUsage(brandInput.value, genericInput.value));
   brandInput.addEventListener('blur', () => {
     if (!suggestBox.classList.contains('show')) autoFillUsage(brandInput.value, genericInput.value);
   });
@@ -3864,7 +3866,24 @@
   });
 
   // ---------- Enter chuyển ô, tự tính SL, ô cuối Enter -> thêm dòng ----------
-  const FIELD_ORDER = ['rxFieldBrand', 'rxFieldGeneric', 'rxFieldForm', 'rxFieldUsage', 'rxFieldDays', 'rxFieldMorning', 'rxFieldNoon', 'rxFieldAfternoon', 'rxFieldEvening', 'rxFieldQty'];
+  // "Tên gốc, Hoạt chất" chỉ để hiển thị/đối chiếu tự động, không cho gõ tay
+  genericInput.setAttribute('readonly', 'readonly');
+  genericInput.setAttribute('tabindex', '-1');
+  genericInput.placeholder = 'Tự động điền và đối chiếu khi chọn thuốc';
+
+  // Bấm Enter ở "Tên thương mại" (khi không chọn gợi ý) sẽ nhảy thẳng tới "Ngày", bỏ qua Tên gốc/Dạng thuốc/Cách dùng
+  const NEXT_FIELD = {
+    rxFieldBrand: 'rxFieldDays',
+    rxFieldForm: 'rxFieldUsage',
+    rxFieldUsage: 'rxFieldDays',
+    rxFieldDays: 'rxFieldMorning',
+    rxFieldMorning: 'rxFieldNoon',
+    rxFieldNoon: 'rxFieldAfternoon',
+    rxFieldAfternoon: 'rxFieldEvening',
+    rxFieldEvening: 'rxFieldQty',
+  };
+  const ENTER_NAV_FIELDS = ['rxFieldBrand', 'rxFieldForm', 'rxFieldUsage', 'rxFieldDays', 'rxFieldMorning', 'rxFieldNoon', 'rxFieldAfternoon', 'rxFieldEvening', 'rxFieldQty'];
+  const CLEAR_ON_NEW_ROW_FIELDS = ['rxFieldBrand', 'rxFieldGeneric', 'rxFieldForm', 'rxFieldUsage', 'rxFieldDays', 'rxFieldMorning', 'rxFieldNoon', 'rxFieldAfternoon', 'rxFieldEvening', 'rxFieldQty'];
 
   function recomputeQty() {
     const days = parseFloat($('rxFieldDays').value) || 0;
@@ -3879,7 +3898,7 @@
     $(id).addEventListener('input', recomputeQty);
   });
 
-  FIELD_ORDER.forEach((id, idx) => {
+  ENTER_NAV_FIELDS.forEach((id) => {
     $(id).addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       e.preventDefault();
@@ -3890,9 +3909,10 @@
         }
         suggestBox.classList.remove('show');
       }
-      if (idx < FIELD_ORDER.length - 1) {
-        $(FIELD_ORDER[idx + 1]).focus();
-        $(FIELD_ORDER[idx + 1]).select && $(FIELD_ORDER[idx + 1]).select();
+      const nextId = NEXT_FIELD[id];
+      if (nextId) {
+        $(nextId).focus();
+        $(nextId).select && $(nextId).select();
       } else {
         addRxRow();
       }
@@ -3920,7 +3940,7 @@
   }
 
   function clearRxForm() {
-    FIELD_ORDER.forEach((id) => { $(id).value = ''; });
+    CLEAR_ON_NEW_ROW_FIELDS.forEach((id) => { $(id).value = ''; });
     brandInput.focus();
   }
 
@@ -4469,6 +4489,35 @@
   icdToggle.addEventListener('change', () => {
     diagInput.placeholder = icdToggle.checked ? 'Gõ mã hoặc tên bệnh ICD-10, VD: I10, tang huyet ap...' : 'VD: Tăng huyết áp (I10)';
     icdSuggest.classList.remove('show');
+  });
+
+  // ---------- Enter chuyển ô lần lượt trong phần Thông tin bệnh nhân ----------
+  function patientFieldOrder() {
+    const order = ['rxPatientName', 'rxPatientDob', 'rxPatientSex', 'rxAddress'];
+    if ($('rxAddrNewToggle').checked) order.push('rxProvinceSearch', 'rxWardSearch');
+    order.push('rxDiagnosis', 'rxVitalPulse', 'rxVitalBp', 'rxVitalTemp', 'rxVitalResp', 'rxVitalWeight');
+    return order;
+  }
+  function focusAndSelect(el) {
+    if (!el) return;
+    el.focus();
+    if (el.select) el.select();
+  }
+  patientFieldOrder().forEach((id) => {
+    const el = $(id);
+    if (!el) return;
+    el.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.defaultPrevented) return;
+      const order = patientFieldOrder();
+      const idx = order.indexOf(id);
+      if (idx === -1) return;
+      e.preventDefault();
+      if (idx < order.length - 1) {
+        focusAndSelect($(order[idx + 1]));
+      } else {
+        focusAndSelect(brandInput);
+      }
+    });
   });
 
   // ---------- Tạo PDF đơn thuốc (xuất file PDF thật, không dùng cửa sổ in) ----------
