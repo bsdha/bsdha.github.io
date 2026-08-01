@@ -2897,7 +2897,7 @@
       </div>`;
   }
 
-  function renderListItem(item) {
+  function renderListItem(item, q) {
     if (item._type === 'yhct') {
       return renderYhctListItem(item);
     }
@@ -2905,8 +2905,18 @@
     const hasChildren = item.children && item.children.length > 0;
 
     if (hasChildren) {
-      // Mã nhóm -> chỉ hiện khối gợi ý mã cụ thể hơn
-      const childrenHtml = item.children
+      // Mã nhóm -> chỉ hiện khối gợi ý mã cụ thể hơn.
+      // Nếu có từ khóa tìm kiếm, chỉ hiện các mã con thực sự khớp với từ khóa đó
+      // (tránh liệt kê tất cả mã con trong nhóm dù không liên quan, ví dụ tìm "thiếu máu cơ tim"
+      // thì không nên hiện "Nhồi máu cơ tim cũ", "Phình thành tim"... nếu tên các mã đó không chứa từ khóa).
+      let childrenToShow = item.children;
+      if (q) {
+        const filtered = item.children.filter(
+          (c) => normalize(c.name).includes(q) || normalize(c.code).includes(q)
+        );
+        if (filtered.length > 0) childrenToShow = filtered;
+      }
+      const childrenHtml = childrenToShow
         .map(
           (c) =>
             `<div class="child-row">
@@ -2921,7 +2931,7 @@
       return `
         <div class="card">
           <details class="children-block" open>
-            <summary>Gợi ý mã cụ thể hơn có thể dùng làm bệnh chính (${item.children.length})</summary>
+            <summary>Gợi ý mã cụ thể hơn có thể dùng làm bệnh chính (${childrenToShow.length})</summary>
             <div class="child-list">${childrenHtml}</div>
           </details>
         </div>`;
@@ -3044,9 +3054,12 @@
     return 0;
   }
 
+  let lastQueryNorm = '';
+
   function doSearch(query) {
     isAiResultsMode = false;
     const q = normalize(query.trim());
+    lastQueryNorm = q;
     if (!q) {
       currentMatches = [];
       resultsEl.innerHTML = '';
@@ -3087,14 +3100,15 @@
       return;
     }
 
-    showList(dedupedMatches);
+    showList(dedupedMatches, q);
   }
 
-  function showList(matches) {
+  function showList(matches, q) {
+    const query = q !== undefined ? q : lastQueryNorm;
     // Giới hạn hiển thị để không lag khi query quá ngắn / trùng nhiều
     const MAX_SHOW = 200;
     const shown = matches.slice(0, MAX_SHOW);
-    resultsEl.innerHTML = shown.map((row) => renderListItem(row.item)).join('');
+    resultsEl.innerHTML = shown.map((row) => renderListItem(row.item, query)).join('');
     if (matches.length > MAX_SHOW) {
       resultsEl.insertAdjacentHTML(
         'beforeend',
