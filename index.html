@@ -3059,7 +3059,10 @@
     const text = qi.hasDia ? textAccent : textNorm;
     const qStr = qi.hasDia ? qi.accent : qi.norm;
     if (!qStr) return false;
-    if (text.includes(qStr)) return true;
+    // Luôn bắt buộc khớp theo đúng ranh giới từ (không tính là khớp nếu từ khóa chỉ nằm
+    // lọt thỏm bên trong một từ khác, ví dụ "rắn" không được tính là khớp bên trong "trắng",
+    // "ong" không được tính là khớp bên trong "thương"/"phong"...), áp dụng cho cả tìm có dấu và không dấu.
+    if (hasWordBoundaryMatch(text, qStr)) return true;
     if (qi.words.length > 1) return qi.words.every((w) => hasWordBoundaryMatch(text, w));
     return false;
   }
@@ -3080,14 +3083,10 @@
       s += Math.round((qStr.length / Math.max(text.length, 1)) * 100);
       return s;
     }
-    if (text.includes(qStr)) {
-      // Chỉ khớp một phần rời rạc (không theo ranh giới từ): tên càng ngắn thì càng liên quan hơn
-      return Math.max(300, 550 - text.length);
-    }
     if (code.includes(qi.norm)) return 250;
     if (!qi.hasDia && row.enNorm && row.enNorm.includes(qi.norm)) return 100;
     // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
-    // (không cần liền nhau / đúng thứ tự) thì vẫn coi là có liên quan, chấm điểm thấp hơn
+    // (không cần liền nhau / đúng thứ tự, nhưng vẫn phải đúng ranh giới từng từ) thì vẫn coi là liên quan
     if (qi.words.length > 1) {
       const allWordsPresent = qi.words.every((w) => hasWordBoundaryMatch(text, w));
       if (allWordsPresent) {
