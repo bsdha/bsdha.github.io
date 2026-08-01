@@ -2848,6 +2848,7 @@
       item: { ...item, _type: 'icd' },
       codeNorm: normalize(item.code),
       nameNorm: normalize(item.name),
+      nameAccent: (item.name || '').toLowerCase(),
       enNorm: normalize(item.en),
     })),
     ...YHCT_DATA.map((item) => ({
@@ -2855,6 +2856,7 @@
       codeNorm: normalize(item.code),
       // với mã YHCT, tìm theo cả tên YHCT, tên bệnh hiện đại và mã ICD-10 tương ứng
       nameNorm: normalize(item.name) + ' ' + normalize(item.modernName) + ' ' + normalize(item.icd10),
+      nameAccent: ((item.name || '') + ' ' + (item.modernName || '') + ' ' + (item.icd10 || '')).toLowerCase(),
       enNorm: '',
     })),
   ];
@@ -2897,7 +2899,7 @@
       </div>`;
   }
 
-  function renderListItem(item, q) {
+  function renderListItem(item, qi) {
     if (item._type === 'yhct') {
       return renderYhctListItem(item);
     }
@@ -2910,13 +2912,12 @@
       // (tránh liệt kê tất cả mã con trong nhóm dù không liên quan, ví dụ tìm "thiếu máu cơ tim"
       // thì không nên hiện "Nhồi máu cơ tim cũ", "Phình thành tim"... nếu tên các mã đó không chứa từ khóa).
       let childrenToShow = item.children;
-      if (q) {
-        const qWordsLocal = q.split(/\s+/).filter((w) => w.length > 0);
+      if (qi && (qi.norm || qi.accent)) {
         const filtered = item.children.filter((c) => {
-          const cName = normalize(c.name);
-          if (cName.includes(q) || normalize(c.code).includes(q)) return true;
-          if (qWordsLocal.length > 1) return qWordsLocal.every((w) => hasWordBoundaryMatch(cName, w));
-          return false;
+          const cNameNorm = normalize(c.name);
+          const cNameAccent = (c.name || '').toLowerCase();
+          if (normalize(c.code).includes(qi.norm)) return true;
+          return textMatchesQuery(cNameNorm, cNameAccent, qi);
         });
         if (filtered.length > 0) childrenToShow = filtered;
       }
@@ -3033,50 +3034,76 @@
   function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
+  // So khớp theo ranh giới từ, dùng \p{L}/\p{N} (Unicode) để nhận đúng cả ký tự có dấu tiếng Việt
   function hasWordBoundaryMatch(haystack, token) {
-    const re = new RegExp('(^|[^a-z0-9])' + escapeRegex(token) + '([^a-z0-9]|$)');
+    if (!token) return false;
+    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '($|[^\\p{L}\\p{N}])', 'iu');
     return re.test(haystack);
   }
-  function scoreMatch(row, q, qWords) {
-    const name = row.nameNorm;
+
+  // Phân tích câu truy vấn: phát hiện người dùng có gõ dấu tiếng Việt hay không.
+  // Nếu CÓ gõ dấu, ta bắt buộc so khớp theo đúng bản có dấu để tránh nhầm giữa các từ
+  // khác nghĩa nhưng trùng nhau khi bỏ dấu (VD: "rắn" / "rặn" / "răn" / "rán" / "rạn" đều
+  // thành "ran" nếu bỏ dấu — nếu không phân biệt sẽ ra hàng trăm kết quả không liên quan).
+  function buildQueryInfo(rawQuery) {
+    const trimmed = (rawQuery || '').trim();
+    const norm = normalize(trimmed);
+    const accent = trimmed.toLowerCase();
+    const hasDia = norm !== accent;
+    const baseForWords = hasDia ? accent : norm;
+    const words = baseForWords.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
+    return { raw: trimmed, norm, accent, hasDia, words };
+  }
+
+  function textMatchesQuery(textNorm, textAccent, qi) {
+    const text = qi.hasDia ? textAccent : textNorm;
+    const qStr = qi.hasDia ? qi.accent : qi.norm;
+    if (!qStr) return false;
+    if (text.includes(qStr)) return true;
+    if (qi.words.length > 1) return qi.words.every((w) => hasWordBoundaryMatch(text, w));
+    return false;
+  }
+
+  function scoreMatch(row, qi) {
     const code = row.codeNorm;
-    if (code === q) return 1000;
-    if (name === q) return 950;
-    if (code.startsWith(q)) return 850;
-    const wordBoundaryRe = new RegExp('(^|[^a-z0-9])' + escapeRegex(q) + '([^a-z0-9]|$)');
-    if (wordBoundaryRe.test(name)) {
+    const text = qi.hasDia ? row.nameAccent : row.nameNorm;
+    const qStr = qi.hasDia ? qi.accent : qi.norm;
+    if (code === qi.norm) return 1000;
+    if (text === qStr) return 950;
+    if (qi.norm && code.startsWith(qi.norm)) return 850;
+    if (hasWordBoundaryMatch(text, qStr)) {
       let s = 650;
       // Cụm từ nằm ngay đầu hoặc cuối tên bệnh (không bị "kẹp giữa") thì chính xác hơn
-      if (name.startsWith(q)) s += 40;
-      if (name.endsWith(q)) s += 40;
+      if (text.startsWith(qStr)) s += 40;
+      if (text.endsWith(qStr)) s += 40;
       // Cụm từ tìm kiếm chiếm tỉ lệ càng lớn trong tên bệnh (càng ít chữ thừa) thì càng liên quan
-      s += Math.round((q.length / Math.max(name.length, 1)) * 100);
+      s += Math.round((qStr.length / Math.max(text.length, 1)) * 100);
       return s;
     }
-    if (name.includes(q)) {
+    if (text.includes(qStr)) {
       // Chỉ khớp một phần rời rạc (không theo ranh giới từ): tên càng ngắn thì càng liên quan hơn
-      return Math.max(300, 550 - name.length);
+      return Math.max(300, 550 - text.length);
     }
-    if (code.includes(q)) return 250;
-    if (row.enNorm && row.enNorm.includes(q)) return 100;
+    if (code.includes(qi.norm)) return 250;
+    if (!qi.hasDia && row.enNorm && row.enNorm.includes(qi.norm)) return 100;
     // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
     // (không cần liền nhau / đúng thứ tự) thì vẫn coi là có liên quan, chấm điểm thấp hơn
-    if (qWords && qWords.length > 1) {
-      const allWordsPresent = qWords.every((w) => hasWordBoundaryMatch(name, w));
+    if (qi.words.length > 1) {
+      const allWordsPresent = qi.words.every((w) => hasWordBoundaryMatch(text, w));
       if (allWordsPresent) {
-        return Math.max(150, 400 - name.length);
+        return Math.max(150, 400 - text.length);
       }
     }
     return 0;
   }
 
-  let lastQueryNorm = '';
+  let lastQueryInfo = buildQueryInfo('');
 
   function doSearch(query) {
     isAiResultsMode = false;
-    const q = normalize(query.trim());
-    lastQueryNorm = q;
-    if (!q) {
+    const qi = buildQueryInfo(query);
+    lastQueryInfo = qi;
+    if (!qi.norm && !qi.accent) {
       currentMatches = [];
       resultsEl.innerHTML = '';
       statusEl.textContent = '';
@@ -3084,18 +3111,15 @@
     }
 
     const yhctOnly = !!(yhctToggle && yhctToggle.checked);
-    const qWords = q.split(/\s+/).filter((w) => w.length > 0);
     const matches = searchIndex
       .filter((row) => {
         if (yhctOnly && row.item._type !== 'yhct') return false;
-        if (row.codeNorm.includes(q) || row.nameNorm.includes(q) || row.enNorm.includes(q)) return true;
-        // Không khớp nguyên cụm, nhưng nếu chứa đủ tất cả các từ trong câu tìm kiếm thì vẫn tính là liên quan
-        if (qWords.length > 1) {
-          return qWords.every((w) => hasWordBoundaryMatch(row.nameNorm, w));
-        }
+        if (row.codeNorm.includes(qi.norm)) return true;
+        if (textMatchesQuery(row.nameNorm, row.nameAccent, qi)) return true;
+        if (!qi.hasDia && row.enNorm.includes(qi.norm)) return true;
         return false;
       })
-      .map((row) => ({ row, score: scoreMatch(row, q, qWords) }))
+      .map((row) => ({ row, score: scoreMatch(row, qi) }))
       .sort((a, b) => {
         const aYhct = a.row.item._type === 'yhct' ? 1 : 0;
         const bYhct = b.row.item._type === 'yhct' ? 1 : 0;
@@ -3132,15 +3156,15 @@
       return;
     }
 
-    showList(dedupedMatches, q);
+    showList(dedupedMatches, qi);
   }
 
-  function showList(matches, q) {
-    const query = q !== undefined ? q : lastQueryNorm;
+  function showList(matches, qi) {
+    const queryInfo = qi !== undefined ? qi : lastQueryInfo;
     // Giới hạn hiển thị để không lag khi query quá ngắn / trùng nhiều
     const MAX_SHOW = 200;
     const shown = matches.slice(0, MAX_SHOW);
-    resultsEl.innerHTML = shown.map((row) => renderListItem(row.item, query)).join('');
+    resultsEl.innerHTML = shown.map((row) => renderListItem(row.item, queryInfo)).join('');
     if (matches.length > MAX_SHOW) {
       resultsEl.insertAdjacentHTML(
         'beforeend',
