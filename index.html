@@ -3084,7 +3084,7 @@
       return s;
     }
     if (code.includes(qi.norm)) return 250;
-    if (!qi.hasDia && row.enNorm && row.enNorm.includes(qi.norm)) return 100;
+    if (!qi.hasDia && row.enNorm && hasWordBoundaryMatch(row.enNorm, qi.norm)) return 100;
     // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
     // (không cần liền nhau / đúng thứ tự, nhưng vẫn phải đúng ranh giới từng từ) thì vẫn coi là liên quan
     if (qi.words.length > 1) {
@@ -3115,7 +3115,7 @@
         if (yhctOnly && row.item._type !== 'yhct') return false;
         if (row.codeNorm.includes(qi.norm)) return true;
         if (textMatchesQuery(row.nameNorm, row.nameAccent, qi)) return true;
-        if (!qi.hasDia && row.enNorm.includes(qi.norm)) return true;
+        if (!qi.hasDia && hasWordBoundaryMatch(row.enNorm, qi.norm)) return true;
         return false;
       })
       .map((row) => ({ row, score: scoreMatch(row, qi) }))
