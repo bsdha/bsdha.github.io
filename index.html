@@ -3016,6 +3016,34 @@
   let currentMatches = [];
   let isAiResultsMode = false;
 
+  function escapeRegex(str) {
+    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  function scoreMatch(row, q) {
+    const name = row.nameNorm;
+    const code = row.codeNorm;
+    if (code === q) return 1000;
+    if (name === q) return 950;
+    if (code.startsWith(q)) return 850;
+    const wordBoundaryRe = new RegExp('(^|[^a-z0-9])' + escapeRegex(q) + '([^a-z0-9]|$)');
+    if (wordBoundaryRe.test(name)) {
+      let s = 650;
+      // Cụm từ nằm ngay đầu hoặc cuối tên bệnh (không bị "kẹp giữa") thì chính xác hơn
+      if (name.startsWith(q)) s += 40;
+      if (name.endsWith(q)) s += 40;
+      // Cụm từ tìm kiếm chiếm tỉ lệ càng lớn trong tên bệnh (càng ít chữ thừa) thì càng liên quan
+      s += Math.round((q.length / Math.max(name.length, 1)) * 100);
+      return s;
+    }
+    if (name.includes(q)) {
+      // Chỉ khớp một phần rời rạc (không theo ranh giới từ): tên càng ngắn thì càng liên quan hơn
+      return Math.max(300, 550 - name.length);
+    }
+    if (code.includes(q)) return 250;
+    if (row.enNorm && row.enNorm.includes(q)) return 100;
+    return 0;
+  }
+
   function doSearch(query) {
     isAiResultsMode = false;
     const q = normalize(query.trim());
@@ -3027,11 +3055,15 @@
     }
 
     const yhctOnly = !!(yhctToggle && yhctToggle.checked);
-    const matches = searchIndex.filter(
-      (row) =>
-        (!yhctOnly || row.item._type === 'yhct') &&
-        (row.codeNorm.includes(q) || row.nameNorm.includes(q) || row.enNorm.includes(q))
-    );
+    const matches = searchIndex
+      .filter(
+        (row) =>
+          (!yhctOnly || row.item._type === 'yhct') &&
+          (row.codeNorm.includes(q) || row.nameNorm.includes(q) || row.enNorm.includes(q))
+      )
+      .map((row) => ({ row, score: scoreMatch(row, q) }))
+      .sort((a, b) => b.score - a.score)
+      .map((x) => x.row);
 
     // Nếu 1 mã nhóm (có children) khớp tìm kiếm, ẩn bớt các mã con của nó
     // để tránh hiện trùng lặp (mã con đã nằm trong khối gợi ý màu xanh lá).
