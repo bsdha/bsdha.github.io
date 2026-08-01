@@ -509,12 +509,10 @@
     gap: 3px;
   }
   .radio-widget .radio-title-icon {
+    width: 16px;
+    height: 16px;
     flex-shrink: 0;
-  }
-  .radio-widget .radio-title-icon-note {
-    font-size: 15px;
-    color: #000;
-    line-height: 1;
+    filter: brightness(0) invert(1);
   }
   .radio-widget button.radio-toggle {
     border: none;
@@ -918,8 +916,8 @@
 .rx-wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
 .rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; font-size: 13px; }
 .rx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
-.rx-panel-head h1 { margin: 0; font-size: 16.5px; font-weight: 800; }
-.rx-h2 { margin: 0 0 12px; font-size: 14.5px; font-weight: 800; }
+.rx-panel-head h1 { margin: 0; font-size: 16.5px; font-weight: 800; color: #dc2626; }
+.rx-h2 { margin: 0 0 12px; font-size: 14.5px; font-weight: 800; color: #dc2626; }
 .rx-sub { color: var(--muted); font-size: 11.5px; margin: 8px 0 12px; }
 .rx-settings-btn {
   border: 1px solid var(--blue-dark, #1d4ed8); background: var(--blue, #2563eb); color: #fff;
@@ -962,8 +960,9 @@
   background: var(--blue); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: nwse-resize; pointer-events: auto;
 }
 .rx-logo-size-row { margin-top: 8px; font-size: 12px; color: var(--muted); }
-.rx-settings-topbar { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+.rx-settings-topbar { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .rx-note-field { margin-top: 14px; }
+.rx-note-field > label, .rx-doctor-field > label { display: block; font-size: 12.5px; font-weight: 700; color: #000; margin-bottom: 4px; }
 .rx-input-clear-wrap { position: relative; }
 .rx-input-clear-wrap input { width: 100%; padding-right: 30px; }
 .rx-input-clear-btn {
@@ -989,6 +988,7 @@
 .rx-label-row label { margin-bottom: 0 !important; }
 .rx-inline-check { font-weight: 700; font-size: 11.5px; color: #000; margin-left: 0; cursor: pointer; }
 .rx-toggle-row-below { margin-top: 6px; margin-bottom: 0; justify-content: flex-start; }
+.rx-toggle-row-above { margin-top: 0; margin-bottom: 6px; }
 .rx-inline-check input { margin-right: 4px; vertical-align: middle; }
 .rx-address-new { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
 .rx-uppercase-input { text-transform: uppercase; }
@@ -1032,8 +1032,8 @@
   .rx-col-wide { grid-column: span 2; }
 }
 .rx-form-grid .field label, .rx-drugname-row .field label, .rx-dosing-row .field label, .rx-patient-grid .field label { display: block; font-size: 12px; font-weight: 700; color: #000000; margin-bottom: 4px; }
-.rx-form-grid .field input, .rx-settings-grid .field input, .rx-cloud-grid .field input, .rx-patient-grid .field input, .rx-patient-grid .field select,
-.rx-drugname-row .field input, .rx-dosing-row .field input {
+.rx-form-grid .field input:not([type="checkbox"]), .rx-settings-grid .field input:not([type="checkbox"]), .rx-cloud-grid .field input:not([type="checkbox"]), .rx-patient-grid .field input:not([type="checkbox"]), .rx-patient-grid .field select,
+.rx-drugname-row .field input:not([type="checkbox"]), .rx-dosing-row .field input:not([type="checkbox"]) {
   width: 100%; background: var(--bg); border: 1.5px solid #000000; border-radius: 9px;
   padding: 9px 10px; color: var(--text); font-size: 14px; font-family: inherit;
 }
@@ -1041,6 +1041,7 @@
 .rx-drugname-row .field input:focus, .rx-dosing-row .field input:focus {
   outline: none; border-color: var(--blue);
 }
+.rx-inline-check input[type="checkbox"] { width: auto; display: inline-block; vertical-align: middle; margin: 0 4px 0 0; padding: 0; border-radius: 3px; }
 .rx-autocomplete-wrap { position: relative; }
 #rxFieldGeneric[readonly] { opacity: .65; cursor: default; }
 .rx-suggest {
@@ -1067,6 +1068,8 @@
 .rx-qty-add-row { display: flex; gap: 6px; }
 .rx-qty-add-row input { flex: 1; min-width: 0; }
 .rx-btn-secondary { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.rx-btn-danger { background: #dc2626; color: #fff; border: 1px solid #b91c1c; }
+.rx-btn-danger:hover { background: #b91c1c; }
 .rx-btn-print { background: var(--blue); color: #ffffff; }
 
 .rx-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
@@ -1101,10 +1104,9 @@
 
 .rx-table-wrap { overflow-x: auto; }
 .rx-table { width: 100%; border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
-.rx-th-hint { font-weight: 400; font-size: 10px; color: var(--muted); display: block; }
-.rx-dose-cell { cursor: pointer; }
-.rx-dose-cell:hover { background: var(--surface-2); }
-.rx-dose-summary { font-size: 11.5px; line-height: 1.5; }
+.rx-edit-cell { cursor: pointer; }
+.rx-edit-cell:hover { background: var(--surface-2); }
+.rx-edit-cell-input { width: 100%; box-sizing: border-box; padding: 3px 4px; font-size: 11.5px; border: 1.5px solid var(--blue); border-radius: 4px; font-family: inherit; }
 .rx-truncate-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; cursor: help; }
 .rx-table th, .rx-table td { padding: 6px 5px; border-bottom: 1px solid #000000; text-align: left; overflow-wrap: break-word; }
 .rx-table th { color: #000000; font-weight: 700; font-size: 10px; text-transform: uppercase; white-space: nowrap; }
@@ -1166,7 +1168,7 @@
 <body>
 
 <div class="radio-widget" id="radioWidget">
-  <span class="radio-title"><span class="radio-title-icon radio-title-icon-note">♪</span> 24/7</span>
+  <span class="radio-title"><img src="https://www.emojiall.com/images/120/telegram/telemoji-november-2023/1f3b5.gif" alt="🎵" class="radio-title-icon"> 24/7</span>
   <button class="radio-toggle" id="radioPlayMain" title="Phát Trữ Tình">▶</button>
   <button class="radio-toggle" id="radioStopAll" title="Dừng tất cả">⏹</button>
   <button class="expand-btn" id="radioExpandBtn" title="Mở danh sách âm thanh">▼</button>
@@ -1429,10 +1431,10 @@
           </div>
           <div class="field rx-col-full">
             <label>Địa chỉ</label>
-            <input type="text" id="rxAddress" placeholder="Số nhà, tên đường..." autocapitalize="characters">
-            <div class="rx-label-row rx-toggle-row-below">
+            <div class="rx-label-row rx-toggle-row-below rx-toggle-row-above">
               <label class="rx-inline-check"><input type="checkbox" id="rxAddrNewToggle"> Nhập địa chỉ theo đơn vị hành chính mới</label>
             </div>
+            <input type="text" id="rxAddress" placeholder="Số nhà, tên đường..." autocapitalize="characters">
             <div class="rx-address-new" id="rxAddressNewBox" style="display:none;">
               <div class="rx-autocomplete-wrap">
                 <div class="rx-input-clear-wrap">
@@ -1452,12 +1454,12 @@
           </div>
           <div class="field rx-col-full">
             <label>Chẩn đoán</label>
+            <div class="rx-label-row rx-toggle-row-below rx-toggle-row-above">
+              <label class="rx-inline-check"><input type="checkbox" id="rxIcdToggle"> Nhập theo ICD-10</label>
+            </div>
             <div class="rx-autocomplete-wrap">
               <input type="text" id="rxDiagnosis" placeholder="VD: Tăng huyết áp (I10)" autocomplete="off">
               <div class="rx-suggest" id="rxIcdSuggest"></div>
-            </div>
-            <div class="rx-label-row rx-toggle-row-below">
-              <label class="rx-inline-check"><input type="checkbox" id="rxIcdToggle"> Nhập theo ICD-10</label>
             </div>
           </div>
           <div class="rx-vitals-row rx-col-full">
@@ -1498,8 +1500,7 @@
 
         <div class="rx-settings" id="rxSettingsPanel">
           <div class="rx-settings-topbar">
-            <button type="button" class="rx-btn rx-btn-secondary" id="rxSettingsCloseBtn">✕ Đóng cấu hình, quay lại kê đơn</button>
-            <button type="button" class="rx-btn rx-btn-secondary" id="rxPwResetBtn">Khôi phục mật khẩu mặc định</button>
+            <button type="button" class="rx-btn rx-btn-secondary rx-settings-close-right" id="rxSettingsCloseBtn">✓ Lưu và đóng</button>
           </div>
           <div class="rx-settings-grid">
             <div class="field rx-col-full">
@@ -1574,19 +1575,19 @@
             </div>
             <div class="field">
               <label>Sáng</label>
-              <input type="number" id="rxFieldMorning" min="0" step="0.5" placeholder="0">
+              <input type="number" id="rxFieldMorning" min="0" step="1" placeholder="0">
             </div>
             <div class="field">
               <label>Trưa</label>
-              <input type="number" id="rxFieldNoon" min="0" step="0.5" placeholder="0">
+              <input type="number" id="rxFieldNoon" min="0" step="1" placeholder="0">
             </div>
             <div class="field">
               <label>Chiều</label>
-              <input type="number" id="rxFieldAfternoon" min="0" step="0.5" placeholder="0">
+              <input type="number" id="rxFieldAfternoon" min="0" step="1" placeholder="0">
             </div>
             <div class="field">
               <label>Tối</label>
-              <input type="number" id="rxFieldEvening" min="0" step="0.5" placeholder="0">
+              <input type="number" id="rxFieldEvening" min="0" step="1" placeholder="0">
             </div>
             <div class="field">
               <label>Số lượng</label>
@@ -1607,7 +1608,13 @@
                   <th>Tên thương mại</th>
                   <th>Hoạt chất</th>
                   <th>Dạng thuốc</th>
-                  <th>Liều dùng <span class="rx-th-hint">(double-click để sửa)</span></th>
+                  <th>Cách dùng</th>
+                  <th>Ngày</th>
+                  <th>Sáng</th>
+                  <th>Trưa</th>
+                  <th>Chiều</th>
+                  <th>Tối</th>
+                  <th>Số lượng</th>
                   <th></th>
                 </tr>
               </thead>
@@ -1635,7 +1642,7 @@
           </div>
 
           <div class="rx-actions">
-            <button class="rx-btn rx-btn-secondary" id="rxClearBtn">Xoá toàn bộ toa</button>
+            <button class="rx-btn rx-btn-danger" id="rxClearBtn">Xoá toàn bộ toa</button>
             <button class="rx-btn rx-btn-print" id="rxPrintBtn">⬇ Tải đơn thuốc (PDF)</button>
           </div>
         </div>
@@ -3894,10 +3901,6 @@
   $('rxPwForgotBtn').addEventListener('click', () => {
     customAlert('Gợi ý mật khẩu', 'Mật khẩu gợi ý: "KK****HA"');
   });
-  $('rxPwResetBtn').addEventListener('click', () => {
-    localStorage.setItem(LS_ADMIN_PW, DEFAULT_ADMIN_PW);
-    customAlert('Khôi phục mật khẩu', `Đã khôi phục mật khẩu Cấu hình về mặc định: ${DEFAULT_ADMIN_PW}`);
-  });
 
 
   // ---------- Danh sách thuốc: tải từ cloud (nếu có cấu hình) hoặc localStorage ----------
@@ -4355,6 +4358,7 @@
   });
   $('rxWarnOkBtn').addEventListener('click', () => { $('rxWarnDelBtn').style.display = ''; });
 
+  const DOSE_FIELDS = ['usage', 'days', 'morning', 'noon', 'afternoon', 'evening', 'qty'];
   function renderRxTable() {
     const body = $('rxTableBody');
     const emptyMsg = $('rxEmptyMsg');
@@ -4377,92 +4381,60 @@
         <td class="rx-truncate-cell" title="${escapeHtml(r.brand)}">${escapeHtml(r.brand)}</td>
         <td class="rx-truncate-cell" title="${escapeHtml(r.generic)}">${escapeHtml(r.generic)}</td>
         <td>${escapeHtml(r.form)}</td>
-        <td class="rx-dose-cell" data-idx="${i}" title="Double-click để sửa liều dùng">${doseSummaryHtml(r)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="usage" title="Double-click để sửa">${escapeHtml(r.usage)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="days" title="Double-click để sửa">${escapeHtml(r.days)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="morning" title="Double-click để sửa">${escapeHtml(r.morning)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="noon" title="Double-click để sửa">${escapeHtml(r.noon)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="afternoon" title="Double-click để sửa">${escapeHtml(r.afternoon)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="evening" title="Double-click để sửa">${escapeHtml(r.evening)}</td>
+        <td class="rx-edit-cell" data-idx="${i}" data-field="qty" title="Double-click để sửa">${escapeHtml(r.qty)}</td>
         <td class="rx-del-cell"><button class="rx-row-del" data-idx="${i}" title="Xoá">✕</button></td>
       </tr>`).join('');
     updateAutoNote();
   }
 
-  function doseSummaryHtml(r) {
-    const unit = unitFromForm(r.form);
-    const doseParts = [];
-    if (parseFloat(r.morning) > 0) doseParts.push(`Sáng ${r.morning}`);
-    if (parseFloat(r.noon) > 0) doseParts.push(`Trưa ${r.noon}`);
-    if (parseFloat(r.afternoon) > 0) doseParts.push(`Chiều ${r.afternoon}`);
-    if (parseFloat(r.evening) > 0) doseParts.push(`Tối ${r.evening}`);
-    const doseLine = doseParts.length ? doseParts.join(', ') + ` ${unit}` : '';
-    const daysLine = r.days ? `${r.days} ngày` : '';
-    const qtyLine = r.qty ? `SL: ${r.qty} ${unit}` : '';
-    const usageLine = r.usage ? escapeHtml(r.usage) : '';
-    return `<div class="rx-dose-summary">${[doseLine, daysLine].filter(Boolean).join(' × ')}${qtyLine ? '<br>' + qtyLine : ''}${usageLine ? '<br><span style="color:var(--muted);">' + usageLine + '</span>' : ''}</div>`;
-  }
-
-  function editDoseRow(idx) {
-    const r = rxRows[idx];
-    if (!r) return;
-    const root = ensureModalRoot();
-    const overlay = document.createElement('div');
-    overlay.className = 'rx-modal-overlay';
-    overlay.innerHTML = `
-      <div class="rx-modal-box rx-dose-modal" role="dialog" aria-modal="true">
-        <div class="rx-modal-title">Sửa liều dùng — ${escapeHtml(r.brand)}</div>
-        <div class="field"><label>Cách dùng</label><input type="text" class="rx-modal-input" id="rxDoseEditUsage"></div>
-        <div class="rx-dose-modal-grid">
-          <div class="field"><label>Ngày</label><input type="number" min="0" step="1" class="rx-modal-input" id="rxDoseEditDays"></div>
-          <div class="field"><label>Sáng</label><input type="number" min="0" step="0.5" class="rx-modal-input" id="rxDoseEditMorning"></div>
-          <div class="field"><label>Trưa</label><input type="number" min="0" step="0.5" class="rx-modal-input" id="rxDoseEditNoon"></div>
-          <div class="field"><label>Chiều</label><input type="number" min="0" step="0.5" class="rx-modal-input" id="rxDoseEditAfternoon"></div>
-          <div class="field"><label>Tối</label><input type="number" min="0" step="0.5" class="rx-modal-input" id="rxDoseEditEvening"></div>
-          <div class="field"><label>Số lượng</label><input type="number" min="0" step="1" class="rx-modal-input" id="rxDoseEditQty"></div>
-        </div>
-        <div class="rx-modal-actions">
-          <button type="button" class="rx-modal-btn rx-modal-cancel">Huỷ</button>
-          <button type="button" class="rx-modal-btn rx-modal-ok">Lưu</button>
-        </div>
-      </div>`;
-    root.appendChild(overlay);
-    const $$ = (id) => overlay.querySelector('#' + id);
-    $$('rxDoseEditUsage').value = r.usage || '';
-    $$('rxDoseEditDays').value = r.days || '';
-    $$('rxDoseEditMorning').value = r.morning || '';
-    $$('rxDoseEditNoon').value = r.noon || '';
-    $$('rxDoseEditAfternoon').value = r.afternoon || '';
-    $$('rxDoseEditEvening').value = r.evening || '';
-    $$('rxDoseEditQty').value = r.qty || '';
-    let qtyTouchedManually = false;
-    $$('rxDoseEditQty').addEventListener('input', () => { qtyTouchedManually = true; });
-    function recalc() {
-      if (qtyTouchedManually) return;
-      const days = parseFloat($$('rxDoseEditDays').value) || 0;
-      const m = parseFloat($$('rxDoseEditMorning').value) || 0;
-      const n = parseFloat($$('rxDoseEditNoon').value) || 0;
-      const a = parseFloat($$('rxDoseEditAfternoon').value) || 0;
-      const ev = parseFloat($$('rxDoseEditEvening').value) || 0;
-      const total = (m + n + a + ev) * days;
-      if (total > 0) $$('rxDoseEditQty').value = Number.isInteger(total) ? total : total.toFixed(1);
-    }
-    ['rxDoseEditDays', 'rxDoseEditMorning', 'rxDoseEditNoon', 'rxDoseEditAfternoon', 'rxDoseEditEvening'].forEach((id) => {
-      $$(id).addEventListener('input', recalc);
-    });
-    function close() { overlay.remove(); }
-    overlay.querySelector('.rx-modal-cancel').addEventListener('click', close);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
-    overlay.querySelector('.rx-modal-ok').addEventListener('click', () => {
-      r.usage = $$('rxDoseEditUsage').value.trim();
-      r.days = $$('rxDoseEditDays').value.trim();
-      r.morning = $$('rxDoseEditMorning').value.trim() || '0';
-      r.noon = $$('rxDoseEditNoon').value.trim() || '0';
-      r.afternoon = $$('rxDoseEditAfternoon').value.trim() || '0';
-      r.evening = $$('rxDoseEditEvening').value.trim() || '0';
-      r.qty = $$('rxDoseEditQty').value.trim();
-      close();
-      renderRxTable();
-    });
-    setTimeout(() => $$('rxDoseEditUsage').focus(), 30);
+  // Sửa nhanh từng ô (Cách dùng/Ngày/Sáng/Trưa/Chiều/Tối/Số lượng) bằng double-click, không cần xoá thuốc
+  function recalcQtyForRow(r) {
+    const days = parseFloat(r.days) || 0;
+    const m = parseFloat(r.morning) || 0;
+    const n = parseFloat(r.noon) || 0;
+    const a = parseFloat(r.afternoon) || 0;
+    const ev = parseFloat(r.evening) || 0;
+    const total = (m + n + a + ev) * days;
+    if (total > 0) r.qty = Number.isInteger(total) ? String(total) : total.toFixed(1);
   }
   $('rxTableBody').addEventListener('dblclick', (e) => {
-    const cell = e.target.closest('.rx-dose-cell');
-    if (cell) editDoseRow(parseInt(cell.dataset.idx, 10));
+    const cell = e.target.closest('.rx-edit-cell');
+    if (!cell || cell.querySelector('input')) return;
+    const idx = parseInt(cell.dataset.idx, 10);
+    const field = cell.dataset.field;
+    const r = rxRows[idx];
+    if (!r) return;
+    const oldValue = r[field] || '';
+    const isNumeric = field !== 'usage';
+    cell.innerHTML = `<input type="${isNumeric ? 'number' : 'text'}" ${isNumeric ? 'step="1" min="0"' : ''} class="rx-edit-cell-input" value="${escapeHtml(oldValue)}">`;
+    const input = cell.querySelector('input');
+    input.focus();
+    input.select();
+    let done = false;
+    function commit() {
+      if (done) return;
+      done = true;
+      const newVal = input.value.trim();
+      r[field] = newVal;
+      if (field !== 'qty' && field !== 'usage') recalcQtyForRow(r);
+      renderRxTable();
+    }
+    function cancel() {
+      if (done) return;
+      done = true;
+      renderRxTable();
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', (ev2) => {
+      if (ev2.key === 'Enter') { ev2.preventDefault(); commit(); }
+      else if (ev2.key === 'Escape') { ev2.preventDefault(); cancel(); }
+    });
   });
 
   function moveRow(from, to) {
@@ -4851,24 +4823,33 @@
     order.push('rxDiagnosis', 'rxVitalPulse', 'rxVitalBpSys', 'rxVitalBpDia', 'rxVitalTemp', 'rxVitalResp', 'rxVitalWeight');
     return order;
   }
-  function focusAndSelect(el) {
+  function focusAndSelect(el, preventScroll) {
     if (!el) return;
-    el.focus();
+    if (preventScroll) el.focus({ preventScroll: true });
+    else el.focus();
     if (el.select) el.select();
   }
   patientFieldOrder().forEach((id) => {
     const el = $(id);
     if (!el) return;
     el.addEventListener('keydown', (e) => {
-      if (e.key !== 'Enter' || e.defaultPrevented) return;
+      if (e.defaultPrevented) return;
       const order = patientFieldOrder();
       const idx = order.indexOf(id);
       if (idx === -1) return;
+      if (e.key === 'Backspace' && el.tagName !== 'SELECT' && el.value === '' && idx > 0) {
+        e.preventDefault();
+        focusAndSelect($(order[idx - 1]));
+        return;
+      }
+      if (e.key !== 'Enter') return;
       e.preventDefault();
       if (idx < order.length - 1) {
         focusAndSelect($(order[idx + 1]));
       } else {
-        focusAndSelect(brandInput);
+        focusAndSelect(brandInput, true);
+        const panelHead = document.querySelector('#rxDrugPanel .rx-panel-head');
+        if (panelHead) panelHead.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
   });
