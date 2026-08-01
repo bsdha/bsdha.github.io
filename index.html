@@ -2911,9 +2911,13 @@
       // thì không nên hiện "Nhồi máu cơ tim cũ", "Phình thành tim"... nếu tên các mã đó không chứa từ khóa).
       let childrenToShow = item.children;
       if (q) {
-        const filtered = item.children.filter(
-          (c) => normalize(c.name).includes(q) || normalize(c.code).includes(q)
-        );
+        const qWordsLocal = q.split(/\s+/).filter((w) => w.length > 0);
+        const filtered = item.children.filter((c) => {
+          const cName = normalize(c.name);
+          if (cName.includes(q) || normalize(c.code).includes(q)) return true;
+          if (qWordsLocal.length > 1) return qWordsLocal.every((w) => hasWordBoundaryMatch(cName, w));
+          return false;
+        });
         if (filtered.length > 0) childrenToShow = filtered;
       }
       const childrenHtml = childrenToShow
@@ -3029,7 +3033,11 @@
   function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-  function scoreMatch(row, q) {
+  function hasWordBoundaryMatch(haystack, token) {
+    const re = new RegExp('(^|[^a-z0-9])' + escapeRegex(token) + '([^a-z0-9]|$)');
+    return re.test(haystack);
+  }
+  function scoreMatch(row, q, qWords) {
     const name = row.nameNorm;
     const code = row.codeNorm;
     if (code === q) return 1000;
@@ -3051,6 +3059,14 @@
     }
     if (code.includes(q)) return 250;
     if (row.enNorm && row.enNorm.includes(q)) return 100;
+    // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
+    // (không cần liền nhau / đúng thứ tự) thì vẫn coi là có liên quan, chấm điểm thấp hơn
+    if (qWords && qWords.length > 1) {
+      const allWordsPresent = qWords.every((w) => hasWordBoundaryMatch(name, w));
+      if (allWordsPresent) {
+        return Math.max(150, 400 - name.length);
+      }
+    }
     return 0;
   }
 
@@ -3068,13 +3084,18 @@
     }
 
     const yhctOnly = !!(yhctToggle && yhctToggle.checked);
+    const qWords = q.split(/\s+/).filter((w) => w.length > 0);
     const matches = searchIndex
-      .filter(
-        (row) =>
-          (!yhctOnly || row.item._type === 'yhct') &&
-          (row.codeNorm.includes(q) || row.nameNorm.includes(q) || row.enNorm.includes(q))
-      )
-      .map((row) => ({ row, score: scoreMatch(row, q) }))
+      .filter((row) => {
+        if (yhctOnly && row.item._type !== 'yhct') return false;
+        if (row.codeNorm.includes(q) || row.nameNorm.includes(q) || row.enNorm.includes(q)) return true;
+        // Không khớp nguyên cụm, nhưng nếu chứa đủ tất cả các từ trong câu tìm kiếm thì vẫn tính là liên quan
+        if (qWords.length > 1) {
+          return qWords.every((w) => hasWordBoundaryMatch(row.nameNorm, w));
+        }
+        return false;
+      })
+      .map((row) => ({ row, score: scoreMatch(row, q, qWords) }))
       .sort((a, b) => b.score - a.score)
       .map((x) => x.row);
 
