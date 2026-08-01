@@ -2914,10 +2914,9 @@
       let childrenToShow = item.children;
       if (qi && (qi.norm || qi.accent)) {
         const filtered = item.children.filter((c) => {
-          const cNameNorm = normalize(c.name);
           const cNameAccent = (c.name || '').toLowerCase();
           if (normalize(c.code).includes(qi.norm)) return true;
-          return textMatchesQuery(cNameNorm, cNameAccent, qi);
+          return textMatchesQuery(cNameAccent, qi);
         });
         if (filtered.length > 0) childrenToShow = filtered;
       }
@@ -3041,36 +3040,33 @@
     return re.test(haystack);
   }
 
-  // Phân tích câu truy vấn: phát hiện người dùng có gõ dấu tiếng Việt hay không.
-  // Nếu CÓ gõ dấu, ta bắt buộc so khớp theo đúng bản có dấu để tránh nhầm giữa các từ
-  // khác nghĩa nhưng trùng nhau khi bỏ dấu (VD: "rắn" / "rặn" / "răn" / "rán" / "rạn" đều
-  // thành "ran" nếu bỏ dấu — nếu không phân biệt sẽ ra hàng trăm kết quả không liên quan).
+  // Phân tích câu truy vấn. Luôn so khớp theo ĐÚNG bản có dấu người dùng gõ (không tự suy
+  // rộng sang các từ khác dấu, VD: gõ "ong" tuyệt đối không được khớp với "ống"/"ông"/"óng",
+  // gõ "rắn" tuyệt đối không được khớp với "rặn"/"răn"/"rán"/"rạn" — dù các từ này khi bỏ dấu
+  // đều trùng nhau nhưng là những từ khác nghĩa hoàn toàn). Chỉ riêng MÃ ICD (vốn không có dấu)
+  // vẫn so khớp theo bản chuẩn hoá bình thường.
   function buildQueryInfo(rawQuery) {
     const trimmed = (rawQuery || '').trim();
     const norm = normalize(trimmed);
     const accent = trimmed.toLowerCase();
-    const hasDia = norm !== accent;
-    const baseForWords = hasDia ? accent : norm;
-    const words = baseForWords.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
-    return { raw: trimmed, norm, accent, hasDia, words };
+    const words = accent.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
+    return { raw: trimmed, norm, accent, words };
   }
 
-  function textMatchesQuery(textNorm, textAccent, qi) {
-    const text = qi.hasDia ? textAccent : textNorm;
-    const qStr = qi.hasDia ? qi.accent : qi.norm;
+  function textMatchesQuery(textAccent, qi) {
+    const qStr = qi.accent;
     if (!qStr) return false;
     // Luôn bắt buộc khớp theo đúng ranh giới từ (không tính là khớp nếu từ khóa chỉ nằm
-    // lọt thỏm bên trong một từ khác, ví dụ "rắn" không được tính là khớp bên trong "trắng",
-    // "ong" không được tính là khớp bên trong "thương"/"phong"...), áp dụng cho cả tìm có dấu và không dấu.
-    if (hasWordBoundaryMatch(text, qStr)) return true;
-    if (qi.words.length > 1) return qi.words.every((w) => hasWordBoundaryMatch(text, w));
+    // lọt thỏm bên trong một từ khác, ví dụ "ong" không được tính là khớp bên trong "phong"/"ống").
+    if (hasWordBoundaryMatch(textAccent, qStr)) return true;
+    if (qi.words.length > 1) return qi.words.every((w) => hasWordBoundaryMatch(textAccent, w));
     return false;
   }
 
   function scoreMatch(row, qi) {
     const code = row.codeNorm;
-    const text = qi.hasDia ? row.nameAccent : row.nameNorm;
-    const qStr = qi.hasDia ? qi.accent : qi.norm;
+    const text = row.nameAccent;
+    const qStr = qi.accent;
     if (code === qi.norm) return 1000;
     if (text === qStr) return 950;
     if (qi.norm && code.startsWith(qi.norm)) return 850;
@@ -3113,7 +3109,7 @@
       .filter((row) => {
         if (yhctOnly && row.item._type !== 'yhct') return false;
         if (row.codeNorm.includes(qi.norm)) return true;
-        if (textMatchesQuery(row.nameNorm, row.nameAccent, qi)) return true;
+        if (textMatchesQuery(row.nameAccent, qi)) return true;
         return false;
       })
       .map((row) => ({ row, score: scoreMatch(row, qi) }))
