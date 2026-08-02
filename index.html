@@ -1311,7 +1311,7 @@
   <div class="page" id="page-icd">
       <div class="wrap">
         <div class="panel">
-          <h1>Tra cứu ICD-10 (Áp dụng theo TT06/2026/TT-BYT bởi DHA)</h1>
+          <h1>Tra cứu ICD-10 (Tích hợp chế độ AI chính xác theo TT06/2026/TT-BYT - Bản quyền DHA)</h1>
           <div class="sub"></div>
           <div class="search-row">
             <span class="icon">⌕</span>
@@ -1321,6 +1321,10 @@
           <div class="option-row">
             <input type="checkbox" id="rPriorityToggle">
             <label for="rPriorityToggle">Ưu tiên mã R (triệu chứng, dấu hiệu lâm sàng và kết quả xét nghiệm bất thường)</label>
+          </div>
+          <div class="option-row">
+            <input type="checkbox" id="precisionToggle">
+            <label for="precisionToggle">Chế độ chính xác nâng cao (chỉ hiện mã con khớp ít nhất 1 từ trong câu tìm kiếm)</label>
           </div>
           <div class="option-row">
             <input type="checkbox" id="yhctToggle">
@@ -2885,6 +2889,7 @@
   const clearBtn = document.getElementById('clearBtn');
   const yhctToggle = document.getElementById('yhctToggle');
   const rPriorityToggle = document.getElementById('rPriorityToggle');
+  const precisionToggle = document.getElementById('precisionToggle');
   const resultsEl = document.getElementById('results');
   const statusEl = document.getElementById('status');
   const toastEl = document.getElementById('toast');
@@ -2933,12 +2938,25 @@
       // thì không nên hiện "Nhồi máu cơ tim cũ", "Phình thành tim"... nếu tên các mã đó không chứa từ khóa).
       let childrenToShow = item.children;
       if (qi && (qi.norm || qi.accent)) {
-        const filtered = item.children.filter((c) => {
+        const fullMatch = item.children.filter((c) => {
           const cNameAccent = (c.name || '').toLowerCase();
           if (normalize(c.code).includes(qi.norm)) return true;
           return textMatchesQuery(cNameAccent, qi);
         });
-        if (filtered.length > 0) childrenToShow = filtered;
+        if (fullMatch.length > 0) {
+          childrenToShow = fullMatch;
+        } else if (precisionToggle && precisionToggle.checked && qi.words.length > 1) {
+          // Chế độ chính xác nâng cao: không có mã con nào khớp đủ tất cả các từ,
+          // chỉ hiện mã con khớp ÍT NHẤT MỘT từ trong câu tìm kiếm (đúng ranh giới từ)
+          // thay vì hiện toàn bộ mã con của nhóm.
+          const anyWordMatch = item.children.filter((c) => {
+            const cNameAccent = (c.name || '').toLowerCase();
+            return qi.words.some((w) => hasWordBoundaryMatch(cNameAccent, w));
+          });
+          childrenToShow = anyWordMatch.length > 0 ? anyWordMatch : item.children;
+        }
+        // Nếu tắt "Chế độ chính xác nâng cao" và không có mã con nào khớp đủ,
+        // giữ hành vi cũ: hiện toàn bộ mã con của nhóm (childrenToShow đã mặc định = item.children).
       }
       const childrenHtml = childrenToShow
         .map(
@@ -3204,6 +3222,11 @@
   }
   if (rPriorityToggle) {
     rPriorityToggle.addEventListener('change', () => {
+      doSearch(input.value);
+    });
+  }
+  if (precisionToggle) {
+    precisionToggle.addEventListener('change', () => {
       doSearch(input.value);
     });
   }
