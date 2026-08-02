@@ -1315,6 +1315,10 @@
             <button class="clear" id="clearBtn" title="Xoá">✕</button>
           </div>
           <div class="option-row">
+            <input type="checkbox" id="rPriorityToggle">
+            <label for="rPriorityToggle">Ưu tiên mã R (triệu chứng, dấu hiệu lâm sàng và kết quả xét nghiệm bất thường)</label>
+          </div>
+          <div class="option-row">
             <input type="checkbox" id="yhctToggle">
             <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
           </div>
@@ -2867,6 +2871,7 @@
   const input = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearBtn');
   const yhctToggle = document.getElementById('yhctToggle');
+  const rPriorityToggle = document.getElementById('rPriorityToggle');
   const resultsEl = document.getElementById('results');
   const statusEl = document.getElementById('status');
   const toastEl = document.getElementById('toast');
@@ -3117,6 +3122,12 @@
         const aYhct = a.row.item._type === 'yhct' ? 1 : 0;
         const bYhct = b.row.item._type === 'yhct' ? 1 : 0;
         if (aYhct !== bYhct) return aYhct - bYhct; // YHCT luôn xuống dưới cùng, không lẫn với ICD-10 Tây y
+        // Nếu bật "Ưu tiên mã R": đưa các mã có tiền tố R (triệu chứng, dấu hiệu lâm sàng...) lên đầu danh sách
+        if (rPriorityToggle && rPriorityToggle.checked) {
+          const aR = a.row.codeNorm.startsWith('r') ? 1 : 0;
+          const bR = b.row.codeNorm.startsWith('r') ? 1 : 0;
+          if (aR !== bR) return bR - aR;
+        }
         // Mã/tên khớp tuyệt đối (điểm >= 850) luôn đứng đầu, xếp theo điểm giảm dần
         const aExact = a.score >= 850 ? 1 : 0;
         const bExact = b.score >= 850 ? 1 : 0;
@@ -3170,12 +3181,16 @@
     resultsEl.innerHTML = renderDetail(item);
   }
 
-  // ----- Tìm kiếm bằng AI (qua Cloudflare Worker proxy -> Vertex AI Gemini) -----
   input.addEventListener('input', () => {
     doSearch(input.value);
   });
   if (yhctToggle) {
     yhctToggle.addEventListener('change', () => {
+      doSearch(input.value);
+    });
+  }
+  if (rPriorityToggle) {
+    rPriorityToggle.addEventListener('change', () => {
       doSearch(input.value);
     });
   }
