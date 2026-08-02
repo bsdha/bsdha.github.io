@@ -975,6 +975,10 @@
   background: var(--blue); border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.4); cursor: nwse-resize; pointer-events: auto;
 }
 .rx-logo-size-row { margin-top: 8px; font-size: 12px; color: var(--muted); }
+.rx-logo-manual-row { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.rx-logo-manual-row label { font-size: 11.5px; color: #000; font-weight: 700; display: flex; flex-direction: column; gap: 3px; }
+.rx-logo-manual-row input { width: 80px; padding: 5px 7px; border: 1.5px solid #000; border-radius: 7px; font-size: 13px; }
+.rx-logo-sync-status { margin-top: 6px; font-size: 11px; color: var(--muted); min-height: 14px; }
 .rx-settings-topbar { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
 .rx-note-field { margin-top: 14px; }
 .rx-note-field > label, .rx-doctor-field > label { display: block; font-size: 12.5px; font-weight: 700; color: #000; margin-bottom: 4px; }
@@ -1533,7 +1537,16 @@
                   <div class="rx-logo-editor-handle" id="rxLogoEditorHandle" title="Kéo để phóng to/thu nhỏ"></div>
                 </div>
               </div>
-              <div class="rx-logo-size-row">Kích thước logo: <b id="rxLogoSizeVal">53px</b></div>
+              <div class="rx-logo-size-row">
+                Vị trí: X=<b id="rxLogoXVal">12</b>mm, Y=<b id="rxLogoYVal">8</b>mm &nbsp;|&nbsp; Kích thước: <b id="rxLogoSizeVal">53px</b>
+                (<span id="rxLogoSizeMmVal">14</span>mm)
+              </div>
+              <div class="rx-logo-manual-row">
+                <label>X (mm)<input type="number" id="rxLogoXInput" step="0.5" min="0"></label>
+                <label>Y (mm)<input type="number" id="rxLogoYInput" step="0.5" min="0"></label>
+                <label>Cỡ (mm)<input type="number" id="rxLogoSizeInput" step="0.5" min="6" max="40"></label>
+              </div>
+              <div class="rx-logo-sync-status" id="rxLogoSyncStatus"></div>
             </div>
           </div>
           <div class="rx-settings-grid">
@@ -3589,8 +3602,8 @@
   const org1Input = $('rxOrgLine1'), org2Input = $('rxOrgLine2');
   org1Input.value = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
   org2Input.value = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
-  org1Input.addEventListener('change', () => localStorage.setItem(LS_ORG1, org1Input.value.trim() || DEFAULT_ORG1));
-  org2Input.addEventListener('change', () => localStorage.setItem(LS_ORG2, org2Input.value.trim() || DEFAULT_ORG2));
+  org1Input.addEventListener('change', () => { localStorage.setItem(LS_ORG1, org1Input.value.trim() || DEFAULT_ORG1); pushConfigToCloud(); });
+  org2Input.addEventListener('change', () => { localStorage.setItem(LS_ORG2, org2Input.value.trim() || DEFAULT_ORG2); pushConfigToCloud(); });
 
   // ---------- Logo bệnh viện (mặc định dùng logo đã nhúng sẵn, có thể đổi) ----------
   const LS_LOGO_X = 'rxOrgLogoX', LS_LOGO_Y = 'rxOrgLogoY';
@@ -3599,6 +3612,9 @@
   const logoInput = $('rxOrgLogoInput'), logoPreview = $('rxOrgLogoPreview');
   const logoEditor = $('rxLogoEditor'), logoEditorItem = $('rxLogoEditorItem'), logoEditorHandle = $('rxLogoEditorHandle');
   const logoEditorOrg1 = $('rxLogoEditorOrg1'), logoEditorOrg2 = $('rxLogoEditorOrg2'), logoSizeVal = $('rxLogoSizeVal');
+  const logoXVal = $('rxLogoXVal'), logoYVal = $('rxLogoYVal'), logoSizeMmVal = $('rxLogoSizeMmVal');
+  const logoXInput = $('rxLogoXInput'), logoYInput = $('rxLogoYInput'), logoSizeInput = $('rxLogoSizeInput');
+  const logoSyncStatus = $('rxLogoSyncStatus');
   function currentLogo() { return localStorage.getItem(LS_LOGO) || DEFAULT_LOGO_B64; }
   function currentLogoPos() {
     const x = parseFloat(localStorage.getItem(LS_LOGO_X));
@@ -3632,6 +3648,12 @@
     logoEditorOrg1.textContent = (org1Input.value || DEFAULT_ORG1).toUpperCase();
     logoEditorOrg2.textContent = (org2Input.value || DEFAULT_ORG2).toUpperCase();
     logoSizeVal.textContent = Math.round(pos.size * 96 / 25.4) + 'px';
+    logoXVal.textContent = pos.x.toFixed(1);
+    logoYVal.textContent = pos.y.toFixed(1);
+    logoSizeMmVal.textContent = pos.size.toFixed(1);
+    if (document.activeElement !== logoXInput) logoXInput.value = pos.x.toFixed(1);
+    if (document.activeElement !== logoYInput) logoYInput.value = pos.y.toFixed(1);
+    if (document.activeElement !== logoSizeInput) logoSizeInput.value = pos.size.toFixed(1);
   }
   function refreshLogoPreview() {
     logoPreview.src = currentLogo();
@@ -3642,6 +3664,85 @@
   org2Input.addEventListener('input', layoutLogoEditor);
   window.addEventListener('resize', layoutLogoEditor);
 
+  function setLogoPosFromManualInputs() {
+    const pos = currentLogoPos();
+    const x = parseFloat(logoXInput.value);
+    const y = parseFloat(logoYInput.value);
+    const size = parseFloat(logoSizeInput.value);
+    if (Number.isFinite(x)) pos.x = Math.max(0, Math.min(PAGE_W_MM - pos.size, x));
+    if (Number.isFinite(y)) pos.y = Math.max(0, Math.min(PAGE_H_MM - pos.size, y));
+    if (Number.isFinite(size)) pos.size = Math.max(6, Math.min(40, size));
+    saveLogoPos(pos);
+    layoutLogoEditor();
+    pushConfigToCloud();
+  }
+  [logoXInput, logoYInput, logoSizeInput].forEach((el) => {
+    el.addEventListener('change', setLogoPosFromManualInputs);
+  });
+
+  // ---------- Đồng bộ logo/tên cơ quan giữa các máy qua Supabase (dùng chung 1 dòng cấu hình) ----------
+  const CLOUD_CONFIG_KEY = 'rx_logo_org';
+  function cloudHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    };
+  }
+  let pushCloudTimer = null;
+  function pushConfigToCloud() {
+    if (logoSyncStatus) logoSyncStatus.textContent = 'Đang đồng bộ...';
+    clearTimeout(pushCloudTimer);
+    pushCloudTimer = setTimeout(async () => {
+      try {
+        const pos = currentLogoPos();
+        const payload = {
+          key: CLOUD_CONFIG_KEY,
+          value: JSON.stringify({
+            logo: currentLogo(),
+            x: pos.x, y: pos.y, size: pos.size,
+            org1: org1Input.value.trim() || DEFAULT_ORG1,
+            org2: org2Input.value.trim() || DEFAULT_ORG2,
+          }),
+        };
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/cau_hinh`, {
+          method: 'POST',
+          headers: { ...cloudHeaders(), Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        if (logoSyncStatus) logoSyncStatus.textContent = 'Đã đồng bộ cho mọi máy ✓';
+      } catch (err) {
+        if (logoSyncStatus) logoSyncStatus.textContent = 'Chưa đồng bộ được (kiểm tra mạng / đã tạo bảng "cau_hinh" trong Supabase chưa?)';
+      }
+    }, 500);
+  }
+  async function pullConfigFromCloud() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/cau_hinh?key=eq.${CLOUD_CONFIG_KEY}&select=value`, {
+        headers: cloudHeaders(),
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const rows = await resp.json();
+      if (rows && rows[0] && rows[0].value) {
+        const cfg = JSON.parse(rows[0].value);
+        if (cfg.logo) localStorage.setItem(LS_LOGO, cfg.logo);
+        if (Number.isFinite(cfg.x)) localStorage.setItem(LS_LOGO_X, cfg.x);
+        if (Number.isFinite(cfg.y)) localStorage.setItem(LS_LOGO_Y, cfg.y);
+        if (Number.isFinite(cfg.size)) localStorage.setItem(LS_LOGO_SIZE, cfg.size);
+        if (cfg.org1) localStorage.setItem(LS_ORG1, cfg.org1);
+        if (cfg.org2) localStorage.setItem(LS_ORG2, cfg.org2);
+        org1Input.value = cfg.org1 || DEFAULT_ORG1;
+        org2Input.value = cfg.org2 || DEFAULT_ORG2;
+        refreshLogoPreview();
+        if (logoSyncStatus) logoSyncStatus.textContent = 'Đã lấy cấu hình mới nhất từ máy chủ ✓';
+      }
+    } catch (err) {
+      // Không có mạng hoặc chưa tạo bảng: tiếp tục dùng cấu hình lưu cục bộ trên máy này
+    }
+  }
+  pullConfigFromCloud();
+
   logoInput.addEventListener('change', () => {
     const file = logoInput.files[0];
     if (!file) return;
@@ -3650,6 +3751,7 @@
       localStorage.setItem(LS_LOGO, ev.target.result);
       refreshLogoPreview();
       logoInput.value = '';
+      pushConfigToCloud();
     };
     reader.readAsDataURL(file);
   });
@@ -3659,6 +3761,7 @@
     localStorage.removeItem(LS_LOGO_Y);
     localStorage.removeItem(LS_LOGO_SIZE);
     refreshLogoPreview();
+    pushConfigToCloud();
   });
 
   // Kéo logo để đổi vị trí
@@ -3689,6 +3792,7 @@
       dragging = false;
       logoEditorItem.classList.remove('dragging');
       try { logoEditorItem.releasePointerCapture(e.pointerId); } catch (err) {}
+      pushConfigToCloud();
     });
   })();
 
@@ -3719,6 +3823,7 @@
     logoEditorHandle.addEventListener('pointerup', (e) => {
       resizing = false;
       try { logoEditorHandle.releasePointerCapture(e.pointerId); } catch (err) {}
+      pushConfigToCloud();
     });
   })();
 
