@@ -227,6 +227,7 @@
     max-width: 760px;
     margin: 0 auto;
     padding: 16px;
+    zoom: 1.1;
   }#page-icd .panel {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -325,7 +326,7 @@
     font-weight: 700;
     color: var(--green);
     white-space: nowrap;
-  }#page-icd .child-row {
+  }#page-icd .child-btn span { font-weight: 700; }#page-icd .child-row {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -370,7 +371,7 @@
     border-radius: 6px;
     white-space: nowrap;
     flex-shrink: 0;
-  }#page-icd .result-btn span { color: var(--text); }#page-icd .result-btn:hover span { color: var(--blue); }#page-icd .result-btn .tag-yhct, #page-icd .card-top .tag-yhct {
+  }#page-icd .result-btn span { color: var(--text); font-weight: 700; }#page-icd .result-btn:hover span { color: var(--blue); }#page-icd .result-btn .tag-yhct, #page-icd .card-top .tag-yhct {
     font-weight: 700;
     font-size: 11px;
     color: #7a4a00 !important;
@@ -381,18 +382,24 @@
     flex-shrink: 0;
     letter-spacing: 0.02em;
   }#page-icd .back-btn {
-    display: inline-flex;
+    display: flex;
     align-items: center;
-    gap: 6px;
-    border: 1px solid var(--border);
-    background: var(--surface-2);
-    color: var(--text);
-    border-radius: 8px;
-    padding: 6px 12px;
-    font-size: 13px;
-    cursor: pointer;
+    justify-content: center;
+    gap: 4px;
+    width: fit-content;
+    margin-left: auto;
+    margin-right: 0;
     margin-bottom: 10px;
-  }#page-icd .back-btn:hover { background: var(--surface-2); }#page-icd /* --- Mã cụ thể (mã lá) --- */
+    border: 1px solid var(--blue-dark, #1d4ed8);
+    background: var(--blue, #2563eb);
+    color: #fff;
+    border-radius: 8px;
+    padding: 5px 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }#page-icd .back-btn:hover { background: var(--blue-dark, #1d4ed8); }#page-icd /* --- Mã cụ thể (mã lá) --- */
   .card-top {
     display: flex;
     justify-content: space-between;
@@ -421,7 +428,7 @@
   }#page-icd .copy-btn-inline {
     flex: 0 0 auto;
     white-space: nowrap;
-  }#page-icd .name { font-weight: 600; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .banner {
+  }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .banner {
     border-radius: 8px;
     padding: 7px 10px;
     font-size: 12.5px;
@@ -1310,10 +1317,6 @@
           <div class="option-row">
             <input type="checkbox" id="yhctToggle">
             <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
-          </div>
-          <div class="option-row">
-            <input type="checkbox" id="aiToggle">
-            <label for="aiToggle">Tìm bằng AI (nhập từ khóa, nhấn Enter)</label>
           </div>
           <div id="status"></div>
         </div>
@@ -2864,7 +2867,6 @@
   const input = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearBtn');
   const yhctToggle = document.getElementById('yhctToggle');
-  const aiToggle = document.getElementById('aiToggle');
   const resultsEl = document.getElementById('results');
   const statusEl = document.getElementById('status');
   const toastEl = document.getElementById('toast');
@@ -3028,7 +3030,6 @@
   function escapeAttr(str) { return escapeHtml(str); }
 
   let currentMatches = [];
-  let isAiResultsMode = false;
 
   function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -3094,7 +3095,6 @@
   let lastQueryInfo = buildQueryInfo('');
 
   function doSearch(query) {
-    isAiResultsMode = false;
     const qi = buildQueryInfo(query);
     lastQueryInfo = qi;
     if (!qi.norm && !qi.accent) {
@@ -3171,197 +3171,17 @@
   }
 
   // ----- Tìm kiếm bằng AI (qua Cloudflare Worker proxy -> Vertex AI Gemini) -----
-  // TODO: Dán URL Worker của bạn vào đây, dạng:
-  // https://icd10-ai-proxy.<ten-cua-ban>.workers.dev
-  const AI_PROXY_URL = 'https://icd10-ai-proxy.dhabolero.workers.dev/';
-
-  // Lọc sơ bộ theo từ khóa để chỉ gửi 1 phần dữ liệu liên quan cho AI,
-  // tránh vượt giới hạn token miễn phí khi gửi toàn bộ hàng chục nghìn mã mỗi lần tìm.
-  const MAX_AI_CANDIDATES = 250;
-  const AI_STOPWORDS = new Set(['bi', 'bị', 'roi', 'rồi', 'va', 'và', 'la', 'là', 'thi', 'thì', 'do', 'khi', 'cua', 'của', 'de', 'để', 'con', 'còn', 'nen', 'nên']);
-  function buildAiCandidateList(query) {
-    const qNorm = normalize(query);
-    const words = qNorm.split(/\s+/).filter((w) => w.length >= 2 && !AI_STOPWORDS.has(w));
-
-    let candidates = searchIndex;
-    if (words.length > 0) {
-      // Chấm điểm theo số từ khóa khớp, để mã liên quan nhất luôn được ưu tiên
-      // giữ lại trước khi cắt bớt (tránh bị mất mã đúng chỉ vì nằm ở cuối danh sách).
-      const scored = [];
-      searchIndex.forEach((row) => {
-        let score = 0;
-        words.forEach((w) => {
-          if (row.nameNorm.includes(w)) score += 1;
-          if (row.codeNorm.includes(w)) score += 1;
-        });
-        if (score > 0) scored.push({ row, score });
-      });
-      if (scored.length > 0) {
-        scored.sort((a, b) => b.score - a.score);
-        candidates = scored.map((s) => s.row);
-      }
-    }
-
-    if (candidates.length > MAX_AI_CANDIDATES) {
-      candidates = candidates.slice(0, MAX_AI_CANDIDATES);
-    }
-
-    return candidates
-      .map((row) => {
-        const it = row.item;
-        if (it._type === 'yhct') {
-          return `${it.code}|${it.name}${it.modernName ? ' (' + it.modernName + ')' : ''}${it.icd10 ? ' ~' + it.icd10 : ''}`;
-        }
-        return `${it.code}|${it.name}`;
-      })
-      .join('\n');
-  }
-
-  // Hiển thị kết quả AI dạng phẳng, gọn: chỉ mã + tên (giống kiểu Google AI Overview),
-  // không gộp nhóm "mã cha - mã con" như kết quả tìm kiếm thường.
-  function renderAiListItem(item) {
-    const tagHtml = item._type === 'yhct' ? '<span class="tag-yhct">YHCT</span>' : '';
-    const extraName =
-      item._type === 'yhct'
-        ? `${item.modernName ? ' — ' + escapeHtml(item.modernName) : ''}`
-        : '';
-    const isDropped = item.statusTitle === 'Cần chọn mã cụ thể hơn';
-    const warnClass = isDropped ? ' result-btn--dropped' : '';
-    const inlineWarningHtml = isDropped
-      ? '<div class="inline-warning inline-warning--dropped">Đã bỏ mã, cần chọn mã cụ thể hơn</div>'
-      : '';
-    return `
-      <div class="card">
-        <div class="result-row">
-          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="${item._type}">
-            ${tagHtml}
-            <code>${escapeHtml(item.code)}</code>
-            <span>${escapeHtml(item.name)}${extraName}</span>
-          </button>
-          ${!isDropped ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
-        </div>
-        ${inlineWarningHtml}
-      </div>`;
-  }
-
-  function showAiList(matches) {
-    resultsEl.innerHTML = matches.map((row) => renderAiListItem(row.item)).join('');
-  }
-
-  async function doAiSearch(query) {
-    const q = query.trim();
-    if (!q) {
-      currentMatches = [];
-      resultsEl.innerHTML = '';
-      statusEl.textContent = '';
-      return;
-    }
-
-    if (!AI_PROXY_URL || AI_PROXY_URL.indexOf('DÁN_URL_WORKER') !== -1) {
-      statusEl.textContent = 'Chưa cấu hình AI_PROXY_URL cho tìm kiếm AI.';
-      resultsEl.innerHTML = '<div class="empty">Chưa cấu hình AI_PROXY_URL trong file HTML. Xem hướng dẫn ở đầu hàm doAiSearch.</div>';
-      return;
-    }
-
-    statusEl.textContent = `Đang tìm bằng AI cho "${query}"...`;
-    resultsEl.innerHTML = '<div class="empty">Đang tìm bằng AI…</div>';
-
-    try {
-      const list = buildAiCandidateList(q);
-      const prompt =
-        'Bạn là công cụ tra cứu mã ICD-10 / YHCT. Dưới đây là danh sách mã hợp lệ, mỗi dòng "mã|tên":\n' +
-        list +
-        '\n\nCHỈ được chọn mã có trong danh sách trên, không tự tạo mã mới. ' +
-        `Từ khóa người dùng nhập: "${q}". ` +
-        'Trả về tối đa 15 mã phù hợp nhất, xếp theo độ liên quan giảm dần. ' +
-        'Chỉ trả lời JSON dạng {"codes":["mãA","mãB",...]}, không thêm chữ nào khác, không dùng markdown.';
-
-      const response = await fetch(AI_PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt }),
-      });
-
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      const text = (data.text || '').replace(/```json|```/g, '').trim();
-
-      let codes = [];
-      try {
-        codes = JSON.parse(text).codes || [];
-      } catch (e) {
-        codes = [];
-      }
-
-      if (codes.length === 0) {
-        currentMatches = [];
-        statusEl.textContent = `AI không tìm thấy mã phù hợp cho "${query}"`;
-        resultsEl.innerHTML = '<div class="empty">AI không tìm thấy mã phù hợp. Hãy thử từ khóa khác hoặc tắt "Tìm bằng AI".</div>';
-        return;
-      }
-
-      // Giữ đúng thứ tự AI trả về, đối chiếu lại với dữ liệu gốc để lấy đầy đủ thông tin
-      const found = [];
-      codes.forEach((code) => {
-        const row = searchIndex.find((r) => r.item.code === code);
-        if (row) found.push(row);
-      });
-
-      currentMatches = found;
-      statusEl.textContent = `AI gợi ý ${found.length.toLocaleString('vi-VN')} mã cho "${query}" — vui lòng tự đối chiếu trước khi dùng`;
-
-      if (found.length === 0) {
-        resultsEl.innerHTML = '<div class="empty">Không đối chiếu được mã AI trả về với dữ liệu hiện có.</div>';
-        return;
-      }
-
-      isAiResultsMode = true;
-      showAiList(found);
-    } catch (err) {
-      statusEl.textContent = 'Lỗi khi tìm bằng AI: ' + (err.message || err);
-      resultsEl.innerHTML = '<div class="empty">Lỗi khi gọi AI proxy. Kiểm tra URL Worker / cấu hình rồi thử lại.</div>';
-    }
-  }
-
   input.addEventListener('input', () => {
-    if (aiToggle && aiToggle.checked) return; // Chế độ AI: chỉ tìm khi nhấn Enter
     doSearch(input.value);
-  });
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && aiToggle && aiToggle.checked) {
-      e.preventDefault();
-      doAiSearch(input.value);
-    }
   });
   if (yhctToggle) {
     yhctToggle.addEventListener('change', () => {
-      if (!(aiToggle && aiToggle.checked)) doSearch(input.value);
-    });
-  }
-  if (aiToggle) {
-    aiToggle.addEventListener('change', () => {
-      if (aiToggle.checked) {
-        if (input.value.trim()) {
-          doAiSearch(input.value);
-        } else {
-          statusEl.textContent = 'Đã bật tìm bằng AI. Nhập từ khóa và nhấn Enter.';
-          resultsEl.innerHTML = '';
-        }
-      } else {
-        doSearch(input.value);
-      }
+      doSearch(input.value);
     });
   }
   clearBtn.addEventListener('click', () => {
     input.value = '';
-    if (aiToggle && aiToggle.checked) {
-      statusEl.textContent = '';
-      resultsEl.innerHTML = '';
-    } else {
-      doSearch('');
-    }
+    doSearch('');
     input.focus();
   });
 
@@ -3369,11 +3189,7 @@
   resultsEl.addEventListener('click', (e) => {
     const backBtn = e.target.closest('#backToListBtn');
     if (backBtn) {
-      if (isAiResultsMode) {
-        showAiList(currentMatches);
-      } else {
-        showList(currentMatches);
-      }
+      showList(currentMatches);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
