@@ -3705,7 +3705,7 @@
             org2: org2Input.value.trim() || DEFAULT_ORG2,
           }),
         };
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/cau_hinh`, {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/logo`, {
           method: 'POST',
           headers: { ...cloudHeaders(), Prefer: 'resolution=merge-duplicates' },
           body: JSON.stringify(payload),
@@ -3713,13 +3713,13 @@
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         if (logoSyncStatus) logoSyncStatus.textContent = 'Đã đồng bộ cho mọi máy ✓';
       } catch (err) {
-        if (logoSyncStatus) logoSyncStatus.textContent = 'Chưa đồng bộ được (kiểm tra mạng / đã tạo bảng "cau_hinh" trong Supabase chưa?)';
+        if (logoSyncStatus) logoSyncStatus.textContent = 'Chưa đồng bộ được (kiểm tra mạng / đã tạo bảng "logo" trong Supabase chưa?)';
       }
     }, 500);
   }
   async function pullConfigFromCloud() {
     try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/cau_hinh?key=eq.${CLOUD_CONFIG_KEY}&select=value`, {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/logo?key=eq.${CLOUD_CONFIG_KEY}&select=value`, {
         headers: cloudHeaders(),
       });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
