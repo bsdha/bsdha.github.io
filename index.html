@@ -499,6 +499,36 @@
   }
   #backToTop:hover { background: #1d4ed8; }
 
+  #goToBottom {
+    position: fixed;
+    right: 18px;
+    bottom: 76px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37,99,235,0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 999;
+  }
+  #goToBottom.show {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+  #goToBottom:hover { background: #1d4ed8; }
+
   /* --- Widget radio góc trên bên phải --- */
   .radio-widget {
     position: fixed;
@@ -1324,7 +1354,7 @@
   <div class="page" id="page-icd">
       <div class="wrap">
         <div class="panel">
-          <h1>Tra cứu ICD-10 (Tích hợp chế độ AI chính xác theo TT06/2026/TT-BYT - Bản quyền DHA)</h1>
+          <h1>Tra cứu ICD-10 (Tích hợp chế độ AI  theo TT06/2026/TT-BYT)</h1>
           <div class="sub"></div>
           <div class="search-row">
             <span class="icon">⌕</span>
@@ -1333,11 +1363,15 @@
           </div>
           <div class="option-row">
             <input type="checkbox" id="rPriorityToggle">
-            <label for="rPriorityToggle">Ưu tiên mã R (triệu chứng, dấu hiệu lâm sàng và kết quả xét nghiệm bất thường)</label>
+            <label for="rPriorityToggle">Ưu tiên mã R</label>
+          </div>
+          <div class="option-row">
+            <input type="checkbox" id="sPriorityToggle">
+            <label for="sPriorityToggle">Ưu tiên mã S</label>
           </div>
           <div class="option-row">
             <input type="checkbox" id="precisionToggle">
-            <label for="precisionToggle">Chế độ chính xác nâng cao (chỉ hiện mã con khớp ít nhất 1 từ trong câu tìm kiếm)</label>
+            <label for="precisionToggle">Chế độ chính xác tuyệt đối</label>
           </div>
           <div class="option-row">
             <input type="checkbox" id="yhctToggle">
@@ -1351,6 +1385,7 @@
         <div class="results" id="results"></div>
       </div>
       <button id="backToTop" title="Lên đầu trang" aria-label="Lên đầu trang">↑</button>
+      <button id="goToBottom" title="Xuống cuối trang" aria-label="Xuống cuối trang">↓</button>
   </div>
 
   <div class="page" id="page-sinhhieu">
@@ -3239,6 +3274,7 @@
   const clearBtn = document.getElementById('clearBtn');
   const yhctToggle = document.getElementById('yhctToggle');
   const rPriorityToggle = document.getElementById('rPriorityToggle');
+  const sPriorityToggle = document.getElementById('sPriorityToggle');
   const precisionToggle = document.getElementById('precisionToggle');
   const resultsEl = document.getElementById('results');
   const statusEl = document.getElementById('status');
@@ -3509,6 +3545,12 @@
           const bR = b.row.codeNorm.startsWith('r') ? 1 : 0;
           if (aR !== bR) return bR - aR;
         }
+        // Nếu bật "Ưu tiên mã S": đưa các mã có tiền tố S (chấn thương, vết thương...) lên đầu danh sách
+        if (sPriorityToggle && sPriorityToggle.checked) {
+          const aS = a.row.codeNorm.startsWith('s') ? 1 : 0;
+          const bS = b.row.codeNorm.startsWith('s') ? 1 : 0;
+          if (aS !== bS) return bS - aS;
+        }
         // Mã/tên khớp tuyệt đối (điểm >= 850) luôn đứng đầu, xếp theo điểm giảm dần
         const aExact = a.score >= 850 ? 1 : 0;
         const bExact = b.score >= 850 ? 1 : 0;
@@ -3546,16 +3588,7 @@
 
   function showList(matches, qi) {
     const queryInfo = qi !== undefined ? qi : lastQueryInfo;
-    // Giới hạn hiển thị để không lag khi query quá ngắn / trùng nhiều
-    const MAX_SHOW = 200;
-    const shown = matches.slice(0, MAX_SHOW);
-    resultsEl.innerHTML = shown.map((row) => renderListItem(row.item, queryInfo)).join('');
-    if (matches.length > MAX_SHOW) {
-      resultsEl.insertAdjacentHTML(
-        'beforeend',
-        `<div class="empty">Chỉ hiển thị ${MAX_SHOW} / ${matches.length} kết quả đầu tiên. Hãy nhập cụ thể hơn.</div>`
-      );
-    }
+    resultsEl.innerHTML = matches.map((row) => renderListItem(row.item, queryInfo)).join('');
   }
 
   function showDetail(item) {
@@ -3572,6 +3605,11 @@
   }
   if (rPriorityToggle) {
     rPriorityToggle.addEventListener('change', () => {
+      doSearch(input.value);
+    });
+  }
+  if (sPriorityToggle) {
+    sPriorityToggle.addEventListener('change', () => {
       doSearch(input.value);
     });
   }
@@ -3649,6 +3687,22 @@
   toggleBackToTop();
   backToTopBtn.addEventListener('click', () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // Nút cuộn xuống cuối trang
+  const goToBottomBtn = document.getElementById('goToBottom');
+  function toggleGoToBottom() {
+    const nearBottom = window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 50;
+    if (window.scrollY <= 300 && !nearBottom) {
+      goToBottomBtn.classList.add('show');
+    } else {
+      goToBottomBtn.classList.remove('show');
+    }
+  }
+  window.addEventListener('scroll', toggleGoToBottom, { passive: true });
+  toggleGoToBottom();
+  goToBottomBtn.addEventListener('click', () => {
+    window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' });
   });
 })();
 </script>
