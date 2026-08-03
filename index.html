@@ -1252,6 +1252,7 @@
   <nav class="sidebar" id="sidebarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
+    <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
@@ -1259,6 +1260,7 @@
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> ICD-10</a>
+    <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
@@ -1279,6 +1281,13 @@
           <div class="ic">🔎</div>
           <h2>Tra cứu ICD-10</h2>
           <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu">
+          <div class="ic">📋</div>
+          <h2>Tạo phiếu sinh hiệu</h2>
+          <p>Tạo &amp; in hàng loạt phiếu dấu hiệu sinh tồn (mạch, nhiệt độ, huyết áp...) theo khổ A4/A5, đánh số tự động.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -1338,6 +1347,328 @@
         <div class="results" id="results"></div>
       </div>
   </div>
+
+  <div class="page" id="page-sinhhieu">
+    <style>
+      #page-sinhhieu{
+        --sh-ink:#1c2b2f;
+        --sh-line:#9fb3b0;
+        --sh-paper:#f4f1ea;
+        --sh-accent:#2f6f5e;
+        background:#e7e2d6;
+        padding:24px;
+        color:var(--sh-ink);
+      }
+      #page-sinhhieu *{box-sizing:border-box;}
+      #page-sinhhieu .sh-toolbar{
+        max-width:1080px;
+        margin:0 auto 20px auto;
+        background:var(--sh-paper);
+        border:1px solid var(--sh-line);
+        border-radius:8px;
+        padding:16px 20px;
+        display:flex;
+        flex-wrap:wrap;
+        gap:14px;
+        align-items:center;
+      }
+      #page-sinhhieu .sh-toolbar-left{
+        display:flex;
+        flex-wrap:wrap;
+        gap:14px;
+        align-items:center;
+        flex:1;
+      }
+      #page-sinhhieu .sh-toolbar h1{
+        font-size:17px;
+        margin:0;
+        letter-spacing:.02em;
+      }
+      #page-sinhhieu .sh-toolbar .sh-sub{
+        font-size:12.5px;
+        color:#5a6b68;
+        margin-top:2px;
+      }
+      #page-sinhhieu .sh-title-block{flex-basis:100%;}
+      #page-sinhhieu .sh-controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+      #page-sinhhieu .sh-print-wrap{margin-left:auto;}
+      #page-sinhhieu .sh-toolbar button,
+      #page-sinhhieu .sh-toolbar select,
+      #page-sinhhieu .sh-toolbar input[type=date]{
+        font-family:inherit;
+        font-size:13.5px;
+        padding:8px 14px;
+        border-radius:6px;
+        border:1px solid var(--sh-line);
+        background:#fff;
+        cursor:pointer;
+      }
+      #page-sinhhieu button.sh-primary{
+        background:var(--sh-accent);
+        color:#fff;
+        border-color:var(--sh-accent);
+        font-weight:600;
+      }
+      #page-sinhhieu button.sh-primary:hover{background:#255a4c;}
+      #page-sinhhieu button.sh-print-btn{
+        background:var(--sh-ink);
+        color:#fff;
+        border-color:var(--sh-ink);
+        font-weight:600;
+        font-size:14.5px;
+        padding:10px 20px;
+      }
+      #page-sinhhieu button.sh-print-btn:hover{background:#0f1a1c;}
+      #page-sinhhieu .sh-toolbar button:hover{background:#eef0ec;}
+      #page-sinhhieu .sh-toolbar label{font-size:12.5px;color:#5a6b68;}
+      #page-sinhhieu input[type=number]{
+        width:70px;
+        padding:6px;
+        border:1px solid var(--sh-line);
+        border-radius:6px;
+        font-family:inherit;
+        cursor:text;
+      }
+      #page-sinhhieu input[type=date]{cursor:text;}
+      #page-sinhhieu .sh-range-group{
+        display:flex;
+        align-items:center;
+        gap:6px;
+        background:#fff;
+        border:1px solid var(--sh-line);
+        border-radius:6px;
+        padding:4px 10px;
+      }
+      #page-sinhhieu .sh-range-group label{margin:0;}
+      #page-sinhhieu .sh-range-group input{border:none;padding:4px 2px;width:56px;}
+      #page-sinhhieu .sh-range-group input:focus{outline:1px solid var(--sh-accent);}
+      #page-sinhhieu .sh-range-group span.sh-dash{color:#5a6b68;}
+
+      #page-sinhhieu .sh-sheet{
+        background:#fff;
+        margin:0 auto 30px auto;
+        padding:8mm;
+        box-shadow:0 2px 10px rgba(0,0,0,.12);
+        display:grid;
+        grid-template-columns:repeat(4, 45mm);
+        grid-auto-rows:min-content;
+        align-content:start;
+        justify-content:center;
+        gap:2.5mm 4mm;
+      }
+      #page-sinhhieu .sh-sheet.sh-a4{
+        width:202mm;
+        min-height:280mm;
+        padding:5mm;
+      }
+      #page-sinhhieu .sh-sheet.sh-a5{
+        width:202mm;
+        min-height:134mm;
+        padding:3mm;
+        grid-template-columns:repeat(4, 45mm);
+        gap:2mm 3mm;
+      }
+      #page-sinhhieu .sh-sheet.sh-a5 .sh-slip{
+        font-size:7.6pt;
+        padding:1.8mm 2.2mm;
+      }
+      #page-sinhhieu .sh-sheet.sh-a5 .sh-slip-no{font-size:10.5pt;}
+      #page-sinhhieu .sh-sheet.sh-a5 .sh-field .sh-label{font-size:7pt;}
+
+      #page-sinhhieu .sh-slip{
+        border:1px solid #000;
+        padding:2mm 2.4mm;
+        display:flex;
+        flex-direction:column;
+        font-size:8pt;
+        min-height:0;
+        color:#000;
+      }
+      #page-sinhhieu .sh-slip *{color:#000;}
+      #page-sinhhieu .sh-slip-head{
+        display:flex;
+        justify-content:space-between;
+        align-items:baseline;
+        border-bottom:1px solid #000;
+        padding-bottom:1mm;
+        margin-bottom:1mm;
+      }
+      #page-sinhhieu .sh-slip-no{
+        font-weight:700;
+        font-size:11pt;
+      }
+      #page-sinhhieu .sh-slip-date{
+        font-size:7pt;
+      }
+      #page-sinhhieu .sh-field{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        padding:1.1mm 0;
+      }
+      #page-sinhhieu .sh-field .sh-label{font-size:7.4pt;}
+      #page-sinhhieu .sh-field .sh-box{
+        flex:1;
+        margin-left:2mm;
+        border-bottom:1px solid #ddd;
+        height:2.8mm;
+      }
+
+      @media print{
+        body *{ visibility:hidden; }
+        #page-sinhhieu.sh-printing, #page-sinhhieu.sh-printing *{ visibility:visible; }
+        #page-sinhhieu.sh-printing{
+          position:absolute; left:0; top:0; margin:0; padding:0; background:#fff;
+        }
+        #page-sinhhieu .sh-toolbar{display:none;}
+        #page-sinhhieu #shSummaryLabel{display:none;}
+        #page-sinhhieu .sh-sheet{box-shadow:none;margin:0;}
+      }
+    </style>
+    <style id="shPageSizeStyle"></style>
+
+    <div class="sh-toolbar">
+      <div class="sh-title-block">
+        <h1>Phiếu dấu hiệu sinh tồn — tạo bản in</h1>
+        <div class="sh-sub" id="shDateLabel">Ngày in trên phiếu: —</div>
+      </div>
+
+      <div class="sh-toolbar-left">
+        <label>Ngày ghi trên phiếu:
+          <input type="date" id="shDateInput">
+        </label>
+        <label>Khổ giấy:
+          <select id="shPaperSelect">
+            <option value="A4">A4 (dọc, 24 phiếu/tờ)</option>
+            <option value="A5">A5 (ngang, 12 phiếu/tờ)</option>
+          </select>
+        </label>
+        <div class="sh-range-group">
+          <label for="shStartInput">Từ số</label>
+          <input type="number" id="shStartInput" value="1" min="1" max="9999">
+          <span class="sh-dash">→</span>
+          <label for="shEndInput">đến số</label>
+          <input type="number" id="shEndInput" value="24" min="1" max="9999">
+        </div>
+        <button id="shResetBtn" class="sh-primary">🔄 Đặt lại: hôm nay &amp; số 001</button>
+      </div>
+
+      <div class="sh-print-wrap">
+        <button class="sh-print-btn" id="shPrintBtn">🖨️ In</button>
+      </div>
+    </div>
+
+    <div class="sh-sub" id="shSummaryLabel" style="max-width:1080px;margin:0 auto 14px auto;text-align:center;"></div>
+
+    <div id="shSheets"></div>
+  </div>
+
+  <script>
+  (function(){
+    const PER_SHEET = { A4: 24, A5: 12 };
+    const el = id => document.getElementById(id);
+
+    function toISODate(d){
+      const dd = String(d.getDate()).padStart(2,'0');
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const yyyy = d.getFullYear();
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    function toDisplayDate(iso){
+      const [yyyy,mm,dd] = iso.split('-');
+      return `${dd}/${mm}/${yyyy}`;
+    }
+
+    function buildSlip(num, dateStr){
+      const numStr = String(num).padStart(3,'0');
+      return `
+      <div class="sh-slip">
+        <div class="sh-slip-head">
+          <span class="sh-slip-no">#${numStr}</span>
+          <span class="sh-slip-date">${dateStr}</span>
+        </div>
+        <div class="sh-field"><span class="sh-label">Mạch (l/p)</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Nhiệt độ (°C)</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Huyết áp (mmHg)</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Nhịp thở (l/p)</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Cân nặng (kg)</span><span class="sh-box"></span></div>
+      </div>`;
+    }
+
+    function onPaperChange(){
+      const paper = el('shPaperSelect').value;
+      el('shStartInput').value = 1;
+      el('shEndInput').value = PER_SHEET[paper];
+      render();
+    }
+
+    function render(){
+      const paper = el('shPaperSelect').value;
+      const perSheet = PER_SHEET[paper];
+
+      let start = parseInt(el('shStartInput').value, 10);
+      let end = parseInt(el('shEndInput').value, 10);
+      if(!start || start < 1) start = 1;
+      if(!end || end < start) end = start;
+      el('shStartInput').value = start;
+      el('shEndInput').value = end;
+
+      const isoDate = el('shDateInput').value || toISODate(new Date());
+      const dateStr = toDisplayDate(isoDate);
+      el('shDateLabel').textContent = 'Ngày in trên phiếu: ' + dateStr;
+
+      const orientation = paper === 'A5' ? 'landscape' : 'portrait';
+      el('shPageSizeStyle').textContent =
+        `@page{ size:${paper} ${orientation}; margin:4mm; }`;
+
+      const totalSlips = end - start + 1;
+      const sheetCount = Math.ceil(totalSlips / perSheet);
+      el('shSummaryLabel').textContent =
+        `Sẽ tạo phiếu #${String(start).padStart(3,'0')} → #${String(end).padStart(3,'0')}  (${sheetCount} tờ ${paper})`;
+
+      const sheetsDiv = el('shSheets');
+      sheetsDiv.innerHTML = '';
+
+      let counter = start;
+      for(let s=0; s<sheetCount; s++){
+        const sheet = document.createElement('div');
+        sheet.className = 'sh-sheet ' + (paper === 'A5' ? 'sh-a5' : 'sh-a4');
+        let html = '';
+        for(let i=0; i<perSheet && counter<=end; i++){
+          html += buildSlip(counter, dateStr);
+          counter++;
+        }
+        sheet.innerHTML = html;
+        sheetsDiv.appendChild(sheet);
+      }
+    }
+
+    function resetToday(){
+      el('shDateInput').value = toISODate(new Date());
+      const paper = el('shPaperSelect').value;
+      el('shStartInput').value = 1;
+      el('shEndInput').value = PER_SHEET[paper];
+      render();
+    }
+
+    function printSinhHieu(){
+      const page = el('page-sinhhieu');
+      page.classList.add('sh-printing');
+      window.print();
+      setTimeout(() => page.classList.remove('sh-printing'), 300);
+    }
+
+    el('shResetBtn').addEventListener('click', resetToday);
+    el('shStartInput').addEventListener('change', render);
+    el('shEndInput').addEventListener('change', render);
+    el('shDateInput').addEventListener('change', render);
+    el('shPaperSelect').addEventListener('change', onPaperChange);
+    el('shPrintBtn').addEventListener('click', printSinhHieu);
+
+    el('shDateInput').value = toISODate(new Date());
+    render();
+  })();
+  </script>
 
   <div class="page" id="page-ldl">
     <div class="wrap">
@@ -5187,8 +5518,8 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
-  const KEY_PATH = { home: '/', icd: '/icd10', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
+  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
 
   function showPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
