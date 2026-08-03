@@ -266,6 +266,14 @@
     color: var(--muted);
     font-size: 16px;
     padding: 2px 6px;
+  }#page-icd .option-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 16px;
+    row-gap: 6px;
+    margin-top: 8px;
+  }#page-icd .option-grid .option-row {
+    margin-top: 0;
   }#page-icd .option-row {
     display: flex;
     align-items: center;
@@ -793,6 +801,7 @@
   .page.active { display: block; }
 
   @media (max-width: 780px) {
+    #page-icd .option-grid { grid-template-columns: 1fr; }
     .app-layout { flex-direction: column; }
     .sidebar { display: none; }
     .topbar {
@@ -1361,21 +1370,23 @@
             <input id="searchInput" placeholder="Tìm mã ICD hoặc tên bệnh: A09, E11.9, tăng huyết áp..." autocomplete="off" spellcheck="false">
             <button class="clear" id="clearBtn" title="Xoá">✕</button>
           </div>
-          <div class="option-row">
-            <input type="checkbox" id="rPriorityToggle">
-            <label for="rPriorityToggle">Ưu tiên mã R</label>
-          </div>
-          <div class="option-row">
-            <input type="checkbox" id="sPriorityToggle">
-            <label for="sPriorityToggle">Ưu tiên mã S</label>
-          </div>
-          <div class="option-row">
-            <input type="checkbox" id="precisionToggle">
-            <label for="precisionToggle">Chế độ chính xác tuyệt đối</label>
-          </div>
-          <div class="option-row">
-            <input type="checkbox" id="yhctToggle">
-            <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
+          <div class="option-grid">
+            <div class="option-row">
+              <input type="checkbox" id="rPriorityToggle">
+              <label for="rPriorityToggle">Ưu tiên mã R</label>
+            </div>
+            <div class="option-row">
+              <input type="checkbox" id="precisionToggle">
+              <label for="precisionToggle">Chế độ chính xác tuyệt đối</label>
+            </div>
+            <div class="option-row">
+              <input type="checkbox" id="sPriorityToggle">
+              <label for="sPriorityToggle">Ưu tiên mã S</label>
+            </div>
+            <div class="option-row">
+              <input type="checkbox" id="yhctToggle">
+              <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
+            </div>
           </div>
           <div id="status"></div>
         </div>
