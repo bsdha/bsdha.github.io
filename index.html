@@ -75,7 +75,7 @@
   #page-home .hcard.soon { opacity: 0.55; cursor: default; }
   #page-home .hcard.soon:hover { border-color: var(--border); background: var(--surface); transform: none; }
   #page-home .hcard.soon .tag { background: var(--amber-light); color: var(--amber); border: none; }
-  #page-home footer { text-align: center; margin-top: 42px; font-size: 12px; color: var(--muted); }
+  #page-home footer { text-align: center; margin-top: 42px; font-size: 12px; color: var(--muted); line-height: 1.8; }
   @media (max-width: 640px) {
     #page-home .hgrid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     #page-home .hcard { padding: 12px 8px; border-radius: 12px; gap: 4px; text-align: center; align-items: center; }
@@ -1313,7 +1313,11 @@
         </a>
       </div>
 
-      <footer>© bsdha.github.io — Cập nhật liên tục</footer>
+      <footer>
+        © <span id="footerYear">2026</span> <strong>BS. DHA</strong>. All rights reserved.<br>
+        📧 bsdha.btu@gmail.com &nbsp;|&nbsp; 📞 0868.91.97.90<br>
+        📍 Bệnh viện Đa khoa Bình Dương Cơ Sở 2 — Ấp 13, Xã Bắc Tân Uyên, TP. Hồ Chí Minh
+      </footer>
     </div>
   </div>
 
@@ -1553,7 +1557,8 @@
           <label for="shEndInput">đến số</label>
           <input type="number" id="shEndInput" value="24" min="1" max="9999">
         </div>
-        <button id="shResetBtn" class="sh-primary">🔄 Đặt lại: hôm nay &amp; số 001</button>
+        <button id="shResetBtn" class="sh-primary">🔄 Tạo phiếu cho hôm nay</button>
+        <button id="shTomorrowBtn" class="sh-primary">📅 Tạo phiếu cho ngày mai</button>
       </div>
 
       <div class="sh-print-wrap">
@@ -1646,12 +1651,22 @@
       }
     }
 
-    function resetToday(){
-      el('shDateInput').value = toISODate(new Date());
+    function resetForDate(d){
+      el('shDateInput').value = toISODate(d);
       const paper = el('shPaperSelect').value;
       el('shStartInput').value = 1;
       el('shEndInput').value = PER_SHEET[paper];
       render();
+    }
+
+    function resetToday(){
+      resetForDate(new Date());
+    }
+
+    function resetTomorrow(){
+      const d = new Date();
+      d.setDate(d.getDate() + 1);
+      resetForDate(d);
     }
 
     function printSinhHieu(){
@@ -1662,6 +1677,7 @@
     }
 
     el('shResetBtn').addEventListener('click', resetToday);
+    el('shTomorrowBtn').addEventListener('click', resetTomorrow);
     el('shStartInput').addEventListener('change', render);
     el('shEndInput').addEventListener('change', render);
     el('shDateInput').addEventListener('change', render);
@@ -5551,6 +5567,9 @@
 
   const initialKey = PATH_MAP[location.pathname] || 'home';
   showPage(initialKey, false);
+
+  const footerYearEl = document.getElementById('footerYear');
+  if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
 })();
 </script>
 
