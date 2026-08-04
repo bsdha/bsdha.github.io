@@ -324,6 +324,8 @@
     cursor: pointer;
   }#page-icd .option-row label {
     cursor: pointer;
+  }#page-icd .option-row--single {
+    margin-top: 8px;
   }#page-icd #status {
     font-size: 12.5px;
     color: var(--muted);
@@ -1435,6 +1437,10 @@
             <span class="icon">⌕</span>
             <input id="searchInput" placeholder="Tìm mã ICD hoặc tên bệnh: A09, E11.9, tăng huyết áp..." autocomplete="off" spellcheck="false">
             <button class="clear" id="clearBtn" title="Xoá">✕</button>
+          </div>
+          <div class="option-row option-row--single" id="mainDiseaseOnlyRow">
+            <input type="checkbox" id="mainDiseaseOnlyToggle">
+            <label for="mainDiseaseOnlyToggle">Chỉ hiển thị mã Bệnh chính</label>
           </div>
           <div class="option-grid">
             <div class="option-row">
@@ -3351,6 +3357,7 @@
   const input = document.getElementById('searchInput');
   const clearBtn = document.getElementById('clearBtn');
   const yhctToggle = document.getElementById('yhctToggle');
+  const mainDiseaseOnlyToggle = document.getElementById('mainDiseaseOnlyToggle');
   const rPriorityToggle = document.getElementById('rPriorityToggle');
   const sPriorityToggle = document.getElementById('sPriorityToggle');
   const precisionToggle = document.getElementById('precisionToggle');
@@ -3377,6 +3384,19 @@
     return `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
       item.statusDesc ? '<span>' + escapeHtml(item.statusDesc) + '</span>' : ''
     }</div>`;
+  }
+
+  // Mã có được phép dùng làm bệnh chính hay không, dựa vào statusTitle của chính mã đó.
+  const NON_MAIN_DISEASE_TITLES = [
+    'Cần chọn mã cụ thể hơn',
+    'Không khuyến khích dùng làm bệnh chính',
+    'Không dùng làm bệnh chính',
+    'Không sử dụng',
+  ];
+  function isMainDiseaseUsable(item) {
+    if (item._type === 'yhct' && item.removed) return false;
+    if (item.statusTitle && NON_MAIN_DISEASE_TITLES.includes(item.statusTitle)) return false;
+    return true;
   }
 
   function renderYhctListItem(item) {
@@ -3407,8 +3427,9 @@
       </div>`;
   }
 
-  function renderListItem(item, qi) {
+  function renderListItem(item, qi, mainOnly) {
     if (item._type === 'yhct') {
+      if (mainOnly && !isMainDiseaseUsable(item)) return '';
       return renderYhctListItem(item);
     }
 
@@ -3440,6 +3461,10 @@
         }
         // Nếu tắt "Chế độ chính xác nâng cao" và không có mã con nào khớp đủ,
         // giữ hành vi cũ: hiện toàn bộ mã con của nhóm (childrenToShow đã mặc định = item.children).
+      }
+      if (mainOnly) {
+        childrenToShow = childrenToShow.filter((c) => isMainDiseaseUsable(c));
+        if (childrenToShow.length === 0) return '';
       }
       const childrenHtml = childrenToShow
         .map((c) => {
@@ -3474,6 +3499,7 @@
 
     // Mã cụ thể (mã lá) -> hiện rút gọn kèm banner trạng thái (nếu có) ngay trong danh sách;
     // bấm vào mã để mở rộng xem thêm chi tiết (tên tiếng Anh, phân loại, ghi chú) ngay tại chỗ.
+    if (mainOnly && !isMainDiseaseUsable(item)) return '';
     const isDropped = item.statusTitle === 'Cần chọn mã cụ thể hơn';
     const isNotRecommended = item.statusTitle === 'Không khuyến khích dùng làm bệnh chính';
     const warnClass = isDropped ? ' result-btn--dropped' : (isNotRecommended ? ' result-btn--not-recommended' : '');
@@ -3644,7 +3670,9 @@
 
   function showList(matches, qi) {
     const queryInfo = qi !== undefined ? qi : lastQueryInfo;
-    resultsEl.innerHTML = matches.map((row) => renderListItem(row.item, queryInfo)).join('');
+    const mainOnly = !!(mainDiseaseOnlyToggle && mainDiseaseOnlyToggle.checked);
+    const html = matches.map((row) => renderListItem(row.item, queryInfo, mainOnly)).filter(Boolean).join('');
+    resultsEl.innerHTML = html || '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
   }
 
   input.addEventListener('input', () => {
@@ -3652,6 +3680,11 @@
   });
   if (yhctToggle) {
     yhctToggle.addEventListener('change', () => {
+      doSearch(input.value);
+    });
+  }
+  if (mainDiseaseOnlyToggle) {
+    mainDiseaseOnlyToggle.addEventListener('change', () => {
       doSearch(input.value);
     });
   }
