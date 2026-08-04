@@ -8,6 +8,22 @@
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
+  // --- Bộ đếm "sử dụng thật" (không phải pageview) ---
+  // Đổi WORKER_URL thành URL Worker của bạn sau khi deploy (xem README trong usage-worker/).
+  const USAGE_WORKER_URL = 'https://bsdha-usage-tracker.dhabolero.workers.dev';
+  const USAGE_DEBOUNCE_MS = 800; // gộp các lần gọi liên tiếp trong khoảng này thành 1 lượt
+  const _usageTimers = {};
+  function logUsage(action) {
+    clearTimeout(_usageTimers[action]);
+    _usageTimers[action] = setTimeout(() => {
+      fetch(`${USAGE_WORKER_URL}/log?action=${encodeURIComponent(action)}`, {
+        method: 'POST',
+        mode: 'cors',
+        keepalive: true,
+      }).catch(() => {}); // im lặng nếu lỗi mạng, không ảnh hưởng người dùng
+    }, USAGE_DEBOUNCE_MS);
+  }
+
   gtag('config', 'G-C4LNNNDG5Q');
 </script>
 <meta charset="UTF-8">
@@ -1716,6 +1732,7 @@
     }
 
     function printSinhHieu(){
+      logUsage('sinhhieu_generate');
       const page = el('page-sinhhieu');
       page.classList.add('sh-printing');
       window.print();
@@ -3536,6 +3553,7 @@
       statusEl.textContent = '';
       return;
     }
+    logUsage('icd_search');
 
     const yhctOnly = !!(yhctToggle && yhctToggle.checked);
     const matches = searchIndex
@@ -3770,6 +3788,7 @@
   }
 
   function calc() {
+    logUsage('ldl_calc');
     const tc = parseFloat(tcInput.value);
     const hdl = parseFloat(hdlInput.value);
     const tg = parseFloat(tgInput.value);
@@ -3878,6 +3897,7 @@
   }
 
   document.getElementById('egfrCalcBtn').addEventListener('click', () => {
+    logUsage('egfr_calc');
     const age = parseFloat(document.getElementById('egfrAge').value);
     const sex = document.getElementById('egfrSex').value;
     let scrRaw = parseFloat(scrInput.value);
@@ -5575,6 +5595,7 @@
 
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
+      logUsage('donthuoc_save');
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
