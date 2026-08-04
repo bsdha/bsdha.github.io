@@ -494,6 +494,37 @@
     color: var(--muted);
     padding: 40px 0;
     font-size: 13.5px;
+  }#page-icd .result-btn, #page-icd .child-btn {
+    position: relative;
+  }#page-icd .result-btn[aria-expanded]::after {
+    content: "▾";
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--muted);
+    font-size: 12px;
+    transition: transform 0.15s ease;
+    align-self: center;
+  }#page-icd .result-btn[aria-expanded="true"]::after,
+  #page-icd .child-btn[aria-expanded="true"]::after {
+    transform: rotate(180deg);
+  }#page-icd .child-btn[aria-expanded]::after {
+    content: "▾";
+    margin-left: auto;
+    flex-shrink: 0;
+    color: var(--green);
+    font-size: 11px;
+    transition: transform 0.15s ease;
+    align-self: center;
+  }#page-icd .detail-panel {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--border);
+  }#page-icd .detail-panel[hidden] { display: none; }#page-icd .detail-panel .en { margin-bottom: 4px; }#page-icd .child-row-wrap {
+    display: flex;
+    flex-direction: column;
+  }#page-icd .child-row-wrap .detail-panel {
+    margin-left: 4px;
+    margin-right: 4px;
   }
 
   .toast {
@@ -3337,23 +3368,42 @@
     navigator.clipboard?.writeText(text).then(() => showToast('Đã copy: ' + text));
   }
 
+  // Hiện banner trạng thái (statusTitle/statusDesc) ngay trong danh sách, không cần bấm vào chi tiết.
+  // Áp dụng chung cho mọi loại statusTitle (VD: "Không dùng làm bệnh chính", "Có thể dùng làm bệnh chính",
+  // "Cần chọn mã cụ thể hơn", "Không khuyến khích dùng làm bệnh chính"...).
+  function renderBanner(item) {
+    if (!item.statusTitle) return '';
+    const bannerClass = item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : 'default';
+    return `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
+      item.statusDesc ? '<span>' + escapeHtml(item.statusDesc) + '</span>' : ''
+    }</div>`;
+  }
+
   function renderYhctListItem(item) {
     const isRemoved = !!item.removed;
     const warnClass = isRemoved ? ' result-btn--dropped' : '';
-    const inlineWarningHtml = isRemoved
-      ? `<div class="inline-warning inline-warning--dropped">${escapeHtml(item.statusTitle || 'Không sử dụng')}${item.removedNote ? ' — ' + escapeHtml(item.removedNote) : ''}</div>`
-      : '';
+    const bannerHtml = item.statusTitle
+      ? renderBanner(item)
+      : (isRemoved
+          ? `<div class="banner warn"><b>Không sử dụng</b>${item.removedNote ? '<span>' + escapeHtml(item.removedNote) + '</span>' : ''}</div>`
+          : '');
+    const extraHtml = [
+      item.modernName ? `<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>` : '',
+      item.icd10 ? `<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>` : '',
+    ].join('');
+    const hasDetail = !!extraHtml;
     return `
       <div class="card">
         <div class="result-row">
-          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="yhct">
+          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="yhct"${hasDetail ? ' aria-expanded="false"' : ' style="cursor:default;"'}>
             <span class="tag-yhct">YHCT</span>
             <code>${escapeHtml(item.code)}</code>
             <span>${escapeHtml(item.name)}${item.modernName ? ' — ' + escapeHtml(item.modernName) : ''}</span>
           </button>
           ${!isRemoved ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
         </div>
-        ${inlineWarningHtml}
+        ${bannerHtml}
+        ${hasDetail ? `<div class="detail-panel" hidden>${extraHtml}</div>` : ''}
       </div>`;
   }
 
@@ -3392,16 +3442,26 @@
         // giữ hành vi cũ: hiện toàn bộ mã con của nhóm (childrenToShow đã mặc định = item.children).
       }
       const childrenHtml = childrenToShow
-        .map(
-          (c) =>
-            `<div class="child-row">
-               <button class="child-btn" data-code="${escapeAttr(c.code)}">
-                 <code>${escapeHtml(c.code)}</code>
-                 <span>${escapeHtml(c.name)}</span>
-               </button>
-               <button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(c.code)}">Copy mã</button>
-             </div>`
-        )
+        .map((c) => {
+          const cBannerHtml = renderBanner(c);
+          const cExtraHtml = [
+            c.en ? `<div class="en">${escapeHtml(c.en)}</div>` : '',
+            (c.meta || []).length ? `<div class="meta">${c.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>` : '',
+            c.note ? `<div class="note">${c.note}</div>` : '',
+          ].join('');
+          const cHasDetail = !!cExtraHtml;
+          return `<div class="child-row-wrap">
+               <div class="child-row">
+                 <button class="child-btn" data-code="${escapeAttr(c.code)}"${cHasDetail ? ' aria-expanded="false"' : ' style="cursor:default;"'}>
+                   <code>${escapeHtml(c.code)}</code>
+                   <span>${escapeHtml(c.name)}</span>
+                 </button>
+                 <button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(c.code)}">Copy mã</button>
+               </div>
+               ${cBannerHtml}
+               ${cHasDetail ? `<div class="detail-panel" hidden>${cExtraHtml}</div>` : ''}
+             </div>`;
+        })
         .join('');
       return `
         <div class="card">
@@ -3412,82 +3472,30 @@
         </div>`;
     }
 
-    // Mã cụ thể (mã lá) -> chỉ hiện rút gọn, bấm vào mới xem chi tiết
-    // Nếu mã có cảnh báo (statusTitle) thì hiện luôn ngoài danh sách, không cần bấm vào chi tiết
+    // Mã cụ thể (mã lá) -> hiện rút gọn kèm banner trạng thái (nếu có) ngay trong danh sách;
+    // bấm vào mã để mở rộng xem thêm chi tiết (tên tiếng Anh, phân loại, ghi chú) ngay tại chỗ.
     const isDropped = item.statusTitle === 'Cần chọn mã cụ thể hơn';
     const isNotRecommended = item.statusTitle === 'Không khuyến khích dùng làm bệnh chính';
     const warnClass = isDropped ? ' result-btn--dropped' : (isNotRecommended ? ' result-btn--not-recommended' : '');
-    const inlineWarningHtml = isDropped
-      ? '<div class="inline-warning inline-warning--dropped">Đã bỏ mã, cần chọn mã cụ thể hơn</div>'
-      : (isNotRecommended
-          ? '<div class="inline-warning inline-warning--not-recommended">Không khuyến khích dùng làm bệnh chính</div>'
-          : '');
+    const bannerHtml = renderBanner(item);
+    const extraHtml = [
+      item.en ? `<div class="en">${escapeHtml(item.en)}</div>` : '',
+      (item.meta || []).length ? `<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>` : '',
+      item.note ? `<div class="note">${item.note}</div>` : '',
+    ].join('');
+    const hasDetail = !!extraHtml;
 
     return `
       <div class="card">
         <div class="result-row">
-          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}">
+          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="icd"${hasDetail ? ' aria-expanded="false"' : ' style="cursor:default;"'}>
             <code>${escapeHtml(item.code)}</code>
             <span>${escapeHtml(item.name)}</span>
           </button>
           ${!isDropped ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
         </div>
-        ${inlineWarningHtml}
-      </div>`;
-  }
-
-  function renderYhctDetail(item) {
-    const bannerClass = item.removed ? 'warn' : (item.status === 'warn' ? 'warn' : 'ok');
-    const bannerHtml = item.statusTitle
-      ? `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
-          (item.statusDesc || item.removedNote)
-            ? '<span>' + escapeHtml(item.statusDesc || '') + (item.removedNote ? ' ' + escapeHtml(item.removedNote) : '') + '</span>'
-            : ''
-        }</div>`
-      : '';
-    return `
-      <button class="back-btn" id="backToListBtn" title="Quay lại danh sách kết quả">← Quay lại</button>
-      <div class="card">
-        <div class="card-top">
-          <span class="tag-yhct">YHCT</span>
-          <span class="code">${escapeHtml(item.code)}</span>
-          <button class="copy-btn" data-copy="${escapeAttr(item.code)}">Copy mã</button>
-        </div>
-        <div class="name">${escapeHtml(item.name)}</div>
-        ${item.modernName ? `<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>` : ''}
-        ${item.icd10 ? `<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>` : ''}
         ${bannerHtml}
-      </div>`;
-  }
-
-  function renderDetail(item) {
-    if (item._type === 'yhct') {
-      return renderYhctDetail(item);
-    }
-    const bannerClass =
-      item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : 'default';
-    const bannerHtml = item.statusTitle
-      ? `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
-          item.statusDesc ? '<span>' + escapeHtml(item.statusDesc) + '</span>' : ''
-        }</div>`
-      : '';
-    const metaHtml = (item.meta || [])
-      .map((m) => `<span>${escapeHtml(m)}</span>`)
-      .join('');
-    const noteHtml = item.note ? `<div class="note">${item.note}</div>` : '';
-
-    return `
-      <button class="back-btn" id="backToListBtn" title="Quay lại danh sách kết quả">← Quay lại</button>
-      <div class="card">
-        <div class="card-top">
-          <span class="code">${escapeHtml(item.code)}</span>
-          <button class="copy-btn" data-copy="${escapeAttr(item.code)}">Copy mã</button>
-        </div>
-        <div class="name">${escapeHtml(item.name)}</div>
-        ${item.en ? `<div class="en">${escapeHtml(item.en)}</div>` : ''}
-        ${bannerHtml}
-        <div class="meta">${metaHtml}</div>
-        ${noteHtml}
+        ${hasDetail ? `<div class="detail-panel" hidden>${extraHtml}</div>` : ''}
       </div>`;
   }
 
@@ -3639,10 +3647,6 @@
     resultsEl.innerHTML = matches.map((row) => renderListItem(row.item, queryInfo)).join('');
   }
 
-  function showDetail(item) {
-    resultsEl.innerHTML = renderDetail(item);
-  }
-
   input.addEventListener('input', () => {
     doSearch(input.value);
   });
@@ -3672,35 +3676,17 @@
     input.focus();
   });
 
-  // Click vào mã con gợi ý -> tìm luôn mã đó
+  // Bấm vào 1 kết quả (hoặc mã con gợi ý) -> mở rộng/thu gọn chi tiết ngay tại chỗ,
+  // không rời khỏi danh sách kết quả, không cần nút "Quay lại".
   resultsEl.addEventListener('click', (e) => {
-    const backBtn = e.target.closest('#backToListBtn');
-    if (backBtn) {
-      showList(currentMatches);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-      return;
-    }
-
-    const resultBtn = e.target.closest('.result-btn');
-    if (resultBtn) {
-      const code = resultBtn.dataset.code;
-      const type = resultBtn.dataset.type || 'icd';
-      const found = searchIndex.find((row) => row.item.code === code && row.item._type === type);
-      if (found) {
-        showDetail(found.item);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
-      return;
-    }
-
-    const childBtn = e.target.closest('.child-btn');
-    if (childBtn) {
-      const code = childBtn.dataset.code;
-      // Mã con gợi ý luôn thuộc dữ liệu ICD-10 (Tây y)
-      const found = searchIndex.find((row) => row.item.code === code && row.item._type === 'icd');
-      if (found) {
-        showDetail(found.item);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+    const toggleBtn = e.target.closest('.result-btn[aria-expanded], .child-btn[aria-expanded]');
+    if (toggleBtn) {
+      const container = toggleBtn.closest('.card, .child-row-wrap');
+      const panel = container ? container.querySelector('.detail-panel') : null;
+      if (panel) {
+        const willOpen = panel.hidden;
+        panel.hidden = !willOpen;
+        toggleBtn.setAttribute('aria-expanded', String(willOpen));
       }
       return;
     }
