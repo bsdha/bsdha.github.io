@@ -24,6 +24,25 @@
     }, USAGE_DEBOUNCE_MS);
   }
 
+  // --- Lưu đơn thuốc đã ẩn danh 1 phần (không gửi tên đầy đủ, không gửi địa chỉ) ---
+  // Token này chỉ để chặn spam ghi dữ liệu rác, KHÔNG phải mật khẩu bảo mật xem lại
+  // (trang xem lại dùng RX_KEY riêng, gõ tay, không nằm trong file này).
+  const RX_WRITE_TOKEN = 'bsdha-rx-write-2026';
+  function maskPatientName(fullName) {
+    if (!fullName) return '';
+    const parts = fullName.trim().split(/\s+/).filter(Boolean);
+    return parts.map(p => p.charAt(0).toUpperCase()).join('.');
+  }
+  function savePrescriptionRecord(data) {
+    fetch(`${USAGE_WORKER_URL}/prescriptions`, {
+      method: 'POST',
+      mode: 'cors',
+      keepalive: true,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: RX_WRITE_TOKEN, ...data }),
+    }).catch(() => {}); // im lặng nếu lỗi mạng, không ảnh hưởng việc xuất PDF
+  }
+
   gtag('config', 'G-C4LNNNDG5Q');
 </script>
 <meta charset="UTF-8">
@@ -1368,7 +1387,7 @@
         </a>
       </div>
 
-      <footer>
+      <footer id="siteFooter">
         © <span id="footerYear">2026</span> <strong>BS. DHA</strong>. All rights reserved.<br>
         📧 bsdha.btu@gmail.com &nbsp;|&nbsp; 📞 0868.91.97.90<br>
         📍 Bệnh viện Đa khoa Bình Dương Cơ Sở 2 — Ấp 13, Xã Bắc Tân Uyên, TP. Hồ Chí Minh
@@ -5596,6 +5615,15 @@
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
       logUsage('donthuoc_save');
+      savePrescriptionRecord({
+        doctor: doctor || '',
+        patient_initials: maskPatientName(name),
+        rx_date: fileDate,
+        age: Number.isFinite(age) ? age : null,
+        sex: sex || '',
+        diagnosis: diag || '',
+        drugs: rxRows.map(r => ({ brand: r.brand, generic: r.generic, days: r.days, qty: r.qty })),
+      });
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
@@ -5656,6 +5684,36 @@
 
   const footerYearEl = document.getElementById('footerYear');
   if (footerYearEl) footerYearEl.textContent = new Date().getFullYear();
+
+  // --- Phím tắt riêng: Ctrl+Shift+K -> mở trang thống kê lượt sử dụng (desktop) ---
+  const STATS_URL = 'https://bsdha-usage-tracker.dhabolero.workers.dev/stats?key=guitar72';
+  function openStatsPrompt() {
+    window.open(STATS_URL, '_blank');
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey && e.shiftKey && (e.key === 'K' || e.key === 'k')) {
+      e.preventDefault();
+      openStatsPrompt();
+    }
+  });
+
+  // --- Chạm 3 lần liên tiếp vào footer -> mở trang thống kê (mobile) ---
+  const siteFooterEl = document.getElementById('siteFooter');
+  if (siteFooterEl) {
+    let tapCount = 0;
+    let tapTimer = null;
+    siteFooterEl.addEventListener('click', () => {
+      tapCount++;
+      clearTimeout(tapTimer);
+      tapTimer = setTimeout(() => { tapCount = 0; }, 1500); // reset nếu chạm chậm/ngắt quãng
+      if (tapCount >= 3) {
+        tapCount = 0;
+        clearTimeout(tapTimer);
+        openStatsPrompt();
+      }
+    });
+  }
 })();
 </script>
 
