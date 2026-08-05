@@ -380,20 +380,24 @@
   }#page-icd .child-row .copy-btn-inline {
     flex: 0 0 auto;
   }#page-icd /* --- Mã cụ thể (mã lá) hiển thị rút gọn trong danh sách --- */
-  .result-btn {
+  .result-row {
     display: flex;
+    align-items: center;
     gap: 10px;
-    align-items: baseline;
-    text-align: left;
     width: 100%;
-    border: none;
-    background: none;
-    color: var(--text);
-    padding: 0;
+    border-radius: 8px;
+    margin: -4px -6px;
+    padding: 4px 6px;
+    transition: background 0.15s ease;
+  }#page-icd .result-row.clickable {
     cursor: pointer;
-    font-family: inherit;
-    font-size: 14px;
-  }#page-icd .result-btn--dropped code, #page-icd .result-btn--dropped span, #page-icd .result-btn--dropped:hover span {
+  }#page-icd .result-row.clickable:hover {
+    background: var(--surface-2);
+  }#page-icd .result-row.clickable:hover .result-name {
+    color: var(--blue);
+  }#page-icd .result-row--dropped .result-code,
+  #page-icd .result-row--dropped .result-name,
+  #page-icd .result-row--dropped.clickable:hover .result-name {
     color: var(--red);
   }#page-icd .inline-warning {
     margin: 8px 14px 10px;
@@ -407,7 +411,7 @@
   }#page-icd .inline-warning--not-recommended {
     background: var(--amber-light);
     color: var(--amber);
-  }#page-icd .result-btn code {
+  }#page-icd .result-code {
     font-weight: 700;
     font-size: 14px;
     color: var(--blue);
@@ -416,7 +420,12 @@
     border-radius: 6px;
     white-space: nowrap;
     flex-shrink: 0;
-  }#page-icd .result-btn span { color: var(--text); font-weight: 700; }#page-icd .result-btn:hover span { color: var(--blue); }#page-icd .result-btn .tag-yhct, #page-icd .card-top .tag-yhct {
+  }#page-icd .result-name {
+    color: var(--text);
+    font-weight: 700;
+    flex: 1 1 auto;
+    min-width: 0;
+  }#page-icd .result-row .tag-yhct, #page-icd .card-top .tag-yhct {
     font-weight: 700;
     font-size: 11px;
     color: #7a4a00 !important;
@@ -465,14 +474,11 @@
     font-size: 12px;
     cursor: pointer;
     color: var(--muted);
-  }#page-icd .copy-btn:hover { background: var(--surface-2); }#page-icd .result-row {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 10px;
-  }#page-icd .copy-btn-inline {
+  }#page-icd .copy-btn:hover { background: var(--surface-2); }#page-icd .copy-btn-inline {
     flex: 0 0 auto;
     white-space: nowrap;
+    position: relative;
+    z-index: 1;
   }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .banner {
     border-radius: 8px;
     padding: 7px 10px;
@@ -496,38 +502,36 @@
     color: var(--muted);
     padding: 40px 0;
     font-size: 13.5px;
-  }#page-icd .result-btn, #page-icd .child-btn {
+  }#page-icd .result-row.clickable {
     position: relative;
-  }#page-icd .result-btn[aria-expanded]::after {
-    content: "▾";
-    margin-left: auto;
+  }#page-icd .expand-arrow {
+    margin-left: 2px;
     flex-shrink: 0;
     color: var(--muted);
     font-size: 12px;
-    transition: transform 0.15s ease;
+    transition: transform 0.25s ease;
     align-self: center;
-  }#page-icd .result-btn[aria-expanded="true"]::after,
-  #page-icd .child-btn[aria-expanded="true"]::after {
+  }#page-icd .result-row[aria-expanded="true"] .expand-arrow {
     transform: rotate(180deg);
-  }#page-icd .child-btn[aria-expanded]::after {
-    content: "▾";
-    margin-left: auto;
-    flex-shrink: 0;
-    color: var(--green);
-    font-size: 11px;
-    transition: transform 0.15s ease;
-    align-self: center;
-  }#page-icd .detail-panel {
+    color: var(--blue);
+  }#page-icd /* Hiệu ứng xổ mượt: dùng kỹ thuật grid-template-rows 0fr -> 1fr thay vì hiện/ẩn đột ngột */
+  .detail-panel {
+    display: grid;
+    grid-template-rows: 0fr;
+    opacity: 0;
+    transition: grid-template-rows 0.28s ease, opacity 0.22s ease;
+  }#page-icd .detail-panel.open {
+    grid-template-rows: 1fr;
+    opacity: 1;
+  }#page-icd .detail-panel-inner {
+    overflow: hidden;
+    min-height: 0;
+  }#page-icd .detail-panel-inner > :first-child {
     margin-top: 8px;
     padding-top: 8px;
     border-top: 1px dashed var(--border);
-  }#page-icd .detail-panel[hidden] { display: none; }#page-icd .detail-panel .en { margin-bottom: 4px; }#page-icd .child-row-wrap {
-    display: flex;
-    flex-direction: column;
-  }#page-icd .child-row-wrap .detail-panel {
-    margin-left: 4px;
-    margin-right: 4px;
-  }
+  }#page-icd .detail-panel .en { margin-bottom: 4px; }
+
 
   .toast {
     position: fixed;
@@ -3399,44 +3403,61 @@
     return true;
   }
 
-  function renderYhctListItem(item) {
-    const isRemoved = !!item.removed;
-    const warnClass = isRemoved ? ' result-btn--dropped' : '';
-    const bannerHtml = item.statusTitle
-      ? renderBanner(item)
-      : (isRemoved
-          ? `<div class="banner warn"><b>Không sử dụng</b>${item.removedNote ? '<span>' + escapeHtml(item.removedNote) + '</span>' : ''}</div>`
-          : '');
-    const extraHtml = [
-      item.modernName ? `<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>` : '',
-      item.icd10 ? `<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>` : '',
-    ].join('');
+  // Render 1 dòng kết quả (thẻ) dùng chung cho mọi loại mã: mã ICD-10, mã con được gợi ý từ
+  // mã nhóm (giờ hiển thị ngang hàng, không phân biệt cha/con), và mã YHCT.
+  // Toàn bộ vùng result-row có thể bấm vào để xổ chi tiết, không chỉ riêng nút/tên.
+  function renderCodeCard(item) {
+    const isYhct = item._type === 'yhct';
+    const isRemoved = isYhct && !!item.removed;
+    const isDropped = !isYhct && item.statusTitle === 'Cần chọn mã cụ thể hơn';
+    const warnClass = isDropped || isRemoved ? ' result-row--dropped' : '';
+
+    let bannerHtml = renderBanner(item);
+    if (!bannerHtml && isRemoved) {
+      bannerHtml = `<div class="banner warn"><b>Không sử dụng</b>${item.removedNote ? '<span>' + escapeHtml(item.removedNote) + '</span>' : ''}</div>`;
+    }
+
+    const extraHtml = isYhct
+      ? [
+          item.modernName ? `<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>` : '',
+          item.icd10 ? `<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>` : '',
+        ].join('')
+      : [
+          item.en ? `<div class="en">${escapeHtml(item.en)}</div>` : '',
+          (item.meta || []).length ? `<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>` : '',
+          item.note ? `<div class="note">${item.note}</div>` : '',
+        ].join('');
     const hasDetail = !!extraHtml;
+    const showCopy = isYhct ? !isRemoved : !isDropped;
+    const nameLine = isYhct
+      ? `${escapeHtml(item.name)}${item.modernName ? ' — ' + escapeHtml(item.modernName) : ''}`
+      : escapeHtml(item.name);
+
     return `
       <div class="card">
-        <div class="result-row">
-          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="yhct"${hasDetail ? ' aria-expanded="false"' : ' style="cursor:default;"'}>
-            <span class="tag-yhct">YHCT</span>
-            <code>${escapeHtml(item.code)}</code>
-            <span>${escapeHtml(item.name)}${item.modernName ? ' — ' + escapeHtml(item.modernName) : ''}</span>
-          </button>
-          ${!isRemoved ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
+        <div class="result-row${warnClass}${hasDetail ? ' clickable' : ''}" data-code="${escapeAttr(item.code)}" data-type="${isYhct ? 'yhct' : 'icd'}"${hasDetail ? ' role="button" tabindex="0" aria-expanded="false"' : ''}>
+          ${isYhct ? '<span class="tag-yhct">YHCT</span>' : ''}
+          <span class="result-code">${escapeHtml(item.code)}</span>
+          <span class="result-name">${nameLine}</span>
+          ${showCopy ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
+          ${hasDetail ? '<span class="expand-arrow">▾</span>' : ''}
         </div>
         ${bannerHtml}
-        ${hasDetail ? `<div class="detail-panel" hidden>${extraHtml}</div>` : ''}
+        ${hasDetail ? `<div class="detail-panel"><div class="detail-panel-inner">${extraHtml}</div></div>` : ''}
       </div>`;
   }
 
   function renderListItem(item, qi, mainOnly) {
     if (item._type === 'yhct') {
       if (mainOnly && !isMainDiseaseUsable(item)) return '';
-      return renderYhctListItem(item);
+      return renderCodeCard(item);
     }
 
     const hasChildren = item.children && item.children.length > 0;
 
     if (hasChildren) {
-      // Mã nhóm -> chỉ hiện khối gợi ý mã cụ thể hơn.
+      // Mã nhóm -> không còn phân biệt cấp bậc: hiện các mã con phù hợp ngang hàng với
+      // các kết quả khác, mỗi mã con là 1 dòng kết quả riêng, có thể bấm để xổ chi tiết y hệt.
       // Nếu có từ khóa tìm kiếm, chỉ hiện các mã con thực sự khớp với từ khóa đó
       // (tránh liệt kê tất cả mã con trong nhóm dù không liên quan, ví dụ tìm "thiếu máu cơ tim"
       // thì không nên hiện "Nhồi máu cơ tim cũ", "Phình thành tim"... nếu tên các mã đó không chứa từ khóa).
@@ -3466,63 +3487,14 @@
         childrenToShow = childrenToShow.filter((c) => isMainDiseaseUsable(c));
         if (childrenToShow.length === 0) return '';
       }
-      const childrenHtml = childrenToShow
-        .map((c) => {
-          const cBannerHtml = renderBanner(c);
-          const cExtraHtml = [
-            c.en ? `<div class="en">${escapeHtml(c.en)}</div>` : '',
-            (c.meta || []).length ? `<div class="meta">${c.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>` : '',
-            c.note ? `<div class="note">${c.note}</div>` : '',
-          ].join('');
-          const cHasDetail = !!cExtraHtml;
-          return `<div class="child-row-wrap">
-               <div class="child-row">
-                 <button class="child-btn" data-code="${escapeAttr(c.code)}"${cHasDetail ? ' aria-expanded="false"' : ' style="cursor:default;"'}>
-                   <code>${escapeHtml(c.code)}</code>
-                   <span>${escapeHtml(c.name)}</span>
-                 </button>
-                 <button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(c.code)}">Copy mã</button>
-               </div>
-               ${cBannerHtml}
-               ${cHasDetail ? `<div class="detail-panel" hidden>${cExtraHtml}</div>` : ''}
-             </div>`;
-        })
-        .join('');
-      return `
-        <div class="card">
-          <details class="children-block" open>
-            <summary>Gợi ý mã cụ thể hơn có thể dùng làm bệnh chính (${childrenToShow.length})</summary>
-            <div class="child-list">${childrenHtml}</div>
-          </details>
-        </div>`;
+      return childrenToShow.map((c) => renderCodeCard(c)).join('');
     }
 
     // Mã cụ thể (mã lá) -> hiện rút gọn kèm banner trạng thái (nếu có) ngay trong danh sách;
-    // bấm vào mã để mở rộng xem thêm chi tiết (tên tiếng Anh, phân loại, ghi chú) ngay tại chỗ.
+    // bấm vào bất kỳ đâu trong dòng kết quả để xổ thêm chi tiết (tên tiếng Anh, phân loại, ghi chú)
+    // ngay tại chỗ, với hiệu ứng xổ mượt.
     if (mainOnly && !isMainDiseaseUsable(item)) return '';
-    const isDropped = item.statusTitle === 'Cần chọn mã cụ thể hơn';
-    const isNotRecommended = item.statusTitle === 'Không khuyến khích dùng làm bệnh chính';
-    const warnClass = isDropped ? ' result-btn--dropped' : (isNotRecommended ? ' result-btn--not-recommended' : '');
-    const bannerHtml = renderBanner(item);
-    const extraHtml = [
-      item.en ? `<div class="en">${escapeHtml(item.en)}</div>` : '',
-      (item.meta || []).length ? `<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>` : '',
-      item.note ? `<div class="note">${item.note}</div>` : '',
-    ].join('');
-    const hasDetail = !!extraHtml;
-
-    return `
-      <div class="card">
-        <div class="result-row">
-          <button class="result-btn${warnClass}" data-code="${escapeAttr(item.code)}" data-type="icd"${hasDetail ? ' aria-expanded="false"' : ' style="cursor:default;"'}>
-            <code>${escapeHtml(item.code)}</code>
-            <span>${escapeHtml(item.name)}</span>
-          </button>
-          ${!isDropped ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
-        </div>
-        ${bannerHtml}
-        ${hasDetail ? `<div class="detail-panel" hidden>${extraHtml}</div>` : ''}
-      </div>`;
+    return renderCodeCard(item);
   }
 
   function escapeHtml(str) {
@@ -3709,25 +3681,36 @@
     input.focus();
   });
 
-  // Bấm vào 1 kết quả (hoặc mã con gợi ý) -> mở rộng/thu gọn chi tiết ngay tại chỗ,
-  // không rời khỏi danh sách kết quả, không cần nút "Quay lại".
+  // Bấm vào bất kỳ đâu trong 1 dòng kết quả (mã bệnh nào cũng ngang hàng như nhau) -> mở rộng/thu gọn
+  // chi tiết ngay tại chỗ với hiệu ứng xổ mượt, không rời khỏi danh sách kết quả, không cần "Quay lại".
   resultsEl.addEventListener('click', (e) => {
-    const toggleBtn = e.target.closest('.result-btn[aria-expanded], .child-btn[aria-expanded]');
-    if (toggleBtn) {
-      const container = toggleBtn.closest('.card, .child-row-wrap');
-      const panel = container ? container.querySelector('.detail-panel') : null;
-      if (panel) {
-        const willOpen = panel.hidden;
-        panel.hidden = !willOpen;
-        toggleBtn.setAttribute('aria-expanded', String(willOpen));
-      }
-      return;
-    }
     const copyBtn = e.target.closest('.copy-btn');
     if (copyBtn) {
       copyText(copyBtn.dataset.copy);
+      return;
+    }
+    const row = e.target.closest('.result-row.clickable');
+    if (row) {
+      toggleResultRow(row);
     }
   });
+
+  resultsEl.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const row = e.target.closest('.result-row.clickable');
+    if (!row) return;
+    e.preventDefault();
+    toggleResultRow(row);
+  });
+
+  function toggleResultRow(row) {
+    const card = row.closest('.card');
+    const panel = card ? card.querySelector('.detail-panel') : null;
+    if (!panel) return;
+    const willOpen = !panel.classList.contains('open');
+    panel.classList.toggle('open', willOpen);
+    row.setAttribute('aria-expanded', String(willOpen));
+  }
 
   // Phím tắt "/" để focus ô tìm kiếm
   document.addEventListener('keydown', (e) => {
