@@ -479,7 +479,11 @@
     white-space: nowrap;
     position: relative;
     z-index: 1;
-  }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .banner {
+  }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .status-desc {
+    font-size: 12.5px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }#page-icd .banner {
     border-radius: 8px;
     padding: 7px 10px;
     font-size: 12.5px;
@@ -3382,12 +3386,55 @@
   // Hiện banner trạng thái (statusTitle/statusDesc) ngay trong danh sách, không cần bấm vào chi tiết.
   // Áp dụng chung cho mọi loại statusTitle (VD: "Không dùng làm bệnh chính", "Có thể dùng làm bệnh chính",
   // "Cần chọn mã cụ thể hơn", "Không khuyến khích dùng làm bệnh chính"...).
-  function renderBanner(item) {
-    if (!item.statusTitle) return '';
-    const bannerClass = item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : 'default';
-    return `<div class="banner ${bannerClass}"><b>${escapeHtml(item.statusTitle)}</b>${
-      item.statusDesc ? '<span>' + escapeHtml(item.statusDesc) + '</span>' : ''
-    }</div>`;
+  // Nhiều mã có thể xuất hiện ở nhiều nơi trong dữ liệu gốc (vừa là mục top-level, vừa là mã con
+  // được liệt kê bên trong 1 mã nhóm khác) và các bản sao đó có thể có statusTitle/ghi chú khác nhau
+  // (VD: bản trong "children" có đủ statusTitle do AI phân loại, còn bản top-level thì chưa có).
+  // Gộp tất cả các bản trùng mã lại thành 1 bản "chuẩn" duy nhất, để cùng 1 mã luôn hiển thị
+  // giống hệt nhau bất kể được tìm ra qua đường nào.
+  const canonicalByCode = (function buildCanonicalIndex() {
+    const map = new Map();
+    function consider(raw, type) {
+      if (!raw || !raw.code) return;
+      const it = { ...raw, _type: type };
+      const existing = map.get(it.code);
+      if (!existing) {
+        map.set(it.code, it);
+        return;
+      }
+      const merged = { ...existing };
+      const scalarKeys = ['statusTitle', 'statusDesc', 'status', 'en', 'note', 'removed', 'removedNote', 'modernName', 'icd10', 'name'];
+      scalarKeys.forEach((key) => {
+        const existingEmpty = merged[key] === undefined || merged[key] === null || merged[key] === '';
+        const candidateHasValue = it[key] !== undefined && it[key] !== null && it[key] !== '';
+        if (existingEmpty && candidateHasValue) merged[key] = it[key];
+      });
+      if ((!merged.meta || merged.meta.length === 0) && it.meta && it.meta.length) {
+        merged.meta = it.meta;
+      }
+      map.set(it.code, merged);
+    }
+    ICD_DATA.forEach((item) => {
+      consider(item, 'icd');
+      if (item.children && item.children.length) {
+        item.children.forEach((c) => consider(c, 'icd'));
+      }
+    });
+    YHCT_DATA.forEach((item) => consider(item, 'yhct'));
+    return map;
+  })();
+
+  function resolveCanonical(item) {
+    if (!item || !item.code) return item;
+    const canon = canonicalByCode.get(item.code);
+    return canon ? { ...item, ...canon, _type: item._type } : item;
+  }
+
+  // Chỉ hiện dòng trạng thái (VD: "Có thể dùng làm bệnh chính", "Không dùng làm bệnh chính"...)
+  // ngay trong danh sách kết quả — mô tả chi tiết kèm theo (statusDesc) chỉ hiện khi bấm xem thêm.
+  function renderBanner(data) {
+    if (!data.statusTitle) return '';
+    const bannerClass = data.status === 'ok' ? 'ok' : data.status === 'warn' ? 'warn' : 'default';
+    return `<div class="banner ${bannerClass}"><b>${escapeHtml(data.statusTitle)}</b></div>`;
   }
 
   // Mã có được phép dùng làm bệnh chính hay không, dựa vào statusTitle của chính mã đó.
@@ -3398,15 +3445,18 @@
     'Không sử dụng',
   ];
   function isMainDiseaseUsable(item) {
-    if (item._type === 'yhct' && item.removed) return false;
-    if (item.statusTitle && NON_MAIN_DISEASE_TITLES.includes(item.statusTitle)) return false;
+    const data = resolveCanonical(item);
+    if (data._type === 'yhct' && data.removed) return false;
+    if (data.statusTitle && NON_MAIN_DISEASE_TITLES.includes(data.statusTitle)) return false;
     return true;
   }
 
   // Render 1 dòng kết quả (thẻ) dùng chung cho mọi loại mã: mã ICD-10, mã con được gợi ý từ
   // mã nhóm (giờ hiển thị ngang hàng, không phân biệt cha/con), và mã YHCT.
   // Toàn bộ vùng result-row có thể bấm vào để xổ chi tiết, không chỉ riêng nút/tên.
-  function renderCodeCard(item) {
+  // Dữ liệu hiển thị luôn lấy từ bản "chuẩn" (canonical) theo mã, để đồng nhất dù tìm bằng từ khóa nào.
+  function renderCodeCard(rawItem) {
+    const item = resolveCanonical(rawItem);
     const isYhct = item._type === 'yhct';
     const isRemoved = isYhct && !!item.removed;
     const isDropped = !isYhct && item.statusTitle === 'Cần chọn mã cụ thể hơn';
@@ -3414,19 +3464,21 @@
 
     let bannerHtml = renderBanner(item);
     if (!bannerHtml && isRemoved) {
-      bannerHtml = `<div class="banner warn"><b>Không sử dụng</b>${item.removedNote ? '<span>' + escapeHtml(item.removedNote) + '</span>' : ''}</div>`;
+      bannerHtml = '<div class="banner warn"><b>Không sử dụng</b></div>';
     }
 
-    const extraHtml = isYhct
-      ? [
-          item.modernName ? `<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>` : '',
-          item.icd10 ? `<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>` : '',
-        ].join('')
-      : [
-          item.en ? `<div class="en">${escapeHtml(item.en)}</div>` : '',
-          (item.meta || []).length ? `<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>` : '',
-          item.note ? `<div class="note">${item.note}</div>` : '',
-        ].join('');
+    const extraParts = [];
+    if (item.statusDesc) extraParts.push(`<div class="status-desc">${escapeHtml(item.statusDesc)}</div>`);
+    if (isRemoved && item.removedNote) extraParts.push(`<div class="status-desc">${escapeHtml(item.removedNote)}</div>`);
+    if (isYhct) {
+      if (item.modernName) extraParts.push(`<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>`);
+      if (item.icd10) extraParts.push(`<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>`);
+    } else {
+      if (item.en) extraParts.push(`<div class="en">${escapeHtml(item.en)}</div>`);
+      if ((item.meta || []).length) extraParts.push(`<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>`);
+      if (item.note) extraParts.push(`<div class="note">${item.note}</div>`);
+    }
+    const extraHtml = extraParts.join('');
     const hasDetail = !!extraHtml;
     const showCopy = isYhct ? !isRemoved : !isDropped;
     const nameLine = isYhct
