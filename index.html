@@ -4158,6 +4158,8 @@
     if (f.includes('mieng dan') || f.includes('mieng') || f.includes('patch')) return 'miếng';
     if (f.includes('vi ') || f.includes('vi thuoc') || f === 'vi') return 'vỉ';
     if (f.includes('vien')) return 'viên';
+    if (f.includes('cay')) return 'cây';
+    if (f.includes('cai')) return 'cái';
     return 'viên';
   }
 
@@ -4640,6 +4642,11 @@
   // ---------- Tự động gợi ý "Cách dùng" theo tên thuốc ----------
   // Trả về chuỗi cách dùng phù hợp nhất, hoặc '' nếu không khớp quy tắc nào đặc biệt (dùng mặc định "Uống sau khi ăn")
   const USAGE_RULES = [
+    // Kim châm cứu / dụng cụ châm cứu - không phải thuốc uống
+    {
+      test: (s) => /cham cuu|kim cham/.test(s),
+      usage: 'Châm cứu theo chỉ định của bác sĩ',
+    },
     // Smecta / diosmectit - uống xa bữa ăn, xa các thuốc khác
     {
       test: (s) => /\bsmecta\b/.test(s) || /diosmectit|dioctahedral smectit/.test(s),
