@@ -488,7 +488,7 @@
     padding: 7px 10px;
     font-size: 12.5px;
     margin-bottom: 6px;
-  }#page-icd .banner b { display: block; font-size: 13px; margin-bottom: 2px; }#page-icd .banner.ok { background: var(--green-light); color: var(--green); }#page-icd .banner.warn { background: var(--amber-light); color: var(--amber); }#page-icd .banner.default { background: var(--surface-2); color: var(--muted); }#page-icd .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }#page-icd .meta span {
+  }#page-icd .banner b { display: block; font-size: 13px; margin-bottom: 2px; }#page-icd .banner.ok { background: var(--green-light); color: var(--green); }#page-icd .banner.warn { background: var(--amber-light); color: var(--amber); }#page-icd .banner.default { background: var(--surface-2); color: var(--muted); }#page-icd .banner.danger { background: var(--red-light); color: var(--red-dark); }#page-icd .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }#page-icd .meta span {
     font-size: 11.5px;
     background: var(--surface-2);
     color: var(--muted);
@@ -3320,8 +3320,45 @@
 
 <script>
 (function () {
-  const ICD_DATA = (window.ICD_DATA || []);
-  const YHCT_DATA = (window.ICD_YHCT_DATA || []);
+  // Dữ liệu icd-data.js / icd-yhct-data.js đã được rút gọn: các trường lặp lại nhiều lần
+  // (meta theo chương/nhóm bệnh, statusTitle/statusDesc/status theo từng loại trạng thái)
+  // được tách ra bảng tra riêng (ICD_META_TABLE / ICD_STATUS_TABLE / ICD_YHCT_STATUS_TABLE),
+  // mỗi mã chỉ lưu 1 số chỉ mục (m/si) trỏ vào bảng đó thay vì lặp lại toàn bộ chuỗi văn bản.
+  // Đoạn dưới đây "giải nén" lại thành các trường đầy đủ (meta/statusTitle/statusDesc/status...)
+  // để phần còn lại của ứng dụng dùng như bình thường, không cần sửa gì thêm ở chỗ khác.
+  const ICD_META_TABLE = window.ICD_META_TABLE || [];
+  const ICD_STATUS_TABLE = window.ICD_STATUS_TABLE || [];
+  const ICD_YHCT_STATUS_TABLE = window.ICD_YHCT_STATUS_TABLE || [];
+
+  function expandIcdRecord(e) {
+    if (typeof e.si === 'number' && ICD_STATUS_TABLE[e.si]) {
+      const s = ICD_STATUS_TABLE[e.si];
+      e.statusTitle = s.t;
+      e.statusDesc = s.d;
+      e.status = s.s;
+    }
+    if (typeof e.m === 'number' && ICD_META_TABLE[e.m]) {
+      e.meta = ICD_META_TABLE[e.m];
+    } else if (!e.meta) {
+      e.meta = [];
+    }
+    return e;
+  }
+
+  function expandYhctRecord(e) {
+    if (typeof e.si === 'number' && ICD_YHCT_STATUS_TABLE[e.si]) {
+      const s = ICD_YHCT_STATUS_TABLE[e.si];
+      e.statusTitle = s.t;
+      e.statusDesc = s.d;
+      e.status = s.s;
+      e.statusKey = s.k;
+      e.removed = !!s.r;
+    }
+    return e;
+  }
+
+  const ICD_DATA = (window.ICD_DATA || []).map(expandIcdRecord);
+  const YHCT_DATA = (window.ICD_YHCT_DATA || []).map(expandYhctRecord);
 
   const dataStatusEl = document.getElementById('dataStatus');
   if (ICD_DATA.length === 0 && YHCT_DATA.length === 0) {
@@ -3433,16 +3470,21 @@
   // ngay trong danh sách kết quả — mô tả chi tiết kèm theo (statusDesc) chỉ hiện khi bấm xem thêm.
   function renderBanner(data) {
     if (!data.statusTitle) return '';
-    const bannerClass = data.status === 'ok' ? 'ok' : data.status === 'warn' ? 'warn' : 'default';
+    const bannerClass =
+      data.status === 'ok' ? 'ok' : data.status === 'warn' ? 'warn' : data.status === 'danger' ? 'danger' : 'default';
     return `<div class="banner ${bannerClass}"><b>${escapeHtml(data.statusTitle)}</b></div>`;
   }
 
   // Mã có được phép dùng làm bệnh chính hay không, dựa vào statusTitle của chính mã đó.
+  // Danh sách này khớp với đúng các statusTitle thực tế có trong dữ liệu (icd-data.js / icd-yhct-data.js).
   const NON_MAIN_DISEASE_TITLES = [
     'Cần chọn mã cụ thể hơn',
     'Không khuyến khích dùng làm bệnh chính',
     'Không dùng làm bệnh chính',
-    'Không sử dụng',
+    'Chỉ dùng mã hóa nguyên nhân tử vong',
+    'Mã bị hủy - không sử dụng',
+    'Đã huỷ theo QĐ7603',
+    'Không sử dụng (PL02)',
   ];
   function isMainDiseaseUsable(item) {
     const data = resolveCanonical(item);
