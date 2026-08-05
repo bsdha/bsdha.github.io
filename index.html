@@ -1446,26 +1446,22 @@
             <input id="searchInput" placeholder="Tìm mã ICD hoặc tên bệnh: A09, E11.9, tăng huyết áp..." autocomplete="off" spellcheck="false">
             <button class="clear" id="clearBtn" title="Xoá">✕</button>
           </div>
-          <div class="option-row option-row--single" id="mainDiseaseOnlyRow">
-            <input type="checkbox" id="mainDiseaseOnlyToggle">
-            <label for="mainDiseaseOnlyToggle">Chỉ hiển thị mã Bệnh chính</label>
-          </div>
           <div class="option-grid">
+            <div class="option-row">
+              <input type="checkbox" id="mainDiseaseOnlyToggle">
+              <label for="mainDiseaseOnlyToggle">Chỉ hiển thị Mã bệnh chính</label>
+            </div>
             <div class="option-row">
               <input type="checkbox" id="rPriorityToggle">
               <label for="rPriorityToggle">Ưu tiên mã R</label>
             </div>
             <div class="option-row">
-              <input type="checkbox" id="precisionToggle">
-              <label for="precisionToggle">Chế độ chính xác tuyệt đối</label>
+              <input type="checkbox" id="yhctToggle">
+              <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
             </div>
             <div class="option-row">
               <input type="checkbox" id="sPriorityToggle">
               <label for="sPriorityToggle">Ưu tiên mã S</label>
-            </div>
-            <div class="option-row">
-              <input type="checkbox" id="yhctToggle">
-              <label for="yhctToggle">Chỉ hiển thị mã bệnh YHCT</label>
             </div>
           </div>
           <div id="status"></div>
@@ -3405,7 +3401,6 @@
   const mainDiseaseOnlyToggle = document.getElementById('mainDiseaseOnlyToggle');
   const rPriorityToggle = document.getElementById('rPriorityToggle');
   const sPriorityToggle = document.getElementById('sPriorityToggle');
-  const precisionToggle = document.getElementById('precisionToggle');
   const resultsEl = document.getElementById('results');
   const statusEl = document.getElementById('status');
   const toastEl = document.getElementById('toast');
@@ -3564,8 +3559,8 @@
         });
         if (fullMatch.length > 0) {
           childrenToShow = fullMatch;
-        } else if (precisionToggle && precisionToggle.checked && qi.words.length > 1) {
-          // Chế độ chính xác nâng cao: không có mã con nào khớp đủ tất cả các từ,
+        } else if (qi.words.length > 1) {
+          // Chế độ chính xác nâng cao (luôn bật): không có mã con nào khớp đủ tất cả các từ,
           // chỉ hiện mã con khớp ÍT NHẤT MỘT từ trong câu tìm kiếm (đúng ranh giới từ)
           // thay vì hiện toàn bộ mã con của nhóm.
           const anyWordMatch = item.children.filter((c) => {
@@ -3574,7 +3569,7 @@
           });
           childrenToShow = anyWordMatch.length > 0 ? anyWordMatch : item.children;
         }
-        // Nếu tắt "Chế độ chính xác nâng cao" và không có mã con nào khớp đủ,
+        // Nếu không có mã con nào khớp đủ,
         // giữ hành vi cũ: hiện toàn bộ mã con của nhóm (childrenToShow đã mặc định = item.children).
       }
       if (mainOnly) {
@@ -3761,11 +3756,6 @@
   }
   if (sPriorityToggle) {
     sPriorityToggle.addEventListener('change', () => {
-      doSearch(input.value);
-    });
-  }
-  if (precisionToggle) {
-    precisionToggle.addEventListener('change', () => {
       doSearch(input.value);
     });
   }
