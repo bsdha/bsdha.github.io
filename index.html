@@ -1603,6 +1603,29 @@
       #page-sinhhieu .sh-range-group input{border:none;padding:4px 2px;width:56px;}
       #page-sinhhieu .sh-range-group input:focus{outline:1px solid var(--sh-accent);}
       #page-sinhhieu .sh-range-group span.sh-dash{color:#5a6b68;}
+      #page-sinhhieu .sh-sheets-group{
+        display:flex;
+        align-items:center;
+        gap:6px;
+        border:1px solid var(--sh-border, #d8ddd8);
+        border-radius:8px;
+        padding:4px 10px;
+      }
+      #page-sinhhieu .sh-sheets-group label{margin:0;}
+      #page-sinhhieu .sh-sheets-group input{border:none;padding:4px 2px;width:52px;}
+      #page-sinhhieu .sh-sheets-group input:focus{outline:1px solid var(--sh-accent);}
+      #page-sinhhieu .sh-quick-label{font-size:12.5px;color:#5a6b68;margin-left:4px;}
+      #page-sinhhieu #shSheetsQuick{
+        border:1px solid var(--sh-border, #d8ddd8);
+        background:#f4f6f3;
+        border-radius:6px;
+        padding:4px 8px;
+        font-size:12.5px;
+        cursor:pointer;
+        color:#2c3a37;
+      }
+      #page-sinhhieu #shSheetsQuick:hover{background:#e6eae4;}
+      #page-sinhhieu #shSheetsQuick:focus{outline:1px solid var(--sh-accent);}
 
       #page-sinhhieu .sh-sheet{
         background:#fff;
@@ -1693,6 +1716,34 @@
           <label for="shEndInput">đến số</label>
           <input type="number" id="shEndInput" value="6" min="1" max="9999">
         </div>
+        <div class="sh-sheets-group">
+          <label for="shSheetsInput">Số tờ</label>
+          <input type="number" id="shSheetsInput" value="1" min="1" max="999">
+          <label for="shSheetsQuick" class="sh-quick-label">Chọn nhanh số tờ</label>
+          <select id="shSheetsQuick">
+            <option value="">—</option>
+            <option value="10">10 tờ</option>
+            <option value="20">20 tờ</option>
+            <option value="30">30 tờ</option>
+            <option value="40">40 tờ</option>
+            <option value="50">50 tờ</option>
+            <option value="60">60 tờ</option>
+            <option value="70">70 tờ</option>
+            <option value="80">80 tờ</option>
+            <option value="90">90 tờ</option>
+            <option value="100">100 tờ</option>
+            <option value="110">110 tờ</option>
+            <option value="120">120 tờ</option>
+            <option value="130">130 tờ</option>
+            <option value="140">140 tờ</option>
+            <option value="150">150 tờ</option>
+            <option value="160">160 tờ</option>
+            <option value="170">170 tờ</option>
+            <option value="180">180 tờ</option>
+            <option value="190">190 tờ</option>
+            <option value="200">200 tờ</option>
+          </select>
+        </div>
       </div>
 
       <div class="sh-print-wrap">
@@ -1731,6 +1782,15 @@
         </div>
         <div class="sh-field"><span class="sh-label">Cân nặng (kg)</span><span class="sh-box"></span></div>
       </div>`;
+    }
+
+    function updateEndFromSheets(){
+      const start = parseInt(el('shStartInput').value, 10) || 1;
+      let sheets = parseInt(el('shSheetsInput').value, 10);
+      if(!sheets || sheets < 1) sheets = 1;
+      el('shSheetsInput').value = sheets;
+      el('shEndInput').value = start + sheets * PER_SHEET - 1;
+      render();
     }
 
     function render(){
@@ -1776,8 +1836,16 @@
       setTimeout(() => page.classList.remove('sh-printing'), 300);
     }
 
-    el('shStartInput').addEventListener('change', render);
+    el('shStartInput').addEventListener('change', updateEndFromSheets);
     el('shEndInput').addEventListener('change', render);
+    el('shSheetsInput').addEventListener('change', updateEndFromSheets);
+    el('shSheetsQuick').addEventListener('change', () => {
+      const sheets = parseInt(el('shSheetsQuick').value, 10);
+      if(sheets){
+        el('shSheetsInput').value = sheets;
+        updateEndFromSheets();
+      }
+    });
     el('shPrintBtn').addEventListener('click', printSinhHieu);
 
     render();
