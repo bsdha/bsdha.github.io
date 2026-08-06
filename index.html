@@ -483,7 +483,30 @@
     font-size: 12.5px;
     color: var(--muted);
     margin-bottom: 6px;
-  }#page-icd .banner {
+  }#page-icd .status-row {
+    display: flex;
+    align-items: stretch;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 6px;
+  }#page-icd .status-row .banner {
+    margin-bottom: 0;
+    flex: 1 1 auto;
+    min-width: 160px;
+  }#page-icd .icd10-badge-btn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    background: #ffe6b3;
+    color: #7a4a00;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+  }#page-icd .icd10-badge-btn:hover { background: #ffdb96; }#page-icd .banner {
     border-radius: 8px;
     padding: 7px 10px;
     font-size: 12.5px;
@@ -3503,13 +3526,19 @@
     if (!bannerHtml && isRemoved) {
       bannerHtml = '<div class="banner warn"><b>Không sử dụng</b></div>';
     }
+    // Với mã YHCT có mã ICD-10 tương ứng, luôn hiện sẵn 1 nút để copy ngay, cùng hàng với banner
+    // trạng thái ("Đang dùng"...), không cần bấm xổ chi tiết mới thấy.
+    const icd10Html =
+      isYhct && item.icd10
+        ? `<button type="button" class="copy-btn icd10-badge-btn" data-copy="${escapeAttr(item.icd10)}">Copy Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</button>`
+        : '';
+    const statusRowHtml = bannerHtml || icd10Html ? `<div class="status-row">${bannerHtml}${icd10Html}</div>` : '';
 
     const extraParts = [];
     if (item.statusDesc) extraParts.push(`<div class="status-desc">${escapeHtml(item.statusDesc)}</div>`);
     if (isRemoved && item.removedNote) extraParts.push(`<div class="status-desc">${escapeHtml(item.removedNote)}</div>`);
     if (isYhct) {
       if (item.modernName) extraParts.push(`<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>`);
-      if (item.icd10) extraParts.push(`<div class="en">Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</div>`);
     } else {
       if (item.en) extraParts.push(`<div class="en">${escapeHtml(item.en)}</div>`);
       if ((item.meta || []).length) extraParts.push(`<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>`);
@@ -3531,15 +3560,15 @@
           ${showCopy ? `<button class="copy-btn copy-btn-inline" data-copy="${escapeAttr(item.code)}">Copy mã</button>` : ''}
           ${hasDetail ? '<span class="expand-arrow">▾</span>' : ''}
         </div>
-        ${bannerHtml}
+        ${statusRowHtml}
         ${hasDetail ? `<div class="detail-panel"><div class="detail-panel-inner">${extraHtml}</div></div>` : ''}
       </div>`;
   }
 
-  function renderListItem(item, qi, mainOnly) {
+  function renderListItemCards(item, qi, mainOnly) {
     if (item._type === 'yhct') {
-      if (mainOnly && !isMainDiseaseUsable(item)) return '';
-      return renderCodeCard(item);
+      if (mainOnly && !isMainDiseaseUsable(item)) return [];
+      return [renderCodeCard(item)];
     }
 
     const hasChildren = item.children && item.children.length > 0;
@@ -3574,16 +3603,15 @@
       }
       if (mainOnly) {
         childrenToShow = childrenToShow.filter((c) => isMainDiseaseUsable(c));
-        if (childrenToShow.length === 0) return '';
       }
-      return childrenToShow.map((c) => renderCodeCard(c)).join('');
+      return childrenToShow.map((c) => renderCodeCard(c));
     }
 
     // Mã cụ thể (mã lá) -> hiện rút gọn kèm banner trạng thái (nếu có) ngay trong danh sách;
     // bấm vào bất kỳ đâu trong dòng kết quả để xổ thêm chi tiết (tên tiếng Anh, phân loại, ghi chú)
     // ngay tại chỗ, với hiệu ứng xổ mượt.
-    if (mainOnly && !isMainDiseaseUsable(item)) return '';
-    return renderCodeCard(item);
+    if (mainOnly && !isMainDiseaseUsable(item)) return [];
+    return [renderCodeCard(item)];
   }
 
   function escapeHtml(str) {
@@ -3719,21 +3747,25 @@
     );
     currentMatches = dedupedMatches;
 
-    statusEl.textContent = `Tìm thấy ${dedupedMatches.length.toLocaleString('vi-VN')} kết quả cho "${query}"`;
-
     if (dedupedMatches.length === 0) {
+      statusEl.textContent = `Tìm thấy 0 kết quả cho "${query}"`;
       resultsEl.innerHTML = '<div class="empty">Không tìm thấy mã hoặc bệnh phù hợp.</div>';
       return;
     }
 
-    showList(dedupedMatches, qi);
+    // Đếm số kết quả thực tế hiển thị ra màn hình (mỗi mã - dù trước đây là "mã cha" hay "mã con" -
+    // giờ đều ngang hàng nhau, nên phải đếm theo số thẻ thực sự render ra, không đếm theo số dòng
+    // trong dữ liệu gốc, tránh trường hợp 1 mã nhóm gộp nhiều mã con lại thành 1 khi đếm).
+    const renderedCount = showList(dedupedMatches, qi);
+    statusEl.textContent = `Tìm thấy ${renderedCount.toLocaleString('vi-VN')} kết quả cho "${query}"`;
   }
 
   function showList(matches, qi) {
     const queryInfo = qi !== undefined ? qi : lastQueryInfo;
     const mainOnly = !!(mainDiseaseOnlyToggle && mainDiseaseOnlyToggle.checked);
-    const html = matches.map((row) => renderListItem(row.item, queryInfo, mainOnly)).filter(Boolean).join('');
-    resultsEl.innerHTML = html || '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
+    const cards = matches.flatMap((row) => renderListItemCards(row.item, queryInfo, mainOnly));
+    resultsEl.innerHTML = cards.join('') || '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
+    return cards.length;
   }
 
   input.addEventListener('input', () => {
