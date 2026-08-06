@@ -3524,10 +3524,10 @@
     const bannerClass =
       item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : item.status === 'danger' ? 'danger' : 'default';
     const effectiveBannerClass = !item.statusTitle && isRemoved ? 'warn' : bannerClass;
-    // `t` (statusTitle, VD: "Đang dùng") giờ không hiện ở ngoài nữa — chỉ hiện trong phần chi tiết
-    // khi bấm xổ ra. Bên ngoài chỉ còn `d` (statusDesc) và khối "Tên hiện đại" (nếu có).
+    // `t` (statusTitle, VD: "Đang dùng") hiện ngay ngoài danh sách. `d` (statusDesc, mô tả chi tiết)
+    // chỉ hiện khi bấm xổ chi tiết ra.
     const statusTitleText = item.statusTitle || (isRemoved ? 'Không sử dụng' : '');
-    const statusDescHtml = item.statusDesc ? `<span class="banner-desc">${escapeHtml(item.statusDesc)}</span>` : '';
+    const statusTitleHtml = statusTitleText ? `<b>${escapeHtml(statusTitleText)}</b>` : '';
     // Với mã YHCT có mã ICD-10 tương ứng, luôn hiện sẵn "Tên hiện đại: <mã ICD-10> - <tên>" chung 1 khối
     // màu với banner trạng thái (ngang hàng, tự xuống hàng nếu không đủ chỗ), không cần bấm xổ chi tiết
     // mới thấy. Phần chữ chỉ để đọc, kèm 1 nút "Copy mã" riêng (nền hồng nhạt, viền đen) để copy đúng
@@ -3540,12 +3540,12 @@
            </div>`
         : '';
     const statusRowHtml =
-      statusDescHtml || icd10RowHtml
-        ? `<div class="banner ${effectiveBannerClass}">${statusDescHtml}${icd10RowHtml}</div>`
+      statusTitleHtml || icd10RowHtml
+        ? `<div class="banner ${effectiveBannerClass}">${statusTitleHtml}${icd10RowHtml}</div>`
         : '';
 
     const extraParts = [];
-    if (statusTitleText) extraParts.push(`<div class="status-title"><b>${escapeHtml(statusTitleText)}</b></div>`);
+    if (item.statusDesc) extraParts.push(`<div class="status-desc">${escapeHtml(item.statusDesc)}</div>`);
     if (isRemoved && item.removedNote) extraParts.push(`<div class="status-desc">${escapeHtml(item.removedNote)}</div>`);
     if (!isYhct) {
       if (item.en) extraParts.push(`<div class="en">${escapeHtml(item.en)}</div>`);
