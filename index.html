@@ -1648,16 +1648,20 @@
         display:flex;
         gap:4mm;
       }
-      #page-sinhhieu .sh-row2 .sh-field{flex:1;}
+      #page-sinhhieu .sh-row2 .sh-field{flex:1;min-width:0;}
+      #page-sinhhieu .sh-row2 .sh-field .sh-label{font-size:clamp(9pt,2.6vw,12pt);}
+      #page-sinhhieu .sh-row2 .sh-field .sh-box{margin-left:1.5mm;}
       #page-sinhhieu .sh-field{
         display:flex;
         justify-content:space-between;
         align-items:center;
         padding:2mm 0;
+        min-width:0;
       }
-      #page-sinhhieu .sh-field .sh-label{font-size:12pt;white-space:nowrap;}
+      #page-sinhhieu .sh-field .sh-label{font-size:12pt;white-space:nowrap;flex-shrink:0;}
       #page-sinhhieu .sh-field .sh-box{
         flex:1;
+        min-width:0;
         margin-left:3mm;
         border-bottom:1px solid #999;
         height:5mm;
@@ -1713,18 +1717,18 @@
         <div class="sh-slip-head">
           <span class="sh-slip-no">#${numStr}</span>
         </div>
+        <div class="sh-field"><span class="sh-label">Họ và tên</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Năm sinh</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Khám phòng</span><span class="sh-box"></span></div>
+        <div class="sh-field"><span class="sh-label">Chuyển phòng</span><span class="sh-box"></span></div>
         <div class="sh-row2">
-          <div class="sh-field"><span class="sh-label">Họ và tên</span><span class="sh-box"></span></div>
-          <div class="sh-field"><span class="sh-label">Năm sinh</span><span class="sh-box"></span></div>
+          <div class="sh-field"><span class="sh-label">M</span><span class="sh-box"></span></div>
+          <div class="sh-field"><span class="sh-label">T°</span><span class="sh-box"></span></div>
         </div>
         <div class="sh-row2">
-          <div class="sh-field"><span class="sh-label">Khám phòng</span><span class="sh-box"></span></div>
-          <div class="sh-field"><span class="sh-label">Chuyển phòng</span><span class="sh-box"></span></div>
+          <div class="sh-field"><span class="sh-label">HA</span><span class="sh-box"></span></div>
+          <div class="sh-field"><span class="sh-label">NT</span><span class="sh-box"></span></div>
         </div>
-        <div class="sh-field"><span class="sh-label">Mạch (l/p)</span><span class="sh-box"></span></div>
-        <div class="sh-field"><span class="sh-label">Nhiệt độ (°C)</span><span class="sh-box"></span></div>
-        <div class="sh-field"><span class="sh-label">Huyết áp (mmHg)</span><span class="sh-box"></span></div>
-        <div class="sh-field"><span class="sh-label">Nhịp thở (l/p)</span><span class="sh-box"></span></div>
         <div class="sh-field"><span class="sh-label">Cân nặng (kg)</span><span class="sh-box"></span></div>
       </div>`;
     }
