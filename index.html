@@ -1668,7 +1668,7 @@
       }
       #page-sinhhieu .sh-slip-no{
         font-weight:700;
-        font-size:15pt;
+        font-size:22.5pt;
       }
       #page-sinhhieu .sh-row2{
         display:flex;
@@ -1701,8 +1701,9 @@
         }
         #page-sinhhieu .sh-toolbar{display:none;}
         #page-sinhhieu #shSummaryLabel{display:none;}
-        #page-sinhhieu .sh-sheet{box-shadow:none;margin:0;page-break-after:always;}
-        #page-sinhhieu .sh-sheet:last-child{page-break-after:auto;}
+        #page-sinhhieu .sh-sheet{box-shadow:none;margin:0;page-break-after:always;align-content:start;padding-top:0;}
+        #page-sinhhieu .sh-sheet.sh-a4{gap:2.5mm 8mm;}
+        @page{margin:8mm;}
       }
     </style>
     <style id="shPageSizeStyle"></style>
