@@ -493,20 +493,32 @@
     margin-bottom: 0;
     flex: 1 1 auto;
     min-width: 160px;
-  }#page-icd .icd10-badge-btn {
-    flex: 0 0 auto;
+  }#page-icd .icd10-badge {
+    flex: 1 1 auto;
+    min-width: 160px;
     display: flex;
     align-items: center;
+    gap: 8px;
     background: #ffe6b3;
     color: #7a4a00;
-    border: none;
     border-radius: 8px;
     padding: 7px 10px;
     font-size: 12.5px;
+  }#page-icd .icd10-badge-text {
+    font-weight: 700;
+    flex: 1 1 auto;
+  }#page-icd .icd10-copy-btn {
+    flex: 0 0 auto;
+    background: #ffd6e7;
+    color: #9c2b5c;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 12px;
     font-weight: 700;
     cursor: pointer;
     white-space: nowrap;
-  }#page-icd .icd10-badge-btn:hover { background: #ffdb96; }#page-icd .banner {
+  }#page-icd .icd10-copy-btn:hover { background: #ffc2dc; }#page-icd .banner {
     border-radius: 8px;
     padding: 7px 10px;
     font-size: 12.5px;
@@ -3526,20 +3538,22 @@
     if (!bannerHtml && isRemoved) {
       bannerHtml = '<div class="banner warn"><b>Không sử dụng</b></div>';
     }
-    // Với mã YHCT có mã ICD-10 tương ứng, luôn hiện sẵn 1 nút để copy ngay, cùng hàng với banner
-    // trạng thái ("Đang dùng"...), không cần bấm xổ chi tiết mới thấy.
+    // Với mã YHCT có mã ICD-10 tương ứng, luôn hiện sẵn "Tên hiện đại: <mã ICD-10> - <tên>" cùng hàng
+    // với banner trạng thái ("Đang dùng"...), không cần bấm xổ chi tiết mới thấy. Phần chữ chỉ để đọc,
+    // kèm 1 nút "Copy" riêng (nền hồng nhạt) để copy đúng mã ICD-10 tương ứng.
     const icd10Html =
       isYhct && item.icd10
-        ? `<button type="button" class="copy-btn icd10-badge-btn" data-copy="${escapeAttr(item.icd10)}">Copy Mã ICD-10 tương ứng: ${escapeHtml(item.icd10)}</button>`
+        ? `<div class="icd10-badge">
+             <span class="icd10-badge-text">Tên hiện đại: ${escapeHtml(item.icd10)}${item.modernName ? ' - ' + escapeHtml(item.modernName) : ''}</span>
+             <button type="button" class="copy-btn icd10-copy-btn" data-copy="${escapeAttr(item.icd10)}">Copy</button>
+           </div>`
         : '';
     const statusRowHtml = bannerHtml || icd10Html ? `<div class="status-row">${bannerHtml}${icd10Html}</div>` : '';
 
     const extraParts = [];
     if (item.statusDesc) extraParts.push(`<div class="status-desc">${escapeHtml(item.statusDesc)}</div>`);
     if (isRemoved && item.removedNote) extraParts.push(`<div class="status-desc">${escapeHtml(item.removedNote)}</div>`);
-    if (isYhct) {
-      if (item.modernName) extraParts.push(`<div class="en">Tên hiện đại: ${escapeHtml(item.modernName)}</div>`);
-    } else {
+    if (!isYhct) {
       if (item.en) extraParts.push(`<div class="en">${escapeHtml(item.en)}</div>`);
       if ((item.meta || []).length) extraParts.push(`<div class="meta">${item.meta.map((m) => `<span>${escapeHtml(m)}</span>`).join('')}</div>`);
       if (item.note) extraParts.push(`<div class="note">${item.note}</div>`);
