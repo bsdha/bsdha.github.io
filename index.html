@@ -479,39 +479,35 @@
     white-space: nowrap;
     position: relative;
     z-index: 1;
-  }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .status-desc {
+  }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .status-title {
+    font-size: 13px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }#page-icd .status-desc {
     font-size: 12.5px;
     color: var(--muted);
     margin-bottom: 6px;
-  }#page-icd .status-row {
-    display: flex;
-    align-items: stretch;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 6px;
-  }#page-icd .status-row .banner {
-    margin-bottom: 0;
-    flex: 1 1 auto;
-    min-width: 160px;
-  }#page-icd .icd10-badge {
-    flex: 1 1 auto;
-    min-width: 160px;
+  }#page-icd .banner-desc {
+    display: block;
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.9;
+    margin-top: 1px;
+  }#page-icd .banner-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
-    background: #ffe6b3;
-    color: #7a4a00;
-    border-radius: 8px;
-    padding: 7px 10px;
-    font-size: 12.5px;
+    margin-top: 6px;
   }#page-icd .icd10-badge-text {
     font-weight: 700;
     flex: 1 1 auto;
+    min-width: 120px;
   }#page-icd .icd10-copy-btn {
     flex: 0 0 auto;
     background: #ffd6e7;
     color: #9c2b5c;
-    border: none;
+    border: 1px solid #000;
     border-radius: 6px;
     padding: 4px 10px;
     font-size: 12px;
@@ -523,7 +519,7 @@
     padding: 7px 10px;
     font-size: 12.5px;
     margin-bottom: 6px;
-  }#page-icd .banner b { display: block; font-size: 13px; margin-bottom: 2px; }#page-icd .banner.ok { background: var(--green-light); color: var(--green); }#page-icd .banner.warn { background: var(--amber-light); color: var(--amber); }#page-icd .banner.default { background: var(--surface-2); color: var(--muted); }#page-icd .banner.danger { background: var(--red-light); color: var(--red-dark); }#page-icd .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }#page-icd .meta span {
+  }#page-icd .banner b { display: block; font-size: 13px; }#page-icd .banner.ok { background: var(--green-light); color: var(--green); }#page-icd .banner.warn { background: var(--amber-light); color: var(--amber); }#page-icd .banner.default { background: var(--surface-2); color: var(--muted); }#page-icd .banner.danger { background: var(--red-light); color: var(--red-dark); }#page-icd .meta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }#page-icd .meta span {
     font-size: 11.5px;
     background: var(--surface-2);
     color: var(--muted);
@@ -3496,15 +3492,6 @@
     return canon ? { ...item, ...canon, _type: item._type } : item;
   }
 
-  // Chỉ hiện dòng trạng thái (VD: "Có thể dùng làm bệnh chính", "Không dùng làm bệnh chính"...)
-  // ngay trong danh sách kết quả — mô tả chi tiết kèm theo (statusDesc) chỉ hiện khi bấm xem thêm.
-  function renderBanner(data) {
-    if (!data.statusTitle) return '';
-    const bannerClass =
-      data.status === 'ok' ? 'ok' : data.status === 'warn' ? 'warn' : data.status === 'danger' ? 'danger' : 'default';
-    return `<div class="banner ${bannerClass}"><b>${escapeHtml(data.statusTitle)}</b></div>`;
-  }
-
   // Mã có được phép dùng làm bệnh chính hay không, dựa vào statusTitle của chính mã đó.
   // Danh sách này khớp với đúng các statusTitle thực tế có trong dữ liệu (icd-data.js / icd-yhct-data.js).
   const NON_MAIN_DISEASE_TITLES = [
@@ -3534,24 +3521,31 @@
     const isDropped = !isYhct && item.statusTitle === 'Cần chọn mã cụ thể hơn';
     const warnClass = isDropped || isRemoved ? ' result-row--dropped' : '';
 
-    let bannerHtml = renderBanner(item);
-    if (!bannerHtml && isRemoved) {
-      bannerHtml = '<div class="banner warn"><b>Không sử dụng</b></div>';
-    }
-    // Với mã YHCT có mã ICD-10 tương ứng, luôn hiện sẵn "Tên hiện đại: <mã ICD-10> - <tên>" cùng hàng
-    // với banner trạng thái ("Đang dùng"...), không cần bấm xổ chi tiết mới thấy. Phần chữ chỉ để đọc,
-    // kèm 1 nút "Copy" riêng (nền hồng nhạt) để copy đúng mã ICD-10 tương ứng.
-    const icd10Html =
+    const bannerClass =
+      item.status === 'ok' ? 'ok' : item.status === 'warn' ? 'warn' : item.status === 'danger' ? 'danger' : 'default';
+    const effectiveBannerClass = !item.statusTitle && isRemoved ? 'warn' : bannerClass;
+    // `t` (statusTitle, VD: "Đang dùng") giờ không hiện ở ngoài nữa — chỉ hiện trong phần chi tiết
+    // khi bấm xổ ra. Bên ngoài chỉ còn `d` (statusDesc) và khối "Tên hiện đại" (nếu có).
+    const statusTitleText = item.statusTitle || (isRemoved ? 'Không sử dụng' : '');
+    const statusDescHtml = item.statusDesc ? `<span class="banner-desc">${escapeHtml(item.statusDesc)}</span>` : '';
+    // Với mã YHCT có mã ICD-10 tương ứng, luôn hiện sẵn "Tên hiện đại: <mã ICD-10> - <tên>" chung 1 khối
+    // màu với banner trạng thái (ngang hàng, tự xuống hàng nếu không đủ chỗ), không cần bấm xổ chi tiết
+    // mới thấy. Phần chữ chỉ để đọc, kèm 1 nút "Copy mã" riêng (nền hồng nhạt, viền đen) để copy đúng
+    // mã ICD-10 tương ứng.
+    const icd10RowHtml =
       isYhct && item.icd10
-        ? `<div class="icd10-badge">
+        ? `<div class="banner-row">
              <span class="icd10-badge-text">Tên hiện đại: ${escapeHtml(item.icd10)}${item.modernName ? ' - ' + escapeHtml(item.modernName) : ''}</span>
-             <button type="button" class="copy-btn icd10-copy-btn" data-copy="${escapeAttr(item.icd10)}">Copy</button>
+             <button type="button" class="copy-btn icd10-copy-btn" data-copy="${escapeAttr(item.icd10)}">Copy mã</button>
            </div>`
         : '';
-    const statusRowHtml = bannerHtml || icd10Html ? `<div class="status-row">${bannerHtml}${icd10Html}</div>` : '';
+    const statusRowHtml =
+      statusDescHtml || icd10RowHtml
+        ? `<div class="banner ${effectiveBannerClass}">${statusDescHtml}${icd10RowHtml}</div>`
+        : '';
 
     const extraParts = [];
-    if (item.statusDesc) extraParts.push(`<div class="status-desc">${escapeHtml(item.statusDesc)}</div>`);
+    if (statusTitleText) extraParts.push(`<div class="status-title"><b>${escapeHtml(statusTitleText)}</b></div>`);
     if (isRemoved && item.removedNote) extraParts.push(`<div class="status-desc">${escapeHtml(item.removedNote)}</div>`);
     if (!isYhct) {
       if (item.en) extraParts.push(`<div class="en">${escapeHtml(item.en)}</div>`);
