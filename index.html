@@ -1980,6 +1980,8 @@
         breakdownEl.textContent = daily > 0
           ? 'Số bút lẻ theo liều thực tế: ' + exactPensStr + ' bút/tháng'
           : '';
+
+        if (daily > 0) logUsage('insulin_calc');
       }
 
       [sangEl, truaEl, chieuEl, penSizeEl].forEach(el => el.addEventListener('input', calc));
