@@ -86,31 +86,31 @@
   .page.active { display: block; }
 
 
-  #page-home .home-wrap { max-width: 1040px; margin: 0 auto; padding: 20px 18px 40px; }
-  #page-home header { text-align: center; margin-bottom: 36px; }
-  #page-home header .logo { font-size: 34px; margin-bottom: 8px; }
-  #page-home header h1 { margin: 0 0 8px; font-size: 24px; font-weight: 800; }
-  #page-home header p { margin: 0; color: var(--muted); font-size: 14px; }
-  #page-home .hgrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+  #page-home .home-wrap { max-width: 1040px; margin: 0 auto; padding: 12px 18px 20px; min-height: calc(100vh - 32px); display: flex; flex-direction: column; }
+  #page-home header { text-align: center; margin-bottom: 14px; }
+  #page-home header .logo { font-size: 36px; margin-bottom: 2px; }
+  #page-home header h1 { margin: 0 0 4px; font-size: 29px; font-weight: 800; }
+  #page-home header p { margin: 0; color: var(--muted); font-size: 18px; }
+  #page-home .hgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
   #page-home .hcard {
-    display: flex; flex-direction: column; gap: 8px; text-align: left;
-    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
-    padding: 20px; text-decoration: none; color: var(--text); font-family: inherit; cursor: pointer;
+    display: flex; flex-direction: column; gap: 3px; text-align: left;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 14px; text-decoration: none; color: var(--text); font-family: inherit; cursor: pointer;
     transition: border-color .15s, transform .15s, background .15s;
   }
   #page-home .hcard:hover { border-color: var(--blue); background: var(--surface-2); transform: translateY(-2px); }
-  #page-home .hcard .ic { font-size: 26px; }
-  #page-home .hcard h2 { margin: 0; font-size: 16px; font-weight: 700; }
-  #page-home .hcard p { margin: 0; font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  #page-home .hcard .ic { font-size: 22px; }
+  #page-home .hcard h2 { margin: 0; font-size: 20px; font-weight: 700; }
+  #page-home .hcard p { display: none; }
   #page-home .hcard .tag {
-    align-self: flex-start; margin-top: 2px; font-size: 11px; font-weight: 700;
-    padding: 3px 9px; border-radius: 999px; background: var(--green-light); color: var(--green);
+    align-self: flex-start; margin-top: 1px; font-size: 9.5px; font-weight: 700;
+    padding: 2px 7px; border-radius: 999px; background: var(--green-light); color: var(--green);
     border: 1px solid var(--green-border);
   }
   #page-home .hcard.soon { opacity: 0.55; cursor: default; }
   #page-home .hcard.soon:hover { border-color: var(--border); background: var(--surface); transform: none; }
   #page-home .hcard.soon .tag { background: var(--amber-light); color: var(--amber); border: none; }
-  #page-home footer { text-align: center; margin-top: 42px; font-size: 12px; color: var(--muted); line-height: 1.8; }
+  #page-home footer { text-align: center; margin-top: auto; padding-top: 16px; font-size: 13px; color: var(--muted); line-height: 1.6; }
   @media (max-width: 640px) {
     #page-home .hgrid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
     #page-home .hcard { padding: 12px 8px; border-radius: 12px; gap: 4px; text-align: center; align-items: center; }
@@ -1399,6 +1399,7 @@
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
+    <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Tính số bút Insulin</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
@@ -1407,6 +1408,7 @@
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> ICD-10</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
+    <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Insulin</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
@@ -1434,6 +1436,13 @@
           <div class="ic">📋</div>
           <h2>Tạo phiếu sinh hiệu</h2>
           <p>Tạo &amp; in hàng loạt phiếu dấu hiệu sinh tồn (mạch, nhiệt độ, huyết áp...) theo khổ A4/A5, đánh số tự động.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/insulin" class="hcard" data-page="insulin" data-path="/insulin">
+          <div class="ic">💉</div>
+          <h2>Tính số bút Insulin</h2>
+          <p>Tính tổng liều Insulin/ngày từ 3 mũi Sáng - Trưa - Chiều, tự quy đổi ra số bút cần cấp mỗi tháng.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -1857,6 +1866,133 @@
     render();
   })();
   </script>
+
+  <div class="page" id="page-insulin">
+    <style>
+      #page-insulin .wrap { max-width: 640px; margin: 0 auto; padding: 16px 16px 24px; }
+      #page-insulin .panel {
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #e3e6e2);
+        border-radius: 16px;
+        padding: 22px 22px 26px;
+      }
+      #page-insulin .panel h1 { margin: 0 0 6px; font-size: 19px; font-weight: 800; }
+      #page-insulin .sub { color: var(--muted, #6b7a75); font-size: 13px; margin-bottom: 18px; }
+      #page-insulin .field { margin-bottom: 10px; }
+      #page-insulin .field label { display: block; font-size: 13px; color: var(--blue, #2f6fed); font-weight: 600; margin-bottom: 6px; }
+      #page-insulin .field input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px 14px;
+        border-radius: 10px;
+        border: 1px solid var(--border, #d7dbd6);
+        font-size: 15px;
+        outline: none;
+      }
+      #page-insulin .field input[type="number"]:focus { outline: none; border-color: var(--blue, #2f6fed); }
+      #page-insulin .ins-pen-field { margin-bottom: 12px; }
+      #page-insulin .ins-pen-field label { display: block; font-size: 12.5px; color: var(--muted, #6b7a75); margin-bottom: 6px; }
+      #page-insulin .ins-pen-field input[type="number"] {
+        width: 130px;
+        box-sizing: border-box;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border, #d7dbd6);
+        font-size: 14px;
+        outline: none;
+      }
+      #page-insulin .ins-result {
+        margin-top: 8px;
+        border-radius: 12px;
+        padding: 16px 18px;
+        border: 1px solid var(--border, #e3e6e2);
+        background: var(--surface-2, #f5f7f4);
+      }
+      #page-insulin .ins-result .ins-row { font-size: 15px; color: var(--text, #1c2320); margin-bottom: 6px; }
+      #page-insulin .ins-result .ins-row:last-child { margin-bottom: 0; }
+      #page-insulin .ins-result .ins-big { font-size: 18px; font-weight: 800; color: var(--green, #1f8a5f); }
+      #page-insulin .ins-breakdown { margin-top: 6px; margin-bottom: 6px; font-size: 15px; color: var(--muted, #6b7a75); line-height: 1.5; }
+      #page-insulin .ins-result .ins-row-main {
+        font-size: 19px;
+        font-weight: 800;
+        color: var(--green, #1f8a5f);
+        margin-top: 8px;
+      }
+    </style>
+    <div class="wrap">
+      <div class="panel">
+        <h1>💉 Tính số bút Insulin</h1>
+        <div class="sub">Nhập liều Insulin (UI) mỗi mũi tiêm trong ngày để tính tổng liều và số bút cần cấp mỗi tháng.</div>
+
+        <div class="field">
+          <label for="insSang">Sáng (UI)</label>
+          <input type="number" min="0" step="0.5" id="insSang" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="insTrua">Trưa (UI)</label>
+          <input type="number" min="0" step="0.5" id="insTrua" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="insChieu">Chiều (UI)</label>
+          <input type="number" min="0" step="0.5" id="insChieu" placeholder="0" inputmode="decimal">
+        </div>
+
+        <div class="ins-pen-field">
+          <label for="insPenSize">Liều mỗi bút (UI/bút)</label>
+          <input type="number" min="1" step="1" id="insPenSize" value="300">
+        </div>
+
+        <div class="ins-result">
+          <div class="ins-row">Liều: <span class="ins-big" id="insDailyDose">0</span> UI/ngày</div>
+          <div class="ins-breakdown" id="insBreakdown"></div>
+          <div class="ins-row-main" id="insPensPerMonth">Cần cấp cho BN: 0 bút/tháng</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+    (function () {
+      const sangEl = document.getElementById('insSang');
+      const truaEl = document.getElementById('insTrua');
+      const chieuEl = document.getElementById('insChieu');
+      const penSizeEl = document.getElementById('insPenSize');
+      const dailyEl = document.getElementById('insDailyDose');
+      const monthEl = document.getElementById('insPensPerMonth');
+      const breakdownEl = document.getElementById('insBreakdown');
+
+      function num(el) {
+        const v = parseFloat(el.value);
+        return isNaN(v) || v < 0 ? 0 : v;
+      }
+
+      function calc() {
+        const sang = num(sangEl), trua = num(truaEl), chieu = num(chieuEl);
+        const penSize = parseFloat(penSizeEl.value) > 0 ? parseFloat(penSizeEl.value) : 300;
+        const daily = sang + trua + chieu;
+        const monthlyUI = daily * 30;
+        const pens = daily > 0 ? Math.ceil(monthlyUI / penSize) : 0;
+
+        const exactPens = daily > 0 ? monthlyUI / penSize : 0;
+        const exactPensStr = (Math.round(exactPens * 100) / 100).toString();
+
+        dailyEl.textContent = (daily % 1 === 0 ? daily : daily.toFixed(1));
+        monthEl.textContent = 'Cần cấp cho BN: ' + pens + ' bút/tháng';
+        breakdownEl.textContent = daily > 0
+          ? 'Số bút lẻ theo liều thực tế: ' + exactPensStr + ' bút/tháng'
+          : '';
+      }
+
+      [sangEl, truaEl, chieuEl, penSizeEl].forEach(el => el.addEventListener('input', calc));
+
+      // Enter ở ô Sáng -> Trưa -> Chiều
+      sangEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); truaEl.focus(); } });
+      truaEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); chieuEl.focus(); } });
+      chieuEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); chieuEl.blur(); calc(); } });
+
+      calc();
+    })();
+    </script>
+  </div>
 
   <div class="page" id="page-ldl">
     <div class="wrap">
@@ -5799,8 +5935,8 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
-  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
+  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
 
   function showPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
@@ -5846,21 +5982,27 @@
     }
   });
 
-  // --- Chạm 3 lần liên tiếp vào footer -> mở trang thống kê (mobile) ---
+  // --- Nhấn giữ ~3 giây vào footer (chuột hoặc chạm tay) -> mở trang thống kê ---
   const siteFooterEl = document.getElementById('siteFooter');
   if (siteFooterEl) {
-    let tapCount = 0;
-    let tapTimer = null;
-    siteFooterEl.addEventListener('click', () => {
-      tapCount++;
-      clearTimeout(tapTimer);
-      tapTimer = setTimeout(() => { tapCount = 0; }, 1500); // reset nếu chạm chậm/ngắt quãng
-      if (tapCount >= 3) {
-        tapCount = 0;
-        clearTimeout(tapTimer);
+    let holdTimer = null;
+    const startHold = () => {
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        holdTimer = null;
         openStatsPrompt();
-      }
-    });
+      }, 3000);
+    };
+    const cancelHold = () => {
+      clearTimeout(holdTimer);
+      holdTimer = null;
+    };
+    siteFooterEl.addEventListener('mousedown', startHold);
+    siteFooterEl.addEventListener('mouseup', cancelHold);
+    siteFooterEl.addEventListener('mouseleave', cancelHold);
+    siteFooterEl.addEventListener('touchstart', startHold, { passive: true });
+    siteFooterEl.addEventListener('touchend', cancelHold);
+    siteFooterEl.addEventListener('touchcancel', cancelHold);
   }
 })();
 </script>
