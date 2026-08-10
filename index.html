@@ -583,19 +583,41 @@
 
   .toast {
     position: fixed;
-    bottom: 20px;
+    bottom: 28px;
     left: 50%;
-    transform: translateX(-50%);
-    background: #e5e7eb;
-    color: #0b0f17;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 13px;
+    transform: translateX(-50%) translateY(6px);
+    background: #16a34a;
+    color: #ffffff;
+    padding: 12px 22px;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    box-shadow: 0 8px 24px rgba(22, 163, 74, 0.35), 0 2px 6px rgba(0, 0, 0, 0.15);
     opacity: 0;
     pointer-events: none;
-    transition: opacity .2s ease;
+    transition: opacity .2s ease, transform .2s ease;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: min(90vw, 420px);
+    text-align: center;
   }
-  .toast.show { opacity: 1; }
+  .toast::before {
+    content: '✓';
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.25);
+    font-size: 13px;
+    font-weight: 900;
+    flex: 0 0 auto;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
   #backToTop {
     position: fixed;
@@ -3623,7 +3645,7 @@
   function showToast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 1200);
+    setTimeout(() => toastEl.classList.remove('show'), 1600);
   }
 
   function copyText(text) {
@@ -6062,6 +6084,23 @@
   const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
   const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
 
+  function focusFirstField(key) {
+    const pageEl = document.getElementById('page-' + key);
+    if (!pageEl) return;
+    // Bỏ qua trang chủ (không có ô nhập nào) và chỉ tự động focus khi vừa chuyển trang, để tiện
+    // gõ ngay mà không cần bấm chuột/chạm vào ô đầu tiên trước.
+    const field = pageEl.querySelector(
+      'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([readonly]):not([disabled]), textarea, select'
+    );
+    if (!field) return;
+    // Trì hoãn 1 khung hình để đảm bảo trang đã thực sự hiển thị (display đổi qua class "active")
+    // trước khi focus, tránh bị trình duyệt bỏ qua yêu cầu focus trên phần tử còn đang ẩn.
+    requestAnimationFrame(() => {
+      field.focus({ preventScroll: true });
+      if (typeof field.select === 'function' && field.type !== 'date') field.select();
+    });
+  }
+
   function showPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
     navEls.forEach(b => {
@@ -6069,6 +6108,7 @@
       b.classList.toggle('active', b.dataset.page === key);
     });
     window.scrollTo({ top: 0 });
+    focusFirstField(key);
     if (push) {
       const path = KEY_PATH[key] || '/';
       if (location.pathname !== path) history.pushState({ page: key }, '', path);
