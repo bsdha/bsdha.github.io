@@ -5588,11 +5588,32 @@
     }
   });
   let icdMatches = [], icdActiveIndex = -1, icdDebounceTimer = null;
+  // Thu hẹp dần phạm vi tìm kiếm: nếu từ khoá mới là nối dài của từ khoá cũ,
+  // chỉ cần lọc trong tập kết quả (chưa cắt) của lần trước thay vì quét lại
+  // toàn bộ ~16.000+ mã ICD-10 từ đầu mỗi lần gõ -> nhanh hơn nhiều khi gõ liên tục.
+  let icdPool = ICD_SEARCH_INDEX, icdPoolQuery = '';
+  const ICD_MAX_SHOW = 25;
+  const ICD_POOL_CAP = 400; // tối đa số mục giữ lại làm "pool" để lọc tiếp cho ký tự sau
   function renderIcdSuggest(q) {
     const nq = normalize(q);
     icdActiveIndex = -1;
-    if (!nq) { icdSuggest.classList.remove('show'); return; }
-    icdMatches = ICD_SEARCH_INDEX.filter((it) => it.nCode.includes(nq) || it.nText.includes(nq)).slice(0, 25);
+    if (!nq || nq.length < 2) {
+      icdSuggest.classList.remove('show');
+      icdPool = ICD_SEARCH_INDEX; icdPoolQuery = '';
+      return;
+    }
+    const searchIn = (icdPoolQuery && nq.startsWith(icdPoolQuery)) ? icdPool : ICD_SEARCH_INDEX;
+    const pool = [];
+    const shown = [];
+    for (let i = 0; i < searchIn.length; i++) {
+      const it = searchIn[i];
+      if (it.nCode.includes(nq) || it.nText.includes(nq)) {
+        if (shown.length < ICD_MAX_SHOW) shown.push(it);
+        if (pool.length < ICD_POOL_CAP) pool.push(it);
+      }
+    }
+    icdMatches = shown;
+    icdPool = pool; icdPoolQuery = nq;
     if (icdMatches.length === 0) {
       icdSuggest.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy mã ICD-10 phù hợp.</div>';
     } else {
