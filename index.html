@@ -5566,6 +5566,12 @@
     if (list.length === 0) {
       for (const [code, text] of FALLBACK_ICD10) list.push({ code, text, source: '' });
     }
+    // Tính sẵn dạng không dấu 1 lần duy nhất để tra cứu nhanh, tránh phải normalize()
+    // lại toàn bộ danh sách (~16.000+ mã) ở mỗi phím gõ gây đơ/giật.
+    for (const it of list) {
+      it.nCode = normalize(it.code);
+      it.nText = normalize(it.text);
+    }
     return list;
   }
   const ICD_SEARCH_INDEX = buildIcdSearchIndex();
@@ -5581,12 +5587,12 @@
       try { el.setSelectionRange(pos, pos); } catch (err) {}
     }
   });
-  let icdMatches = [], icdActiveIndex = -1;
+  let icdMatches = [], icdActiveIndex = -1, icdDebounceTimer = null;
   function renderIcdSuggest(q) {
     const nq = normalize(q);
     icdActiveIndex = -1;
     if (!nq) { icdSuggest.classList.remove('show'); return; }
-    icdMatches = ICD_SEARCH_INDEX.filter((it) => normalize(it.code).includes(nq) || normalize(it.text).includes(nq)).slice(0, 25);
+    icdMatches = ICD_SEARCH_INDEX.filter((it) => it.nCode.includes(nq) || it.nText.includes(nq)).slice(0, 25);
     if (icdMatches.length === 0) {
       icdSuggest.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy mã ICD-10 phù hợp.</div>';
     } else {
@@ -5605,7 +5611,11 @@
     diagInput.value = `${it.code} - ${it.text}`;
     icdSuggest.classList.remove('show');
   }
-  diagInput.addEventListener('input', () => { if (icdToggle.checked) renderIcdSuggest(diagInput.value); });
+  diagInput.addEventListener('input', () => {
+    if (!icdToggle.checked) return;
+    clearTimeout(icdDebounceTimer);
+    icdDebounceTimer = setTimeout(() => renderIcdSuggest(diagInput.value), 120);
+  });
   diagInput.addEventListener('focus', () => { if (icdToggle.checked && diagInput.value) renderIcdSuggest(diagInput.value); });
   diagInput.addEventListener('keydown', (e) => {
     if (!icdToggle.checked || !icdSuggest.classList.contains('show')) return;
@@ -5660,7 +5670,7 @@
       const order = patientFieldOrder();
       const idx = order.indexOf(id);
       if (idx === -1) return;
-      const NO_BACKSPACE_JUMP = ['rxPatientDob', 'rxPatientSex', 'rxAddress', 'rxDiagnosis'];
+      const NO_BACKSPACE_JUMP = ['rxPatientDob', 'rxPatientSex', 'rxAddress', 'rxDiagnosis', 'rxVitalPulse'];
       if (e.key === 'Backspace' && el.tagName !== 'SELECT' && el.value === '' && idx > 0 && !NO_BACKSPACE_JUMP.includes(id)) {
         e.preventDefault();
         focusAndSelect($(order[idx - 1]));
