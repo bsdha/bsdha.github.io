@@ -479,7 +479,20 @@
     white-space: nowrap;
     position: relative;
     z-index: 1;
-  }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .status-title {
+  }#page-icd .load-more-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 14px 0 4px;
+  }#page-icd .load-more-btn {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--blue);
+    font-weight: 600;
+    border-radius: 8px;
+    padding: 8px 18px;
+    font-size: 13px;
+    cursor: pointer;
+  }#page-icd .load-more-btn:hover { background: var(--blue-light); }#page-icd .name { font-weight: 700; font-size: 14.5px; margin: 4px 0 2px; }#page-icd .en { font-style: italic; color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }#page-icd .status-title {
     font-size: 13px;
     color: var(--text);
     margin-bottom: 4px;
@@ -3948,12 +3961,46 @@
     statusEl.textContent = `Tìm thấy ${renderedCount.toLocaleString('vi-VN')} kết quả cho "${query}"`;
   }
 
+  // Với những từ khóa cho ra hàng nghìn kết quả (VD: "không xác định" ~2.800 kết quả), dựng
+  // TOÀN BỘ ngần ấy thẻ HTML vào DOM cùng lúc khiến trình duyệt bị đơ 1 lúc. Thay vào đó, chỉ
+  // dựng sẵn RESULTS_PAGE_SIZE thẻ đầu tiên, kèm nút "Xem thêm" để tải dần phần còn lại khi
+  // người dùng thực sự cần xem — không làm mất/giảm bớt kết quả, chỉ trì hoãn việc render ra DOM.
+  const RESULTS_PAGE_SIZE = 300;
+  let allCards = [];
+  let renderedCardCount = 0;
+
+  function renderResultsPage(reset) {
+    if (reset) {
+      resultsEl.innerHTML = '';
+      renderedCardCount = 0;
+    }
+    const oldMoreWrap = document.getElementById('loadMoreWrap');
+    if (oldMoreWrap) oldMoreWrap.remove();
+
+    const nextChunk = allCards.slice(renderedCardCount, renderedCardCount + RESULTS_PAGE_SIZE);
+    renderedCardCount += nextChunk.length;
+    if (nextChunk.length) resultsEl.insertAdjacentHTML('beforeend', nextChunk.join(''));
+
+    const remaining = allCards.length - renderedCardCount;
+    if (remaining > 0) {
+      const wrap = document.createElement('div');
+      wrap.id = 'loadMoreWrap';
+      wrap.className = 'load-more-wrap';
+      wrap.innerHTML = `<button type="button" class="load-more-btn" id="loadMoreBtn">Xem thêm ${remaining.toLocaleString('vi-VN')} kết quả</button>`;
+      resultsEl.appendChild(wrap);
+    }
+  }
+
   function showList(matches, qi) {
     const queryInfo = qi !== undefined ? qi : lastQueryInfo;
     const mainOnly = !!(mainDiseaseOnlyToggle && mainDiseaseOnlyToggle.checked);
-    const cards = matches.flatMap((row) => renderListItemCards(row.item, queryInfo, mainOnly));
-    resultsEl.innerHTML = cards.join('') || '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
-    return cards.length;
+    allCards = matches.flatMap((row) => renderListItemCards(row.item, queryInfo, mainOnly));
+    if (allCards.length === 0) {
+      resultsEl.innerHTML = '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
+      return 0;
+    }
+    renderResultsPage(true);
+    return allCards.length;
   }
 
   // Trì hoãn tìm kiếm ~150ms sau khi người dùng ngừng gõ, tránh chạy full search (16.000+ dòng)
@@ -3999,6 +4046,11 @@
     const copyBtn = e.target.closest('.copy-btn');
     if (copyBtn) {
       copyText(copyBtn.dataset.copy);
+      return;
+    }
+    const moreBtn = e.target.closest('#loadMoreBtn');
+    if (moreBtn) {
+      renderResultsPage(false);
       return;
     }
     const row = e.target.closest('.result-row.clickable');
