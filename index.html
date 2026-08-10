@@ -3817,21 +3817,30 @@
   // gõ "rắn" tuyệt đối không được khớp với "rặn"/"răn"/"rán"/"rạn" — dù các từ này khi bỏ dấu
   // đều trùng nhau nhưng là những từ khác nghĩa hoàn toàn). Chỉ riêng MÃ ICD (vốn không có dấu)
   // vẫn so khớp theo bản chuẩn hoá bình thường.
+  // Biên dịch sẵn 1 regex ranh giới từ cho 1 token (dùng lại `escapeRegex` đã có ở trên)
+  function buildWordBoundaryRegex(token) {
+    return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '($|[^\\p{L}\\p{N}])', 'iu');
+  }
+
   function buildQueryInfo(rawQuery) {
     const trimmed = (rawQuery || '').trim();
     const norm = normalize(trimmed);
     const accent = trimmed.toLowerCase();
     const words = accent.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
-    return { raw: trimmed, norm, accent, words };
+    // Quan trọng cho hiệu năng: biên dịch regex CHỈ 1 LẦN cho mỗi câu tìm kiếm, rồi dùng lại
+    // cho toàn bộ ~16.000 dòng dữ liệu, thay vì tạo `new RegExp(...)` lại cho từng dòng
+    // (trước đây là nguyên nhân chính khiến gõ phím bị đơ/chậm).
+    const fullRegex = accent ? buildWordBoundaryRegex(accent) : null;
+    const wordRegexes = words.map(buildWordBoundaryRegex);
+    return { raw: trimmed, norm, accent, words, fullRegex, wordRegexes };
   }
 
   function textMatchesQuery(textAccent, qi) {
-    const qStr = qi.accent;
-    if (!qStr) return false;
+    if (!qi.accent) return false;
     // Luôn bắt buộc khớp theo đúng ranh giới từ (không tính là khớp nếu từ khóa chỉ nằm
     // lọt thỏm bên trong một từ khác, ví dụ "ong" không được tính là khớp bên trong "phong"/"ống").
-    if (hasWordBoundaryMatch(textAccent, qStr)) return true;
-    if (qi.words.length > 1) return qi.words.every((w) => hasWordBoundaryMatch(textAccent, w));
+    if (qi.fullRegex && qi.fullRegex.test(textAccent)) return true;
+    if (qi.words.length > 1) return qi.wordRegexes.every((re) => re.test(textAccent));
     return false;
   }
 
@@ -3842,7 +3851,7 @@
     if (code === qi.norm) return 1000;
     if (text === qStr) return 950;
     if (qi.norm && code.startsWith(qi.norm)) return 850;
-    if (hasWordBoundaryMatch(text, qStr)) {
+    if (qi.fullRegex && qi.fullRegex.test(text)) {
       let s = 650;
       // Cụm từ nằm ngay đầu hoặc cuối tên bệnh (không bị "kẹp giữa") thì chính xác hơn
       if (text.startsWith(qStr)) s += 40;
@@ -3855,7 +3864,7 @@
     // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
     // (không cần liền nhau / đúng thứ tự, nhưng vẫn phải đúng ranh giới từng từ) thì vẫn coi là liên quan
     if (qi.words.length > 1) {
-      const allWordsPresent = qi.words.every((w) => hasWordBoundaryMatch(text, w));
+      const allWordsPresent = qi.wordRegexes.every((re) => re.test(text));
       if (allWordsPresent) {
         return Math.max(150, 400 - text.length);
       }
@@ -3947,8 +3956,16 @@
     return cards.length;
   }
 
+  // Trì hoãn tìm kiếm ~150ms sau khi người dùng ngừng gõ, tránh chạy full search (16.000+ dòng)
+  // trên MỌI ký tự khi đang gõ nhanh — đây là nguyên nhân chính gây đơ khi gõ cụm từ dài.
+  let searchDebounceTimer = null;
   input.addEventListener('input', () => {
-    doSearch(input.value);
+    const value = input.value;
+    if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => {
+      searchDebounceTimer = null;
+      doSearch(value);
+    }, 150);
   });
   if (yhctToggle) {
     yhctToggle.addEventListener('change', () => {
