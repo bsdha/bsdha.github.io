@@ -3840,10 +3840,14 @@
   function escapeRegex(str) {
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-  // So khớp theo ranh giới từ, dùng \p{L}/\p{N} (Unicode) để nhận đúng cả ký tự có dấu tiếng Việt
+  // So khớp theo ranh giới từ, dùng \p{L}/\p{N} (Unicode) để nhận đúng cả ký tự có dấu tiếng Việt.
+  // CHỈ bắt buộc ranh giới ở đầu từ khóa (không cho khớp lọt thỏm giữa 1 từ khác như "ong" trong
+  // "phong"). Ở cuối thì KHÔNG bắt buộc phải là hết từ — để cho phép khớp ngay khi người dùng
+  // gõ dở/chưa đủ chữ (VD: gõ "tăng huyết á" vẫn khớp được với "tăng huyết áp" vì "á" là phần đầu
+  // hợp lệ của "áp"), giống kiểu tìm kiếm gợi ý tự động (autocomplete) quen thuộc.
   function hasWordBoundaryMatch(haystack, token) {
     if (!token) return false;
-    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '($|[^\\p{L}\\p{N}])', 'iu');
+    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token), 'iu');
     return re.test(haystack);
   }
 
@@ -3854,7 +3858,7 @@
   // vẫn so khớp theo bản chuẩn hoá bình thường.
   // Biên dịch sẵn 1 regex ranh giới từ cho 1 token (dùng lại `escapeRegex` đã có ở trên)
   function buildWordBoundaryRegex(token) {
-    return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '($|[^\\p{L}\\p{N}])', 'iu');
+    return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token), 'iu');
   }
 
   function buildQueryInfo(rawQuery) {
