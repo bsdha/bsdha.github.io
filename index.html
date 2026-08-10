@@ -187,7 +187,85 @@
     outline: none;
   }#page-egfr .field input:focus, #page-egfr .field select:focus {
     border-color: var(--blue);
-  }#page-egfr .toggle-group {
+  }#page-pdf2word .p2w-dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 30px 16px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface-2);
+    transition: border-color .15s ease, background .15s ease;
+  }#page-pdf2word .p2w-dropzone:hover, #page-pdf2word .p2w-dropzone:focus-visible, #page-pdf2word .p2w-dropzone.dragover {
+    border-color: var(--blue);
+    background: var(--blue-light);
+    outline: none;
+  }#page-pdf2word .p2w-drop-icon { font-size: 32px; margin-bottom: 6px; }
+  #page-pdf2word .p2w-drop-text { font-size: 14px; color: var(--text); margin-bottom: 4px; }
+  #page-pdf2word .p2w-drop-hint { font-size: 12px; color: var(--muted); }
+  #page-pdf2word .p2w-file-row {
+    margin-top: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface);
+    font-size: 13.5px;
+  }#page-pdf2word .p2w-file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #page-pdf2word .p2w-remove-btn {
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    border-radius: 6px;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    color: var(--muted);
+    flex: 0 0 auto;
+  }#page-pdf2word .p2w-remove-btn:hover { background: var(--red-light); color: var(--red-dark); }
+  #page-pdf2word .p2w-convert-btn {
+    width: 100%;
+    margin-top: 14px;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 700;
+    font-size: 14.5px;
+    cursor: pointer;
+  }#page-pdf2word .p2w-convert-btn:hover:not(:disabled) { filter: brightness(1.06); }
+  #page-pdf2word .p2w-convert-btn:disabled { background: var(--surface-2); color: var(--muted); cursor: not-allowed; }
+  #page-pdf2word .p2w-status {
+    margin-top: 14px;
+    font-size: 13.5px;
+    line-height: 1.6;
+    color: var(--muted);
+  }#page-pdf2word .p2w-status.error { color: var(--red-dark); font-weight: 600; }
+  #page-pdf2word .p2w-status.success { color: var(--green); font-weight: 600; }
+  #page-pdf2word .p2w-download-btn {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 9px 16px;
+    border-radius: 8px;
+    background: var(--green);
+    color: #fff;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 13.5px;
+  }#page-pdf2word .p2w-download-btn:hover { filter: brightness(1.06); }
+  #page-pdf2word .p2w-spinner {
+    display: inline-block;
+    width: 13px;
+    height: 13px;
+    border: 2px solid var(--blue-border);
+    border-top-color: var(--blue);
+    border-radius: 50%;
+    margin-right: 6px;
+    vertical-align: -2px;
+    animation: p2wspin .8s linear infinite;
+  }@keyframes p2wspin { to { transform: rotate(360deg); } }
+  #page-egfr .toggle-group {
     display: flex;
     gap: 8px;
     margin-bottom: 18px;
@@ -1456,6 +1534,7 @@
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
+    <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF → Word (AI)</a>
   </nav>
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
@@ -1465,6 +1544,7 @@
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
+    <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF→Word</a>
   </nav>
 
   <div class="main-content">
@@ -1517,6 +1597,13 @@
           <div class="ic">💊</div>
           <h2>Kê đơn thuốc dịch vụ</h2>
           <p>Soạn đơn thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/pdf2word" class="hcard" data-page="pdf2word" data-path="/pdf2word">
+          <div class="ic">📄</div>
+          <h2>PDF → Word (AI)</h2>
+          <p>Chuyển PDF (kể cả bản scan/hình ảnh) sang file Word có thể chỉnh sửa, giữ nguyên bảng biểu, căn lề, tiêu đề.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
       </div>
@@ -2416,6 +2503,34 @@
           <button class="rx-btn rx-warn-btn-ok" id="rxPwCancelBtn">Huỷ</button>
         </div>
         <button type="button" class="rx-pw-forgot" id="rxPwForgotBtn">Quên mật khẩu?</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="page" id="page-pdf2word">
+    <div class="wrap">
+      <div class="panel">
+        <h1>PDF → Word (AI, giữ bảng biểu &amp; layout)</h1>
+        <div class="sub" style="font-size:12.5px;color:var(--muted);margin:-6px 0 14px;">
+          Chuyển PDF (kể cả bản scan/ảnh chụp) thành file Word (.docx) chỉnh sửa được, tự nhận diện chữ (OCR), giữ nguyên bảng, căn lề, tiêu đề, in đậm. Tối đa 500 lượt chuyển miễn phí / tháng.
+        </div>
+
+        <div class="p2w-dropzone" id="p2wDropzone" tabindex="0" role="button" aria-label="Chọn hoặc kéo thả file PDF">
+          <input type="file" id="p2wFileInput" accept="application/pdf" hidden>
+          <div class="p2w-drop-icon">📄</div>
+          <div class="p2w-drop-text"><b>Bấm để chọn file PDF</b> hoặc kéo-thả file vào đây</div>
+          <div class="p2w-drop-hint">Chỉ nhận file .pdf — dung lượng tối đa khoảng 25MB</div>
+        </div>
+
+        <div class="p2w-file-row" id="p2wFileRow" style="display:none;">
+          <span class="p2w-file-icon">📄</span>
+          <span class="p2w-file-name" id="p2wFileName"></span>
+          <button type="button" class="p2w-remove-btn" id="p2wRemoveBtn" title="Bỏ chọn file">✕</button>
+        </div>
+
+        <button type="button" class="p2w-convert-btn" id="p2wConvertBtn" disabled>Chuyển sang Word</button>
+
+        <div class="p2w-status" id="p2wStatus"></div>
       </div>
     </div>
   </div>
@@ -6085,16 +6200,17 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc' };
-  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word' };
+  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc', pdf2word: '/pdf2word' };
 
   function focusFirstField(key) {
     const pageEl = document.getElementById('page-' + key);
     if (!pageEl) return;
     // Bỏ qua trang chủ (không có ô nhập nào) và chỉ tự động focus khi vừa chuyển trang, để tiện
-    // gõ ngay mà không cần bấm chuột/chạm vào ô đầu tiên trước.
+    // gõ ngay mà không cần bấm chuột/chạm vào ô đầu tiên trước. Bỏ qua input ẩn (VD: input file
+    // ẩn của trang PDF→Word, vốn được kích hoạt qua vùng kéo-thả chứ không phải gõ chữ).
     const field = pageEl.querySelector(
-      'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([readonly]):not([disabled]), textarea, select'
+      'input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):not([hidden]):not([readonly]):not([disabled]), textarea, select'
     );
     if (!field) return;
     // Trì hoãn 1 khung hình để đảm bảo trang đã thực sự hiển thị (display đổi qua class "active")
@@ -6172,6 +6288,117 @@
     siteFooterEl.addEventListener('touchend', cancelHold);
     siteFooterEl.addEventListener('touchcancel', cancelHold);
   }
+})();
+</script>
+
+<script>
+(function () {
+  // ==== Công cụ PDF -> Word (AI, giữ bảng/layout, OCR cho bản scan) ====
+  // Gọi tới 1 Cloudflare Worker trung gian (miễn phí) giữ bí mật client_secret của Adobe PDF
+  // Services API và thực hiện toàn bộ luồng: lấy access token -> upload PDF -> submit job
+  // export sang .docx (Adobe tự OCR nếu là file scan) -> chờ xong -> trả file .docx về đây.
+  // QUAN TRỌNG: phải thay WORKER_URL bên dưới bằng URL Worker thật sau khi deploy (xem hướng dẫn).
+  const WORKER_URL = 'https://pdf2word-proxy.dhabolero.workers.dev/convert';
+
+  const dropzone = document.getElementById('p2wDropzone');
+  const fileInput = document.getElementById('p2wFileInput');
+  const fileRow = document.getElementById('p2wFileRow');
+  const fileNameEl = document.getElementById('p2wFileName');
+  const removeBtn = document.getElementById('p2wRemoveBtn');
+  const convertBtn = document.getElementById('p2wConvertBtn');
+  const statusEl = document.getElementById('p2wStatus');
+  if (!dropzone || !fileInput) return;
+
+  const MAX_SIZE_BYTES = 25 * 1024 * 1024;
+  let selectedFile = null;
+
+  function setStatus(html, cls) {
+    statusEl.className = 'p2w-status' + (cls ? ' ' + cls : '');
+    statusEl.innerHTML = html || '';
+  }
+
+  function pickFile(file) {
+    if (!file) return;
+    if (file.type !== 'application/pdf' && !/\.pdf$/i.test(file.name)) {
+      setStatus('Chỉ nhận file PDF (.pdf).', 'error');
+      return;
+    }
+    if (file.size > MAX_SIZE_BYTES) {
+      setStatus('File quá lớn (giới hạn khoảng 25MB).', 'error');
+      return;
+    }
+    selectedFile = file;
+    fileNameEl.textContent = file.name + ' (' + (file.size / 1024 / 1024).toFixed(1) + ' MB)';
+    fileRow.style.display = 'flex';
+    convertBtn.disabled = false;
+    setStatus('');
+  }
+
+  dropzone.addEventListener('click', () => fileInput.click());
+  dropzone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInput.click(); }
+  });
+  fileInput.addEventListener('change', () => pickFile(fileInput.files && fileInput.files[0]));
+
+  ['dragenter', 'dragover'].forEach((evt) => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.add('dragover');
+    });
+  });
+  ['dragleave', 'drop'].forEach((evt) => {
+    dropzone.addEventListener(evt, (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('dragover');
+    });
+  });
+  dropzone.addEventListener('drop', (e) => {
+    const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    pickFile(file);
+  });
+
+  removeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectedFile = null;
+    fileInput.value = '';
+    fileRow.style.display = 'none';
+    convertBtn.disabled = true;
+    setStatus('');
+  });
+
+  convertBtn.addEventListener('click', async () => {
+    if (!selectedFile) return;
+    if (!WORKER_URL || WORKER_URL.includes('YOUR-WORKER-NAME')) {
+      setStatus('Chưa cấu hình địa chỉ Worker xử lý (WORKER_URL). Xem hướng dẫn deploy.', 'error');
+      return;
+    }
+    convertBtn.disabled = true;
+    setStatus('<span class="p2w-spinner"></span>Đang tải lên &amp; chuyển đổi… (có thể mất 10–40 giây tuỳ độ dài file)');
+    try {
+      const form = new FormData();
+      form.append('file', selectedFile, selectedFile.name);
+      const resp = await fetch(WORKER_URL, { method: 'POST', body: form });
+      if (!resp.ok) {
+        let msg = 'Lỗi máy chủ (' + resp.status + ')';
+        try {
+          const errJson = await resp.json();
+          if (errJson && errJson.error) msg = errJson.error;
+        } catch (_) {}
+        throw new Error(msg);
+      }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const outName = selectedFile.name.replace(/\.pdf$/i, '') + '.docx';
+      setStatus(
+        '✅ Chuyển đổi thành công.<br><a class="p2w-download-btn" href="' + url + '" download="' + outName + '">⬇ Tải file Word</a>',
+        'success'
+      );
+    } catch (err) {
+      setStatus('❌ Chuyển đổi thất bại: ' + (err && err.message ? err.message : 'Lỗi không xác định'), 'error');
+    } finally {
+      convertBtn.disabled = false;
+    }
+  });
 })();
 </script>
 
