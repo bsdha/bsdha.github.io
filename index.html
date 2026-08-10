@@ -3806,9 +3806,12 @@
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
   // So khớp theo ranh giới từ, dùng \p{L}/\p{N} (Unicode) để nhận đúng cả ký tự có dấu tiếng Việt
-  function hasWordBoundaryMatch(haystack, token) {
-    if (!token) return false;
-    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '($|[^\\p{L}\\p{N}])', 'iu');
+  function buildWordBoundaryRegex(token) {
+    if (!token) return null;
+    return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '($|[^\\p{L}\\p{N}])', 'iu');
+  }
+  function hasWordBoundaryMatch(haystack, re) {
+    if (!re) return false;
     return re.test(haystack);
   }
 
@@ -3822,16 +3825,19 @@
     const norm = normalize(trimmed);
     const accent = trimmed.toLowerCase();
     const words = accent.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
-    return { raw: trimmed, norm, accent, words };
+    // Biên dịch sẵn regex 1 lần cho câu tìm kiếm hiện tại, thay vì tạo mới RegExp
+    // cho từng mã trong số ~16.000+ mã ở mỗi lần so khớp (rất tốn CPU khi gõ nhanh).
+    const accentRe = buildWordBoundaryRegex(accent);
+    const wordRes = words.map((w) => buildWordBoundaryRegex(w));
+    return { raw: trimmed, norm, accent, words, accentRe, wordRes };
   }
 
   function textMatchesQuery(textAccent, qi) {
-    const qStr = qi.accent;
-    if (!qStr) return false;
+    if (!qi.accent) return false;
     // Luôn bắt buộc khớp theo đúng ranh giới từ (không tính là khớp nếu từ khóa chỉ nằm
     // lọt thỏm bên trong một từ khác, ví dụ "ong" không được tính là khớp bên trong "phong"/"ống").
-    if (hasWordBoundaryMatch(textAccent, qStr)) return true;
-    if (qi.words.length > 1) return qi.words.every((w) => hasWordBoundaryMatch(textAccent, w));
+    if (hasWordBoundaryMatch(textAccent, qi.accentRe)) return true;
+    if (qi.words.length > 1) return qi.wordRes.every((re) => hasWordBoundaryMatch(textAccent, re));
     return false;
   }
 
@@ -3842,7 +3848,7 @@
     if (code === qi.norm) return 1000;
     if (text === qStr) return 950;
     if (qi.norm && code.startsWith(qi.norm)) return 850;
-    if (hasWordBoundaryMatch(text, qStr)) {
+    if (hasWordBoundaryMatch(text, qi.accentRe)) {
       let s = 650;
       // Cụm từ nằm ngay đầu hoặc cuối tên bệnh (không bị "kẹp giữa") thì chính xác hơn
       if (text.startsWith(qStr)) s += 40;
@@ -3855,7 +3861,7 @@
     // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
     // (không cần liền nhau / đúng thứ tự, nhưng vẫn phải đúng ranh giới từng từ) thì vẫn coi là liên quan
     if (qi.words.length > 1) {
-      const allWordsPresent = qi.words.every((w) => hasWordBoundaryMatch(text, w));
+      const allWordsPresent = qi.wordRes.every((re) => hasWordBoundaryMatch(text, re));
       if (allWordsPresent) {
         return Math.max(150, 400 - text.length);
       }
@@ -3939,16 +3945,60 @@
     statusEl.textContent = `Tìm thấy ${renderedCount.toLocaleString('vi-VN')} kết quả cho "${query}"`;
   }
 
+  const RESULT_PAGE_SIZE = 60; // chỉ render từng đợt 60 thẻ, tránh đổ hàng nghìn thẻ HTML
+  let allResultCards = [];     // toàn bộ thẻ HTML đã dựng sẵn (mảng chuỗi, rẻ) của lượt tìm hiện tại
+  let renderedCardCount = 0;
+
   function showList(matches, qi) {
     const queryInfo = qi !== undefined ? qi : lastQueryInfo;
     const mainOnly = !!(mainDiseaseOnlyToggle && mainDiseaseOnlyToggle.checked);
-    const cards = matches.flatMap((row) => renderListItemCards(row.item, queryInfo, mainOnly));
-    resultsEl.innerHTML = cards.join('') || '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
-    return cards.length;
+    // Dựng sẵn toàn bộ mảng chuỗi HTML (rẻ, không đụng DOM) để biết tổng số kết quả chính xác,
+    // nhưng CHỈ chèn vào DOM từng đợt nhỏ — phần tốn CPU/thời gian nhất là chèn+layout DOM,
+    // không phải việc ghép chuỗi.
+    allResultCards = matches.flatMap((row) => renderListItemCards(row.item, queryInfo, mainOnly));
+    renderedCardCount = 0;
+    resultsEl.innerHTML = '';
+    if (allResultCards.length === 0) {
+      resultsEl.innerHTML = '<div class="empty">Không có mã nào dùng được làm bệnh chính phù hợp với tìm kiếm.</div>';
+      return 0;
+    }
+    appendNextResultPage();
+    return allResultCards.length;
   }
 
+  function appendNextResultPage() {
+    const nextBatch = allResultCards.slice(renderedCardCount, renderedCardCount + RESULT_PAGE_SIZE);
+    if (nextBatch.length === 0) return;
+    const tmp = document.createElement('div');
+    tmp.innerHTML = nextBatch.join('');
+    const loadMoreBtn = document.getElementById('icdLoadMoreBtn');
+    while (tmp.firstChild) resultsEl.insertBefore(tmp.firstChild, loadMoreBtn || null);
+    renderedCardCount += nextBatch.length;
+    updateLoadMoreButton();
+  }
+
+  function updateLoadMoreButton() {
+    let btn = document.getElementById('icdLoadMoreBtn');
+    const remaining = allResultCards.length - renderedCardCount;
+    if (remaining <= 0) {
+      if (btn) btn.remove();
+      return;
+    }
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.id = 'icdLoadMoreBtn';
+      btn.className = 'icd-load-more-btn';
+      btn.style.cssText = 'display:block; width:100%; margin:14px 0 4px; padding:12px; font-size:15px; font-weight:600; cursor:pointer; border-radius:10px; border:1px solid var(--blue-border, #b7d3f2); background:var(--blue-light, #e8f1fc); color:var(--blue, #1c6fd1);';
+      btn.addEventListener('click', appendNextResultPage);
+      resultsEl.appendChild(btn);
+    }
+    btn.textContent = `Xem thêm (còn ${remaining.toLocaleString('vi-VN')} kết quả)`;
+  }
+
+  let mainSearchDebounceTimer = null;
   input.addEventListener('input', () => {
-    doSearch(input.value);
+    clearTimeout(mainSearchDebounceTimer);
+    mainSearchDebounceTimer = setTimeout(() => doSearch(input.value), 150);
   });
   if (yhctToggle) {
     yhctToggle.addEventListener('change', () => {
