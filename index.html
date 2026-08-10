@@ -1267,7 +1267,25 @@
 .rx-dose-modal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 10px; }
 .rx-dose-modal-grid .rx-modal-input { margin-bottom: 0; }
 
-.rx-table-wrap { overflow-x: auto; }
+.rx-table-wrap { overflow-x: auto; border-radius: 10px; transition: background-color .25s ease, padding .25s ease; }
+.rx-table-wrap.has-rows { background: var(--blue-light); padding: 8px; }
+
+/* Hover: nhấp nháy viền xanh dương nhẹ liên tục quanh ô đang trỏ chuột, tần số 1s */
+@keyframes rxHoverGlow {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(28, 111, 209, 0.15); border-color: #000000; }
+  50% { box-shadow: 0 0 0 3px rgba(28, 111, 209, 0.55); border-color: var(--blue); }
+}
+.rx-form-grid .field input:not([type="checkbox"]):hover,
+.rx-settings-grid .field input:not([type="checkbox"]):hover,
+.rx-cloud-grid .field input:not([type="checkbox"]):hover,
+.rx-patient-grid .field input:not([type="checkbox"]):hover,
+.rx-patient-grid .field select:hover,
+.rx-drugname-row .field input:not([type="checkbox"]):hover,
+.rx-dosing-row .field input:not([type="checkbox"]):hover,
+.rx-vitals-row .field input:not([type="checkbox"]):hover,
+.rx-note-field textarea:hover {
+  animation: rxHoverGlow 1s ease-in-out infinite;
+}
 .rx-table { width: 100%; border-collapse: collapse; font-size: 11.5px; table-layout: fixed; }
 .rx-edit-cell { cursor: pointer; }
 .rx-edit-cell:hover { background: var(--surface-2); }
@@ -5164,13 +5182,16 @@
   function renderRxTable() {
     const body = $('rxTableBody');
     const emptyMsg = $('rxEmptyMsg');
+    const tableWrap = document.querySelector('.rx-table-wrap');
     if (rxRows.length === 0) {
       body.innerHTML = '';
       emptyMsg.classList.add('show');
+      if (tableWrap) tableWrap.classList.remove('has-rows');
       updateAutoNote();
       return;
     }
     emptyMsg.classList.remove('show');
+    if (tableWrap) tableWrap.classList.add('has-rows');
     body.innerHTML = rxRows.map((r, i) => `
       <tr draggable="true" data-idx="${i}">
         <td class="rx-idx-cell">
@@ -5639,7 +5660,8 @@
       const order = patientFieldOrder();
       const idx = order.indexOf(id);
       if (idx === -1) return;
-      if (e.key === 'Backspace' && el.tagName !== 'SELECT' && el.value === '' && idx > 0) {
+      const NO_BACKSPACE_JUMP = ['rxPatientDob', 'rxPatientSex', 'rxAddress', 'rxDiagnosis'];
+      if (e.key === 'Backspace' && el.tagName !== 'SELECT' && el.value === '' && idx > 0 && !NO_BACKSPACE_JUMP.includes(id)) {
         e.preventDefault();
         focusAndSelect($(order[idx - 1]));
         return;
