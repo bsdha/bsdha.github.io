@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<title>Phiếu chuyển cơ sở khám bệnh, chữa bệnh BHYT</title>
+<style>
+  :root { --content-font: 12.7px; }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #d9dde3;
+    font-family: "Times New Roman", Times, serif;
+  }
+
+  /* ================= TOOLBAR ================= */
+  .toolbar {
+    position: sticky; top: 0; z-index: 50;
+    background: #1f2937; color: #fff;
+    padding: 10px 16px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-family: Arial, sans-serif; font-size: 14px;
+  }
+  .toolbar button {
+    border: none; padding: 9px 18px; border-radius: 7px; cursor: pointer;
+    font-size: 14px; font-family: Arial, sans-serif;
+  }
+  .btn-print { background: #2563eb; color: #fff; font-weight: bold; }
+  .btn-print:hover { background: #1d4ed8; }
+  .btn-reset { background: #4b5563; color: #fff; }
+  .btn-reset:hover { background: #374151; }
+  .btn-auto { background: #059669; color: #fff; }
+  .btn-auto:hover { background: #047857; }
+  .scale-wrap { display: flex; align-items: center; gap: 8px; }
+  .scale-wrap input[type="range"] { width: 180px; }
+  .hint { color: #cbd5e1; font-size: 12px; }
+
+  .mover-panel {
+    position: sticky; top: 46px; z-index: 49;
+    background: #111827; color: #fff;
+    padding: 8px 16px;
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    font-family: Arial, sans-serif; font-size: 13px;
+  }
+  .dpad {
+    display: grid; grid-template-columns: 34px 34px 34px; grid-template-rows: 30px 30px 30px; gap: 2px;
+  }
+  .dpad button {
+    border: none; background: #374151; color: #fff; font-size: 15px; border-radius: 5px;
+    cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .dpad button:hover { background: #4b5563; }
+  .dpad .empty { background: transparent; }
+  .dpad .center-btn { background: #b91c1c; font-size: 12px; }
+  .dpad .center-btn:hover { background: #991b1b; }
+  .offset-label { color: #cbd5e1; font-size: 12.5px; min-width: 150px; }
+  .step-wrap { display: flex; align-items: center; gap: 6px; }
+  .step-wrap select { font-family: Arial, sans-serif; font-size: 13px; padding: 3px 6px; border-radius: 5px; border: none; }
+  .drag-tip { font-size: 12px; color: #9ca3af; }
+
+  /* ================= SHEETS (nhiều tờ A4, có khoảng trống giữa các tờ) ================= */
+  #sheetsContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+    padding: 24px 0 60px;
+  }
+  .sheet {
+    width: 210mm;
+    height: 297mm;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0,0,0,0.25);
+    position: relative;
+    flex: 0 0 auto;
+    overflow: visible;
+  }
+  .sheet-pad {
+    width: 100%;
+    height: 100%;
+    padding: 11mm 13mm;
+    overflow: hidden;
+  }
+  .sheet-tag {
+    position: absolute;
+    top: -16px;
+    left: 0;
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: #6b7280;
+  }
+
+  /* ---- header (chỉ tờ 1) ---- */
+  .header-flex { display: flex; align-items: flex-start; width: 100%; }
+  .header-flex > .resizable-box { vertical-align: top; padding: 2px 4px; font-size: 11.6px; line-height: 1.32; }
+  .org-left { text-align: center; }
+  .org-right { text-align: center; }
+  .org-far-right { text-align: left; font-size: 10.5px; }
+  .hdr-line { margin-bottom: 4px; display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 2px; }
+  .hdr-line input[type="text"] {
+    flex: 1 1 0; width: 0; min-width: 8px;
+    background-image: radial-gradient(circle, #000 1px, transparent 1px);
+    background-position: bottom left; background-size: 5px 5px; background-repeat: repeat-x;
+  }
+
+  /* ---- 3 khung tiêu đề có thể kéo để chỉnh kích cỡ, nội dung tự xuống dòng vừa khung ---- */
+  .resizable-box {
+    resize: both;
+    overflow: auto;
+    box-sizing: border-box;
+    border: 1px dashed #93c5fd;
+    background: rgba(59,130,246,0.03);
+    white-space: normal;
+  }
+  .resizable-box:hover { border-color: #2563eb; }
+  .resizable-box:focus-within { border-color: #1d4ed8; background: rgba(59,130,246,0.06); }
+  /* Khi đã khóa: ẩn tay kéo, ẩn viền, không cho chỉnh kích cỡ nữa */
+  .header-flex.locked .resizable-box {
+    resize: none; overflow: visible; border: 1px solid transparent; background: none;
+  }
+  .header-flex.locked .resizable-box:hover,
+  .header-flex.locked .resizable-box:focus-within { border-color: transparent; background: none; }
+  .bold { font-weight: bold; }
+  .italic { font-style: italic; }
+  .underline { text-decoration: underline; }
+  h1 { text-align: center; font-size: 16.5px; margin: 8px 0 6px; letter-spacing: 0.2px; }
+
+  /* ---- nội dung (co giãn bằng font-size, margin dùng em để co theo tỉ lệ) ---- */
+  .content-holder {
+    font-size: var(--content-font);
+    line-height: 1.42;
+  }
+  .line {
+    margin: 0.24em 0;
+    display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 0.2em;
+  }
+  .label { white-space: nowrap; }
+  .section-title { font-weight: bold; margin-top: 0.65em; margin-bottom: 0.16em; }
+  .flex-grow { flex: 1 1 4.5em; min-width: 4.5em; }
+  .w-tiny { width: 2.1em; }
+  .w-small { width: 3.7em; }
+  .w-med { width: 8em; }
+  .w-large { width: 10em; }
+  .w-full { width: 100%; }
+
+  input[type="text"], select {
+    border: none; font-family: inherit; font-size: inherit;
+    padding: 0 0.16em 0.06em; background-color: transparent;
+    background-image: linear-gradient(to right, #000 0%, #000 45%, transparent 45%);
+    background-position: bottom; background-size: 5px 1.5px; background-repeat: repeat-x;
+    line-height: 1.3;
+  }
+  select {
+    appearance: none; -webkit-appearance: none; -moz-appearance: none;
+  }
+  input[type="text"].filled, select.filled { background-image: none; }
+  input[type="text"]:focus, select:focus { outline: none; background-color: #fffbdd; }
+
+  textarea {
+    width: 100%; border: none; font-family: inherit; font-size: inherit; line-height: 1.42;
+    background-color: transparent;
+    background-image: linear-gradient(to right, #000 0%, #000 45%, transparent 45%);
+    background-position: bottom; background-size: 5px 1.5px; background-repeat: repeat-x;
+    padding: 0 0.16em; resize: vertical; overflow: hidden; display: block; min-height: 1.6em;
+  }
+  textarea.filled { background-image: none; }
+  textarea:focus { outline: none; background-color: #fffbdd; }
+
+  .checkbox-row { display: flex; align-items: center; gap: 0.5em; margin: 0.16em 0 0.16em 1.3em; }
+  .checkbox-row input[type="checkbox"] { width: 1.05em; height: 1.05em; }
+  .checkbox-row.reason-row { cursor: pointer; }
+  .checkbox-row.reason-row:hover { background-color: #f3f4f6; }
+
+  .lido-item { display: flex; align-items: baseline; gap: 0.4em; margin: 0.2em 0; }
+  .circle-num {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.5em; height: 1.5em; padding: 0 0.15em; border-radius: 50%;
+    cursor: pointer; box-sizing: border-box;
+  }
+  .circle-num.circled { border: 1.4px solid #000; }
+  .circle-toggle-btn { margin-left: 0.3em; }
+
+  .note-block { margin-top: 0.5em; }
+  .footer-note-wrap {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5em;
+    margin-top: 0.65em; border-top: 1px solid #000; padding-top: 0.32em;
+  }
+  .footer-note { font-size: 0.85em; font-style: italic; }
+
+  .line-toggle {
+    margin-left: auto; flex: 0 0 auto; border: none; background: #d1d5db; color: #111;
+    font-family: Arial, sans-serif; font-size: 10.5px; border-radius: 4px; padding: 1px 6px;
+    cursor: pointer; line-height: 1.6;
+  }
+  .line-toggle:hover { background: #9ca3af; }
+  .opt-block.hidden-block { display: none !important; }
+  .opt-block-placeholder {
+    display: none; font-family: Arial, sans-serif; font-size: 10.5px; color: #9ca3af;
+    align-items: center; gap: 6px; margin: 2px 0;
+  }
+  .opt-block-placeholder.show-placeholder { display: flex; }
+  .opt-block-placeholder button {
+    border: none; background: #e5e7eb; color: #111; font-size: 10.5px; border-radius: 4px;
+    padding: 1px 6px; cursor: pointer;
+  }
+  .opt-block-placeholder button:hover { background: #d1d5db; }
+
+  /* ---- khối ký tên / mộc: kéo thả trực tiếp + D-pad, chỉ nằm trên tờ 1 ---- */
+  .sig-group {
+    position: absolute;
+    top: 252mm; right: 13mm;
+    width: 82mm; height: 48mm;
+    transform: translate(0mm, 0mm);
+    z-index: 5;
+  }
+  .drag-handle {
+    position: absolute; top: -5mm; right: -5mm;
+    width: 13mm; height: 13mm; border-radius: 50%;
+    background: #2563eb; color: #fff; font-size: 15px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: grab; user-select: none; touch-action: none;
+    font-family: Arial, sans-serif;
+  }
+  .drag-handle:active { cursor: grabbing; background: #1d4ed8; }
+  .drag-handle:hover { background: #1d4ed8; }
+  .signature-fixed {
+    position: absolute; top: 0; right: 0; width: 78mm; text-align: center;
+    font-size: 12.7px; line-height: 1.5;
+  }
+  .signature-fixed .sig-title { font-weight: bold; font-style: italic; margin-top: 4px; text-align: center; }
+  .signature-fixed .sig-sub { font-style: italic; text-align: center; }
+
+  /* tự động viết hoa khi hiển thị/in (không đổi giá trị gốc đang gõ) */
+  .cap-upper { text-transform: uppercase; }
+  .cap-words { text-transform: capitalize; }
+  .signature-fixed input[type="text"] { text-align: center; }
+
+  .stamp-guide {
+    position: absolute; right: 16mm; bottom: -4mm; width: 32mm; height: 32mm;
+    border: 1.5px dashed #dc2626; border-radius: 50%; pointer-events: none;
+  }
+  .stamp-guide::after {
+    content: "vị trí mộc tròn (tham khảo)";
+    position: absolute; top: -18px; right: 0; font-size: 9px; font-family: Arial, sans-serif;
+    color: #dc2626; white-space: nowrap; font-style: normal; text-align: right;
+  }
+
+  @media print {
+    @page { size: A4; margin: 0; }
+    html, body { background: #fff; }
+    .toolbar, .mover-panel { display: none !important; }
+    #sheetsContainer { padding: 0; gap: 0; }
+    .sheet { box-shadow: none; margin: 0; page-break-after: always; }
+    .sheet:last-child { page-break-after: auto; }
+    .sheet-tag, .stamp-guide, .line-toggle, .opt-block-placeholder, .drag-handle { display: none !important; }
+    input[type="text"], textarea, select { background-color: transparent !important; }
+    .resizable-box { resize: none !important; overflow: visible !important; border: none !important; background: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button class="btn-print" onclick="printForm()">🖨️ In phiếu</button>
+  <button class="btn-auto" onclick="resetScale()">↕️ Về 100%</button>
+  <button class="btn-reset" onclick="resetForm()">🗑️ Xóa hết</button>
+  <button class="btn-auto" id="btnLockHeader" onclick="toggleHeaderLock()">🔓 Mở khóa khung tiêu đề</button>
+  <div class="scale-wrap">
+    <label for="scaleSlider">Độ dài nội dung:</label>
+    <input type="range" id="scaleSlider" min="50" max="200" value="100"
+           oninput="liveScale(this.value); paginate();" onchange="paginate()">
+    <span id="scaleLabel">100%</span>
+  </div>
+  <span class="hint">Nội dung tự chia thành nhiều tờ A4 riêng biệt, có khoảng trống giữa các tờ.</span>
+</div>
+
+<div class="mover-panel">
+  <span style="font-weight:bold;">Khối "Ngày...ĐẠI DIỆN CSKCB":</span>
+  <span class="drag-tip">🖱️ kéo nút xanh trên khối để di chuyển tự do, hoặc dùng D-pad:</span>
+  <div class="dpad">
+    <div class="empty"></div><button onclick="moveSig(0,-1)" title="Lên">▲</button><div class="empty"></div>
+    <button onclick="moveSig(-1,0)" title="Trái">◀</button>
+    <button class="center-btn" onclick="resetSig()" title="Về vị trí gốc">⟲</button>
+    <button onclick="moveSig(1,0)" title="Phải">▶</button>
+    <div class="empty"></div><button onclick="moveSig(0,1)" title="Xuống">▼</button><div class="empty"></div>
+  </div>
+  <div class="step-wrap">
+    <label>Bước:</label>
+    <select id="stepSelect">
+      <option value="1">1 mm</option>
+      <option value="2" selected>2 mm</option>
+      <option value="5">5 mm</option>
+      <option value="20">20 mm</option>
+    </select>
+  </div>
+  <span class="offset-label" id="sigOffsetLabel">Lệch: 0mm ngang, 0mm dọc</span>
+</div>
+
+<form id="mainForm">
+<div id="sheetsContainer">
+
+  <!-- Tờ số 1 (có header + khối ký tên/mộc) -->
+  <div class="sheet" data-idx="0">
+    <span class="sheet-tag">Tờ 1</span>
+    <div class="sheet-pad">
+      <div class="header-block" id="headerBlock">
+        <div class="header-flex locked" id="headerFlex">
+          <div class="resizable-box org-left" style="width:44%; min-width:40mm; min-height:14mm;">
+            SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH<br>
+            <span class="bold">BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2</span><br>
+            Số: <input type="text" class="w-tiny">/20<input type="text" class="w-tiny">/PCCSKBCB
+          </div>
+          <div class="resizable-box org-right" style="width:34%; min-width:34mm; min-height:14mm;">
+            <span class="bold">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</span><br>
+            <span class="bold underline">Độc lập - Tự do - Hạnh phúc</span>
+          </div>
+          <div class="resizable-box org-far-right" style="width:22%; min-width:28mm; min-height:14mm;">
+            <div class="hdr-line">SVV:<input type="text"></div>
+            <div class="hdr-line">Số hồ sơ:<input type="text"></div>
+            <div class="hdr-line">Vào sổ chuyển CSKCB số:<input type="text"></div>
+          </div>
+        </div>
+        <h1>PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH, CHỮA BỆNH BẢO HIỂM Y TẾ</h1>
+      </div>
+
+      <div class="content-holder" id="holder-0"></div>
+    </div>
+
+    <div class="sig-group" id="sigGroup">
+      <div class="drag-handle" id="dragHandle" title="Kéo để di chuyển">✥</div>
+      <div class="signature-fixed">
+        <div>Ngày <input type="text" class="w-tiny" data-autofill="day">&nbsp;tháng <input type="text" class="w-tiny" data-autofill="month">&nbsp;năm <input type="text" class="w-small" data-autofill="year"></div>
+        <div class="sig-title">ĐẠI DIỆN CSKCB</div>
+        <div class="sig-sub">(Ký tên, đóng dấu)</div>
+      </div>
+      <div class="stamp-guide"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Kho gốc chứa toàn bộ nội dung theo đúng thứ tự - JS sẽ đọc rồi phân phối vào các tờ -->
+<div id="templateHolder" style="display:none;">
+
+  <div class="line"><span class="label">Kính gửi:</span><input type="text" class="flex-grow" value="Bệnh viện Đa khoa Bình Dương Cơ sở 1"></div>
+
+  <div>Bệnh viện Đa khoa Bình Dương trân trọng giới thiệu:</div>
+
+  <div class="line">
+    <span class="label">- Họ và tên người bệnh:</span><input type="text" class="flex-grow cap-upper">
+    <span class="label">Giới tính:</span><input type="text" class="w-small cap-words">
+    <span class="label">Năm sinh:</span><input type="text" class="w-small">
+  </div>
+  <div class="line"><span class="label">- Địa chỉ:</span><input type="text" class="flex-grow cap-words"></div>
+  <div class="line">
+    <span class="label">- Dân tộc:</span><input type="text" class="w-large cap-words">
+    <span class="label">Quốc tịch:</span><input type="text" class="flex-grow cap-words">
+  </div>
+  <div class="line">
+    <span class="label">- Nghề nghiệp:</span><input type="text" class="w-large cap-words">
+    <span class="label">Nơi làm việc:</span><input type="text" class="flex-grow cap-words">
+  </div>
+  <div class="line"><span class="label">- Số thẻ bảo hiểm y tế:</span><input type="text" class="flex-grow cap-words"></div>
+  <div class="line">
+    <span class="label">- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày</span>
+    <input type="text" class="w-tiny">
+    <span class="label">tháng</span><input type="text" class="w-tiny">
+    <span class="label">năm</span><input type="text" class="w-small">
+  </div>
+  <div class="checkbox-row">
+    <input type="checkbox"> Hết thời hạn
+    <span style="margin-left:24px;"></span>
+    <input type="checkbox"> Không xác định được thời hạn
+  </div>
+
+  <div class="line"><span class="label">- Đã được khám bệnh, điều trị:</span></div>
+
+  <div class="opt-block" id="block-tai1">
+    <div class="line">
+      <span class="label">+ Tại:</span><input type="text" class="w-large cap-words autoWidth" value="BVĐK Bình Dương CS2">
+      <span class="label">(Cấp</span><input type="text" class="w-tiny" value="1"><span>)</span>
+      <span class="label">từ ngày</span><input type="text" class="w-tiny" data-autofill="day">
+      <span class="label">tháng</span><input type="text" class="w-tiny" data-autofill="month">
+      <span class="label">năm</span><input type="text" class="w-small" data-autofill="year">
+      <span class="label">đến ngày</span><input type="text" class="w-tiny" data-autofill="day">
+      <span class="label">tháng</span><input type="text" class="w-tiny" data-autofill="month">
+      <span class="label">năm</span><input type="text" class="w-small" data-autofill="year">
+      <button type="button" class="line-toggle" onclick="hideBlock('block-tai1')">Ẩn dòng</button>
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-tai1">
+    <span>(đã ẩn: +Tại ...)</span><button type="button" onclick="showBlock('block-tai1')">Hiện lại</button>
+  </div>
+
+  <div class="opt-block" id="block-tai2">
+    <div class="line">
+      <span class="label">+ Tại:</span><input type="text" class="w-large cap-words autoWidth">
+      <span class="label">(Cấp</span><input type="text" class="w-tiny"><span>)</span>
+      <span class="label">từ ngày</span><input type="text" class="w-tiny">
+      <span class="label">tháng</span><input type="text" class="w-tiny">
+      <span class="label">năm</span><input type="text" class="w-small">
+      <span class="label">đến ngày</span><input type="text" class="w-tiny">
+      <span class="label">tháng</span><input type="text" class="w-tiny">
+      <span class="label">năm</span><input type="text" class="w-small">
+      <button type="button" class="line-toggle" onclick="hideBlock('block-tai2')">Ẩn dòng</button>
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-tai2">
+    <span>(đã ẩn: +Tại ...)</span><button type="button" onclick="showBlock('block-tai2')">Hiện lại</button>
+  </div>
+
+  <div class="section-title">TÓM TẮT BỆNH ÁN</div>
+  <div class="line"><span class="label">- Tóm tắt dấu hiệu lâm sàng:</span></div>
+  <textarea class="autoGrow cap-sentence" rows="1"></textarea>
+
+  <div class="line" style="margin-top:0.4em;"><span class="label">- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị:</span></div>
+  <textarea class="autoGrow cap-sentence" rows="1"></textarea>
+
+  <div class="line" style="margin-top:0.4em;">
+    <span class="label">- Chẩn đoán:</span><input type="text" id="diagnosisField" class="flex-grow cap-sentence">
+    <span class="label">(ICD-10)</span><input type="text" id="icdField" class="w-small">
+  </div>
+
+  <div class="line"><span class="label">- Phương pháp, thủ thuật đã thực hiện (nếu có):</span></div>
+
+  <div class="opt-block" id="block-pp1">
+    <div class="line">+ <input type="text" class="flex-grow cap-sentence">
+      <button type="button" class="line-toggle" onclick="hideBlock('block-pp1')">Ẩn dòng</button>
+    </div>
+    <div class="line italic" style="font-size:0.94em;">
+      (Bắt đầu: <input type="text" class="w-tiny"> giờ <input type="text" class="w-tiny"> phút
+      <input type="text" class="w-tiny">/<input type="text" class="w-tiny">/<input type="text" class="w-small">;
+      Kết thúc: <input type="text" class="w-tiny"> giờ <input type="text" class="w-tiny"> phút
+      <input type="text" class="w-tiny">/<input type="text" class="w-tiny">/<input type="text" class="w-small">)
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-pp1">
+    <span>(đã ẩn: phương pháp/thủ thuật #1)</span><button type="button" onclick="showBlock('block-pp1')">Hiện lại</button>
+  </div>
+
+  <div class="opt-block" id="block-pp2">
+    <div class="line">+ <input type="text" class="flex-grow cap-sentence">
+      <button type="button" class="line-toggle" onclick="hideBlock('block-pp2')">Ẩn dòng</button>
+    </div>
+    <div class="line italic" style="font-size:0.94em;">
+      (Bắt đầu: <input type="text" class="w-tiny"> giờ <input type="text" class="w-tiny"> phút
+      <input type="text" class="w-tiny">/<input type="text" class="w-tiny">/<input type="text" class="w-small">;
+      Kết thúc: <input type="text" class="w-tiny"> giờ <input type="text" class="w-tiny"> phút
+      <input type="text" class="w-tiny">/<input type="text" class="w-tiny">/<input type="text" class="w-small">)
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-pp2">
+    <span>(đã ẩn: phương pháp/thủ thuật #2)</span><button type="button" onclick="showBlock('block-pp2')">Hiện lại</button>
+  </div>
+
+  <div class="line"><span class="label">- Kỹ thuật, thuốc điều trị chính đã sử dụng:</span></div>
+  <textarea class="autoGrow cap-sentence" rows="1"></textarea>
+
+  <div class="line" style="margin-top:0.4em;"><span class="label">- Tình trạng người bệnh lúc chuyển cơ sở khám bệnh, chữa bệnh:</span>
+    <select id="tinhTrangSelect">
+      <option value="">-- chọn --</option>
+      <option value="Bệnh tỉnh">Bệnh tỉnh</option>
+      <option value="Tạm ổn">Tạm ổn</option>
+      <option value="Lơ mơ">Lơ mơ</option>
+    </select>
+  </div>
+
+  <div class="section-title" style="margin-top:0.5em;">- Lí do chuyển cơ sở khám bệnh, chữa bệnh:</div>
+  <div class="lido-item">
+    <span class="circle-num" id="circle-lido1">1</span>.&nbsp;Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:
+    <button type="button" class="line-toggle circle-toggle-btn" onclick="toggleCircle('circle-lido1')">Khoanh số 1</button>
+  </div>
+  <div class="checkbox-row reason-row" data-group="reason"><input type="checkbox" data-group="reason"> <span class="italic">Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật</span></div>
+  <div class="checkbox-row reason-row" data-group="reason"><input type="checkbox" data-group="reason"> <span class="italic">Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh</span></div>
+  <div class="lido-item">
+    <span class="circle-num" id="circle-lido2">2</span>.&nbsp;Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh.
+    <button type="button" class="line-toggle circle-toggle-btn" onclick="toggleCircle('circle-lido2')">Khoanh số 2</button>
+  </div>
+
+  <div class="line" style="margin-top:0.4em;"><span class="label">- Hướng điều trị:</span><input type="text" class="flex-grow cap-sentence" value="Chuyển tuyến trên"></div>
+
+  <div class="line">
+    <span class="label">- Chuyển cơ sở khám bệnh, chữa bệnh hồi:</span>
+    <input type="text" class="w-tiny" data-autofill="hour"> giờ
+    <input type="text" class="w-tiny" data-autofill="minute"> phút, ngày
+    <input type="text" class="w-tiny" data-autofill="day"> tháng
+    <input type="text" class="w-tiny" data-autofill="month"> năm
+    <input type="text" class="w-small" data-autofill="year">
+    <button type="button" class="line-toggle" onclick="fillAutoDates(true)">⏱ Cập nhật giờ hiện tại</button>
+  </div>
+
+  <div class="line">
+    <span class="label">- Trường hợp chuyển cơ sở khám bệnh, chữa bệnh có giá trị trong 01 năm:</span>
+    <select>
+      <option value="">-- chọn --</option>
+      <option value="Có">Có</option>
+      <option value="Không">Không</option>
+    </select>
+  </div>
+
+  <div class="opt-block" id="block-ptvc">
+    <div class="line"><span class="label">- Phương tiện vận chuyển:</span><input type="text" class="flex-grow cap-sentence" value="Xe cấp cứu">
+      <button type="button" class="line-toggle" onclick="hideBlock('block-ptvc')">Ẩn dòng</button>
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-ptvc">
+    <span>(đã ẩn: phương tiện vận chuyển)</span><button type="button" onclick="showBlock('block-ptvc')">Hiện lại</button>
+  </div>
+
+  <div class="opt-block" id="block-hotong">
+    <div class="line"><span class="label">- Họ tên, chức danh, trình độ chuyên môn của người hộ tống (nếu có):</span><input type="text" class="flex-grow cap-sentence">
+      <button type="button" class="line-toggle" onclick="hideBlock('block-hotong')">Ẩn dòng</button>
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-hotong">
+    <span>(đã ẩn: người hộ tống)</span><button type="button" onclick="showBlock('block-hotong')">Hiện lại</button>
+  </div>
+
+  <div class="opt-block" id="block-ghichu">
+    <div class="note-block">
+      <div class="line">
+        <span class="label">Ghi chú:</span>
+        <button type="button" class="line-toggle" onclick="hideBlock('block-ghichu')">Ẩn dòng</button>
+      </div>
+      <textarea class="autoGrow cap-sentence" rows="1"></textarea>
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-ghichu">
+    <span>(đã ẩn: Ghi chú)</span><button type="button" onclick="showBlock('block-ghichu')">Hiện lại</button>
+  </div>
+
+  <div class="opt-block" id="block-footernote">
+    <div class="footer-note-wrap">
+      <div class="footer-note">
+        - Khoanh tròn vào mục 1 hoặc 2 lý do chuyển cơ sở khám bệnh, chữa bệnh. Trường hợp chọn mục 1, đánh dấu (X) vào ô tương ứng.<br>
+        - Trường hợp phiếu chuyển cơ sở khám bệnh, chữa bệnh được hiển thị trên ứng dụng VNeID và có ký số đầy đủ theo quy định thì có giá trị tương đương bản giấy./.
+      </div>
+      <button type="button" class="line-toggle" onclick="hideBlock('block-footernote')">Ẩn dòng</button>
+    </div>
+  </div>
+  <div class="opt-block-placeholder" id="ph-block-footernote">
+    <span>(đã ẩn: ghi chú cuối trang)</span><button type="button" onclick="showBlock('block-footernote')">Hiện lại</button>
+  </div>
+
+</div>
+</form>
+
+<script>
+  const sheetsContainer = document.getElementById('sheetsContainer');
+  const templateHolder = document.getElementById('templateHolder');
+  const headerBlock = document.getElementById('headerBlock');
+  const headerFlex = document.getElementById('headerFlex');
+  const btnLockHeader = document.getElementById('btnLockHeader');
+
+  // ===== lưu / khôi phục kích cỡ 3 khung tiêu đề + trạng thái khóa (localStorage) =====
+  const HDR_SIZE_KEY = 'phieuChuyenHeaderSizes';
+  const HDR_LOCK_KEY = 'phieuChuyenHeaderLocked';
+
+  function saveHeaderSizes() {
+    const boxes = headerFlex.querySelectorAll('.resizable-box');
+    const data = {};
+    boxes.forEach((box, idx) => {
+      data[idx] = { width: box.style.width || '', height: box.style.height || '' };
+    });
+    try { localStorage.setItem(HDR_SIZE_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function loadHeaderSizes() {
+    let raw;
+    try { raw = localStorage.getItem(HDR_SIZE_KEY); } catch (e) { return; }
+    if (!raw) return;
+    try {
+      const data = JSON.parse(raw);
+      const boxes = headerFlex.querySelectorAll('.resizable-box');
+      boxes.forEach((box, idx) => {
+        if (data[idx] && data[idx].width) box.style.width = data[idx].width;
+        if (data[idx] && data[idx].height) box.style.height = data[idx].height;
+      });
+    } catch (e) {}
+  }
+
+  function saveLockState() {
+    try { localStorage.setItem(HDR_LOCK_KEY, headerFlex.classList.contains('locked') ? '1' : '0'); } catch (e) {}
+  }
+
+  function loadLockState() {
+    let v;
+    try { v = localStorage.getItem(HDR_LOCK_KEY); } catch (e) { return; }
+    if (v === '0') {
+      headerFlex.classList.remove('locked');
+      btnLockHeader.textContent = '🔒 Khóa khung tiêu đề (đang mở)';
+    } else if (v === '1') {
+      headerFlex.classList.add('locked');
+      btnLockHeader.textContent = '🔓 Mở khóa khung tiêu đề';
+    }
+  }
+
+  function toggleHeaderLock() {
+    const isLocked = headerFlex.classList.toggle('locked');
+    btnLockHeader.textContent = isLocked ? '🔓 Mở khóa khung tiêu đề' : '🔒 Khóa khung tiêu đề (đang mở)';
+    saveLockState();
+    paginate();
+  }
+  const slider = document.getElementById('scaleSlider');
+  const scaleLabel = document.getElementById('scaleLabel');
+  const sigGroup = document.getElementById('sigGroup');
+  const dragHandle = document.getElementById('dragHandle');
+  const sigOffsetLabel = document.getElementById('sigOffsetLabel');
+  const stepSelect = document.getElementById('stepSelect');
+
+  const BASE_FONT = 12.7; // px ở mức 100%
+  let masterNodes = [];   // toàn bộ khối nội dung, giữ nguyên thứ tự
+
+  function mmToPx(mm) {
+    const tmp = document.createElement('div');
+    tmp.style.width = mm + 'mm';
+    tmp.style.position = 'absolute';
+    tmp.style.visibility = 'hidden';
+    document.body.appendChild(tmp);
+    const px = tmp.getBoundingClientRect().width;
+    document.body.removeChild(tmp);
+    return px;
+  }
+
+  // ===== chấm điền chỗ trống =====
+  function updateFilled(el) {
+    if (el.value && el.value.trim() !== '') el.classList.add('filled');
+    else el.classList.remove('filled');
+  }
+  function applySentenceCase(el) {
+    const start = el.selectionStart, end = el.selectionEnd;
+    const v = el.value;
+    const newV = v.replace(/(^\s*|[.!?]\s+|\n)(\p{Ll})/gu, (m, p1, p2) => p1 + p2.toUpperCase());
+    if (newV !== v) {
+      el.value = newV;
+      if (start !== null && end !== null) { el.selectionStart = start; el.selectionEnd = end; }
+    }
+  }
+
+  function bindFieldEvents(el) {
+    updateFilled(el);
+    if (el.classList.contains('autoWidth')) autoWidthInput(el);
+    el.addEventListener('input', () => {
+      updateFilled(el);
+      if (el.classList.contains('autoGrow')) autoGrow(el);
+      if (el.classList.contains('cap-sentence')) applySentenceCase(el);
+      if (el.classList.contains('autoWidth')) autoWidthInput(el);
+      // Không phân trang lại trong lúc đang gõ (tránh mất focus/con trỏ).
+      // Chỉ đánh dấu là "cần phân trang lại" và thực hiện khi người dùng rời ô.
+      pendingRepaginate = true;
+    });
+    el.addEventListener('change', () => updateFilled(el));
+    el.addEventListener('blur', () => { if (pendingRepaginate) { pendingRepaginate = false; paginate(); } });
+  }
+
+  // ===== ô nhập tự giãn bề ngang theo nội dung (VD: tên cơ sở tại "+Tại:") =====
+  let _measureSpan = null;
+  function getMeasureSpan() {
+    if (!_measureSpan) {
+      _measureSpan = document.createElement('span');
+      _measureSpan.style.position = 'absolute';
+      _measureSpan.style.visibility = 'hidden';
+      _measureSpan.style.whiteSpace = 'pre';
+      _measureSpan.style.left = '-9999px';
+      _measureSpan.style.top = '0';
+      document.body.appendChild(_measureSpan);
+    }
+    return _measureSpan;
+  }
+  function autoWidthInput(el) {
+    const span = getMeasureSpan();
+    const cs = getComputedStyle(el);
+    span.style.font = cs.font;
+    span.style.letterSpacing = cs.letterSpacing;
+    const text = (el.value && el.value.length) ? el.value : (el.placeholder || '');
+    span.textContent = text.length ? text : ' ';
+    const paddingExtra = 16;
+    const baseMinPx = mmToPx(18); // không nhỏ hơn khoảng 18mm
+    const w = Math.max(baseMinPx, span.offsetWidth + paddingExtra);
+    el.style.width = w + 'px';
+  }
+
+  // ===== textarea tự giãn =====
+  function autoGrow(el) {
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight) + 'px';
+  }
+
+  // ===== Enter nhảy sang ô kế tiếp (input text / select). Textarea vẫn giữ Enter xuống dòng =====
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    const t = e.target;
+    if (t.tagName === 'INPUT' && t.type === 'text' || t.tagName === 'SELECT') {
+      e.preventDefault();
+      const list = Array.from(document.querySelectorAll('#mainForm input[type="text"], #mainForm select'))
+        .filter(el => el.offsetParent !== null);
+      const idx = list.indexOf(t);
+      if (idx > -1 && idx < list.length - 1) {
+        const next = list[idx + 1];
+        next.focus();
+        if (next.select) next.select();
+      }
+    }
+  });
+
+  // ===== co giãn nội dung =====
+  function liveScale(val) {
+    document.documentElement.style.setProperty('--content-font', (BASE_FONT * val / 100) + 'px');
+    scaleLabel.textContent = val + '%';
+    document.querySelectorAll('textarea.autoGrow').forEach(autoGrow);
+    document.querySelectorAll('input.autoWidth').forEach(autoWidthInput);
+  }
+  function resetScale() {
+    slider.value = 100;
+    liveScale(100);
+    paginate();
+  }
+
+  function printForm() { setTimeout(() => window.print(), 50); }
+
+  // ===== tự điền ngày/giờ hiện tại theo giờ Việt Nam (GMT+7) =====
+  function vnDateParts() {
+    const fmt = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Asia/Ho_Chi_Minh',
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+    const parts = fmt.formatToParts(new Date());
+    const map = {};
+    parts.forEach(p => { map[p.type] = p.value; });
+    return map; // { day, month, year, hour, minute }
+  }
+  function fillAutoDates(force) {
+    const parts = vnDateParts();
+    document.querySelectorAll('[data-autofill]').forEach(el => {
+      if (!force && el.value && el.value.trim() !== '') return; // không ghi đè nếu đã có sẵn nội dung
+      const type = el.dataset.autofill;
+      if (type === 'day') el.value = parts.day;
+      else if (type === 'month') el.value = parts.month;
+      else if (type === 'year') el.value = parts.year;
+      else if (type === 'hour') el.value = parts.hour;
+      else if (type === 'minute') el.value = parts.minute;
+      updateFilled(el);
+    });
+  }
+
+  // ===== tra tên bệnh theo mã ICD-10 (danh mục rút gọn các mã thường gặp) =====
+  // Lưu ý: đây KHÔNG phải danh mục ICD-10 đầy đủ (bảng ICD-10 có hàng chục nghìn mã).
+  // Nếu gõ mã không có trong danh sách này, ô "Chẩn đoán" sẽ không tự điền — bạn gõ tay bình thường.
+  const ICD10_MAP = {
+    'A09': 'Viêm dạ dày ruột và viêm đại tràng do nhiễm khuẩn và không xác định',
+    'A15': 'Lao phổi',
+    'A41': 'Nhiễm khuẩn huyết',
+    'B15': 'Viêm gan virus A cấp',
+    'B16': 'Viêm gan virus B cấp',
+    'B18': 'Viêm gan virus mạn',
+    'E10': 'Đái tháo đường típ 1',
+    'E11': 'Đái tháo đường típ 2',
+    'E86': 'Giảm thể tích dịch (mất nước)',
+    'I10': 'Tăng huyết áp vô căn (nguyên phát)',
+    'I20': 'Đau thắt ngực',
+    'I21': 'Nhồi máu cơ tim cấp',
+    'I25': 'Bệnh tim thiếu máu cục bộ mạn tính',
+    'I48': 'Rung nhĩ và cuồng nhĩ',
+    'I50': 'Suy tim',
+    'I63': 'Nhồi máu não',
+    'I64': 'Đột quỵ không xác định là xuất huyết hay nhồi máu',
+    'J06': 'Nhiễm khuẩn hô hấp trên cấp',
+    'J18': 'Viêm phổi không xác định nguyên nhân',
+    'J44': 'Bệnh phổi tắc nghẽn mạn tính',
+    'J45': 'Hen phế quản',
+    'J96': 'Suy hô hấp',
+    'K25': 'Loét dạ dày',
+    'K29': 'Viêm dạ dày và tá tràng',
+    'K35': 'Viêm ruột thừa cấp',
+    'K52': 'Viêm dạ dày ruột và viêm đại tràng khác',
+    'K80': 'Sỏi túi mật',
+    'K81': 'Viêm túi mật',
+    'K85': 'Viêm tụy cấp',
+    'N17': 'Tổn thương thận cấp',
+    'N18': 'Bệnh thận mạn',
+    'N20': 'Sỏi thận và sỏi niệu quản',
+    'N39': 'Nhiễm khuẩn đường tiết niệu',
+    'O80': 'Sinh thường một thai đủ tháng',
+    'R10': 'Đau bụng và đau vùng chậu',
+    'R50': 'Sốt không rõ nguyên nhân',
+    'R55': 'Ngất và trụy mạch',
+    'S06': 'Chấn thương nội sọ',
+    'S22': 'Gãy xương sườn, xương ức và cột sống ngực',
+    'S72': 'Gãy xương đùi',
+    'S82': 'Gãy xương cẳng chân, kể cả mắt cá',
+    'T14': 'Chấn thương ở vùng cơ thể không xác định',
+    'Z51': 'Chăm sóc y tế khác'
+  };
+  function normalizeIcd(code) {
+    return (code || '').toUpperCase().replace(/\s+/g, '');
+  }
+  function lookupIcdName(code) {
+    const norm = normalizeIcd(code);
+    if (!norm) return '';
+    if (ICD10_MAP[norm]) return ICD10_MAP[norm];
+    // thử rút gọn về mã nhóm 3 ký tự (VD: I10.9 -> I10)
+    const base = norm.split('.')[0].slice(0, 3);
+    if (ICD10_MAP[base]) return ICD10_MAP[base];
+    return '';
+  }
+
+  function resetForm() {
+    if (!confirm('Xóa toàn bộ nội dung đã điền?')) return;
+    document.getElementById('mainForm').reset();
+    document.querySelectorAll('#mainForm input[type="text"], #mainForm textarea, #mainForm select').forEach(updateFilled);
+    document.querySelectorAll('textarea.autoGrow').forEach(autoGrow);
+    document.querySelectorAll('input.autoWidth').forEach(autoWidthInput);
+    document.querySelectorAll('.opt-block').forEach(el => el.classList.remove('hidden-block'));
+    document.querySelectorAll('.opt-block-placeholder').forEach(el => el.classList.remove('show-placeholder'));
+    document.querySelectorAll('.circle-num').forEach(el => el.classList.remove('circled'));
+    const diagnosisField = document.getElementById('diagnosisField');
+    if (diagnosisField) diagnosisField.dataset.autofilled = '0';
+    fillAutoDates(true);
+    resetScale();
+    resetSig();
+  }
+
+  // ===== khoanh tròn số 1 / số 2 (lý do chuyển) =====
+  // Chỉ khoanh 1 trong 2 số. Khoanh số này tự bỏ khoanh số kia; nếu số kia có
+  // mục tích con (checkbox) thì cũng tự bỏ tích các mục con đó.
+  function toggleCircle(id) {
+    const el = document.getElementById(id);
+    const turningOn = !el.classList.contains('circled');
+
+    if (!turningOn) {
+      el.classList.remove('circled');
+      return;
+    }
+
+    el.classList.add('circled');
+
+    const otherId = (id === 'circle-lido1') ? 'circle-lido2' : (id === 'circle-lido2' ? 'circle-lido1' : null);
+    if (otherId) document.getElementById(otherId).classList.remove('circled');
+
+    // Khoanh mục 2 (hoặc bất kỳ mục nào không phải mục 1) => bỏ tích các mục con thuộc mục 1
+    if (id !== 'circle-lido1') {
+      document.querySelectorAll('input[data-group="reason"]').forEach(cb => { cb.checked = false; });
+    }
+  }
+
+  // ===== 2 dòng lý do (mục 1): chọn 1 thì tự bỏ chọn dòng kia, bấm cả dòng cũng được =====
+  document.querySelectorAll('.reason-row').forEach(row => {
+    const cb = row.querySelector('input[type="checkbox"]');
+    row.addEventListener('click', (e) => {
+      if (e.target !== cb) {
+        e.preventDefault();
+        cb.checked = !cb.checked;
+        cb.dispatchEvent(new Event('change'));
+      }
+    });
+    cb.addEventListener('change', () => {
+      if (cb.checked) {
+        document.querySelectorAll('input[data-group="reason"]').forEach(other => {
+          if (other !== cb) other.checked = false;
+        });
+      }
+    });
+  });
+
+  // ===== ẩn / hiện dòng =====
+  function hideBlock(id) {
+    document.getElementById(id).classList.add('hidden-block');
+    document.getElementById('ph-' + id).classList.add('show-placeholder');
+    paginate();
+  }
+  function showBlock(id) {
+    document.getElementById(id).classList.remove('hidden-block');
+    document.getElementById('ph-' + id).classList.remove('show-placeholder');
+    paginate();
+  }
+
+  // ===== D-pad + kéo thả khối ký tên / mộc =====
+  let sigOffsetX = 0, sigOffsetY = 0;
+  function moveSig(dx, dy) {
+    const step = parseInt(stepSelect.value, 10);
+    sigOffsetX += dx * step;
+    sigOffsetY += dy * step;
+    applySigOffset();
+  }
+  function resetSig() { sigOffsetX = 0; sigOffsetY = 0; applySigOffset(); }
+  function applySigOffset() {
+    sigGroup.style.transform = `translate(${sigOffsetX}mm, ${sigOffsetY}mm)`;
+    sigOffsetLabel.textContent = `Lệch: ${Math.round(sigOffsetX * 10) / 10}mm ngang, ${Math.round(sigOffsetY * 10) / 10}mm dọc`;
+  }
+
+  let dragging = false, startClientX = 0, startClientY = 0, startOffX = 0, startOffY = 0;
+  dragHandle.addEventListener('pointerdown', (e) => {
+    dragging = true;
+    startClientX = e.clientX; startClientY = e.clientY;
+    startOffX = sigOffsetX; startOffY = sigOffsetY;
+    dragHandle.setPointerCapture(e.pointerId);
+  });
+  dragHandle.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    const pxPerMm = mmToPx(1);
+    sigOffsetX = startOffX + (e.clientX - startClientX) / pxPerMm;
+    sigOffsetY = startOffY + (e.clientY - startClientY) / pxPerMm;
+    applySigOffset();
+  });
+  dragHandle.addEventListener('pointerup', () => { dragging = false; });
+  dragHandle.addEventListener('pointercancel', () => { dragging = false; });
+
+  // ===== PHÂN TRANG THẬT: đo chiều cao từng khối, chia đúng theo khổ A4 =====
+  function usablePxForSheet(idx) {
+    const usableMM = 297 - 22; // 297 - (11mm top + 11mm bottom)
+    let px = mmToPx(usableMM);
+    if (idx === 0) px -= headerBlock.getBoundingClientRect().height;
+    return px;
+  }
+
+  function ensureSheetCount(n) {
+    let sheets = sheetsContainer.querySelectorAll('.sheet');
+    while (sheets.length < n) {
+      const idx = sheets.length;
+      const sheet = document.createElement('div');
+      sheet.className = 'sheet';
+      sheet.dataset.idx = idx;
+      const tag = document.createElement('span');
+      tag.className = 'sheet-tag';
+      tag.textContent = 'Tờ ' + (idx + 1);
+      const pad = document.createElement('div');
+      pad.className = 'sheet-pad';
+      const holder = document.createElement('div');
+      holder.className = 'content-holder';
+      holder.id = 'holder-' + idx;
+      pad.appendChild(holder);
+      sheet.appendChild(tag);
+      sheet.appendChild(pad);
+      sheetsContainer.appendChild(sheet);
+      sheets = sheetsContainer.querySelectorAll('.sheet');
+    }
+  }
+  function removeExtraSheets(n) {
+    const sheets = sheetsContainer.querySelectorAll('.sheet');
+    for (let i = sheets.length - 1; i >= n; i--) sheets[i].remove();
+  }
+
+  let paginating = false;
+  function paginate() {
+    if (paginating) return;
+    paginating = true;
+
+    const holder0 = document.getElementById('holder-0');
+    // gom tất cả node về holder-0 để đo
+    masterNodes.forEach(n => holder0.appendChild(n));
+
+    const heights = masterNodes.map(n => {
+      const r = n.getBoundingClientRect();
+      const cs = getComputedStyle(n);
+      return r.height + parseFloat(cs.marginTop || 0) + parseFloat(cs.marginBottom || 0);
+    });
+
+    let sheetIdx = 0, used = 0, capacity = usablePxForSheet(0);
+    const assignment = [];
+    masterNodes.forEach((n, i) => {
+      const h = heights[i];
+      if (used > 0 && used + h > capacity) {
+        sheetIdx++; used = 0; capacity = usablePxForSheet(sheetIdx);
+      }
+      assignment.push(sheetIdx);
+      used += h;
+    });
+
+    const neededSheets = sheetIdx + 1;
+    ensureSheetCount(neededSheets);
+
+    for (let s = 0; s < neededSheets; s++) {
+      const holder = document.getElementById('holder-' + s);
+      masterNodes.forEach((n, i) => { if (assignment[i] === s) holder.appendChild(n); });
+    }
+    removeExtraSheets(neededSheets);
+
+    paginating = false;
+  }
+
+  let pendingRepaginate = false;
+  let resizeTimer = null;
+
+  window.addEventListener('load', () => {
+    masterNodes = Array.from(templateHolder.children);
+    document.getElementById('holder-0').append(...masterNodes);
+    templateHolder.remove();
+
+    document.querySelectorAll('#mainForm input[type="text"], #mainForm textarea, #mainForm select').forEach(bindFieldEvents);
+    document.querySelectorAll('textarea.autoGrow').forEach(autoGrow);
+
+    fillAutoDates(false);
+
+    const diagnosisField = document.getElementById('diagnosisField');
+    const icdField = document.getElementById('icdField');
+    if (diagnosisField && icdField) {
+      icdField.addEventListener('input', () => {
+        const name = lookupIcdName(icdField.value);
+        if (name && (diagnosisField.value.trim() === '' || diagnosisField.dataset.autofilled === '1')) {
+          diagnosisField.value = name;
+          diagnosisField.dataset.autofilled = '1';
+          updateFilled(diagnosisField);
+        }
+      });
+      diagnosisField.addEventListener('input', () => {
+        // người dùng tự gõ tay => không tự động ghi đè bằng tra cứu ICD nữa
+        diagnosisField.dataset.autofilled = '0';
+      });
+    }
+
+    loadLockState();
+    loadHeaderSizes();
+
+    if (window.ResizeObserver) {
+      let saveTimer = null;
+      const ro = new ResizeObserver(() => {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => { saveHeaderSizes(); paginate(); }, 200);
+      });
+      headerFlex.querySelectorAll('.resizable-box').forEach(box => ro.observe(box));
+    }
+
+    paginate();
+  });
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(paginate, 300);
+  });
+</script>
+
+</body>
+</html>

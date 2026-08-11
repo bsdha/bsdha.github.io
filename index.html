@@ -1535,6 +1535,7 @@
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF → Word (AI)</a>
+    <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
   </nav>
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
@@ -1545,6 +1546,7 @@
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF→Word</a>
+    <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
   </nav>
 
   <div class="main-content">
@@ -1604,6 +1606,13 @@
           <div class="ic">📄</div>
           <h2>PDF → Word (AI)</h2>
           <p>Chuyển PDF (kể cả bản scan/hình ảnh) sang file Word có thể chỉnh sửa, giữ nguyên bảng biểu, căn lề, tiêu đề.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/chuyentuyen" class="hcard" data-page="chuyentuyen" data-path="/chuyentuyen">
+          <div class="ic">🚑</div>
+          <h2>Phiếu chuyển tuyến</h2>
+          <p>Soạn &amp; in Phiếu chuyển cơ sở khám bệnh, chữa bệnh BHYT, tự điền sẵn thông tin, tự chia trang A4.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
       </div>
@@ -2533,6 +2542,11 @@
         <div class="p2w-status" id="p2wStatus"></div>
       </div>
     </div>
+  </div>
+
+  <div class="page" id="page-chuyentuyen">
+    <iframe src="phieu-chuyen-tuyen.html" title="Phiếu chuyển cơ sở khám bệnh, chữa bệnh BHYT"
+            style="display:block; width:100%; height:100vh; border:none; background:#fff;"></iframe>
   </div>
 
   </div>
@@ -6200,8 +6214,8 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word' };
-  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc', pdf2word: '/pdf2word' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word', '/chuyentuyen': 'chuyentuyen', '/chuyentuyen/': 'chuyentuyen' };
+  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', donthuoc: '/donthuoc', pdf2word: '/pdf2word', chuyentuyen: '/chuyentuyen' };
 
   function focusFirstField(key) {
     const pageEl = document.getElementById('page-' + key);
