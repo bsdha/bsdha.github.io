@@ -106,9 +106,8 @@
     "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
     "#ctContentLayer .chkbig{display:inline-block;width:13px;height:13px;border:1.3px solid #000;text-align:center;line-height:11px;font-size:11px;font-weight:bold;margin:0 4px 0 0;vertical-align:-2px;flex:none;}",
     "#ctContentLayer .circ{display:inline-block;border:1.3px solid #000;border-radius:50%;padding:0 4px;line-height:1.15;}",
-    "#ctContentLayer .l-drag{display:none;position:absolute;right:-16px;bottom:-7px;width:24px;height:9px;background:#0066FF;border-radius:4px;cursor:row-resize;box-shadow:0 1px 2px rgba(0,0,0,.4);z-index:4;}",
-    "#ctContentLayer.ct-linedrag-on .l-row:hover .l-drag,#ctContentLayer.ct-linedrag-on .l-row.dragging .l-drag{display:block;}",
-    "#ctContentLayer.ct-linedrag-on .l-row:hover{outline:1px dashed #0066FF;background:rgba(0,102,255,.05);}",
+    "#ctContentLayer .l-flexrow{display:flex;align-items:baseline;}",
+    "#ctContentLayer .fill-line{flex:1 1 auto;min-width:14px;align-self:stretch;border-bottom:1px dotted #000;margin:0 2px 2px;}",
     "#ctSheet.ct-editoff .ct-block{cursor:default;}",
     "#ctSheet.ct-editoff .ct-resize,#ctSheet.ct-editoff .ct-eye{display:none !important;}",
     "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
@@ -131,7 +130,7 @@
     "  #ctSheet, #ctSheet *{visibility:visible !important;}",
     "  .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
-    "  .ct-stampguide,.ct-resize,.l-drag,.ct-eye{display:none !important;}",
+    "  .ct-stampguide,.ct-resize,.ct-eye{display:none !important;}",
     "  .ct-modal-overlay{display:none !important;}",
     "  .ct-hidden-print{display:none !important;}",
     "  .ct-block{cursor:default !important;}",
@@ -164,10 +163,8 @@
             '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
           '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
-          '<div class="ct-switchrow">' +
-            '<label class="ct-switch"><input type="checkbox" id="ctLineDragToggle"><span class="ct-slider"></span></label>' +
-            '<span>↕️ Cho phép kéo dãn dòng (chỉnh khoảng cách từng dòng nội dung chính)</span>' +
-          '</div>' +
+          '<div class="ct-field"><label>↕️ Cho phép kéo dãn dòng (%)</label>' +
+            '<input type="range" id="ctLineSpread" min="70" max="180" value="100"></div>' +
           '<div class="ct-tools">' +
             '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
           '</div>' +
@@ -465,17 +462,29 @@
   // (không còn đè chữ lên nhau nữa). left/right vẫn giữ để canh lề trái/bề
   // rộng khung y như bản gốc đo được.
   var lineCounter = 0;
+  // fillEnd: giống fillOr nhưng khi CHƯA điền thì kéo dấu chấm (đường chấm)
+  // dài hết phần còn lại của dòng, tới sát lề phải, thay vì dừng ở độ dài
+  // ước lượng cố định như fillOr.
+  function fillEnd(s) {
+    return s
+      ? '<span class="fill">' + esc(s) + '</span>'
+      : '<span class="fill-line"></span>';
+  }
   function line(left, right, size, opt, build) {
     opt = opt || {};
     var idx = lineCounter++;
     var baseGapMm = mm(opt.gap != null ? opt.gap : 4);
-    var extraMm = (settings && settings.lineGaps && settings.lineGaps[idx]) ? settings.lineGaps[idx] : 0;
+    // "Cho phép kéo dãn dòng" giờ là 1 thanh kéo DUY NHẤT áp dụng cho TOÀN
+    // BỘ khối nội dung chính (không còn chỉnh riêng từng dòng nữa): mọi
+    // khoảng cách dòng được nhân đồng loạt theo settings.lineSpread (%).
+    var spread = (settings && settings.lineSpread) ? settings.lineSpread : 100;
+    var gapMm = +(baseGapMm * (spread / 100)).toFixed(2);
     var css = "margin-left:" + mm(left) + "mm;width:" + mm(right - left) + "mm;" +
-      "font-size:" + size + "pt;margin-bottom:" + (baseGapMm + extraMm) + "mm;";
+      "font-size:" + size + "pt;margin-bottom:" + gapMm + "mm;";
     if (opt.bold) css += "font-weight:bold;";
     if (opt.center) css += "text-align:center;";
-    return '<div class="l-row" data-li="' + idx + '" data-basegap="' + baseGapMm + '" style="' + css + '">' + build() +
-      '<span class="l-drag" title="Kéo lên/xuống để tăng/giảm khoảng cách với dòng dưới"></span></div>';
+    if (opt.flex) css += "display:flex;align-items:baseline;";
+    return '<div class="l-row' + (opt.flex ? " l-flexrow" : "") + '" data-li="' + idx + '" data-basegap="' + baseGapMm + '" style="' + css + '">' + build() + '</div>';
   }
 
   function buildFlowHTML(d) {
@@ -497,29 +506,29 @@
     html += line(44, 568, 9.5, {}, function () {
       return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + "&nbsp;&nbsp;Giới tính: " + fillOr(d.gioiTinh, 8) + "&nbsp;&nbsp;Năm sinh: " + fillOr(d.namSinh, 8);
     });
-    html += line(44, 568, 9.5, {}, function () { return "- Địa chỉ: " + fillOr(d.diaChi, 110); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Địa chỉ: " + fillEnd(d.diaChi); });
     html += line(44, 568, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + "&nbsp;&nbsp;Quốc tịch: " + fillOr(d.quocTich, 30); });
     html += line(44, 568, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + "&nbsp;&nbsp;Nơi làm việc: " + fillOr(d.noiLamViec, 26); });
-    html += line(44, 568, 9.5, {}, function () { return "- Số thẻ bảo hiểm y tế: " + fillOr(d.soThe, 55); });
-    html += line(44, 568, 9.5, {}, function () { return "- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: " + fillOr(d.hanThe, 24); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Số thẻ bảo hiểm y tế: " + fillEnd(d.soThe); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: " + fillEnd(d.hanThe); });
     html += line(54, 500, 9.5, { gap: 8 }, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Đã được khám bệnh, điều trị:"; });
-    html += line(44, 568, 9.5, {}, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri1, 90); });
-    html += line(44, 568, 9.5, { gap: 8 }, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri2, 90); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri1); });
+    html += line(44, 568, 9.5, { gap: 8, flex: true }, function () { return "&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri2); });
 
     html += line(44, 300, 10.5, { bold: true, gap: 6 }, function () { return "TÓM TẮT BỆNH ÁN"; });
-    html += line(44, 568, 9.5, {}, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillOr(d.tomTatLamSang, 88); });
-    html += line(44, 568, 9.5, {}, function () {
-      return "- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: " + fillOr(d.tomTatCLS, 150);
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillEnd(d.tomTatLamSang); });
+    html += line(44, 568, 9.5, { flex: true }, function () {
+      return "- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: " + fillEnd(d.tomTatCLS);
     });
-    html += line(44, 568, 9.5, {}, function () { return "- Chẩn đoán: " + fillOr(d.chanDoan, 95) + "&nbsp;(ICD-10)"; });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Chẩn đoán: " + fillEnd(d.chanDoan) + "&nbsp;(ICD-10)"; });
 
     html += line(44, 400, 9.5, {}, function () { return "- Phương pháp, thủ thuật đã thực hiện (nếu có):"; });
-    html += line(44, 568, 9.5, {}, function () { return "+ " + fillOr(d.phuongPhapThuThuat, 150); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "+ " + fillEnd(d.phuongPhapThuThuat); });
 
-    html += line(44, 568, 9.5, {}, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillOr(d.kyThuatThuoc, 90); });
-    html += line(44, 568, 9.5, {}, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillOr(d.tinhTrang, 65); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillEnd(d.kyThuatThuoc); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillEnd(d.tinhTrang); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
     html += line(44, 400, 9.5, {}, function () { return circ("1", is1a || is1b) + ". Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
@@ -527,11 +536,11 @@
     html += line(66, 568, 9.5, {}, function () { return box(is1b, true) + "b) Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
     html += line(44, 568, 9.5, {}, function () { return "&nbsp;" + circ("2", is2) + ". Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
 
-    html += line(44, 568, 9.5, {}, function () { return "- Hướng điều trị: " + fillOr(d.huongDieuTri, 100); });
-    html += line(44, 568, 9.5, {}, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillOr(d.chuyenHoi, 70); });
-    html += line(44, 568, 9.5, {}, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillOr(d.coGiaTri1Nam, 10); });
-    html += line(44, 568, 9.5, {}, function () { return "- Phương tiện vận chuyển: " + fillOr(d.phuongTien, 90); });
-    html += line(44, 568, 9.5, { gap: 30 }, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillOr(d.nguoiHoTong, 55); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Hướng điều trị: " + fillEnd(d.huongDieuTri); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillEnd(d.chuyenHoi); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillEnd(d.coGiaTri1Nam); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Phương tiện vận chuyển: " + fillEnd(d.phuongTien); });
+    html += line(44, 568, 9.5, { gap: 30, flex: true }, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillEnd(d.nguoiHoTong); });
 
     // Khoảng trống lớn bên trên để chừa chỗ cho khối "Ngày.../ĐẠI DIỆN CSKCB/
     // Ký tên, đóng dấu" và khối "Ghi chú" (kéo-thả tự do, đặt đè lên khoảng
@@ -618,14 +627,12 @@
     renderBlocks(d);
     applyTransformSettings();
     initDrag();
-    initLineDrag();
   }
 
   /* ---------------------------------------------------------------- */
   /* 6. Tinh chỉnh: scale/shift nội dung + kéo-thả/resize các khối       */
   /* ---------------------------------------------------------------- */
   var settings = loadSettings();
-  var lineDragOn = false; // bật/tắt hiện tay cầm kéo-dãn dòng nội dung chính (không lưu server, chỉ trong phiên làm việc)
 
   function defaultBlocks() {
     var b = {};
@@ -659,7 +666,11 @@
       blocks: blocks,
       hidden: s.hidden || {}, // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
       editMode: s.editMode !== false, // mặc định BẬT: cho phép kéo-thả 5 khối
-      lineGaps: s.lineGaps || {} // { chỉ số dòng: mm thêm/bớt } -> giãn dòng nội dung chính
+      // "Cho phép kéo dãn dòng" (%): co giãn ĐỒNG LOẠT khoảng cách giữa các
+      // dòng của TOÀN BỘ khối nội dung chính (từ tiêu đề "PHIẾU CHUYỂN..."
+      // đến dòng "Họ tên, chức danh người hộ tống"), không chỉnh riêng
+      // từng dòng nữa. 100 = mặc định.
+      lineSpread: s.lineSpread || 100
     };
   }
   function loadSettings() {
@@ -731,6 +742,18 @@
     });
   }
 
+  // Kéo thanh trượt "Cho phép kéo dãn dòng" -> nhân đồng loạt khoảng cách
+  // (margin-bottom) của MỌI dòng trong khối nội dung chính theo % đã chọn,
+  // dựa trên khoảng cách gốc lưu ở data-basegap của từng dòng.
+  function applyLineSpread() {
+    var spread = settings.lineSpread || 100;
+    var rows = document.querySelectorAll("#ctContentLayer .l-row");
+    for (var i = 0; i < rows.length; i++) {
+      var base = parseFloat(rows[i].getAttribute("data-basegap")) || 0;
+      rows[i].style.marginBottom = (base * spread / 100).toFixed(2) + "mm";
+    }
+  }
+
   function applyTransformSettings() {
     var layer = document.getElementById("ctContentLayer");
     if (layer) {
@@ -751,9 +774,7 @@
       sheet.style.transform = "translate(" + settings.calX + "mm," + settings.calY + "mm)";
       sheet.classList.toggle("ct-editoff", !settings.editMode);
     }
-    if (layer) {
-      layer.classList.toggle("ct-linedrag-on", !!lineDragOn);
-    }
+    applyLineSpread();
     var sigSt = settings.blocks.ctSigBlock;
     var guide = document.getElementById("ctStampGuide");
     if (guide && sigSt) {
@@ -865,56 +886,6 @@
     });
   }
 
-  function initLineDrag() {
-    var layer = document.getElementById("ctContentLayer");
-    var sheet = document.getElementById("ctSheet");
-    if (!layer || !sheet) return;
-    function pos(e) { return e.touches ? e.touches[0] : e; }
-    var rows = layer.querySelectorAll(".l-row");
-    rows.forEach(function (row) {
-      var handle = row.querySelector(".l-drag");
-      if (!handle) return;
-      var idx = row.getAttribute("data-li");
-      var baseGapMm = parseFloat(row.getAttribute("data-basegap")) || 0;
-      var dragging = false, startY, startExtra;
-
-      handle.addEventListener("mousedown", down);
-      handle.addEventListener("touchstart", down, { passive: true });
-
-      function down(e) {
-        if (!lineDragOn) return;
-        e.stopPropagation();
-        dragging = true;
-        row.classList.add("dragging");
-        var p = pos(e);
-        startY = p.clientY;
-        startExtra = settings.lineGaps[idx] || 0;
-        document.addEventListener("mousemove", move);
-        document.addEventListener("touchmove", move, { passive: true });
-        document.addEventListener("mouseup", up);
-        document.addEventListener("touchend", up);
-      }
-      function move(e) {
-        if (!dragging) return;
-        var p = pos(e);
-        var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
-        var dyMm = (p.clientY - startY) / pxPerMm;
-        var val = Math.round((startExtra + dyMm) * 10) / 10;
-        if (val < -baseGapMm + 0.5) val = -(baseGapMm - 0.5); // tránh đè lên dòng dưới
-        settings.lineGaps[idx] = val;
-        row.style.marginBottom = (baseGapMm + val) + "mm";
-      }
-      function up() {
-        dragging = false;
-        row.classList.remove("dragging");
-        document.removeEventListener("mousemove", move);
-        document.removeEventListener("touchmove", move);
-        document.removeEventListener("mouseup", up);
-        document.removeEventListener("touchend", up);
-      }
-    });
-  }
-
   /* ---------------------------------------------------------------- */
   /* 7. Gắn sự kiện UI                                                  */
   /* ---------------------------------------------------------------- */
@@ -955,8 +926,9 @@
     });
     document.getElementById("ctResetSig").addEventListener("click", function () {
       settings.blocks = defaultBlocks();
-      settings.lineGaps = {};
+      settings.lineSpread = 100;
       renderSheet();
+      syncFieldsUIFromSettings();
       setStatus("Đã đưa 5 khối và khoảng cách dòng về mặc định (chưa lưu).", "ok");
     });
     document.getElementById("ctSaveBtn").addEventListener("click", saveSettings);
@@ -967,9 +939,9 @@
       settings.editMode = e.target.checked;
       applyTransformSettings();
     });
-    document.getElementById("ctLineDragToggle").addEventListener("change", function (e) {
-      lineDragOn = e.target.checked;
-      applyTransformSettings();
+    document.getElementById("ctLineSpread").addEventListener("input", function (e) {
+      settings.lineSpread = parseInt(e.target.value, 10) || 100;
+      applyLineSpread();
     });
     document.getElementById("ctConfigBtn").addEventListener("click", function () {
       document.getElementById("ctEditModeToggle").checked = settings.editMode;
@@ -990,11 +962,13 @@
     var elCalX = document.getElementById("ctCalX");
     var elCalY = document.getElementById("ctCalY");
     var elEditMode = document.getElementById("ctEditModeToggle");
+    var elLineSpread = document.getElementById("ctLineSpread");
     if (elScale) elScale.value = settings.scale;
     if (elShiftY) elShiftY.value = settings.shiftY;
     if (elCalX) elCalX.value = settings.calX;
     if (elCalY) elCalY.value = settings.calY;
     if (elEditMode) elEditMode.checked = settings.editMode;
+    if (elLineSpread) elLineSpread.value = settings.lineSpread;
   }
 
   /* ---------------------------------------------------------------- */
