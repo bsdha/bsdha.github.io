@@ -348,10 +348,36 @@
     var text = lines.join("\n");
     var d = {};
 
-    d.svv = grab(text, /\bSVV\s*:?\s*([^\n]+)/i);
-    d.soHoSoBenhAn = grab(text, /Số hồ sơ\s*:\s*([^\n]+)/i);
-    d.vaoSoChuyenCSKCB = grab(text, /Vào sổ chuyển[^:\n]*:?\s*([^\n]+)/i);
-    d.soHoSo = grab(text, /\bSố\s*:\s*([^\n]+)/i);
+    // --- SVV / Số hồ sơ / Vào sổ chuyển CSKCB số -------------------------
+    // File nguồn (goc.rtf) KHÔNG có nhãn "SVV" nào cả — số SVV chỉ là MỘT
+    // DÒNG SỐ ĐỨNG RIÊNG LẺ (vd "20030") ở vùng đầu trang, do lệch toạ độ
+    // với chữ "Số hồ sơ:" nên không nằm cùng dòng với nhãn nào. Nhận diện
+    // bằng cách tìm dòng CHỈ TOÀN CHỮ SỐ (3-8 số) trong vài dòng đầu tiên.
+    d.svv = "";
+    for (var _i = 0; _i < Math.min(lines.length, 8); _i++) {
+      var _ln = (lines[_i] || "").trim();
+      if (/^\d{3,8}$/.test(_ln)) { d.svv = _ln; break; }
+    }
+
+    // "Vào sổ chuyển CSKCB số:" trong file nguồn hay bị dính chung dòng với
+    // cụm "Độc lập - Tự do - Hạnh phúc" bên cạnh (do 2 khối trùng toạ độ
+    // hàng) -> CHỈ lấy đúng phần "số/năm/PCCSKBCB", bỏ hết phần dính theo
+    // sau, thay vì lấy nguyên phần còn lại của dòng.
+    d.vaoSoChuyenCSKCB = grab(text, /Vào sổ chuyển[^:\n]*:?\s*([0-9]+\/[0-9]{4}\/PCCSKBCB)/i);
+
+    // "Số:" (góc trên trái, "Số: ____/PCCSKBCB") — chỉ lấy phần số/năm,
+    // KHÔNG lấy kèm hậu tố "/PCCSKBCB" vì khối hiển thị (hdrLeft) đã tự
+    // nối thêm "/PCCSKBCB" phía sau rồi -> nếu giữ nguyên hậu tố ở đây sẽ
+    // bị in lặp 2 lần "/PCCSKBCB/PCCSKBCB".
+    var _soRaw = grab(text, /\bSố\s*:\s*([^\n]+)/i);
+    var _mSo = _soRaw.match(/([0-9]+\/[0-9]{4})/);
+    d.soHoSo = _mSo ? _mSo[1] : _soRaw.replace(/\/?PCCSKBCB\/?\s*$/i, "").trim();
+
+    // "Số hồ sơ:" (góc trên phải) — cùng một số với "Số:"/"Vào sổ..." ở
+    // trên (bệnh viện chỉ có 1 số hồ sơ duy nhất, hiển thị lặp lại ở 2 nơi
+    // trên phiếu, có/không kèm hậu tố "/PCCSKBCB"), nên lấy theo cùng
+    // nguồn cho nhất quán thay vì dò riêng (dễ dò trúng nhầm dòng khác).
+    d.soHoSoBenhAn = d.soHoSo;
     d.kinhGui = grab(text, /Kính gửi\s*:\s*([^\n]+)/i);
     d.coSoGioiThieu =
       grab(text, /Cơ sở khám bệnh,? chữa bệnh\s*:\s*([^\n]+?)\s*(?:-\s*)?trân trọng/i) ||
@@ -370,14 +396,25 @@
     d.soThe = grab(text, /Số thẻ bảo hiểm y tế\s*:\s*([^\n]+)/i);
     d.hanThe = grab(text, /Thời hạn sử dụng[^\n]*thẻ bảo hiểm y tế\s*(?:đến ngày)?\s*([^\n]+)/i);
 
-    var dt = text.match(/\+\s*Tại\s*:\s*([^\n]+)/gi) || [];
-    d.dieuTri1 = dt[0] ? dt[0].replace(/^\+\s*/, "").trim() : "";
-    d.dieuTri2 = dt[1] ? dt[1].replace(/^\+\s*/, "").trim() : "";
+    // Quan trọng: KHÔNG dò "+ Tại:" trên toàn văn bản gộp (text) vì dòng
+    // "Hết thời hạn: ... Không xác định được thời hạn:" hay bị dính chung
+    // với dòng MẪU TRỐNG "+ Tại:.........." (do trùng toạ độ hàng trong
+    // file nguồn) -> nếu dò cả câu sẽ bắt nhầm dòng mẫu trống lên trước,
+    // đẩy dòng có dữ liệu thật xuống sau (sai thứ tự). Phải dò theo từng
+    // dòng đã tách sẵn (lines) và chỉ nhận dòng THỰC SỰ BẮT ĐẦU bằng "+ Tại:".
+    var dtLines = lines.filter(function (l) { return /^\+\s*Tại\s*:/i.test((l || "").trim()); });
+    d.dieuTri1 = dtLines[0] ? dtLines[0].replace(/^\+\s*/, "").trim() : "";
+    d.dieuTri2 = dtLines[1] ? dtLines[1].replace(/^\+\s*/, "").trim() : "";
 
     d.tomTatLamSang = grab(text, /Tóm tắt dấu hiệu lâm sàng\s*:\s*([^\n]+)/i);
     d.tomTatCLS = grab(text, /Tóm tắt kết quả xét nghiệm[^:]*:\s*([^\n]+)/i);
     d.chanDoan = grab(text, /Chẩn đoán\s*:\s*([^\n]+)/i);
-    d.phuongPhapThuThuat = grab(text, /Phương pháp, thủ thuật đã thực hiện[^:]*:\s*([^\n]+)/i);
+    // Lưu ý: dùng [ \t]* (KHÔNG phải \s*) ngay sau dấu ":" — vì \s* khớp cả
+    // ký tự xuống dòng, nên nếu trường này để trống trong file gốc (dấu ":"
+    // là cuối dòng, không có gì phía sau), \s* sẽ "tràn" qua dòng kế tiếp và
+    // bắt nhầm nội dung của trường hoàn toàn khác (vd trường tiếp theo trong
+    // phiếu) làm giá trị của trường này. Cùng lỗi áp dụng cho "nguoiHoTong".
+    d.phuongPhapThuThuat = grab(text, /Phương pháp, thủ thuật đã thực hiện[^:]*:[ \t]*([^\n]+)/i);
     d.kyThuatThuoc = grab(text, /(?:Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:?\s*([^\n]+)/i);
     d.tinhTrang = grab(text, /Tình trạng người bệnh lúc chuyển[^:]*:\s*([^\n]+)/i);
 
@@ -396,8 +433,20 @@
     var cgt = grab(text, /giá trị trong 01 năm\s*:\s*\(?([^)\n]+)/i);
     d.coGiaTri1Nam = /không/i.test(cgt) ? "Không" : (/có/i.test(cgt) ? "Có" : "");
     d.phuongTien = grab(text, /Phương tiện vận chuyển\s*:\s*([^\n]+)/i);
-    d.nguoiHoTong = grab(text, /người hộ tống[^:]*:\s*([^\n]+)/i);
-    d.ngayKy = grab(text, /Ngày\s+(\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})/i);
+    // Cùng lý do như phuongPhapThuThuat ở trên: dùng [ \t]* thay vì \s* để
+    // không tràn qua dòng "Ngày ... ĐẠI DIỆN CSKCB" kế tiếp khi trường này
+    // để trống trong file gốc.
+    d.nguoiHoTong = grab(text, /người hộ tống[^:]*:[ \t]*([^\n]+)/i);
+    // Ngày ký (dòng "Ngày ... ĐẠI DIỆN CSKCB" cuối phiếu) — KHÔNG được dò
+    // "Ngày <n> tháng <n> năm <n>" trên toàn văn bản vì sẽ bắt trúng ngay
+    // ngày hết hạn thẻ BHYT ("...đến ngày 31 tháng 12 năm 2026") xuất hiện
+    // sớm hơn trong văn bản. Ngày ký thật luôn nằm ở DÒNG RIÊNG cuối phiếu,
+    // dạng "Ngày n tháng n năm n" không kèm chữ nào khác -> lấy dòng như
+    // vậy CUỐI CÙNG trong toàn bộ nội dung.
+    var ngayLines = lines.filter(function (l) {
+      return /^Ngày\s+\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4}\s*$/i.test((l || "").trim());
+    });
+    d.ngayKy = ngayLines.length ? ngayLines[ngayLines.length - 1].replace(/^Ngày\s+/i, "").trim() : "";
     // Chỗ đóng mộc LUÔN LUÔN là "ĐẠI DIỆN CSKCB" — không tự nhận diện từ văn bản
     // gốc nữa (trước đây bị dính nhầm dòng "đại diện hợp pháp của người bệnh"
     // có sẵn trong 1 số file nguồn do regex bắt chữ không phân biệt hoa/thường).
