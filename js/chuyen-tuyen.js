@@ -19,6 +19,10 @@
   var ROOT_ID = "chuyenTuyenContent";
   var LS_KEY = "ct_phieuchuyentuyen_settings_v1";
   var MAMMOTH_URL = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js";
+  // Dán URL Worker Cloudflare (đã tạo theo hướng dẫn trong worker.js) vào đây,
+  // dạng "https://ten-worker.ten-tai-khoan.workers.dev". Để trống ("") thì
+  // công cụ chỉ lưu trên máy (localStorage) như trước, không đồng bộ server.
+  var KV_WORKER_URL = "";
 
   var root = document.getElementById(ROOT_ID);
   if (!root) return;
@@ -588,52 +592,98 @@
     return b;
   }
 
-  function loadSettings() {
+  function normalizeSettings(s) {
+    s = s || {};
     var defB = defaultBlocks();
+    var blocks = {};
+    BLOCK_DEFS.forEach(function (bd) {
+      var saved = (s.blocks && s.blocks[bd.id]) || null;
+      // Tương thích ngược với bản cũ chỉ lưu sigLeft/sigTop cho khối chữ ký.
+      if (!saved && bd.id === "ctSigBlock" && (s.sigLeft != null || s.sigTop != null)) {
+        saved = { left: s.sigLeft, top: s.sigTop, scale: 100 };
+      }
+      blocks[bd.id] = saved ? {
+        left: saved.left != null ? saved.left : defB[bd.id].left,
+        top: saved.top != null ? saved.top : defB[bd.id].top,
+        scale: saved.scale != null ? saved.scale : defB[bd.id].scale
+      } : defB[bd.id];
+    });
+    return {
+      scale: s.scale || 100,
+      shiftY: s.shiftY || 0,
+      calX: s.calX || 0,
+      calY: s.calY || 0,
+      blocks: blocks,
+      hidden: s.hidden || {} // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
+    };
+  }
+  function loadSettings() {
     try {
-      var s = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
-      var blocks = {};
-      BLOCK_DEFS.forEach(function (bd) {
-        var saved = (s.blocks && s.blocks[bd.id]) || null;
-        // Tương thích ngược với bản cũ chỉ lưu sigLeft/sigTop cho khối chữ ký.
-        if (!saved && bd.id === "ctSigBlock" && (s.sigLeft != null || s.sigTop != null)) {
-          saved = { left: s.sigLeft, top: s.sigTop, scale: 100 };
-        }
-        blocks[bd.id] = saved ? {
-          left: saved.left != null ? saved.left : defB[bd.id].left,
-          top: saved.top != null ? saved.top : defB[bd.id].top,
-          scale: saved.scale != null ? saved.scale : defB[bd.id].scale
-        } : defB[bd.id];
-      });
-      return {
-        scale: s.scale || 100,
-        shiftY: s.shiftY || 0,
-        calX: s.calX || 0,
-        calY: s.calY || 0,
-        blocks: blocks,
-        hidden: s.hidden || {} // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
-      };
+      return normalizeSettings(JSON.parse(localStorage.getItem(LS_KEY) || "{}"));
     } catch (e) {
-      return { scale: 100, shiftY: 0, calX: 0, calY: 0, blocks: defB, hidden: {} };
+      return normalizeSettings({});
     }
+  }
+  // Đồng bộ với Cloudflare KV (nếu đã cấu hình KV_WORKER_URL): tải cấu hình
+  // dùng chung từ server ngay khi mở trang, ghi đè lên bản localStorage nếu
+  // có dữ liệu mới hơn trên server. Không có mạng / chưa cấu hình -> im lặng
+  // bỏ qua, dùng luôn bản localStorage đã tải trước đó (không chặn giao diện).
+  function fetchSettingsFromKV() {
+    if (!KV_WORKER_URL) return;
+    fetch(KV_WORKER_URL.replace(/\/$/, "") + "/settings")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) {
+        if (!data || Object.keys(data).length === 0) return;
+        settings = normalizeSettings(data);
+        localStorage.setItem(LS_KEY, JSON.stringify(settings));
+        applyTransformSettings();
+        syncFieldsUIFromSettings();
+        setStatus("Đã tải cấu hình canh chỉnh dùng chung từ máy chủ.", "ok");
+      })
+      .catch(function () { /* offline hoặc chưa cấu hình đúng -> bỏ qua êm */ });
+  }
+  function pushSettingsToKV(onDone) {
+    if (!KV_WORKER_URL) { onDone && onDone(null); return; }
+    fetch(KV_WORKER_URL.replace(/\/$/, "") + "/settings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings)
+    })
+      .then(function (r) { onDone && onDone(r.ok); })
+      .catch(function () { onDone && onDone(false); });
   }
   function saveSettings() {
     localStorage.setItem(LS_KEY, JSON.stringify(settings));
-    setStatus("Đã lưu vị trí canh chỉnh cho lần in sau.", "ok");
     var btn = document.getElementById("ctSaveBtn");
-    if (btn) {
+    function flashButton(label) {
+      if (!btn) return;
       if (btn._savedTimer) clearTimeout(btn._savedTimer);
       var original = btn._originalLabel || btn.innerHTML;
       btn._originalLabel = original;
       btn.classList.remove("saved");
       void btn.offsetWidth; // ép reflow để animation chạy lại mỗi lần bấm
       btn.classList.add("saved");
-      btn.innerHTML = "✅ Đã lưu!";
+      btn.innerHTML = label;
       btn._savedTimer = setTimeout(function () {
         btn.innerHTML = original;
         btn.classList.remove("saved");
       }, 1500);
     }
+    if (!KV_WORKER_URL) {
+      setStatus("Đã lưu vị trí canh chỉnh cho lần in sau (trên máy này).", "ok");
+      flashButton("✅ Đã lưu!");
+      return;
+    }
+    flashButton("⏳ Đang lưu...");
+    pushSettingsToKV(function (ok) {
+      if (ok) {
+        setStatus("Đã lưu vị trí canh chỉnh — dùng chung cho mọi máy/mọi người mở trang.", "ok");
+        flashButton("✅ Đã lưu (đồng bộ)!");
+      } else {
+        setStatus("Đã lưu trên máy này, nhưng đồng bộ máy chủ thất bại (kiểm tra mạng/cấu hình Worker).", "err");
+        flashButton("⚠️ Chỉ lưu máy");
+      }
+    });
   }
 
   function applyTransformSettings() {
@@ -813,10 +863,17 @@
       window.print();
     });
 
-    document.getElementById("ctScale").value = settings.scale;
-    document.getElementById("ctShiftY").value = settings.shiftY;
-    document.getElementById("ctCalX").value = settings.calX;
-    document.getElementById("ctCalY").value = settings.calY;
+    syncFieldsUIFromSettings();
+  }
+  function syncFieldsUIFromSettings() {
+    var elScale = document.getElementById("ctScale");
+    var elShiftY = document.getElementById("ctShiftY");
+    var elCalX = document.getElementById("ctCalX");
+    var elCalY = document.getElementById("ctCalY");
+    if (elScale) elScale.value = settings.scale;
+    if (elShiftY) elShiftY.value = settings.shiftY;
+    if (elCalX) elCalX.value = settings.calX;
+    if (elCalY) elCalY.value = settings.calY;
   }
 
   /* ---------------------------------------------------------------- */
@@ -825,4 +882,5 @@
   buildFieldsUI();
   bindUI();
   renderSheet();
+  fetchSettingsFromKV();
 })();
