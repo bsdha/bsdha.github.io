@@ -24,6 +24,17 @@
   if (!root) return;
 
   /* ---------------------------------------------------------------- */
+  /* 0. Kích thước trang lấy CHÍNH XÁC từ file_map.pdf (612 x 792 pt)  */
+  /*    -> mọi vị trí dòng bên dưới lấy nguyên toạ độ đo được trên PDF */
+  /*    đó, chỉ chuyển đơn vị pt sang mm để không lệch bố cục gốc.     */
+  /* ---------------------------------------------------------------- */
+  var PT2MM = 0.352778;
+  var PAGE_W_PT = 612, PAGE_H_PT = 792;
+  var PAGE_W_MM = +(PAGE_W_PT * PT2MM).toFixed(2);
+  var PAGE_H_MM = +(PAGE_H_PT * PT2MM).toFixed(2);
+  function mm(pt) { return +(pt * PT2MM).toFixed(2); }
+
+  /* ---------------------------------------------------------------- */
   /* 1. CSS                                                            */
   /* ---------------------------------------------------------------- */
   var style = document.createElement("style");
@@ -57,20 +68,15 @@
     /* -------- vùng xem trước / bản in -------- */
     ".ct-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".ct-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
-    "#ctSheet{width:210mm;min-height:297mm;background:#fff;position:relative;overflow:hidden;font-family:'Times New Roman',Times,serif;color:#000;}",
-    "#ctContentLayer{position:relative;padding:14mm 14mm 10mm;box-sizing:border-box;transform-origin:top center;}",
-    "#ctContentLayer .l-header{font-size:12.5pt;line-height:1.35;}",
-    "#ctContentLayer .l-hcol{display:flex;justify-content:space-between;}",
-    "#ctContentLayer .l-hleft{width:46%;}",
-    "#ctContentLayer .l-hright{width:50%;text-align:center;}",
-    "#ctContentLayer .l-hright b{display:block;}",
-    "#ctContentLayer .l-title{text-align:center;font-weight:bold;font-size:15pt;margin:8pt 0 10pt;}",
-    "#ctContentLayer .l-kinhgui{text-align:center;font-size:13pt;margin-bottom:6pt;}",
-    "#ctContentLayer p{margin:3pt 0;font-size:12.2pt;line-height:1.42;}",
-    "#ctContentLayer .l-section{font-weight:bold;text-align:center;margin:8pt 0 4pt;}",
-    "#ctContentLayer .fill{border-bottom:1px solid #000;padding:0 2px;font-weight:600;}",
-    "#ctContentLayer .chk{display:inline-block;width:11px;height:11px;border:1px solid #000;text-align:center;line-height:10px;font-size:9px;margin:0 3px;}",
-    "#ctSigBlock{position:absolute;text-align:center;font-size:12.2pt;line-height:1.4;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;}",
+    "#ctSheet{width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;background:#fff;position:relative;overflow:hidden;font-family:'Times New Roman',Times,serif;color:#000;}",
+    "#ctContentLayer{position:relative;width:100%;height:100%;transform-origin:top left;}",
+    "#ctContentLayer .l-row{position:absolute;white-space:normal;line-height:1.28;}",
+    "#ctContentLayer .l-title{text-align:center;font-weight:bold;}",
+    "#ctContentLayer .l-kinhgui{text-align:center;}",
+    "#ctContentLayer .l-section{font-weight:bold;text-align:center;}",
+    "#ctContentLayer .fill{border-bottom:1px solid #000;padding:0 2px;font-weight:600;white-space:pre-wrap;}",
+    "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;}",
+    "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
     "#ctSigBlock:active{cursor:grabbing;}",
     "#ctSigBlock.dragging{outline:2px dashed #0066FF;background:rgba(0,102,255,.06);}",
     "#ctSigBlock .l-date{font-style:italic;}",
@@ -82,7 +88,7 @@
     "  #ctSheet, #ctSheet *{visibility:visible !important;}",
     "  #ctSheet{position:fixed !important;left:0;top:0;box-shadow:none !important;}",
     "  .ct-stampguide{display:none !important;}",
-    "  @page{size:A4;margin:0;}",
+    "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "}"
   ].join("\n");
   document.head.appendChild(style);
@@ -365,59 +371,105 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 5. Render tờ phiếu (mẫu chuẩn) + đổ dữ liệu                       */
+  /* 5. Render tờ phiếu THEO ĐÚNG TOẠ ĐỘ ĐO TỪ file_map.pdf             */
+  /*    Mỗi dòng dưới đây giữ nguyên top/left (pt) đo được trên PDF     */
+  /*    gốc — chỉ nội dung chỗ dấu chấm được thay bằng dữ liệu; nếu     */
+  /*    nội dung dài hơn khung dòng, trình duyệt tự xuống hàng bên      */
+  /*    trong khung đó (không xê dịch các dòng khác).                  */
   /* ---------------------------------------------------------------- */
   function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
-  function fillOr(s, placeholder) {
-    return s ? '<span class="fill">' + esc(s) + '</span>' : '<span class="fill">' + esc(placeholder || "……………………") + '</span>';
+  function dots(n) { return new Array((n || 20) + 1).join("."); }
+  function fillOr(s, dotLen) {
+    return s ? '<span class="fill">' + esc(s) + '</span>' : '<span class="fill" style="border-bottom:none;">' + dots(dotLen) + '</span>';
   }
   function box(checked) { return '<span class="chk">' + (checked ? "X" : "") + '</span>'; }
+  // hàng: {top pt, left pt, right pt (mép phải khung, để chữ dài tự xuống hàng
+  // trong đúng phạm vi đó), size pt, bold?, center?, html-builder(d)}
+  function row(top, left, right, size, opt, build) {
+    return { top: top, left: left, right: right, size: size, opt: opt || {}, build: build };
+  }
+
+  function buildLayoutRows(d) {
+    var lyDo = d.lyDo || "";
+    var is1a = lyDo.indexOf("1a") === 0, is1b = lyDo.indexOf("1b") === 0, is2 = lyDo.indexOf("2") === 0;
+    return [
+      // ---- Quốc hiệu / tiêu đề cơ quan (giữ nguyên như mẫu, không phải dữ liệu người bệnh) ----
+      row(23, 44, 612, 9, { bold: true }, function () { return "SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH"; }),
+      row(24, 256, 612, 9, { bold: true }, function () { return "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"; }),
+      row(35, 44, 320, 9.5, { bold: true }, function () { return esc(d.coSoGioiThieu || "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2"); }),
+      row(35, 300, 464, 9.5, {}, function () { return "Độc lập - Tự do - Hạnh phúc"; }),
+      row(46, 94, 340, 9.5, {}, function () { return "Số: " + fillOr(d.soHoSo, 22) + "/PCCSKBCB"; }),
+      row(84, 84, 530, 12.5, { bold: true, center: true }, function () { return "PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH, CHỮA BỆNH BẢO HIỂM Y TẾ"; }),
+
+      row(98, 100, 520, 10, { center: true }, function () { return "Kính gửi: " + fillOr(d.kinhGui, 46); }),
+      row(113, 44, 560, 9.5, {}, function () { return esc(d.coSoGioiThieu || "Bệnh viện Đa khoa Bình Dương") + " trân trọng giới thiệu:"; }),
+
+      row(128, 44, 562, 9.5, {}, function () {
+        return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + "&nbsp;&nbsp;Giới tính: " + fillOr(d.gioiTinh, 8) + "&nbsp;&nbsp;Năm sinh: " + fillOr(d.namSinh, 8);
+      }),
+      row(143, 44, 562, 9.5, {}, function () { return "- Địa chỉ: " + fillOr(d.diaChi, 110); }),
+      row(158, 44, 562, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + "&nbsp;&nbsp;Quốc tịch: " + fillOr(d.quocTich, 30); }),
+      row(173, 44, 562, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + "&nbsp;&nbsp;Nơi làm việc: " + fillOr(d.noiLamViec, 26); }),
+      row(188, 44, 562, 9.5, {}, function () { return "- Số thẻ bảo hiểm y tế: " + fillOr(d.soThe, 55); }),
+      row(203, 44, 562, 9.5, {}, function () {
+        return "- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: " + fillOr(d.hanThe, 24);
+      }),
+      row(218, 54, 500, 9.5, {}, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); }),
+
+      row(233, 44, 400, 9.5, {}, function () { return "- Đã được khám bệnh, điều trị:"; }),
+      row(248, 44, 562, 9.5, {}, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri1, 90); }),
+      row(264, 44, 562, 9.5, {}, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri2, 90); }),
+
+      row(280, 44, 300, 10.5, { bold: true }, function () { return "TÓM TẮT BỆNH ÁN"; }),
+      row(294, 44, 562, 9.5, {}, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillOr(d.tomTatLamSang, 88); }),
+      row(309, 44, 562, 9.5, {}, function () {
+        return "- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: " + fillOr(d.tomTatCLS, 150);
+      }),
+      row(338, 44, 562, 9.5, {}, function () { return "- Chẩn đoán: " + fillOr(d.chanDoan, 95) + "&nbsp;(ICD-10)"; }),
+
+      row(354, 44, 400, 9.5, {}, function () { return "- Phương pháp, thủ thuật đã thực hiện (nếu có):"; }),
+      row(369, 44, 562, 9.5, {}, function () { return "+ " + fillOr(d.phuongPhapThuThuat, 150); }),
+
+      row(429, 44, 562, 9.5, {}, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillOr(d.kyThuatThuoc, 90); }),
+      row(443, 44, 562, 9.5, {}, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillOr(d.tinhTrang, 65); }),
+
+      row(458, 44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; }),
+      row(473, 44, 400, 9.5, {}, function () { return "1. Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; }),
+      row(488, 66, 562, 9.5, {}, function () { return box(is1a) + "&nbsp;Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; }),
+      row(503, 66, 562, 9.5, {}, function () { return box(is1b) + "&nbsp;Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; }),
+      row(518, 44, 562, 9.5, {}, function () { return box(is2) + "&nbsp;2. Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; }),
+
+      row(533, 44, 562, 9.5, {}, function () { return "- Hướng điều trị: " + fillOr(d.huongDieuTri, 100); }),
+      row(548, 44, 562, 9.5, {}, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillOr(d.chuyenHoi, 70); }),
+      row(563, 44, 562, 9.5, {}, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillOr(d.coGiaTri1Nam, 10); }),
+      row(578, 44, 562, 9.5, {}, function () { return "- Phương tiện vận chuyển: " + fillOr(d.phuongTien, 90); }),
+      row(593, 44, 562, 9.5, {}, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillOr(d.nguoiHoTong, 55); }),
+
+      row(706, 44, 300, 8.5, { bold: true }, function () { return "Ghi chú:"; }),
+      row(718, 44, 562, 8, {}, function () {
+        return "- Khoanh tròn vào mục 1 hoặc 2 lý do chuyển cơ sở khám bệnh, chữa bệnh. Trường hợp chọn mục 1, đánh dấu (X) vào ô tương ứng.";
+      }),
+      row(743, 44, 562, 8, {}, function () {
+        return "- Trường hợp phiếu chuyển cơ sở khám bệnh, chữa bệnh được hiển thị trên ứng dụng VNeID và có ký số đầy đủ theo quy định thì có giá trị tương đương bản giấy./.";
+      })
+    ];
+  }
 
   function renderSheet() {
     var d = DATA;
-    var lyDo = d.lyDo || "";
-    var is1a = lyDo.indexOf("1a") === 0;
-    var is1b = lyDo.indexOf("1b") === 0;
-    var is2 = lyDo.indexOf("2") === 0;
+    var rows = buildLayoutRows(d);
+    var html = "";
+    rows.forEach(function (r) {
+      var css = "top:" + mm(r.top) + "mm;left:" + mm(r.left) + "mm;width:" + mm(r.right - r.left) + "mm;font-size:" + r.size + "pt;";
+      if (r.opt.bold) css += "font-weight:bold;";
+      if (r.opt.center) css += "text-align:center;";
+      html += '<div class="l-row" style="' + css + '">' + r.build() + '</div>';
+    });
 
-    var html = '';
-    html += '<div class="l-header l-hcol">' +
-              '<div class="l-hleft"><b>SỞ Y TẾ TP HỒ CHÍ MINH</b><br>' + fillOr(d.coSoGioiThieu, "TÊN CƠ SỞ KCB") + '<br>Số: ' + fillOr(d.soHoSo, "…………………") + '</div>' +
-              '<div class="l-hright"><b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b>Độc lập - Tự do - Hạnh phúc</div>' +
-            '</div>';
-    html += '<div class="l-title">PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH,<br>CHỮA BỆNH BẢO HIỂM Y TẾ</div>';
-    html += '<div class="l-kinhgui">Kính gửi: <b>' + fillOr(d.kinhGui, "…………………………………") + '</b></div>';
-    html += '<p>' + fillOr(d.coSoGioiThieu, "Cơ sở KCB") + ' trân trọng giới thiệu:</p>';
-    html += '<p>- Họ và tên người bệnh: ' + fillOr(d.hoTen) + '&nbsp;&nbsp;Giới tính: ' + fillOr(d.gioiTinh) + '&nbsp;&nbsp;Năm sinh: ' + fillOr(d.namSinh) + '</p>';
-    html += '<p>- Địa chỉ: ' + fillOr(d.diaChi) + '</p>';
-    html += '<p>- Dân tộc: ' + fillOr(d.danToc) + '&nbsp;&nbsp;Quốc tịch: ' + fillOr(d.quocTich) + '</p>';
-    html += '<p>- Nghề nghiệp: ' + fillOr(d.ngheNghiep) + '&nbsp;&nbsp;Nơi làm việc: ' + fillOr(d.noiLamViec) + '</p>';
-    html += '<p>- Số thẻ bảo hiểm y tế: ' + fillOr(d.soThe) + '</p>';
-    html += '<p>- Thời hạn sử dụng của thẻ BHYT đến ngày: ' + fillOr(d.hanThe) + '</p>';
-    html += '<p>- Đã được khám bệnh, điều trị:</p>';
-    html += '<p>&nbsp;&nbsp;+ Tại: ' + fillOr(d.dieuTri1) + '</p>';
-    if (d.dieuTri2) html += '<p>&nbsp;&nbsp;+ Tại: ' + fillOr(d.dieuTri2) + '</p>';
-    html += '<div class="l-section">TÓM TẮT BỆNH ÁN</div>';
-    html += '<p>- Tóm tắt dấu hiệu lâm sàng: ' + fillOr(d.tomTatLamSang) + '</p>';
-    html += '<p>- Tóm tắt kết quả xét nghiệm, CLS chính có giá trị chẩn đoán, theo dõi điều trị: ' + fillOr(d.tomTatCLS) + '</p>';
-    html += '<p>- Chẩn đoán (ICD-10): ' + fillOr(d.chanDoan) + '</p>';
-    if (d.phuongPhapThuThuat) html += '<p>- Phương pháp, thủ thuật đã thực hiện: ' + fillOr(d.phuongPhapThuThuat) + '</p>';
-    html += '<p>- Kỹ thuật, thuốc điều trị chính đã sử dụng: ' + fillOr(d.kyThuatThuoc) + '</p>';
-    html += '<p>- Tình trạng người bệnh lúc chuyển cơ sở KCB: ' + fillOr(d.tinhTrang) + '</p>';
-    html += '<p>- Lý do chuyển cơ sở KCB:</p>';
-    html += '<p>&nbsp;&nbsp;1. Đủ điều kiện chuyển cơ sở KCB: &nbsp;a) Phù hợp quy định chuyển cấp CMKT ' + box(is1a) + '&nbsp;&nbsp;b) Không phù hợp khả năng đáp ứng ' + box(is1b) + '</p>';
-    html += '<p>&nbsp;&nbsp;2. Theo yêu cầu của người bệnh / người đại diện hợp pháp ' + box(is2) + '</p>';
-    html += '<p>- Hướng điều trị: ' + fillOr(d.huongDieuTri) + '</p>';
-    html += '<p>- Chuyển cơ sở KCB hồi: ' + fillOr(d.chuyenHoi) + '</p>';
-    html += '<p>- Trường hợp chuyển có giá trị trong 01 năm: ' + fillOr(d.coGiaTri1Nam, "Có/Không") + '</p>';
-    html += '<p>- Phương tiện vận chuyển: ' + fillOr(d.phuongTien) + '</p>';
-    html += '<p>- Họ tên, chức danh người hộ tống (nếu có): ' + fillOr(d.nguoiHoTong, "(không có)") + '</p>';
-
-    document.getElementById("ctContentLayer") || null;
     var sheet = document.getElementById("ctSheet");
     sheet.innerHTML = '<div id="ctContentLayer">' + html + '</div>' +
-      '<div id="ctSigBlock">' +
-        '<div class="l-date">Ngày ' + fillOr(d.ngayKy, "…… tháng …… năm ……") + '</div>' +
+      '<div id="ctSigBlock" style="font-size:9.5pt;">' +
+        '<div class="l-date">Ngày ' + fillOr(d.ngayKy, 22) + '</div>' +
         '<div class="l-role">' + esc(d.nguoiKy || "ĐẠI DIỆN CSKCB") + '</div>' +
         '<div class="l-note">(Ký tên, đóng dấu)</div>' +
       '</div>' +
@@ -438,13 +490,13 @@
       return {
         scale: s.scale || 100,
         shiftY: s.shiftY || 0,
-        sigLeft: (s.sigLeft != null) ? s.sigLeft : 118, // mm từ trái
-        sigTop: (s.sigTop != null) ? s.sigTop : 250,    // mm từ trên
+        sigLeft: (s.sigLeft != null) ? s.sigLeft : mm(390), // mm từ trái — đo đúng từ file_map.pdf
+        sigTop: (s.sigTop != null) ? s.sigTop : mm(608),    // mm từ trên — đo đúng từ file_map.pdf
         calX: s.calX || 0,
         calY: s.calY || 0
       };
     } catch (e) {
-      return { scale: 100, shiftY: 0, sigLeft: 118, sigTop: 250, calX: 0, calY: 0 };
+      return { scale: 100, shiftY: 0, sigLeft: mm(390), sigTop: mm(608), calX: 0, calY: 0 };
     }
   }
   function saveSettings() {
@@ -556,7 +608,7 @@
       g.style.display = (g.style.display === "block") ? "none" : "block";
     });
     document.getElementById("ctResetSig").addEventListener("click", function () {
-      settings.sigLeft = 118; settings.sigTop = 250; applyTransformSettings();
+      settings.sigLeft = mm(390); settings.sigTop = mm(608); applyTransformSettings();
     });
     document.getElementById("ctSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("ctPrintBtn").addEventListener("click", function () {
