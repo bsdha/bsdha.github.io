@@ -85,6 +85,7 @@
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF → Word (AI)</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
+    <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Giấy nghỉ việc BHXH</a>
   </nav>
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
@@ -96,6 +97,7 @@
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF→Word</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
+    <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Nghỉ việc BHXH</a>
   </nav>
 
   <div class="main-content">
@@ -162,6 +164,13 @@
           <div class="ic">🚑</div>
           <h2>Phiếu chuyển tuyến</h2>
           <p>Soạn &amp; in Phiếu chuyển cơ sở khám bệnh, chữa bệnh BHYT, tự điền sẵn thông tin, tự chia trang A4.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/nghiviecbhxh" class="hcard" data-page="nghiviecbhxh" data-path="/nghiviecbhxh">
+          <div class="ic">📝</div>
+          <h2>Giấy nghỉ việc BHXH</h2>
+          <p>Soạn &amp; in Giấy chứng nhận nghỉ việc hưởng BHXH theo mẫu quy định, tự điền sẵn thông tin.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
       </div>
@@ -720,6 +729,21 @@
     </div>
   </div>
 
+  <div class="page" id="page-nghiviecbhxh">
+    <!-- Khung nội dung cho tính năng "Giấy chứng nhận nghỉ việc hưởng BHXH".
+         File js/giay-nghi-viec-bhxh.js (khi được tạo và upload) nên render giao diện thật
+         vào bên trong #nghiViecBhxhContent, ví dụ:
+           document.getElementById('nghiViecBhxhContent').innerHTML = `...form thật...`;
+         Cho tới lúc đó, khối "đang xây dựng" bên dưới sẽ tự hiển thị mặc định. -->
+    <div id="nghiViecBhxhContent">
+      <div style="max-width:640px; margin:60px auto; text-align:center; padding:24px; font-family:inherit;">
+        <div style="font-size:48px; margin-bottom:12px;">🚧</div>
+        <h2 style="margin:0 0 8px;">Giấy chứng nhận nghỉ việc hưởng BHXH</h2>
+        <p style="color:#666; font-size:15px;">Tính năng đang được xây dựng, sẽ sớm ra mắt. Vui lòng quay lại sau.</p>
+      </div>
+    </div>
+  </div>
+
   </div>
 
 </div>
@@ -752,6 +776,10 @@
      và upload vào thư mục js/ — KHÔNG cần sửa lại index.html, dòng dưới đây đã sẵn sàng.
      Trước khi file đó tồn tại, trình duyệt bỏ qua an toàn, không gây lỗi trang. -->
 <script defer src="js/chuyen-tuyen.js"></script>
+
+<!-- Giấy chứng nhận nghỉ việc hưởng BHXH: chưa triển khai. Khi làm xong, chỉ cần tạo file
+     js/giay-nghi-viec-bhxh.js và upload vào thư mục js/ — KHÔNG cần sửa lại index.html. -->
+<script defer src="js/giay-nghi-viec-bhxh.js"></script>
 
 </body>
 </html>
