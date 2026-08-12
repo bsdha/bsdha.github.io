@@ -136,7 +136,6 @@
             '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
           '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
-          '<div class="ct-hint">5 khối sau đứng <b>độc lập</b>, không bị chữ khác đè lên hay đẩy đi: "SỞ Y TẾ…/Số:…", "CỘNG HÒA…", "SVV/Số hồ sơ/Vào sổ…", "Ngày…/ĐẠI DIỆN CSKCB/Ký tên, đóng dấu" và "Ghi chú…". Rê chuột vào từng khối trên bản xem trước để <b>kéo đổi vị trí</b>; kéo chấm xanh ở góc để <b>phóng to/thu nhỏ</b>; bấm nút <b>👁</b> ở góc trên-trái để <b>ẩn/hiện khối đó khi in</b> (khối ẩn vẫn thấy mờ trên màn hình để dễ chỉnh, nhưng biến mất khi in/tải PDF/Word). Xong bấm "Lưu vị trí" — sẽ giữ nguyên mãi cho lần sau.</div>' +
           '<div class="ct-tools">' +
             '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
             '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
