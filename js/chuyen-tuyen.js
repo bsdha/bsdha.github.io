@@ -82,6 +82,8 @@
     "#ctContentLayer .fill{padding:0 1px;font-weight:600;white-space:pre-wrap;word-break:break-word;}",
     "#ctContentLayer .fill.empty{font-weight:400;color:#000;}",
     "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
+    "#ctContentLayer .circ{display:inline-block;border:1.3px solid #000;border-radius:50%;padding:0 4px;line-height:1.15;}",
+    "#ctContentLayer .ct-lyrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}",
     "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
     "#ctSigBlock:active{cursor:grabbing;}",
     /* -------- khối kéo-thả tự do (đầu trang trái / quốc hiệu / SVV / chữ ký) -------- */
@@ -188,7 +190,7 @@
     ["phuongPhapThuThuat", "Phương pháp, thủ thuật đã thực hiện", "textarea"],
     ["kyThuatThuoc", "Kỹ thuật, thuốc điều trị chính đã dùng", "textarea"],
     ["tinhTrang", "Tình trạng người bệnh lúc chuyển", "text"],
-    ["lyDo", "Lý do chuyển (1a / 1b / 2)", "select:1a - Phù hợp quy định chuyển cấp CMKT,1b - Không phù hợp khả năng đáp ứng,2 - Theo yêu cầu người bệnh"],
+    ["lyDo", "Lý do chuyển (a / b / 2)", "select:1a - a) Phù hợp quy định chuyển cấp CMKT,1b - b) Không phù hợp khả năng đáp ứng,2 - 2. Theo yêu cầu người bệnh"],
     ["huongDieuTri", "Hướng điều trị", "text"],
     ["chuyenHoi", "Chuyển cơ sở KCB hồi (giờ, ngày tháng năm)", "text"],
     ["coGiaTri1Nam", "Có giá trị trong 01 năm", "select:Có,Không"],
@@ -416,6 +418,7 @@
       : '<span class="fill empty">' + dots(dotLen) + '</span>';
   }
   function box(checked) { return '<span class="chk">' + (checked ? "X" : "") + '</span>'; }
+  function circ(text, active) { return active ? '<span class="circ">' + text + '</span>' : text; }
 
   // Một dòng nội dung trong luồng văn bản bình thường (giống Word): không còn
   // toạ độ "top" tuyệt đối nữa -> dòng nào dài hơn tự xuống hàng bên trong
@@ -474,10 +477,10 @@
     html += line(44, 568, 9.5, {}, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillOr(d.tinhTrang, 65); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
-    html += line(44, 400, 9.5, {}, function () { return "1. Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
-    html += line(66, 568, 9.5, {}, function () { return box(is1a) + "&nbsp;Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; });
-    html += line(66, 568, 9.5, {}, function () { return box(is1b) + "&nbsp;Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
-    html += line(44, 568, 9.5, {}, function () { return box(is2) + "&nbsp;2. Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
+    html += line(44, 400, 9.5, {}, function () { return circ("1", is1a || is1b) + ". Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
+    html += line(66, 568, 9.5, {}, function () { return '<div class="ct-lyrow"><span>a) Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật:</span>' + box(is1a) + '</div>'; });
+    html += line(66, 568, 9.5, {}, function () { return '<div class="ct-lyrow"><span>b) Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh:</span>' + box(is1b) + '</div>'; });
+    html += line(44, 568, 9.5, {}, function () { return "&nbsp;" + circ("2", is2) + ". Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
 
     html += line(44, 568, 9.5, {}, function () { return "- Hướng điều trị: " + fillOr(d.huongDieuTri, 100); });
     html += line(44, 568, 9.5, {}, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillOr(d.chuyenHoi, 70); });
