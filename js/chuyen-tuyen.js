@@ -69,13 +69,17 @@
     ".ct-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".ct-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
     "#ctSheet{width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;background:#fff;position:relative;overflow:hidden;font-family:'Times New Roman',Times,serif;color:#000;}",
-    "#ctContentLayer{position:relative;width:100%;height:100%;transform-origin:top left;}",
-    "#ctContentLayer .l-row{position:absolute;white-space:normal;line-height:1.28;}",
+    "#ctContentLayer{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;}",
+    "#ctContentLayer .l-row{position:relative;white-space:normal;line-height:1.28;box-sizing:border-box;}",
+    "#ctContentLayer .l-flex{display:flex;box-sizing:border-box;}",
     "#ctContentLayer .l-title{text-align:center;font-weight:bold;}",
     "#ctContentLayer .l-kinhgui{text-align:center;}",
     "#ctContentLayer .l-section{font-weight:bold;text-align:center;}",
-    "#ctContentLayer .fill{border-bottom:1px solid #000;padding:0 2px;font-weight:600;white-space:pre-wrap;}",
-    "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;}",
+    /* Đã điền -> chỉ hiện chữ, KHÔNG gạch chân / không chấm để đỡ rối mắt.
+       Chưa điền -> hiện các dấu chấm (dots) làm chỗ trống để viết tay, không viền. */
+    "#ctContentLayer .fill{padding:0 1px;font-weight:600;white-space:pre-wrap;word-break:break-word;}",
+    "#ctContentLayer .fill.empty{font-weight:400;color:#000;}",
+    "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
     "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
     "#ctSigBlock:active{cursor:grabbing;}",
     "#ctSigBlock.dragging{outline:2px dashed #0066FF;background:rgba(0,102,255,.06);}",
@@ -84,9 +88,11 @@
     "#ctSigBlock .l-note{font-style:italic;}",
     ".ct-stampguide{position:absolute;border:1.5px dashed #ff5050;border-radius:50%;pointer-events:none;opacity:.55;display:none;}",
     "@media print{",
+    "  html,body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
     "  body *{visibility:hidden !important;}",
     "  #ctSheet, #ctSheet *{visibility:visible !important;}",
-    "  #ctSheet{position:fixed !important;left:0;top:0;box-shadow:none !important;}",
+    "  .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
+    "  #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
     "  .ct-stampguide{display:none !important;}",
     "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "}"
@@ -142,7 +148,10 @@
   /* 3. Danh sách field + label hiển thị                               */
   /* ---------------------------------------------------------------- */
   var FIELD_DEFS = [
-    ["soHoSo", "Số hồ sơ / số phiếu", "text"],
+    ["svv", "SVV", "text"],
+    ["soHoSoBenhAn", "Số hồ sơ (bệnh án)", "text"],
+    ["vaoSoChuyenCSKCB", "Vào sổ chuyển CSKCB số", "text"],
+    ["soHoSo", "Số phiếu (Số: …/PCCSKBCB)", "text"],
     ["kinhGui", "Kính gửi (nơi chuyển đến)", "text"],
     ["coSoGioiThieu", "Cơ sở KCB giới thiệu (nơi lập phiếu)", "text"],
     ["hoTen", "Họ và tên người bệnh", "text"],
@@ -169,8 +178,7 @@
     ["coGiaTri1Nam", "Có giá trị trong 01 năm", "select:Có,Không"],
     ["phuongTien", "Phương tiện vận chuyển", "text"],
     ["nguoiHoTong", "Người hộ tống (nếu có)", "text"],
-    ["ngayKy", "Ngày ký phiếu (ngày tháng năm)", "text"],
-    ["nguoiKy", "Chức danh người ký", "text"]
+    ["ngayKy", "Ngày ký phiếu (ngày tháng năm)", "text"]
   ];
 
   var DATA = {}; // giá trị field hiện tại
@@ -284,6 +292,9 @@
     var text = lines.join("\n");
     var d = {};
 
+    d.svv = grab(text, /\bSVV\s*:?\s*([^\n]+)/i);
+    d.soHoSoBenhAn = grab(text, /Số hồ sơ\s*:\s*([^\n]+)/i);
+    d.vaoSoChuyenCSKCB = grab(text, /Vào sổ chuyển[^:\n]*:?\s*([^\n]+)/i);
     d.soHoSo = grab(text, /\bSố\s*:\s*([^\n]+)/i);
     d.kinhGui = grab(text, /Kính gửi\s*:\s*([^\n]+)/i);
     d.coSoGioiThieu =
@@ -323,7 +334,9 @@
     d.phuongTien = grab(text, /Phương tiện vận chuyển\s*:\s*([^\n]+)/i);
     d.nguoiHoTong = grab(text, /người hộ tống[^:]*:\s*([^\n]+)/i);
     d.ngayKy = grab(text, /Ngày\s+(\d{1,2}\s+tháng\s+\d{1,2}\s+năm\s+\d{4})/i);
-    d.nguoiKy = grab(text, /(ĐẠI DIỆN[^\n]+)/i) || "ĐẠI DIỆN CSKCB";
+    // Chỗ đóng mộc LUÔN LUÔN là "ĐẠI DIỆN CSKCB" — không tự nhận diện từ văn bản
+    // gốc nữa (trước đây bị dính nhầm dòng "đại diện hợp pháp của người bệnh"
+    // có sẵn trong 1 số file nguồn do regex bắt chữ không phân biệt hoa/thường).
 
     return d;
   }
@@ -379,98 +392,116 @@
   /* ---------------------------------------------------------------- */
   function esc(s) { return (s || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   function dots(n) { return new Array((n || 20) + 1).join("."); }
+  // Đã điền -> chỉ hiện chữ (không viền, không chấm). Chưa điền -> hiện chấm
+  // để chừa chỗ viết tay, giống hệt bản giấy gốc.
   function fillOr(s, dotLen) {
-    return s ? '<span class="fill">' + esc(s) + '</span>' : '<span class="fill" style="border-bottom:none;">' + dots(dotLen) + '</span>';
+    return s
+      ? '<span class="fill">' + esc(s) + '</span>'
+      : '<span class="fill empty">' + dots(dotLen) + '</span>';
   }
   function box(checked) { return '<span class="chk">' + (checked ? "X" : "") + '</span>'; }
-  // hàng: {top pt, left pt, right pt (mép phải khung, để chữ dài tự xuống hàng
-  // trong đúng phạm vi đó), size pt, bold?, center?, html-builder(d)}
-  function row(top, left, right, size, opt, build) {
-    return { top: top, left: left, right: right, size: size, opt: opt || {}, build: build };
+
+  // Một dòng nội dung trong luồng văn bản bình thường (giống Word): không còn
+  // toạ độ "top" tuyệt đối nữa -> dòng nào dài hơn tự xuống hàng bên trong
+  // đúng bề rộng của nó, và các dòng phía dưới TỰ ĐỘNG bị đẩy xuống theo
+  // (không còn đè chữ lên nhau nữa). left/right vẫn giữ để canh lề trái/bề
+  // rộng khung y như bản gốc đo được.
+  function line(left, right, size, opt, build) {
+    opt = opt || {};
+    var css = "margin-left:" + mm(left) + "mm;width:" + mm(right - left) + "mm;" +
+      "font-size:" + size + "pt;margin-bottom:" + (opt.gap != null ? opt.gap : 4) + "pt;";
+    if (opt.bold) css += "font-weight:bold;";
+    if (opt.center) css += "text-align:center;";
+    return '<div class="l-row" style="' + css + '">' + build() + '</div>';
   }
 
-  function buildLayoutRows(d) {
+  function buildFlowHTML(d) {
     var lyDo = d.lyDo || "";
     var is1a = lyDo.indexOf("1a") === 0, is1b = lyDo.indexOf("1b") === 0, is2 = lyDo.indexOf("2") === 0;
-    return [
-      // ---- Quốc hiệu / tiêu đề cơ quan (giữ nguyên như mẫu, không phải dữ liệu người bệnh) ----
-      row(23, 44, 612, 9, { bold: true }, function () { return "SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH"; }),
-      row(24, 256, 612, 9, { bold: true }, function () { return "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM"; }),
-      row(35, 44, 320, 9.5, { bold: true }, function () { return esc(d.coSoGioiThieu || "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2"); }),
-      row(35, 300, 464, 9.5, {}, function () { return "Độc lập - Tự do - Hạnh phúc"; }),
-      row(46, 94, 340, 9.5, {}, function () { return "Số: " + fillOr(d.soHoSo, 22) + "/PCCSKBCB"; }),
-      row(84, 84, 530, 12.5, { bold: true, center: true }, function () { return "PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH, CHỮA BỆNH BẢO HIỂM Y TẾ"; }),
+    var html = "";
 
-      row(98, 100, 520, 10, { center: true }, function () { return "Kính gửi: " + fillOr(d.kinhGui, 46); }),
-      row(113, 44, 560, 9.5, {}, function () { return esc(d.coSoGioiThieu || "Bệnh viện Đa khoa Bình Dương") + " trân trọng giới thiệu:"; }),
+    // ---- Khối tiêu đề 2 cột: trái = tên cơ quan, phải = quốc hiệu + SVV/Số hồ sơ/Vào sổ ----
+    html += '<div class="l-flex" style="margin-bottom:5pt;">' +
+      '<div style="width:' + mm(300) + 'mm;font-size:9pt;font-weight:bold;line-height:1.28;">' +
+        'SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH<br>' + esc(d.coSoGioiThieu || "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2") +
+      '</div>' +
+      '<div style="width:' + mm(312) + 'mm;font-size:9pt;line-height:1.28;text-align:center;">' +
+        '<b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br>Độc lập - Tự do - Hạnh phúc' +
+        '<div style="margin-top:3pt;font-size:8pt;text-align:left;padding-left:18mm;">' +
+          'SVV: ' + fillOr(d.svv, 16) + '<br>' +
+          'Số hồ sơ: ' + fillOr(d.soHoSoBenhAn, 16) + '<br>' +
+          'Vào sổ chuyển CSKCB số: ' + fillOr(d.vaoSoChuyenCSKCB, 12) +
+        '</div>' +
+      '</div>' +
+    '</div>';
 
-      row(128, 44, 562, 9.5, {}, function () {
-        return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + "&nbsp;&nbsp;Giới tính: " + fillOr(d.gioiTinh, 8) + "&nbsp;&nbsp;Năm sinh: " + fillOr(d.namSinh, 8);
-      }),
-      row(143, 44, 562, 9.5, {}, function () { return "- Địa chỉ: " + fillOr(d.diaChi, 110); }),
-      row(158, 44, 562, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + "&nbsp;&nbsp;Quốc tịch: " + fillOr(d.quocTich, 30); }),
-      row(173, 44, 562, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + "&nbsp;&nbsp;Nơi làm việc: " + fillOr(d.noiLamViec, 26); }),
-      row(188, 44, 562, 9.5, {}, function () { return "- Số thẻ bảo hiểm y tế: " + fillOr(d.soThe, 55); }),
-      row(203, 44, 562, 9.5, {}, function () {
-        return "- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: " + fillOr(d.hanThe, 24);
-      }),
-      row(218, 54, 500, 9.5, {}, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); }),
+    html += line(94, 340, 9.5, { gap: 10 }, function () { return "Số: " + fillOr(d.soHoSo, 22) + "/PCCSKBCB"; });
+    html += line(44, 568, 12.5, { bold: true, center: true, gap: 8 }, function () { return "PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH, CHỮA BỆNH BẢO HIỂM Y TẾ"; });
 
-      row(233, 44, 400, 9.5, {}, function () { return "- Đã được khám bệnh, điều trị:"; }),
-      row(248, 44, 562, 9.5, {}, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri1, 90); }),
-      row(264, 44, 562, 9.5, {}, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri2, 90); }),
+    html += line(44, 568, 10, { center: true, gap: 5 }, function () { return "Kính gửi: " + fillOr(d.kinhGui, 46); });
+    html += line(44, 568, 9.5, { gap: 8 }, function () { return esc(d.coSoGioiThieu || "Bệnh viện Đa khoa Bình Dương") + " trân trọng giới thiệu:"; });
 
-      row(280, 44, 300, 10.5, { bold: true }, function () { return "TÓM TẮT BỆNH ÁN"; }),
-      row(294, 44, 562, 9.5, {}, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillOr(d.tomTatLamSang, 88); }),
-      row(309, 44, 562, 9.5, {}, function () {
-        return "- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: " + fillOr(d.tomTatCLS, 150);
-      }),
-      row(338, 44, 562, 9.5, {}, function () { return "- Chẩn đoán: " + fillOr(d.chanDoan, 95) + "&nbsp;(ICD-10)"; }),
+    html += line(44, 568, 9.5, {}, function () {
+      return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + "&nbsp;&nbsp;Giới tính: " + fillOr(d.gioiTinh, 8) + "&nbsp;&nbsp;Năm sinh: " + fillOr(d.namSinh, 8);
+    });
+    html += line(44, 568, 9.5, {}, function () { return "- Địa chỉ: " + fillOr(d.diaChi, 110); });
+    html += line(44, 568, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + "&nbsp;&nbsp;Quốc tịch: " + fillOr(d.quocTich, 30); });
+    html += line(44, 568, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + "&nbsp;&nbsp;Nơi làm việc: " + fillOr(d.noiLamViec, 26); });
+    html += line(44, 568, 9.5, {}, function () { return "- Số thẻ bảo hiểm y tế: " + fillOr(d.soThe, 55); });
+    html += line(44, 568, 9.5, {}, function () { return "- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: " + fillOr(d.hanThe, 24); });
+    html += line(54, 500, 9.5, { gap: 8 }, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); });
 
-      row(354, 44, 400, 9.5, {}, function () { return "- Phương pháp, thủ thuật đã thực hiện (nếu có):"; }),
-      row(369, 44, 562, 9.5, {}, function () { return "+ " + fillOr(d.phuongPhapThuThuat, 150); }),
+    html += line(44, 400, 9.5, {}, function () { return "- Đã được khám bệnh, điều trị:"; });
+    html += line(44, 568, 9.5, {}, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri1, 90); });
+    html += line(44, 568, 9.5, { gap: 8 }, function () { return "&nbsp;&nbsp;+ Tại: " + fillOr(d.dieuTri2, 90); });
 
-      row(429, 44, 562, 9.5, {}, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillOr(d.kyThuatThuoc, 90); }),
-      row(443, 44, 562, 9.5, {}, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillOr(d.tinhTrang, 65); }),
+    html += line(44, 300, 10.5, { bold: true, gap: 6 }, function () { return "TÓM TẮT BỆNH ÁN"; });
+    html += line(44, 568, 9.5, {}, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillOr(d.tomTatLamSang, 88); });
+    html += line(44, 568, 9.5, {}, function () {
+      return "- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: " + fillOr(d.tomTatCLS, 150);
+    });
+    html += line(44, 568, 9.5, {}, function () { return "- Chẩn đoán: " + fillOr(d.chanDoan, 95) + "&nbsp;(ICD-10)"; });
 
-      row(458, 44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; }),
-      row(473, 44, 400, 9.5, {}, function () { return "1. Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; }),
-      row(488, 66, 562, 9.5, {}, function () { return box(is1a) + "&nbsp;Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; }),
-      row(503, 66, 562, 9.5, {}, function () { return box(is1b) + "&nbsp;Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; }),
-      row(518, 44, 562, 9.5, {}, function () { return box(is2) + "&nbsp;2. Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; }),
+    html += line(44, 400, 9.5, {}, function () { return "- Phương pháp, thủ thuật đã thực hiện (nếu có):"; });
+    html += line(44, 568, 9.5, {}, function () { return "+ " + fillOr(d.phuongPhapThuThuat, 150); });
 
-      row(533, 44, 562, 9.5, {}, function () { return "- Hướng điều trị: " + fillOr(d.huongDieuTri, 100); }),
-      row(548, 44, 562, 9.5, {}, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillOr(d.chuyenHoi, 70); }),
-      row(563, 44, 562, 9.5, {}, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillOr(d.coGiaTri1Nam, 10); }),
-      row(578, 44, 562, 9.5, {}, function () { return "- Phương tiện vận chuyển: " + fillOr(d.phuongTien, 90); }),
-      row(593, 44, 562, 9.5, {}, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillOr(d.nguoiHoTong, 55); }),
+    html += line(44, 568, 9.5, {}, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillOr(d.kyThuatThuoc, 90); });
+    html += line(44, 568, 9.5, {}, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillOr(d.tinhTrang, 65); });
 
-      row(706, 44, 300, 8.5, { bold: true }, function () { return "Ghi chú:"; }),
-      row(718, 44, 562, 8, {}, function () {
-        return "- Khoanh tròn vào mục 1 hoặc 2 lý do chuyển cơ sở khám bệnh, chữa bệnh. Trường hợp chọn mục 1, đánh dấu (X) vào ô tương ứng.";
-      }),
-      row(743, 44, 562, 8, {}, function () {
-        return "- Trường hợp phiếu chuyển cơ sở khám bệnh, chữa bệnh được hiển thị trên ứng dụng VNeID và có ký số đầy đủ theo quy định thì có giá trị tương đương bản giấy./.";
-      })
-    ];
+    html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
+    html += line(44, 400, 9.5, {}, function () { return "1. Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
+    html += line(66, 568, 9.5, {}, function () { return box(is1a) + "&nbsp;Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; });
+    html += line(66, 568, 9.5, {}, function () { return box(is1b) + "&nbsp;Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
+    html += line(44, 568, 9.5, {}, function () { return box(is2) + "&nbsp;2. Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
+
+    html += line(44, 568, 9.5, {}, function () { return "- Hướng điều trị: " + fillOr(d.huongDieuTri, 100); });
+    html += line(44, 568, 9.5, {}, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillOr(d.chuyenHoi, 70); });
+    html += line(44, 568, 9.5, {}, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillOr(d.coGiaTri1Nam, 10); });
+    html += line(44, 568, 9.5, {}, function () { return "- Phương tiện vận chuyển: " + fillOr(d.phuongTien, 90); });
+    html += line(44, 568, 9.5, { gap: 30 }, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillOr(d.nguoiHoTong, 55); });
+
+    // Khoảng trống lớn bên trên để chừa chỗ cho khối "Ngày.../ĐẠI DIỆN CSKCB/
+    // Ký tên, đóng dấu" (kéo-thả tự do, đặt đè lên khoảng trống này).
+
+    html += line(44, 300, 8.5, { bold: true }, function () { return "Ghi chú:"; });
+    html += line(44, 568, 8, {}, function () {
+      return "- Khoanh tròn vào mục 1 hoặc 2 lý do chuyển cơ sở khám bệnh, chữa bệnh. Trường hợp chọn mục 1, đánh dấu (X) vào ô tương ứng.";
+    });
+    html += line(44, 568, 8, {}, function () {
+      return "- Trường hợp phiếu chuyển cơ sở khám bệnh, chữa bệnh được hiển thị trên ứng dụng VNeID và có ký số đầy đủ theo quy định thì có giá trị tương đương bản giấy./.";
+    });
+
+    return html;
   }
 
   function renderSheet() {
     var d = DATA;
-    var rows = buildLayoutRows(d);
-    var html = "";
-    rows.forEach(function (r) {
-      var css = "top:" + mm(r.top) + "mm;left:" + mm(r.left) + "mm;width:" + mm(r.right - r.left) + "mm;font-size:" + r.size + "pt;";
-      if (r.opt.bold) css += "font-weight:bold;";
-      if (r.opt.center) css += "text-align:center;";
-      html += '<div class="l-row" style="' + css + '">' + r.build() + '</div>';
-    });
-
     var sheet = document.getElementById("ctSheet");
-    sheet.innerHTML = '<div id="ctContentLayer">' + html + '</div>' +
+    // Chỉ 1 tờ phiếu duy nhất trong #ctSheet, không lặp lại nội dung.
+    sheet.innerHTML = '<div id="ctContentLayer" style="padding-top:' + mm(23) + 'mm;padding-left:0;">' + buildFlowHTML(d) + '</div>' +
       '<div id="ctSigBlock" style="font-size:9.5pt;">' +
-        '<div class="l-date">Ngày ' + fillOr(d.ngayKy, 22) + '</div>' +
-        '<div class="l-role">' + esc(d.nguoiKy || "ĐẠI DIỆN CSKCB") + '</div>' +
+        '<div class="l-date">Ngày ' + fillOr(d.ngayKy, 12) + '</div>' +
+        '<div class="l-role">ĐẠI DIỆN CSKCB</div>' +
         '<div class="l-note">(Ký tên, đóng dấu)</div>' +
       '</div>' +
       '<div class="ct-stampguide" id="ctStampGuide"></div>';
