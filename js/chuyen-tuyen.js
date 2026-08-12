@@ -151,9 +151,7 @@
           '<h3>⑤ Xuất file</h3>' +
           '<div class="ct-row2">' +
             '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
-            '<button class="ct-btn secondary" id="ctWordBtn">📝 Tải Word</button>' +
           '</div>' +
-          '<div class="ct-hint">Word xuất ra giữ đúng nội dung &amp; vị trí các khối để bạn chỉnh tay thêm nếu cần; PDF là bản in chính xác từng mm như xem trước.</div>' +
           '<button class="ct-btn secondary" id="ctSaveBtn">💾 Lưu vị trí đã canh</button>' +
         '</div>' +
 
@@ -797,61 +795,11 @@
       saveSettings();
       window.print();
     });
-    document.getElementById("ctWordBtn").addEventListener("click", exportWord);
 
     document.getElementById("ctScale").value = settings.scale;
     document.getElementById("ctShiftY").value = settings.shiftY;
     document.getElementById("ctCalX").value = settings.calX;
     document.getElementById("ctCalY").value = settings.calY;
-  }
-
-  /* ---------------------------------------------------------------- */
-  /* 7b. Xuất Word (.docx) — chuyển nguyên bản #ctSheet (đã gồm cả 4    */
-  /*     khối kéo-thả tại đúng vị trí đã canh) sang file .docx để Word  */
-  /*     mở & chỉnh tay thêm nếu cần. PDF (nút Tải PDF ở trên) vẫn là   */
-  /*     bản chuẩn khớp mm chính xác nhất để in.                        */
-  /* ---------------------------------------------------------------- */
-  var HTML_DOCX_URL = "https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.3.1/html-docx.js";
-  function loadHtmlDocx() {
-    if (window.htmlDocx) return Promise.resolve();
-    return new Promise(function (resolve, reject) {
-      var s = document.createElement("script");
-      s.src = HTML_DOCX_URL;
-      s.onload = resolve;
-      s.onerror = reject;
-      document.head.appendChild(s);
-    });
-  }
-  function exportWord() {
-    setStatus("Đang tạo file Word…", "");
-    loadHtmlDocx().then(function () {
-      var sheet = document.getElementById("ctSheet");
-      var clone = sheet.cloneNode(true);
-      // Bỏ các khối đang bật "ẩn khi in", và bỏ nút điều khiển (mắt/chấm resize)
-      // khỏi bản xuất Word, chỉ giữ đúng nội dung sẽ thực sự in ra.
-      clone.querySelectorAll(".ct-hidden-print").forEach(function (n) { n.remove(); });
-      clone.querySelectorAll(".ct-eye,.ct-resize,.ct-stampguide").forEach(function (n) { n.remove(); });
-      clone.style.transform = "none"; // bỏ lệch bù máy in khi xuất Word
-      // Dựng 1 trang HTML tĩnh, giữ nguyên vị trí tuyệt đối (mm) của mọi
-      // dòng/khối như bản xem trước, để mở trong Word vẫn đúng bố cục.
-      var pageCss = "@page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}" +
-        "body{margin:0;} #ctSheet{position:relative;width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;font-family:'Times New Roman',Times,serif;}" +
-        ".l-row,.ct-block{position:absolute;} .fill{font-weight:600;}";
-      var fullHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><style>" + pageCss + "</style></head><body>" +
-        clone.outerHTML + "</body></html>";
-      var blob = window.htmlDocx.asBlob(fullHtml);
-      var a = document.createElement("a");
-      var fname = "PhieuChuyenCoSoKCB_" + (DATA.hoTen ? DATA.hoTen.replace(/\s+/g, "") : "phieu") + ".docx";
-      a.href = URL.createObjectURL(blob);
-      a.download = fname;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setStatus("Đã tải file Word. Lưu ý: Word có thể hiển thị hơi khác 1 chút so với bản xem trước/PDF do cách Word dựng khối tuyệt đối; nếu cần bản in khớp từng mm hãy dùng nút Tải PDF.", "ok");
-    }).catch(function (e) {
-      console.error(e);
-      setStatus("Không tải được công cụ xuất Word (cần kết nối mạng). Hãy dùng nút Tải PDF.", "err");
-    });
   }
 
   /* ---------------------------------------------------------------- */
