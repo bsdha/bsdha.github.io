@@ -22,7 +22,7 @@
   // Dán URL Worker Cloudflare (đã tạo theo hướng dẫn trong worker.js) vào đây,
   // dạng "https://ten-worker.ten-tai-khoan.workers.dev". Để trống ("") thì
   // công cụ chỉ lưu trên máy (localStorage) như trước, không đồng bộ server.
-  var KV_WORKER_URL = "";
+  var KV_WORKER_URL = "https://phieu-chuyen-tuyen.dhabolero.workers.dev";
 
   var root = document.getElementById(ROOT_ID);
   if (!root) return;
