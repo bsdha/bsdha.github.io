@@ -59,9 +59,14 @@
     ".ct-field textarea{resize:vertical;min-height:36px;}",
     ".ct-row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}",
     ".ct-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}",
-    ".ct-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;background:var(--blue,#0066FF);color:#fff;width:100%;margin-top:4px;}",
+    ".ct-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:9px 14px;font-size:13px;cursor:pointer;background:var(--blue,#0066FF);color:#fff;width:100%;margin-top:4px;transition:transform .12s ease,box-shadow .12s ease,background .2s ease;}",
+    ".ct-btn:active{transform:scale(.97);}",
     ".ct-btn.secondary{background:var(--surface-2,#eee);color:var(--text,#222);}",
     ".ct-btn.small{width:auto;padding:6px 10px;font-size:12px;}",
+    ".ct-btn.save{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.35);}",
+    ".ct-btn.save:hover{box-shadow:0 3px 10px rgba(22,163,74,.45);}",
+    ".ct-btn.save.saved{background:linear-gradient(135deg,#16a34a,#15803d);animation:ctSavedPop .45s ease;}",
+    "@keyframes ctSavedPop{0%{transform:scale(1);}35%{transform:scale(.94);box-shadow:0 0 0 0 rgba(34,197,94,.5);}70%{transform:scale(1.03);box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{transform:scale(1);}}",
     ".ct-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}",
     ".ct-status{font-size:12px;margin-top:8px;min-height:16px;}",
     ".ct-status.ok{color:#1a7a37;}",
@@ -149,10 +154,8 @@
           '</div>' +
 
           '<h3>⑤ Xuất file</h3>' +
-          '<div class="ct-row2">' +
-            '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
-          '</div>' +
-          '<button class="ct-btn secondary" id="ctSaveBtn">💾 Lưu vị trí đã canh</button>' +
+          '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
+          '<button class="ct-btn save" id="ctSaveBtn">💾 Lưu vị trí đã canh</button>' +
         '</div>' +
 
         '<div class="ct-stage"><div class="ct-sheet-outer"><div id="ctSheet"></div></div></div>' +
@@ -617,6 +620,20 @@
   function saveSettings() {
     localStorage.setItem(LS_KEY, JSON.stringify(settings));
     setStatus("Đã lưu vị trí canh chỉnh cho lần in sau.", "ok");
+    var btn = document.getElementById("ctSaveBtn");
+    if (btn) {
+      if (btn._savedTimer) clearTimeout(btn._savedTimer);
+      var original = btn._originalLabel || btn.innerHTML;
+      btn._originalLabel = original;
+      btn.classList.remove("saved");
+      void btn.offsetWidth; // ép reflow để animation chạy lại mỗi lần bấm
+      btn.classList.add("saved");
+      btn.innerHTML = "✅ Đã lưu!";
+      btn._savedTimer = setTimeout(function () {
+        btn.innerHTML = original;
+        btn.classList.remove("saved");
+      }, 1500);
+    }
   }
 
   function applyTransformSettings() {
