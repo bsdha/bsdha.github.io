@@ -89,7 +89,10 @@
     ".ct-block:active{cursor:grabbing;}",
     ".ct-block.dragging,#ctSigBlock.dragging{outline:2px dashed #0066FF;background:rgba(0,102,255,.06);z-index:5;}",
     ".ct-block .ct-resize{position:absolute;right:-9px;bottom:-9px;width:14px;height:14px;border-radius:50%;background:#0066FF;border:2px solid #fff;cursor:nwse-resize;display:none;box-shadow:0 1px 3px rgba(0,0,0,.4);}",
+    ".ct-block .ct-eye{position:absolute;left:-11px;top:-11px;width:18px;height:18px;border-radius:50%;background:#fff;border:1.5px solid #888;cursor:pointer;display:none;align-items:center;justify-content:center;font-size:11px;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,.3);}",
     ".ct-block:hover .ct-resize,.ct-block.dragging .ct-resize{display:block;}",
+    ".ct-block:hover .ct-eye,.ct-block.dragging .ct-eye{display:flex;}",
+    ".ct-block.ct-hidden-print{opacity:.35;outline:1.5px dashed #999;}",
     ".ct-stampguide{position:absolute;border:1.5px dashed #ff5050;border-radius:50%;pointer-events:none;opacity:.55;display:none;}",
     "@media print{",
     "  html,body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -98,6 +101,7 @@
     "  .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
     "  .ct-stampguide,.ct-resize{display:none !important;}",
+    "  .ct-hidden-print{display:none !important;}",
     "  .ct-block{cursor:default !important;}",
     "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "}"
@@ -128,7 +132,7 @@
             '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
           '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
-          '<div class="ct-hint">4 khối sau đứng <b>độc lập</b>, không bị chữ khác đè lên hay đẩy đi: "SỞ Y TẾ…/Số:…", "CỘNG HÒA…", "SVV/Số hồ sơ/Vào sổ…" và "Ngày…/ĐẠI DIỆN CSKCB/Ký tên, đóng dấu". Rê chuột vào từng khối trên bản xem trước để <b>kéo đổi vị trí</b>; kéo chấm xanh ở góc để <b>phóng to/thu nhỏ</b>. Xong bấm "Lưu vị trí" — sẽ giữ nguyên mãi cho lần sau.</div>' +
+          '<div class="ct-hint">5 khối sau đứng <b>độc lập</b>, không bị chữ khác đè lên hay đẩy đi: "SỞ Y TẾ…/Số:…", "CỘNG HÒA…", "SVV/Số hồ sơ/Vào sổ…", "Ngày…/ĐẠI DIỆN CSKCB/Ký tên, đóng dấu" và "Ghi chú…". Rê chuột vào từng khối trên bản xem trước để <b>kéo đổi vị trí</b>; kéo chấm xanh ở góc để <b>phóng to/thu nhỏ</b>; bấm nút <b>👁</b> ở góc trên-trái để <b>ẩn/hiện khối đó khi in</b> (khối ẩn vẫn thấy mờ trên màn hình để dễ chỉnh, nhưng biến mất khi in/tải PDF/Word). Xong bấm "Lưu vị trí" — sẽ giữ nguyên mãi cho lần sau.</div>' +
           '<div class="ct-tools">' +
             '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
             '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
@@ -480,15 +484,8 @@
     html += line(44, 568, 9.5, { gap: 30 }, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillOr(d.nguoiHoTong, 55); });
 
     // Khoảng trống lớn bên trên để chừa chỗ cho khối "Ngày.../ĐẠI DIỆN CSKCB/
-    // Ký tên, đóng dấu" (kéo-thả tự do, đặt đè lên khoảng trống này).
-
-    html += line(44, 300, 8.5, { bold: true }, function () { return "Ghi chú:"; });
-    html += line(44, 568, 8, {}, function () {
-      return "- Khoanh tròn vào mục 1 hoặc 2 lý do chuyển cơ sở khám bệnh, chữa bệnh. Trường hợp chọn mục 1, đánh dấu (X) vào ô tương ứng.";
-    });
-    html += line(44, 568, 8, {}, function () {
-      return "- Trường hợp phiếu chuyển cơ sở khám bệnh, chữa bệnh được hiển thị trên ứng dụng VNeID và có ký số đầy đủ theo quy định thì có giá trị tương đương bản giấy./.";
-    });
+    // Ký tên, đóng dấu" và khối "Ghi chú" (kéo-thả tự do, đặt đè lên khoảng
+    // trống này — xem BLOCK_DEFS).
 
     return html;
   }
@@ -531,6 +528,14 @@
           '<div style="font-weight:bold;font-size:9.5pt;text-align:center;">ĐẠI DIỆN CSKCB</div>' +
           '<div style="font-style:italic;font-size:9.5pt;text-align:center;">(Ký tên, đóng dấu)</div>';
       }
+    },
+    {
+      id: "ghiChu", defLeft: 44, defTop: 706, defScale: 100, wrap: true, width: 524,
+      build: function () {
+        return '<div style="font-weight:bold;font-size:8.5pt;">Ghi chú:</div>' +
+          '<div style="font-size:8pt;">- Khoanh tròn vào mục 1 hoặc 2 lý do chuyển cơ sở khám bệnh, chữa bệnh. Trường hợp chọn mục 1, đánh dấu (X) vào ô tương ứng.</div>' +
+          '<div style="font-size:8pt;">- Trường hợp phiếu chuyển cơ sở khám bệnh, chữa bệnh được hiển thị trên ứng dụng VNeID và có ký số đầy đủ theo quy định thì có giá trị tương đương bản giấy./.</div>';
+      }
     }
   ];
 
@@ -540,7 +545,13 @@
       var el = document.createElement("div");
       el.id = b.id;
       el.className = "ct-block";
-      el.innerHTML = b.build(d) + '<div class="ct-resize" data-block="' + b.id + '"></div>';
+      if (b.wrap) {
+        el.style.whiteSpace = "normal";
+        el.style.width = mm(b.width || 400) + "mm";
+      }
+      el.innerHTML = b.build(d) +
+        '<div class="ct-eye" data-block="' + b.id + '" title="Ẩn/hiện khối này khi in">👁</div>' +
+        '<div class="ct-resize" data-block="' + b.id + '"></div>';
       sheet.appendChild(el);
     });
     sheet.insertAdjacentHTML("beforeend", '<div class="ct-stampguide" id="ctStampGuide"></div>');
@@ -591,10 +602,11 @@
         shiftY: s.shiftY || 0,
         calX: s.calX || 0,
         calY: s.calY || 0,
-        blocks: blocks
+        blocks: blocks,
+        hidden: s.hidden || {} // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
       };
     } catch (e) {
-      return { scale: 100, shiftY: 0, calX: 0, calY: 0, blocks: defB };
+      return { scale: 100, shiftY: 0, calX: 0, calY: 0, blocks: defB, hidden: {} };
     }
   }
   function saveSettings() {
@@ -614,6 +626,7 @@
         el.style.left = st.left + "mm";
         el.style.top = st.top + "mm";
         el.style.transform = "scale(" + (st.scale / 100) + ")";
+        el.classList.toggle("ct-hidden-print", !!settings.hidden[bd.id]);
       }
     });
     var sheet = document.getElementById("ctSheet");
@@ -643,13 +656,23 @@
       var startX, startY, startLeft, startTop, startScale;
 
       el.addEventListener("mousedown", function (e) {
-        if (e.target.classList.contains("ct-resize")) return; // xử lý riêng bên dưới
+        if (e.target.classList.contains("ct-resize") || e.target.classList.contains("ct-eye")) return; // xử lý riêng
         down(e);
       });
       el.addEventListener("touchstart", function (e) {
-        if (e.target.classList.contains("ct-resize")) return;
+        if (e.target.classList.contains("ct-resize") || e.target.classList.contains("ct-eye")) return;
         down(e);
       }, { passive: true });
+
+      var eye = el.querySelector(".ct-eye");
+      if (eye) {
+        eye.addEventListener("click", function (e) {
+          e.stopPropagation();
+          settings.hidden[bd.id] = !settings.hidden[bd.id];
+          applyTransformSettings();
+        });
+        eye.addEventListener("mousedown", function (e) { e.stopPropagation(); });
+      }
 
       function down(e) {
         dragging = true;
@@ -796,13 +819,19 @@
     setStatus("Đang tạo file Word…", "");
     loadHtmlDocx().then(function () {
       var sheet = document.getElementById("ctSheet");
+      var clone = sheet.cloneNode(true);
+      // Bỏ các khối đang bật "ẩn khi in", và bỏ nút điều khiển (mắt/chấm resize)
+      // khỏi bản xuất Word, chỉ giữ đúng nội dung sẽ thực sự in ra.
+      clone.querySelectorAll(".ct-hidden-print").forEach(function (n) { n.remove(); });
+      clone.querySelectorAll(".ct-eye,.ct-resize,.ct-stampguide").forEach(function (n) { n.remove(); });
+      clone.style.transform = "none"; // bỏ lệch bù máy in khi xuất Word
       // Dựng 1 trang HTML tĩnh, giữ nguyên vị trí tuyệt đối (mm) của mọi
       // dòng/khối như bản xem trước, để mở trong Word vẫn đúng bố cục.
       var pageCss = "@page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}" +
         "body{margin:0;} #ctSheet{position:relative;width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;font-family:'Times New Roman',Times,serif;}" +
-        ".l-row,.ct-block{position:absolute;} .ct-resize{display:none;} .fill{font-weight:600;}";
+        ".l-row,.ct-block{position:absolute;} .fill{font-weight:600;}";
       var fullHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><style>" + pageCss + "</style></head><body>" +
-        sheet.outerHTML + "</body></html>";
+        clone.outerHTML + "</body></html>";
       var blob = window.htmlDocx.asBlob(fullHtml);
       var a = document.createElement("a");
       var fname = "PhieuChuyenCoSoKCB_" + (DATA.hoTen ? DATA.hoTen.replace(/\s+/g, "") : "phieu") + ".docx";
