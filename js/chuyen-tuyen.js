@@ -69,6 +69,19 @@
     ".ct-btn.small{width:auto;padding:6px 10px;font-size:12px;}",
     ".ct-btn.save{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.35);}",
     ".ct-btn.save:hover{box-shadow:0 3px 10px rgba(22,163,74,.45);}",
+    ".ct-switchrow{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:13px;}",
+    ".ct-switch{position:relative;display:inline-block;width:38px;height:22px;flex:none;}",
+    ".ct-switch input{opacity:0;width:0;height:0;}",
+    ".ct-slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:22px;transition:.2s;}",
+    ".ct-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}",
+    ".ct-switch input:checked+.ct-slider{background:#16a34a;}",
+    ".ct-switch input:checked+.ct-slider:before{transform:translateX(16px);}",
+    ".ct-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center;}",
+    ".ct-modal-overlay.open{display:flex;}",
+    ".ct-modal{background:#fff;border-radius:12px;padding:20px;width:min(420px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.3);}",
+    ".ct-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}",
+    ".ct-modal-head h3{margin:0;}",
+    ".ct-modal-close{border:none;background:var(--surface-2,#eee);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;}",
     ".ct-btn.save.saved{background:linear-gradient(135deg,#16a34a,#15803d);animation:ctSavedPop .45s ease;}",
     "@keyframes ctSavedPop{0%{transform:scale(1);}35%{transform:scale(.94);box-shadow:0 0 0 0 rgba(34,197,94,.5);}70%{transform:scale(1.03);box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{transform:scale(1);}}",
     ".ct-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}",
@@ -93,6 +106,11 @@
     "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
     "#ctContentLayer .chkbig{display:inline-block;width:13px;height:13px;border:1.3px solid #000;text-align:center;line-height:11px;font-size:11px;font-weight:bold;margin:0 4px 0 0;vertical-align:-2px;flex:none;}",
     "#ctContentLayer .circ{display:inline-block;border:1.3px solid #000;border-radius:50%;padding:0 4px;line-height:1.15;}",
+    "#ctContentLayer .l-drag{display:none;position:absolute;right:-16px;bottom:-7px;width:24px;height:9px;background:#0066FF;border-radius:4px;cursor:row-resize;box-shadow:0 1px 2px rgba(0,0,0,.4);z-index:4;}",
+    "#ctContentLayer.ct-linedrag-on .l-row:hover .l-drag,#ctContentLayer.ct-linedrag-on .l-row.dragging .l-drag{display:block;}",
+    "#ctContentLayer.ct-linedrag-on .l-row:hover{outline:1px dashed #0066FF;background:rgba(0,102,255,.05);}",
+    "#ctSheet.ct-editoff .ct-block{cursor:default;}",
+    "#ctSheet.ct-editoff .ct-resize,#ctSheet.ct-editoff .ct-eye{display:none !important;}",
     "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
     "#ctSigBlock:active{cursor:grabbing;}",
     /* -------- khối kéo-thả tự do (đầu trang trái / quốc hiệu / SVV / chữ ký) -------- */
@@ -113,7 +131,8 @@
     "  #ctSheet, #ctSheet *{visibility:visible !important;}",
     "  .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
-    "  .ct-stampguide,.ct-resize{display:none !important;}",
+    "  .ct-stampguide,.ct-resize,.l-drag,.ct-eye{display:none !important;}",
+    "  .ct-modal-overlay{display:none !important;}",
     "  .ct-hidden-print{display:none !important;}",
     "  .ct-block{cursor:default !important;}",
     "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
@@ -145,9 +164,12 @@
             '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
           '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
+          '<div class="ct-switchrow">' +
+            '<label class="ct-switch"><input type="checkbox" id="ctLineDragToggle"><span class="ct-slider"></span></label>' +
+            '<span>↕️ Cho phép kéo dãn dòng (chỉnh khoảng cách từng dòng nội dung chính)</span>' +
+          '</div>' +
           '<div class="ct-tools">' +
             '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
-            '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
           '</div>' +
 
           '<h3>④ Bù trừ lệch máy in</h3>' +
@@ -158,11 +180,24 @@
           '</div>' +
 
           '<h3>⑤ Xuất file</h3>' +
+          '<button class="ct-btn secondary" id="ctConfigBtn">⚙️ Cấu hình</button>' +
           '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
-          '<button class="ct-btn save" id="ctSaveBtn">💾 Lưu vị trí đã canh</button>' +
         '</div>' +
 
         '<div class="ct-stage"><div class="ct-sheet-outer"><div id="ctSheet"></div></div></div>' +
+      '</div>' +
+
+      '<div class="ct-modal-overlay" id="ctConfigOverlay">' +
+        '<div class="ct-modal">' +
+          '<div class="ct-modal-head"><h3>⚙️ Cấu hình</h3><button class="ct-modal-close" id="ctConfigClose">✕</button></div>' +
+          '<div class="ct-switchrow">' +
+            '<label class="ct-switch"><input type="checkbox" id="ctEditModeToggle" checked><span class="ct-slider"></span></label>' +
+            '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả 5 khối: SỞ Y TẾ, CỘNG HÒA, SVV, chữ ký, ghi chú)</span>' +
+          '</div>' +
+          '<div class="ct-hint">Tắt đi để khoá, tránh vô tình kéo lệch các khối khi chỉ muốn nhập liệu.</div>' +
+          '<button class="ct-btn save" id="ctSaveBtn">💾 Lưu vị trí bố cục</button>' +
+          '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
@@ -429,16 +464,22 @@
   // đúng bề rộng của nó, và các dòng phía dưới TỰ ĐỘNG bị đẩy xuống theo
   // (không còn đè chữ lên nhau nữa). left/right vẫn giữ để canh lề trái/bề
   // rộng khung y như bản gốc đo được.
+  var lineCounter = 0;
   function line(left, right, size, opt, build) {
     opt = opt || {};
+    var idx = lineCounter++;
+    var baseGapMm = mm(opt.gap != null ? opt.gap : 4);
+    var extraMm = (settings && settings.lineGaps && settings.lineGaps[idx]) ? settings.lineGaps[idx] : 0;
     var css = "margin-left:" + mm(left) + "mm;width:" + mm(right - left) + "mm;" +
-      "font-size:" + size + "pt;margin-bottom:" + (opt.gap != null ? opt.gap : 4) + "pt;";
+      "font-size:" + size + "pt;margin-bottom:" + (baseGapMm + extraMm) + "mm;";
     if (opt.bold) css += "font-weight:bold;";
     if (opt.center) css += "text-align:center;";
-    return '<div class="l-row" style="' + css + '">' + build() + '</div>';
+    return '<div class="l-row" data-li="' + idx + '" data-basegap="' + baseGapMm + '" style="' + css + '">' + build() +
+      '<span class="l-drag" title="Kéo lên/xuống để tăng/giảm khoảng cách với dòng dưới"></span></div>';
   }
 
   function buildFlowHTML(d) {
+    lineCounter = 0;
     var lyDo = d.lyDo || "";
     var is1a = lyDo.indexOf("1a") === 0, is1b = lyDo.indexOf("1b") === 0, is2 = lyDo.indexOf("2") === 0;
     var html = "";
@@ -577,12 +618,14 @@
     renderBlocks(d);
     applyTransformSettings();
     initDrag();
+    initLineDrag();
   }
 
   /* ---------------------------------------------------------------- */
   /* 6. Tinh chỉnh: scale/shift nội dung + kéo-thả/resize các khối       */
   /* ---------------------------------------------------------------- */
   var settings = loadSettings();
+  var lineDragOn = false; // bật/tắt hiện tay cầm kéo-dãn dòng nội dung chính (không lưu server, chỉ trong phiên làm việc)
 
   function defaultBlocks() {
     var b = {};
@@ -614,7 +657,9 @@
       calX: s.calX || 0,
       calY: s.calY || 0,
       blocks: blocks,
-      hidden: s.hidden || {} // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
+      hidden: s.hidden || {}, // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
+      editMode: s.editMode !== false, // mặc định BẬT: cho phép kéo-thả 5 khối
+      lineGaps: s.lineGaps || {} // { chỉ số dòng: mm thêm/bớt } -> giãn dòng nội dung chính
     };
   }
   function loadSettings() {
@@ -704,6 +749,10 @@
     var sheet = document.getElementById("ctSheet");
     if (sheet) {
       sheet.style.transform = "translate(" + settings.calX + "mm," + settings.calY + "mm)";
+      sheet.classList.toggle("ct-editoff", !settings.editMode);
+    }
+    if (layer) {
+      layer.classList.toggle("ct-linedrag-on", !!lineDragOn);
     }
     var sigSt = settings.blocks.ctSigBlock;
     var guide = document.getElementById("ctStampGuide");
@@ -747,6 +796,7 @@
       }
 
       function down(e) {
+        if (!settings.editMode) return;
         dragging = true;
         el.classList.add("dragging");
         var p = pos(e);
@@ -783,6 +833,7 @@
       handle.addEventListener("touchstart", rdown, { passive: true });
 
       function rdown(e) {
+        if (!settings.editMode) return;
         e.stopPropagation();
         resizing = true;
         el.classList.add("dragging");
@@ -810,6 +861,56 @@
         document.removeEventListener("touchmove", rmove);
         document.removeEventListener("mouseup", rup);
         document.removeEventListener("touchend", rup);
+      }
+    });
+  }
+
+  function initLineDrag() {
+    var layer = document.getElementById("ctContentLayer");
+    var sheet = document.getElementById("ctSheet");
+    if (!layer || !sheet) return;
+    function pos(e) { return e.touches ? e.touches[0] : e; }
+    var rows = layer.querySelectorAll(".l-row");
+    rows.forEach(function (row) {
+      var handle = row.querySelector(".l-drag");
+      if (!handle) return;
+      var idx = row.getAttribute("data-li");
+      var baseGapMm = parseFloat(row.getAttribute("data-basegap")) || 0;
+      var dragging = false, startY, startExtra;
+
+      handle.addEventListener("mousedown", down);
+      handle.addEventListener("touchstart", down, { passive: true });
+
+      function down(e) {
+        if (!lineDragOn) return;
+        e.stopPropagation();
+        dragging = true;
+        row.classList.add("dragging");
+        var p = pos(e);
+        startY = p.clientY;
+        startExtra = settings.lineGaps[idx] || 0;
+        document.addEventListener("mousemove", move);
+        document.addEventListener("touchmove", move, { passive: true });
+        document.addEventListener("mouseup", up);
+        document.addEventListener("touchend", up);
+      }
+      function move(e) {
+        if (!dragging) return;
+        var p = pos(e);
+        var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
+        var dyMm = (p.clientY - startY) / pxPerMm;
+        var val = Math.round((startExtra + dyMm) * 10) / 10;
+        if (val < -baseGapMm + 0.5) val = -(baseGapMm - 0.5); // tránh đè lên dòng dưới
+        settings.lineGaps[idx] = val;
+        row.style.marginBottom = (baseGapMm + val) + "mm";
+      }
+      function up() {
+        dragging = false;
+        row.classList.remove("dragging");
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("mouseup", up);
+        document.removeEventListener("touchend", up);
       }
     });
   }
@@ -854,13 +955,31 @@
     });
     document.getElementById("ctResetSig").addEventListener("click", function () {
       settings.blocks = defaultBlocks();
-      applyTransformSettings();
-      setStatus("Đã đưa 4 khối về vị trí mặc định (chưa lưu).", "ok");
+      settings.lineGaps = {};
+      renderSheet();
+      setStatus("Đã đưa 5 khối và khoảng cách dòng về mặc định (chưa lưu).", "ok");
     });
     document.getElementById("ctSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("ctPrintBtn").addEventListener("click", function () {
-      saveSettings();
       window.print();
+    });
+    document.getElementById("ctEditModeToggle").addEventListener("change", function (e) {
+      settings.editMode = e.target.checked;
+      applyTransformSettings();
+    });
+    document.getElementById("ctLineDragToggle").addEventListener("change", function (e) {
+      lineDragOn = e.target.checked;
+      applyTransformSettings();
+    });
+    document.getElementById("ctConfigBtn").addEventListener("click", function () {
+      document.getElementById("ctEditModeToggle").checked = settings.editMode;
+      document.getElementById("ctConfigOverlay").classList.add("open");
+    });
+    document.getElementById("ctConfigClose").addEventListener("click", function () {
+      document.getElementById("ctConfigOverlay").classList.remove("open");
+    });
+    document.getElementById("ctConfigOverlay").addEventListener("click", function (e) {
+      if (e.target.id === "ctConfigOverlay") e.currentTarget.classList.remove("open");
     });
 
     syncFieldsUIFromSettings();
@@ -870,10 +989,12 @@
     var elShiftY = document.getElementById("ctShiftY");
     var elCalX = document.getElementById("ctCalX");
     var elCalY = document.getElementById("ctCalY");
+    var elEditMode = document.getElementById("ctEditModeToggle");
     if (elScale) elScale.value = settings.scale;
     if (elShiftY) elShiftY.value = settings.shiftY;
     if (elCalX) elCalX.value = settings.calX;
     if (elCalY) elCalY.value = settings.calY;
+    if (elEditMode) elEditMode.checked = settings.editMode;
   }
 
   /* ---------------------------------------------------------------- */
