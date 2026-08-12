@@ -82,8 +82,8 @@
     "#ctContentLayer .fill{padding:0 1px;font-weight:600;white-space:pre-wrap;word-break:break-word;}",
     "#ctContentLayer .fill.empty{font-weight:400;color:#000;}",
     "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
+    "#ctContentLayer .chkbig{display:inline-block;width:13px;height:13px;border:1.3px solid #000;text-align:center;line-height:11px;font-size:11px;font-weight:bold;margin:0 4px 0 0;vertical-align:-2px;flex:none;}",
     "#ctContentLayer .circ{display:inline-block;border:1.3px solid #000;border-radius:50%;padding:0 4px;line-height:1.15;}",
-    "#ctContentLayer .ct-lyrow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}",
     "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
     "#ctSigBlock:active{cursor:grabbing;}",
     /* -------- khối kéo-thả tự do (đầu trang trái / quốc hiệu / SVV / chữ ký) -------- */
@@ -417,7 +417,7 @@
       ? '<span class="fill">' + esc(s) + '</span>'
       : '<span class="fill empty">' + dots(dotLen) + '</span>';
   }
-  function box(checked) { return '<span class="chk">' + (checked ? "X" : "") + '</span>'; }
+  function box(checked, big) { return '<span class="' + (big ? "chkbig" : "chk") + '">' + (checked ? "X" : "") + '</span>'; }
   function circ(text, active) { return active ? '<span class="circ">' + text + '</span>' : text; }
 
   // Một dòng nội dung trong luồng văn bản bình thường (giống Word): không còn
@@ -478,8 +478,8 @@
 
     html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
     html += line(44, 400, 9.5, {}, function () { return circ("1", is1a || is1b) + ". Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
-    html += line(66, 568, 9.5, {}, function () { return '<div class="ct-lyrow"><span>a) Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật:</span>' + box(is1a) + '</div>'; });
-    html += line(66, 568, 9.5, {}, function () { return '<div class="ct-lyrow"><span>b) Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh:</span>' + box(is1b) + '</div>'; });
+    html += line(66, 568, 9.5, {}, function () { return box(is1a, true) + "a) Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; });
+    html += line(66, 568, 9.5, {}, function () { return box(is1b, true) + "b) Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
     html += line(44, 568, 9.5, {}, function () { return "&nbsp;" + circ("2", is2) + ". Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
 
     html += line(44, 568, 9.5, {}, function () { return "- Hướng điều trị: " + fillOr(d.huongDieuTri, 100); });
@@ -529,7 +529,10 @@
     {
       id: "ctSigBlock", defLeft: 390, defTop: 608, defScale: 100,
       build: function (d) {
-        return '<div style="font-style:italic;font-size:9.5pt;text-align:center;">Ngày ' + fillOr(d.ngayKy, 12) + '</div>' +
+        var ngayHtml = d.ngayKy
+          ? '<span class="fill">' + esc(d.ngayKy) + '</span>'
+          : '<span class="fill empty">' + dots(4) + '</span> tháng <span class="fill empty">' + dots(3) + '</span> năm <span class="fill empty">' + dots(5) + '</span>';
+        return '<div style="font-style:italic;font-size:9.5pt;text-align:center;">Ngày ' + ngayHtml + '</div>' +
           '<div style="font-weight:bold;font-size:9.5pt;text-align:center;">ĐẠI DIỆN CSKCB</div>' +
           '<div style="font-style:italic;font-size:9.5pt;text-align:center;">(Ký tên, đóng dấu)</div>';
       }
