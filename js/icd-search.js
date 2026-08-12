@@ -1,10 +1,4 @@
 (function () {
-  // Dữ liệu icd-data.js / icd-yhct-data.js đã được rút gọn: các trường lặp lại nhiều lần
-  // (meta theo chương/nhóm bệnh, statusTitle/statusDesc/status theo từng loại trạng thái)
-  // được tách ra bảng tra riêng (ICD_META_TABLE / ICD_STATUS_TABLE / ICD_YHCT_STATUS_TABLE),
-  // mỗi mã chỉ lưu 1 số chỉ mục (m/si) trỏ vào bảng đó thay vì lặp lại toàn bộ chuỗi văn bản.
-  // Đoạn dưới đây "giải nén" lại thành các trường đầy đủ (meta/statusTitle/statusDesc/status...)
-  // để phần còn lại của ứng dụng dùng như bình thường, không cần sửa gì thêm ở chỗ khác.
   const ICD_META_TABLE = window.ICD_META_TABLE || [];
   const ICD_STATUS_TABLE = window.ICD_STATUS_TABLE || [];
   const ICD_YHCT_STATUS_TABLE = window.ICD_YHCT_STATUS_TABLE || [];
