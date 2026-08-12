@@ -82,10 +82,14 @@
     "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
     "#ctSigBlock{position:absolute;text-align:center;line-height:1.32;cursor:grab;padding:4px 10px;border-radius:6px;user-select:none;white-space:nowrap;}",
     "#ctSigBlock:active{cursor:grabbing;}",
-    "#ctSigBlock.dragging{outline:2px dashed #0066FF;background:rgba(0,102,255,.06);}",
-    "#ctSigBlock .l-date{font-style:italic;}",
-    "#ctSigBlock .l-role{font-weight:bold;}",
-    "#ctSigBlock .l-note{font-style:italic;}",
+    /* -------- khối kéo-thả tự do (đầu trang trái / quốc hiệu / SVV / chữ ký) -------- */
+    /* Mỗi khối này KHÔNG nằm trong luồng chảy chữ chính -> kéo/thả/phóng to/thu nhỏ */
+    /* rồi lưu lại, sẽ đứng yên tại đó, không bao giờ bị nội dung khác đẩy hay đè lên. */
+    ".ct-block{position:absolute;line-height:1.28;white-space:nowrap;cursor:grab;user-select:none;padding:3px 6px;border-radius:6px;transform-origin:top left;}",
+    ".ct-block:active{cursor:grabbing;}",
+    ".ct-block.dragging,#ctSigBlock.dragging{outline:2px dashed #0066FF;background:rgba(0,102,255,.06);z-index:5;}",
+    ".ct-block .ct-resize{position:absolute;right:-9px;bottom:-9px;width:14px;height:14px;border-radius:50%;background:#0066FF;border:2px solid #fff;cursor:nwse-resize;display:none;box-shadow:0 1px 3px rgba(0,0,0,.4);}",
+    ".ct-block:hover .ct-resize,.ct-block.dragging .ct-resize{display:block;}",
     ".ct-stampguide{position:absolute;border:1.5px dashed #ff5050;border-radius:50%;pointer-events:none;opacity:.55;display:none;}",
     "@media print{",
     "  html,body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -93,7 +97,8 @@
     "  #ctSheet, #ctSheet *{visibility:visible !important;}",
     "  .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
-    "  .ct-stampguide{display:none !important;}",
+    "  .ct-stampguide,.ct-resize{display:none !important;}",
+    "  .ct-block{cursor:default !important;}",
     "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "}"
   ].join("\n");
@@ -123,10 +128,10 @@
             '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
           '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
-          '<div class="ct-hint">Kéo trực tiếp bằng chuột vào khối "Ngày…/ĐẠI DIỆN CSKCB/Ký tên, đóng dấu" trên bản xem trước bên phải để rê tới đúng vị trí con dấu đã đóng.</div>' +
+          '<div class="ct-hint">4 khối sau đứng <b>độc lập</b>, không bị chữ khác đè lên hay đẩy đi: "SỞ Y TẾ…/Số:…", "CỘNG HÒA…", "SVV/Số hồ sơ/Vào sổ…" và "Ngày…/ĐẠI DIỆN CSKCB/Ký tên, đóng dấu". Rê chuột vào từng khối trên bản xem trước để <b>kéo đổi vị trí</b>; kéo chấm xanh ở góc để <b>phóng to/thu nhỏ</b>. Xong bấm "Lưu vị trí" — sẽ giữ nguyên mãi cho lần sau.</div>' +
           '<div class="ct-tools">' +
             '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
-            '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset vị trí chữ ký</button>' +
+            '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
           '</div>' +
 
           '<h3>④ Bù trừ lệch máy in</h3>' +
@@ -136,7 +141,12 @@
             '<div class="ct-field"><label>Lệch dọc (mm)</label><input type="number" id="ctCalY" value="0" step="0.5"></div>' +
           '</div>' +
 
-          '<button class="ct-btn" id="ctPrintBtn">🖨️ In / Tải PDF</button>' +
+          '<h3>⑤ Xuất file</h3>' +
+          '<div class="ct-row2">' +
+            '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
+            '<button class="ct-btn secondary" id="ctWordBtn">📝 Tải Word</button>' +
+          '</div>' +
+          '<div class="ct-hint">Word xuất ra giữ đúng nội dung &amp; vị trí các khối để bạn chỉnh tay thêm nếu cần; PDF là bản in chính xác từng mm như xem trước.</div>' +
           '<button class="ct-btn secondary" id="ctSaveBtn">💾 Lưu vị trí đã canh</button>' +
         '</div>' +
 
@@ -420,22 +430,11 @@
     var is1a = lyDo.indexOf("1a") === 0, is1b = lyDo.indexOf("1b") === 0, is2 = lyDo.indexOf("2") === 0;
     var html = "";
 
-    // ---- Khối tiêu đề 2 cột: trái = tên cơ quan, phải = quốc hiệu + SVV/Số hồ sơ/Vào sổ ----
-    html += '<div class="l-flex" style="margin-bottom:5pt;">' +
-      '<div style="width:' + mm(300) + 'mm;font-size:9pt;font-weight:bold;line-height:1.28;">' +
-        'SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH<br>' + esc(d.coSoGioiThieu || "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2") +
-      '</div>' +
-      '<div style="width:' + mm(312) + 'mm;font-size:9pt;line-height:1.28;text-align:center;">' +
-        '<b>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</b><br>Độc lập - Tự do - Hạnh phúc' +
-        '<div style="margin-top:3pt;font-size:8pt;text-align:left;padding-left:18mm;">' +
-          'SVV: ' + fillOr(d.svv, 16) + '<br>' +
-          'Số hồ sơ: ' + fillOr(d.soHoSoBenhAn, 16) + '<br>' +
-          'Vào sổ chuyển CSKCB số: ' + fillOr(d.vaoSoChuyenCSKCB, 12) +
-        '</div>' +
-      '</div>' +
-    '</div>';
+    // Lưu ý: 3 cụm "SỞ Y TẾ.../Số:...", "CỘNG HÒA.../Độc lập...", "SVV/Số hồ
+    // sơ/Vào sổ..." KHÔNG còn nằm trong luồng chữ chính nữa — chúng là 3 khối
+    // kéo-thả độc lập (xem BLOCK_DEFS + renderBlocks) y như khối chữ ký, để
+    // không bao giờ bị đè hay xô lệch bởi phần nội dung phía dưới.
 
-    html += line(94, 340, 9.5, { gap: 10 }, function () { return "Số: " + fillOr(d.soHoSo, 22) + "/PCCSKBCB"; });
     html += line(44, 568, 12.5, { bold: true, center: true, gap: 8 }, function () { return "PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH, CHỮA BỆNH BẢO HIỂM Y TẾ"; });
 
     html += line(44, 568, 10, { center: true, gap: 5 }, function () { return "Kính gửi: " + fillOr(d.kinhGui, 46); });
@@ -494,40 +493,108 @@
     return html;
   }
 
+  /* ---------------------------------------------------------------- */
+  /* 5b. 4 khối kéo-thả tự do (không nằm trong luồng chữ chính):        */
+  /*     header trái / quốc hiệu / SVV-Số hồ sơ-Vào sổ / chữ ký         */
+  /*     Mỗi khối: kéo để đổi vị trí, kéo chấm xanh góc để phóng to/    */
+  /*     thu nhỏ, lưu lại (localStorage) rồi đứng yên mãi, không bị     */
+  /*     nội dung khác đẩy hay đè lên nữa.                              */
+  /* ---------------------------------------------------------------- */
+  var BLOCK_DEFS = [
+    {
+      id: "hdrLeft", defLeft: 44, defTop: 23, defScale: 100,
+      build: function (d) {
+        return '<div style="font-weight:bold;font-size:9pt;">SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH</div>' +
+          '<div style="font-weight:bold;font-size:9pt;">' + esc(d.coSoGioiThieu || "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2") + '</div>' +
+          '<div style="font-size:9.5pt;margin-top:2pt;">Số: ' + fillOr(d.soHoSo, 10) + '/PCCSKBCB</div>';
+      }
+    },
+    {
+      id: "hdrCenter", defLeft: 300, defTop: 23, defScale: 100,
+      build: function () {
+        return '<div style="font-weight:bold;font-size:9pt;text-align:center;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</div>' +
+          '<div style="font-size:9pt;text-align:center;">Độc lập - Tự do - Hạnh phúc</div>';
+      }
+    },
+    {
+      id: "hdrSvv", defLeft: 400, defTop: 60, defScale: 100,
+      build: function (d) {
+        return '<div style="font-size:8pt;">SVV: ' + fillOr(d.svv, 16) + '</div>' +
+          '<div style="font-size:8pt;">Số hồ sơ: ' + fillOr(d.soHoSoBenhAn, 16) + '</div>' +
+          '<div style="font-size:8pt;">Vào sổ chuyển CSKCB số: ' + fillOr(d.vaoSoChuyenCSKCB, 12) + '</div>';
+      }
+    },
+    {
+      id: "ctSigBlock", defLeft: 390, defTop: 608, defScale: 100,
+      build: function (d) {
+        return '<div style="font-style:italic;font-size:9.5pt;text-align:center;">Ngày ' + fillOr(d.ngayKy, 12) + '</div>' +
+          '<div style="font-weight:bold;font-size:9.5pt;text-align:center;">ĐẠI DIỆN CSKCB</div>' +
+          '<div style="font-style:italic;font-size:9.5pt;text-align:center;">(Ký tên, đóng dấu)</div>';
+      }
+    }
+  ];
+
+  function renderBlocks(d) {
+    var sheet = document.getElementById("ctSheet");
+    BLOCK_DEFS.forEach(function (b) {
+      var el = document.createElement("div");
+      el.id = b.id;
+      el.className = "ct-block";
+      el.innerHTML = b.build(d) + '<div class="ct-resize" data-block="' + b.id + '"></div>';
+      sheet.appendChild(el);
+    });
+    sheet.insertAdjacentHTML("beforeend", '<div class="ct-stampguide" id="ctStampGuide"></div>');
+  }
+
   function renderSheet() {
     var d = DATA;
     var sheet = document.getElementById("ctSheet");
     // Chỉ 1 tờ phiếu duy nhất trong #ctSheet, không lặp lại nội dung.
-    sheet.innerHTML = '<div id="ctContentLayer" style="padding-top:' + mm(23) + 'mm;padding-left:0;">' + buildFlowHTML(d) + '</div>' +
-      '<div id="ctSigBlock" style="font-size:9.5pt;">' +
-        '<div class="l-date">Ngày ' + fillOr(d.ngayKy, 12) + '</div>' +
-        '<div class="l-role">ĐẠI DIỆN CSKCB</div>' +
-        '<div class="l-note">(Ký tên, đóng dấu)</div>' +
-      '</div>' +
-      '<div class="ct-stampguide" id="ctStampGuide"></div>';
-
+    sheet.innerHTML = '<div id="ctContentLayer" style="padding-top:' + mm(95) + 'mm;padding-left:0;">' + buildFlowHTML(d) + '</div>';
+    renderBlocks(d);
     applyTransformSettings();
     initDrag();
   }
 
   /* ---------------------------------------------------------------- */
-  /* 6. Tinh chỉnh: scale/shift nội dung + kéo-thả khối chữ ký          */
+  /* 6. Tinh chỉnh: scale/shift nội dung + kéo-thả/resize các khối       */
   /* ---------------------------------------------------------------- */
   var settings = loadSettings();
 
+  function defaultBlocks() {
+    var b = {};
+    BLOCK_DEFS.forEach(function (d) {
+      b[d.id] = { left: mm(d.defLeft), top: mm(d.defTop), scale: d.defScale };
+    });
+    return b;
+  }
+
   function loadSettings() {
+    var defB = defaultBlocks();
     try {
       var s = JSON.parse(localStorage.getItem(LS_KEY) || "{}");
+      var blocks = {};
+      BLOCK_DEFS.forEach(function (bd) {
+        var saved = (s.blocks && s.blocks[bd.id]) || null;
+        // Tương thích ngược với bản cũ chỉ lưu sigLeft/sigTop cho khối chữ ký.
+        if (!saved && bd.id === "ctSigBlock" && (s.sigLeft != null || s.sigTop != null)) {
+          saved = { left: s.sigLeft, top: s.sigTop, scale: 100 };
+        }
+        blocks[bd.id] = saved ? {
+          left: saved.left != null ? saved.left : defB[bd.id].left,
+          top: saved.top != null ? saved.top : defB[bd.id].top,
+          scale: saved.scale != null ? saved.scale : defB[bd.id].scale
+        } : defB[bd.id];
+      });
       return {
         scale: s.scale || 100,
         shiftY: s.shiftY || 0,
-        sigLeft: (s.sigLeft != null) ? s.sigLeft : mm(390), // mm từ trái — đo đúng từ file_map.pdf
-        sigTop: (s.sigTop != null) ? s.sigTop : mm(608),    // mm từ trên — đo đúng từ file_map.pdf
         calX: s.calX || 0,
-        calY: s.calY || 0
+        calY: s.calY || 0,
+        blocks: blocks
       };
     } catch (e) {
-      return { scale: 100, shiftY: 0, sigLeft: mm(390), sigTop: mm(608), calX: 0, calY: 0 };
+      return { scale: 100, shiftY: 0, calX: 0, calY: 0, blocks: defB };
     }
   }
   function saveSettings() {
@@ -540,64 +607,116 @@
     if (layer) {
       layer.style.transform = "scale(" + (settings.scale / 100) + ") translateY(" + settings.shiftY + "mm)";
     }
-    var sig = document.getElementById("ctSigBlock");
-    if (sig) {
-      sig.style.left = settings.sigLeft + "mm";
-      sig.style.top = settings.sigTop + "mm";
-    }
+    BLOCK_DEFS.forEach(function (bd) {
+      var el = document.getElementById(bd.id);
+      var st = settings.blocks[bd.id];
+      if (el && st) {
+        el.style.left = st.left + "mm";
+        el.style.top = st.top + "mm";
+        el.style.transform = "scale(" + (st.scale / 100) + ")";
+      }
+    });
     var sheet = document.getElementById("ctSheet");
     if (sheet) {
       sheet.style.transform = "translate(" + settings.calX + "mm," + settings.calY + "mm)";
     }
+    var sigSt = settings.blocks.ctSigBlock;
     var guide = document.getElementById("ctStampGuide");
-    if (guide) {
-      guide.style.left = (settings.sigLeft - 8) + "mm";
-      guide.style.top = (settings.sigTop - 14) + "mm";
+    if (guide && sigSt) {
+      guide.style.left = (sigSt.left - 8) + "mm";
+      guide.style.top = (sigSt.top - 14) + "mm";
       guide.style.width = "34mm";
       guide.style.height = "34mm";
     }
   }
 
   function initDrag() {
-    var sig = document.getElementById("ctSigBlock");
     var sheet = document.getElementById("ctSheet");
-    if (!sig || !sheet) return;
-    var dragging = false, startX, startY, startLeft, startTop;
+    if (!sheet) return;
 
     function pos(e) { return e.touches ? e.touches[0] : e; }
 
-    sig.addEventListener("mousedown", down);
-    sig.addEventListener("touchstart", down, { passive: true });
+    BLOCK_DEFS.forEach(function (bd) {
+      var el = document.getElementById(bd.id);
+      if (!el) return;
+      var dragging = false, resizing = false;
+      var startX, startY, startLeft, startTop, startScale;
 
-    function down(e) {
-      dragging = true;
-      sig.classList.add("dragging");
-      var p = pos(e);
-      startX = p.clientX; startY = p.clientY;
-      startLeft = settings.sigLeft; startTop = settings.sigTop;
-      document.addEventListener("mousemove", move);
-      document.addEventListener("touchmove", move, { passive: true });
-      document.addEventListener("mouseup", up);
-      document.addEventListener("touchend", up);
-    }
-    function move(e) {
-      if (!dragging) return;
-      var p = pos(e);
-      var pxPerMm = sheet.getBoundingClientRect().width / 210;
-      var dxMm = (p.clientX - startX) / pxPerMm;
-      var dyMm = (p.clientY - startY) / pxPerMm;
-      settings.sigLeft = Math.round((startLeft + dxMm) * 10) / 10;
-      settings.sigTop = Math.round((startTop + dyMm) * 10) / 10;
-      applyTransformSettings();
-    }
-    function up() {
-      dragging = false;
-      sig.classList.remove("dragging");
-      document.removeEventListener("mousemove", move);
-      document.removeEventListener("touchmove", move);
-      document.removeEventListener("mouseup", up);
-      document.removeEventListener("touchend", up);
-    }
+      el.addEventListener("mousedown", function (e) {
+        if (e.target.classList.contains("ct-resize")) return; // xử lý riêng bên dưới
+        down(e);
+      });
+      el.addEventListener("touchstart", function (e) {
+        if (e.target.classList.contains("ct-resize")) return;
+        down(e);
+      }, { passive: true });
+
+      function down(e) {
+        dragging = true;
+        el.classList.add("dragging");
+        var p = pos(e);
+        startX = p.clientX; startY = p.clientY;
+        startLeft = settings.blocks[bd.id].left; startTop = settings.blocks[bd.id].top;
+        document.addEventListener("mousemove", move);
+        document.addEventListener("touchmove", move, { passive: true });
+        document.addEventListener("mouseup", up);
+        document.addEventListener("touchend", up);
+      }
+      function move(e) {
+        if (!dragging) return;
+        var p = pos(e);
+        var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
+        var dxMm = (p.clientX - startX) / pxPerMm;
+        var dyMm = (p.clientY - startY) / pxPerMm;
+        settings.blocks[bd.id].left = Math.round((startLeft + dxMm) * 10) / 10;
+        settings.blocks[bd.id].top = Math.round((startTop + dyMm) * 10) / 10;
+        applyTransformSettings();
+      }
+      function up() {
+        dragging = false;
+        el.classList.remove("dragging");
+        document.removeEventListener("mousemove", move);
+        document.removeEventListener("touchmove", move);
+        document.removeEventListener("mouseup", up);
+        document.removeEventListener("touchend", up);
+      }
+
+      // ---- kéo chấm xanh góc để phóng to / thu nhỏ khối ----
+      var handle = el.querySelector(".ct-resize");
+      if (!handle) return;
+      handle.addEventListener("mousedown", rdown);
+      handle.addEventListener("touchstart", rdown, { passive: true });
+
+      function rdown(e) {
+        e.stopPropagation();
+        resizing = true;
+        el.classList.add("dragging");
+        var p = pos(e);
+        startX = p.clientX; startY = p.clientY;
+        startScale = settings.blocks[bd.id].scale;
+        document.addEventListener("mousemove", rmove);
+        document.addEventListener("touchmove", rmove, { passive: true });
+        document.addEventListener("mouseup", rup);
+        document.addEventListener("touchend", rup);
+      }
+      function rmove(e) {
+        if (!resizing) return;
+        var p = pos(e);
+        var dx = p.clientX - startX;
+        var delta = dx / 2; // 2px kéo ~ 1% cỡ chữ
+        var newScale = Math.max(50, Math.min(220, Math.round(startScale + delta)));
+        settings.blocks[bd.id].scale = newScale;
+        applyTransformSettings();
+      }
+      function rup() {
+        resizing = false;
+        el.classList.remove("dragging");
+        document.removeEventListener("mousemove", rmove);
+        document.removeEventListener("touchmove", rmove);
+        document.removeEventListener("mouseup", rup);
+        document.removeEventListener("touchend", rup);
+      }
+    });
   }
 
   /* ---------------------------------------------------------------- */
@@ -639,18 +758,64 @@
       g.style.display = (g.style.display === "block") ? "none" : "block";
     });
     document.getElementById("ctResetSig").addEventListener("click", function () {
-      settings.sigLeft = mm(390); settings.sigTop = mm(608); applyTransformSettings();
+      settings.blocks = defaultBlocks();
+      applyTransformSettings();
+      setStatus("Đã đưa 4 khối về vị trí mặc định (chưa lưu).", "ok");
     });
     document.getElementById("ctSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("ctPrintBtn").addEventListener("click", function () {
       saveSettings();
       window.print();
     });
+    document.getElementById("ctWordBtn").addEventListener("click", exportWord);
 
     document.getElementById("ctScale").value = settings.scale;
     document.getElementById("ctShiftY").value = settings.shiftY;
     document.getElementById("ctCalX").value = settings.calX;
     document.getElementById("ctCalY").value = settings.calY;
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* 7b. Xuất Word (.docx) — chuyển nguyên bản #ctSheet (đã gồm cả 4    */
+  /*     khối kéo-thả tại đúng vị trí đã canh) sang file .docx để Word  */
+  /*     mở & chỉnh tay thêm nếu cần. PDF (nút Tải PDF ở trên) vẫn là   */
+  /*     bản chuẩn khớp mm chính xác nhất để in.                        */
+  /* ---------------------------------------------------------------- */
+  var HTML_DOCX_URL = "https://cdnjs.cloudflare.com/ajax/libs/html-docx-js/0.3.1/html-docx.js";
+  function loadHtmlDocx() {
+    if (window.htmlDocx) return Promise.resolve();
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = HTML_DOCX_URL;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+  function exportWord() {
+    setStatus("Đang tạo file Word…", "");
+    loadHtmlDocx().then(function () {
+      var sheet = document.getElementById("ctSheet");
+      // Dựng 1 trang HTML tĩnh, giữ nguyên vị trí tuyệt đối (mm) của mọi
+      // dòng/khối như bản xem trước, để mở trong Word vẫn đúng bố cục.
+      var pageCss = "@page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}" +
+        "body{margin:0;} #ctSheet{position:relative;width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;font-family:'Times New Roman',Times,serif;}" +
+        ".l-row,.ct-block{position:absolute;} .ct-resize{display:none;} .fill{font-weight:600;}";
+      var fullHtml = "<!DOCTYPE html><html><head><meta charset='utf-8'><style>" + pageCss + "</style></head><body>" +
+        sheet.outerHTML + "</body></html>";
+      var blob = window.htmlDocx.asBlob(fullHtml);
+      var a = document.createElement("a");
+      var fname = "PhieuChuyenCoSoKCB_" + (DATA.hoTen ? DATA.hoTen.replace(/\s+/g, "") : "phieu") + ".docx";
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setStatus("Đã tải file Word. Lưu ý: Word có thể hiển thị hơi khác 1 chút so với bản xem trước/PDF do cách Word dựng khối tuyệt đối; nếu cần bản in khớp từng mm hãy dùng nút Tải PDF.", "ok");
+    }).catch(function (e) {
+      console.error(e);
+      setStatus("Không tải được công cụ xuất Word (cần kết nối mạng). Hãy dùng nút Tải PDF.", "err");
+    });
   }
 
   /* ---------------------------------------------------------------- */
