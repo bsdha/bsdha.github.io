@@ -3,7 +3,7 @@
 <head>
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-C4LNNNDG5Q"></script>
-<script src="js/analytics.js"></script>
+<script defer src="js/analytics.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BSDHA - Bộ công cụ Y khoa</title>
@@ -269,7 +269,7 @@
     <div id="shSheets"></div>
   </div>
 
-  <script src="js/sinh-hieu.js"></script>
+  <script defer src="js/sinh-hieu.js"></script>
 
   <div class="page" id="page-insulin">
     <div class="wrap">
@@ -303,7 +303,7 @@
       </div>
     </div>
 
-    <script src="js/insulin-calc.js"></script>
+    <script defer src="js/insulin-calc.js"></script>
   </div>
 
   <div class="page" id="page-ldl">
@@ -706,8 +706,11 @@
   </div>
 
   <div class="page" id="page-chuyentuyen">
-    <iframe src="phieu-chuyen-tuyen.html" title="Phiếu chuyển cơ sở khám bệnh, chữa bệnh BHYT"
-            style="display:block; width:100%; height:100vh; border:none; background:#fff;"></iframe>
+    <div style="max-width:640px; margin:60px auto; text-align:center; padding:24px; font-family:inherit;">
+      <div style="font-size:48px; margin-bottom:12px;">🚧</div>
+      <h2 style="margin:0 0 8px;">Phiếu chuyển tuyến</h2>
+      <p style="color:#666; font-size:15px;">Tính năng đang được xây dựng, sẽ sớm ra mắt. Vui lòng quay lại sau.</p>
+    </div>
   </div>
 
   </div>
@@ -717,26 +720,26 @@
   <div class="toast" id="toast"></div>
 
 <!-- Dữ liệu ICD-10 (Tây y) + Dữ liệu mã bệnh YHCT: đặt 2 file này cùng thư mục với index.html -->
-<script src="/icd-data.js"></script>
-<script src="/icd-yhct-data.js"></script>
+<script defer src="/icd-data.js"></script>
+<script defer src="/icd-yhct-data.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
-<script src="js/media-player.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls.min.js"></script>
+<script defer src="js/media-player.js"></script>
 
 
-<script src="js/icd-search.js"></script>
+<script defer src="js/icd-search.js"></script>
 
-<script src="js/ldl-calc.js"></script>
+<script defer src="js/ldl-calc.js"></script>
 
-<script src="js/egfr-calc.js"></script>
+<script defer src="js/egfr-calc.js"></script>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="js/prescription.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script defer src="js/prescription.js"></script>
 
-<script src="js/spa-router.js"></script>
+<script defer src="js/spa-router.js"></script>
 
-<script src="js/pdf-to-word.js"></script>
+<script defer src="js/pdf-to-word.js"></script>
 
 </body>
 </html>
