@@ -69,6 +69,8 @@
     ".ct-btn.small{width:auto;padding:6px 10px;font-size:12px;}",
     ".ct-btn.save{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.35);}",
     ".ct-btn.save:hover{box-shadow:0 3px 10px rgba(22,163,74,.45);}",
+    ".ct-btn.config{background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35);}",
+    ".ct-btn.config:hover{box-shadow:0 3px 10px rgba(99,102,241,.45);}",
     ".ct-switchrow{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:13px;}",
     ".ct-switch{position:relative;display:inline-block;width:38px;height:22px;flex:none;}",
     ".ct-switch input{opacity:0;width:0;height:0;}",
@@ -177,7 +179,7 @@
           '</div>' +
 
           '<h3>⑤ Xuất file</h3>' +
-          '<button class="ct-btn secondary" id="ctConfigBtn">⚙️ Cấu hình</button>' +
+          '<button class="ct-btn config" id="ctConfigBtn">⚙️ Cấu hình</button>' +
           '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
         '</div>' +
 
@@ -188,7 +190,7 @@
         '<div class="ct-modal">' +
           '<div class="ct-modal-head"><h3>⚙️ Cấu hình</h3><button class="ct-modal-close" id="ctConfigClose">✕</button></div>' +
           '<div class="ct-switchrow">' +
-            '<label class="ct-switch"><input type="checkbox" id="ctEditModeToggle" checked><span class="ct-slider"></span></label>' +
+            '<label class="ct-switch"><input type="checkbox" id="ctEditModeToggle"><span class="ct-slider"></span></label>' +
             '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả 5 khối: SỞ Y TẾ, CỘNG HÒA, SVV, chữ ký, ghi chú)</span>' +
           '</div>' +
           '<div class="ct-hint">Tắt đi để khoá, tránh vô tình kéo lệch các khối khi chỉ muốn nhập liệu.</div>' +
@@ -379,8 +381,16 @@
     d.kyThuatThuoc = grab(text, /(?:Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:?\s*([^\n]+)/i);
     d.tinhTrang = grab(text, /Tình trạng người bệnh lúc chuyển[^:]*:\s*([^\n]+)/i);
 
-    if (/Không phù hợp với khả năng/i.test(text) && /\bX\b/.test(text)) d.lyDo = "1b - Không phù hợp khả năng đáp ứng";
-    else if (/Phù hợp với quy định chuyển cấp/i.test(text)) d.lyDo = "1a - Phù hợp quy định chuyển cấp CMKT";
+    // Quan trọng: KHÔNG được dò chữ "X" trên toàn văn bản (text) vì ô "X" luôn
+    // xuất hiện đâu đó trong file nguồn bất kể đánh dấu ở dòng nào, dẫn tới
+    // luôn rơi vào nhánh "Không phù hợp" một cách sai lệch. rtfToLines() đã
+    // gộp các "shape" theo cùng hàng ngang (cùng shptop) thành 1 dòng, nên ô
+    // dấu X luôn nằm CHUNG DÒNG với đúng lựa chọn a) hoặc b) tương ứng vị trí
+    // thật trên phiếu gốc -> phải dò theo từng dòng (lineA / lineB) như dưới.
+    var lineA = lines.filter(function (l) { return /Phù hợp với quy định chuyển cấp/i.test(l); })[0] || "";
+    var lineB = lines.filter(function (l) { return /Không phù hợp với khả năng/i.test(l); })[0] || "";
+    if (/\bX\b/.test(lineA)) d.lyDo = "1a - Phù hợp quy định chuyển cấp CMKT";
+    else if (/\bX\b/.test(lineB)) d.lyDo = "1b - Không phù hợp khả năng đáp ứng";
     d.huongDieuTri = grab(text, /Hướng điều trị\s*:\s*([^\n]+)/i);
     d.chuyenHoi = grab(text, /Chuyển cơ sở khám bệnh, chữa bệnh hồi\s*:\s*([^\n]+)/i);
     var cgt = grab(text, /giá trị trong 01 năm\s*:\s*\(?([^)\n]+)/i);
@@ -532,8 +542,8 @@
 
     html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
     html += line(44, 400, 9.5, {}, function () { return circ("1", is1a || is1b) + ". Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
-    html += line(66, 568, 9.5, {}, function () { return box(is1a, true) + "a) Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; });
-    html += line(66, 568, 9.5, {}, function () { return box(is1b, true) + "b) Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
+    html += line(66, 568, 9.5, {}, function () { return box(is1a, true) + "Phù hợp với quy định chuyển cấp chuyên môn kỹ thuật"; });
+    html += line(66, 568, 9.5, {}, function () { return box(is1b, true) + "Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
     html += line(44, 568, 9.5, {}, function () { return "&nbsp;" + circ("2", is2) + ". Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
 
     html += line(44, 568, 9.5, { flex: true }, function () { return "- Hướng điều trị: " + fillEnd(d.huongDieuTri); });
@@ -665,7 +675,7 @@
       calY: s.calY || 0,
       blocks: blocks,
       hidden: s.hidden || {}, // { blockId: true } -> ẩn khối đó khi IN (vẫn thấy khi xem trước, có viền chấm)
-      editMode: s.editMode !== false, // mặc định BẬT: cho phép kéo-thả 5 khối
+      editMode: s.editMode === true, // mặc định TẮT: khoá 5 khối, tránh vô tình kéo lệch
       // "Cho phép kéo dãn dòng" (%): co giãn ĐỒNG LOẠT khoảng cách giữa các
       // dòng của TOÀN BỘ khối nội dung chính (từ tiêu đề "PHIẾU CHUYỂN..."
       // đến dòng "Họ tên, chức danh người hộ tống"), không chỉnh riêng
