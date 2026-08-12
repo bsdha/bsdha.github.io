@@ -706,10 +706,17 @@
   </div>
 
   <div class="page" id="page-chuyentuyen">
-    <div style="max-width:640px; margin:60px auto; text-align:center; padding:24px; font-family:inherit;">
-      <div style="font-size:48px; margin-bottom:12px;">🚧</div>
-      <h2 style="margin:0 0 8px;">Phiếu chuyển tuyến</h2>
-      <p style="color:#666; font-size:15px;">Tính năng đang được xây dựng, sẽ sớm ra mắt. Vui lòng quay lại sau.</p>
+    <!-- Khung nội dung cho tính năng "Phiếu chuyển tuyến".
+         File js/chuyen-tuyen.js (khi được tạo và upload) nên render giao diện thật
+         vào bên trong #chuyenTuyenContent, ví dụ:
+           document.getElementById('chuyenTuyenContent').innerHTML = `...form thật...`;
+         Cho tới lúc đó, khối "đang xây dựng" bên dưới sẽ tự hiển thị mặc định. -->
+    <div id="chuyenTuyenContent">
+      <div style="max-width:640px; margin:60px auto; text-align:center; padding:24px; font-family:inherit;">
+        <div style="font-size:48px; margin-bottom:12px;">🚧</div>
+        <h2 style="margin:0 0 8px;">Phiếu chuyển tuyến</h2>
+        <p style="color:#666; font-size:15px;">Tính năng đang được xây dựng, sẽ sớm ra mắt. Vui lòng quay lại sau.</p>
+      </div>
     </div>
   </div>
 
@@ -740,6 +747,11 @@
 <script defer src="js/spa-router.js"></script>
 
 <script defer src="js/pdf-to-word.js"></script>
+
+<!-- Phiếu chuyển tuyến: chưa triển khai. Khi làm xong, chỉ cần tạo file js/chuyen-tuyen.js
+     và upload vào thư mục js/ — KHÔNG cần sửa lại index.html, dòng dưới đây đã sẵn sàng.
+     Trước khi file đó tồn tại, trình duyệt bỏ qua an toàn, không gây lỗi trang. -->
+<script defer src="js/chuyen-tuyen.js"></script>
 
 </body>
 </html>
