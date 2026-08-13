@@ -914,7 +914,7 @@
     display: none;
   }
   .sidebar {
-    width: 210px;
+    width: 240px;
     flex-shrink: 0;
     background: var(--surface);
     border-right: 1px solid var(--border);
@@ -956,6 +956,7 @@
     text-decoration: none;
     cursor: pointer;
     font-family: inherit;
+    white-space: nowrap;
   }
   .nav-item .ic { font-size: 15px; }
   .nav-item:hover { background: var(--surface-2); color: var(--text); }
