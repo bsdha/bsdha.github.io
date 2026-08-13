@@ -689,7 +689,7 @@
   // (tránh nhìn dính chữ, dễ hiểu nhầm nội dung); khi còn để trống (dấu
   // chấm) thì giữ khoảng cách như cũ vì dấu chấm đã tự tạo khoảng trống rồi.
   function gapAfter(val) {
-    return val ? "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" : "&nbsp;&nbsp;";
+    return val ? "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" : "&nbsp;&nbsp;";
   }
   function fillOr(s, dotLen) {
     return s
