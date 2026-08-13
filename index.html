@@ -84,6 +84,7 @@
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Chuyển đổi tài liệu (AI)</a>
+    <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Giấy nghỉ việc BHXH</a>
   </nav>
@@ -96,6 +97,7 @@
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Đổi tài liệu</a>
+    <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Nghỉ việc BHXH</a>
   </nav>
@@ -157,6 +159,13 @@
           <div class="ic">📄</div>
           <h2>Chuyển đổi tài liệu (AI)</h2>
           <p>Chuyển đổi 2 chiều giữa PDF, Word, Excel, PowerPoint, Ảnh (kể cả bản scan) — tự OCR, giữ nguyên bảng biểu, căn lề, tiêu đề.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/pdftools" class="hcard" data-page="pdftools" data-path="/pdftools">
+          <div class="ic">🛠️</div>
+          <h2>Công cụ PDF</h2>
+          <p>Ghép nhiều PDF, tách trang, xoay trang, xóa trang, nén dung lượng, OCR bản scan thành PDF có thể chọn/copy chữ.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -868,6 +877,225 @@
     }
   </style>
 
+  <div class="page" id="page-pdftools">
+    <div class="wrap pt-wrap">
+      <div class="panel pt-panel">
+        <h1>Công cụ PDF</h1>
+        <div class="sub" style="font-size:12.5px;color:var(--muted);margin:-6px 0 16px;">
+          Ghép, tách, xoay, xóa trang, nén dung lượng và OCR file PDF — xử lý trực tiếp qua AI, không cần cài phần mềm.
+        </div>
+
+        <div class="pt-tabs" id="ptTabs">
+          <button type="button" class="pt-tab active" data-op="combine">🔗 Ghép PDF</button>
+          <button type="button" class="pt-tab" data-op="split">✂️ Tách PDF</button>
+          <button type="button" class="pt-tab" data-op="rotate">🔄 Xoay trang</button>
+          <button type="button" class="pt-tab" data-op="delete">🗑️ Xóa trang</button>
+          <button type="button" class="pt-tab" data-op="compress">🗜️ Nén PDF</button>
+          <button type="button" class="pt-tab" data-op="ocr">🔍 OCR (bản scan)</button>
+        </div>
+
+        <!-- Ghép PDF: nhận nhiều file, ghép theo đúng thứ tự chọn -->
+        <div class="pt-panel-op" data-panel="combine">
+          <div class="pt-hint">Chọn từ 2 file PDF trở lên — sẽ ghép theo đúng thứ tự trong danh sách (kéo để đổi thứ tự).</div>
+          <div class="pt-dropzone" data-dz="combine" tabindex="0" role="button">
+            <input type="file" class="pt-file-input" data-input="combine" accept="application/pdf,.pdf" multiple hidden>
+            <div class="pt-drop-icon">🔗</div>
+            <div class="pt-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả nhiều file PDF vào đây</div>
+          </div>
+          <div class="pt-file-list" data-list="combine" style="display:none;"></div>
+          <button type="button" class="pt-run-btn" data-run="combine" disabled>Ghép PDF</button>
+        </div>
+
+        <!-- Tách PDF: 1 file + khoảng trang -->
+        <div class="pt-panel-op" data-panel="split" style="display:none;">
+          <div class="pt-hint">Chọn 1 file PDF, nhập khoảng trang muốn tách (VD: 1-3, 5, 8-10). Để trống để tách mỗi trang thành 1 file riêng.</div>
+          <div class="pt-dropzone" data-dz="split" tabindex="0" role="button">
+            <input type="file" class="pt-file-input" data-input="split" accept="application/pdf,.pdf" hidden>
+            <div class="pt-drop-icon">✂️</div>
+            <div class="pt-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả 1 file PDF vào đây</div>
+          </div>
+          <div class="pt-file-list" data-list="split" style="display:none;"></div>
+          <div class="pt-field-row">
+            <label class="pt-field-label" for="ptSplitRanges">Khoảng trang (tùy chọn)</label>
+            <input type="text" id="ptSplitRanges" class="pt-text-input" placeholder="VD: 1-3, 5, 8-10 (để trống = tách từng trang)">
+          </div>
+          <button type="button" class="pt-run-btn" data-run="split" disabled>Tách PDF</button>
+        </div>
+
+        <!-- Xoay trang -->
+        <div class="pt-panel-op" data-panel="rotate" style="display:none;">
+          <div class="pt-hint">Chọn 1 file PDF, chọn góc xoay và trang muốn áp dụng.</div>
+          <div class="pt-dropzone" data-dz="rotate" tabindex="0" role="button">
+            <input type="file" class="pt-file-input" data-input="rotate" accept="application/pdf,.pdf" hidden>
+            <div class="pt-drop-icon">🔄</div>
+            <div class="pt-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả 1 file PDF vào đây</div>
+          </div>
+          <div class="pt-file-list" data-list="rotate" style="display:none;"></div>
+          <div class="pt-field-row">
+            <label class="pt-field-label" for="ptRotateAngle">Góc xoay</label>
+            <select id="ptRotateAngle" class="pt-select">
+              <option value="90">Xoay phải 90°</option>
+              <option value="180">Xoay 180°</option>
+              <option value="270">Xoay trái 90°</option>
+            </select>
+          </div>
+          <div class="pt-field-row">
+            <label class="pt-field-label" for="ptRotatePages">Trang áp dụng (tùy chọn)</label>
+            <input type="text" id="ptRotatePages" class="pt-text-input" placeholder="VD: 1-3, 5 (để trống = áp dụng tất cả trang)">
+          </div>
+          <button type="button" class="pt-run-btn" data-run="rotate" disabled>Xoay trang</button>
+        </div>
+
+        <!-- Xóa trang -->
+        <div class="pt-panel-op" data-panel="delete" style="display:none;">
+          <div class="pt-hint">Chọn 1 file PDF, nhập các trang muốn xóa khỏi tài liệu.</div>
+          <div class="pt-dropzone" data-dz="delete" tabindex="0" role="button">
+            <input type="file" class="pt-file-input" data-input="delete" accept="application/pdf,.pdf" hidden>
+            <div class="pt-drop-icon">🗑️</div>
+            <div class="pt-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả 1 file PDF vào đây</div>
+          </div>
+          <div class="pt-file-list" data-list="delete" style="display:none;"></div>
+          <div class="pt-field-row">
+            <label class="pt-field-label" for="ptDeletePages">Trang muốn xóa</label>
+            <input type="text" id="ptDeletePages" class="pt-text-input" placeholder="VD: 2, 4-6">
+          </div>
+          <button type="button" class="pt-run-btn" data-run="delete" disabled>Xóa trang</button>
+        </div>
+
+        <!-- Nén PDF -->
+        <div class="pt-panel-op" data-panel="compress" style="display:none;">
+          <div class="pt-hint">Chọn 1 file PDF và mức nén mong muốn.</div>
+          <div class="pt-dropzone" data-dz="compress" tabindex="0" role="button">
+            <input type="file" class="pt-file-input" data-input="compress" accept="application/pdf,.pdf" hidden>
+            <div class="pt-drop-icon">🗜️</div>
+            <div class="pt-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả 1 file PDF vào đây</div>
+          </div>
+          <div class="pt-file-list" data-list="compress" style="display:none;"></div>
+          <div class="pt-field-row">
+            <label class="pt-field-label" for="ptCompressLevel">Mức nén</label>
+            <select id="ptCompressLevel" class="pt-select">
+              <option value="LOW">Nhẹ — giữ chất lượng cao nhất</option>
+              <option value="MEDIUM" selected>Vừa — cân bằng (khuyên dùng)</option>
+              <option value="HIGH">Mạnh — dung lượng nhỏ nhất</option>
+            </select>
+          </div>
+          <button type="button" class="pt-run-btn" data-run="compress" disabled>Nén PDF</button>
+        </div>
+
+        <!-- OCR -->
+        <div class="pt-panel-op" data-panel="ocr" style="display:none;">
+          <div class="pt-hint">Chọn 1 file PDF bản scan/ảnh chụp — kết quả là PDF có thể chọn/copy/tìm kiếm chữ.</div>
+          <div class="pt-dropzone" data-dz="ocr" tabindex="0" role="button">
+            <input type="file" class="pt-file-input" data-input="ocr" accept="application/pdf,.pdf" hidden>
+            <div class="pt-drop-icon">🔍</div>
+            <div class="pt-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả 1 file PDF vào đây</div>
+          </div>
+          <div class="pt-file-list" data-list="ocr" style="display:none;"></div>
+          <div class="pt-field-row">
+            <label class="pt-field-label" for="ptOcrLocale">Ngôn ngữ nhận dạng</label>
+            <select id="ptOcrLocale" class="pt-select">
+              <option value="vi-VN">Tiếng Việt</option>
+              <option value="en-US">Tiếng Anh</option>
+            </select>
+          </div>
+          <button type="button" class="pt-run-btn" data-run="ocr" disabled>Chạy OCR</button>
+        </div>
+
+        <div class="pt-status" id="ptStatus"></div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* ==== Công cụ PDF: ghép/tách/xoay/xóa trang/nén/OCR — dùng chung khung với p2w ==== */
+    .pt-wrap{ padding:28px 16px 60px; }
+    .pt-panel{ max-width:640px; margin:0 auto; box-sizing:border-box; padding:28px clamp(18px,4vw,34px) 32px; }
+    .pt-panel *{ box-sizing:border-box; }
+    .pt-panel h1{ font-size:20px; margin:0 0 6px; }
+
+    .pt-tabs{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:18px; }
+    .pt-tab{
+      font-size:12.5px; font-weight:600; padding:8px 12px; border-radius:20px;
+      border:1px solid var(--border); background:var(--surface-2); color:var(--text); cursor:pointer;
+      transition:background .15s, color .15s, border-color .15s;
+    }
+    .pt-tab:hover{ border-color:var(--blue); }
+    .pt-tab.active{ background:var(--blue); color:#fff; border-color:var(--blue); }
+
+    .pt-hint{ font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.5; }
+
+    .pt-dropzone{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; gap:6px; width:100%; padding:28px 16px; border-radius:14px; cursor:pointer;
+      border:2px dashed var(--border); background:var(--surface-2); transition:border-color .15s, background .15s;
+    }
+    .pt-dropzone:hover, .pt-dropzone:focus-visible{ border-color:var(--blue); background:var(--green-light,rgba(0,102,255,.05)); outline:none; }
+    .pt-dropzone.dragover{ border-color:var(--blue); background:var(--green-light,rgba(0,102,255,.08)); }
+    .pt-drop-icon{ font-size:32px; line-height:1; }
+    .pt-drop-text{ font-size:13.5px; }
+    .pt-drop-text b{ color:var(--blue); }
+
+    .pt-file-list{ display:flex; flex-direction:column; gap:8px; margin-top:12px; width:100%; }
+    .pt-file-row{
+      display:flex; align-items:center; gap:10px; padding:9px 12px;
+      border-radius:10px; border:1px solid var(--border); background:var(--surface-2); width:100%;
+    }
+    .pt-file-icon{ font-size:16px; flex-shrink:0; }
+    .pt-file-name{ flex:1; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+    .pt-file-meta{ font-size:11px; color:var(--muted); flex-shrink:0; }
+    .pt-drag-handle{ cursor:grab; color:var(--muted); flex-shrink:0; font-size:13px; }
+    .pt-file-row.dragging{ opacity:.5; }
+    .pt-remove-btn{
+      flex-shrink:0; border:none; background:none; color:var(--muted); font-size:15px;
+      cursor:pointer; padding:4px 6px; line-height:1; border-radius:6px;
+    }
+    .pt-remove-btn:hover{ color:var(--red,#e0453d); background:rgba(224,69,61,.1); }
+
+    .pt-field-row{ margin-top:14px; display:flex; flex-direction:column; gap:5px; }
+    .pt-field-label{ font-size:11.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+    .pt-text-input, .pt-select{
+      width:100%; font-size:13.5px; padding:9px 10px; border-radius:9px;
+      border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+    }
+    .pt-select{
+      appearance:none; cursor:pointer;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center; padding-right:30px;
+    }
+    .pt-text-input:focus, .pt-select:focus{ outline:none; border-color:var(--blue); }
+
+    .pt-run-btn{
+      width:100%; margin-top:16px; padding:12px 16px; font-size:14.5px; font-weight:700;
+      border:none; border-radius:10px; background:var(--blue); color:#fff; cursor:pointer;
+      transition:filter .15s, transform .1s;
+    }
+    .pt-run-btn:hover:not(:disabled){ filter:brightness(1.08); }
+    .pt-run-btn:active:not(:disabled){ transform:scale(.99); }
+    .pt-run-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .pt-status{ margin-top:14px; font-size:13px; line-height:1.6; word-break:break-word; }
+    .pt-status.error{ color:var(--red,#e0453d); }
+    .pt-status.success{ color:var(--green,#1a9e5c); }
+    .pt-download-btn{
+      display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:10px 18px;
+      border-radius:9px; background:var(--green,#1a9e5c); color:#fff !important; font-weight:700;
+      text-decoration:none; font-size:13.5px;
+    }
+    .pt-download-btn:hover{ filter:brightness(1.08); }
+    .pt-spinner{
+      display:inline-block; width:13px; height:13px; margin-right:7px; vertical-align:-2px;
+      border:2px solid rgba(0,102,255,.25); border-top-color:var(--blue);
+      border-radius:50%; animation:ptspin .7s linear infinite;
+    }
+    @keyframes ptspin{ to{ transform:rotate(360deg); } }
+
+    @media (max-width:480px){
+      .pt-wrap{ padding:16px 10px 50px; }
+      .pt-panel{ padding:20px 16px 26px; border-radius:14px; }
+      .pt-dropzone{ padding:22px 12px; }
+    }
+  </style>
+
   <div class="page" id="page-chuyentuyen">
     <!-- Khung nội dung cho tính năng "Phiếu chuyển tuyến".
          File js/chuyen-tuyen.js (khi được tạo và upload) nên render giao diện thật
@@ -926,6 +1154,8 @@
 
 <script defer src="js/pdf-to-word.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+<script defer src="js/pdf-tools.js"></script>
 
 <!-- Phiếu chuyển tuyến: chưa triển khai. Khi làm xong, chỉ cần tạo file js/chuyen-tuyen.js
      và upload vào thư mục js/ — KHÔNG cần sửa lại index.html, dòng dưới đây đã sẵn sàng.
