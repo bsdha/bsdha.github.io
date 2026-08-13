@@ -539,8 +539,20 @@
     // đẩy dòng có dữ liệu thật xuống sau (sai thứ tự). Phải dò theo từng
     // dòng đã tách sẵn (lines) và chỉ nhận dòng THỰC SỰ BẮT ĐẦU bằng "+ Tại:".
     var dtLines = lines.filter(function (l) { return /^\+\s*Tại\s*:/i.test((l || "").trim()); });
-    d.dieuTri1 = dtLines[0] ? dtLines[0].replace(/^\+\s*/, "").trim() : "";
-    d.dieuTri2 = dtLines[1] ? dtLines[1].replace(/^\+\s*/, "").replace(/^(?:Tại\s*:\s*)+/i, "").trim() : "";
+    // Loại bỏ nhãn "Tại:" đầu dòng, rồi loại bỏ TIẾP mọi cụm "Tại:" còn sót
+    // lại ở GIỮA nội dung (không phải do dữ liệu thật, mà do lỗi gộp dòng
+    // theo toạ độ Y ở trên khi văn bản dài wrap xuống trùng hàng với nhãn
+    // tĩnh của dòng "+ Tại:" kế tiếp trong file mẫu gốc).
+    function stripStrayTai(s) {
+      return s
+        .replace(/^\+\s*/, "")
+        .replace(/^(?:Tại\s*:\s*)+/i, "")
+        .replace(/\bTại\s*:\s*/gi, " ")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+    d.dieuTri1 = dtLines[0] ? stripStrayTai(dtLines[0]) : "";
+    d.dieuTri2 = dtLines[1] ? stripStrayTai(dtLines[1]) : "";
 
     // Viết hoa chữ cái đầu câu — chỉ áp dụng cho các trường trong mục
     // "TÓM TẮT BỆNH ÁN" khi thực sự CÓ dữ liệu điền vào (theo yêu cầu:
@@ -729,8 +741,8 @@
     html += line(54, 500, 9.5, { gap: 8 }, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Đã được khám bệnh, điều trị:"; });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri1); });
-    html += line(44, 568, 9.5, { gap: 8, flex: true }, function () { return "&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri2); });
+    html += line(44, 568, 9.5, { flex: true, gap: 6 }, function () { return "&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri1); });
+    html += line(44, 568, 9.5, { gap: 8, flex: true }, function () { return d.dieuTri2 ? ("&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri2)) : "&nbsp;&nbsp;+ Tại:&nbsp;<span class=\"fill-line\"></span>"; });
 
     html += line(44, 300, 10.5, { bold: true, gap: 6 }, function () { return "TÓM TẮT BỆNH ÁN"; });
     html += line(44, 568, 9.5, { flex: true }, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillEnd(d.tomTatLamSang); });
