@@ -509,11 +509,11 @@
     var _mSo = _soRaw.match(/([0-9]+\/[0-9]{4})/);
     d.soHoSo = _mSo ? _mSo[1] : _soRaw.replace(/\/?PCCSKBCB\/?\s*$/i, "").trim();
 
-    // "Số hồ sơ:" (góc trên phải) — cùng một số với "Số:"/"Vào sổ..." ở
-    // trên (bệnh viện chỉ có 1 số hồ sơ duy nhất, hiển thị lặp lại ở 2 nơi
-    // trên phiếu, có/không kèm hậu tố "/PCCSKBCB"), nên lấy theo cùng
-    // nguồn cho nhất quán thay vì dò riêng (dễ dò trúng nhầm dòng khác).
-    d.soHoSoBenhAn = d.soHoSo;
+    // "Số hồ sơ:" (góc trên phải) — theo yêu cầu, ô "Số hồ sơ (bệnh án)"
+    // trên form sẽ hiển thị đúng giá trị SVV vừa nhận diện được ở trên,
+    // còn ô SVV để trống (không tự điền) để người dùng tự nhập nếu cần.
+    d.soHoSoBenhAn = d.svv;
+    d.svv = "";
     d.kinhGui = grab(text, /Kính gửi\s*:\s*([^\n]+)/i);
     d.coSoGioiThieu =
       grab(text, /Cơ sở khám bệnh,? chữa bệnh\s*:\s*([^\n]+?)\s*(?:-\s*)?trân trọng/i) ||
@@ -540,7 +540,7 @@
     // dòng đã tách sẵn (lines) và chỉ nhận dòng THỰC SỰ BẮT ĐẦU bằng "+ Tại:".
     var dtLines = lines.filter(function (l) { return /^\+\s*Tại\s*:/i.test((l || "").trim()); });
     d.dieuTri1 = dtLines[0] ? dtLines[0].replace(/^\+\s*/, "").trim() : "";
-    d.dieuTri2 = dtLines[1] ? dtLines[1].replace(/^\+\s*/, "").trim() : "";
+    d.dieuTri2 = dtLines[1] ? dtLines[1].replace(/^\+\s*/, "").replace(/^(?:Tại\s*:\s*)+/i, "").trim() : "";
 
     // Viết hoa chữ cái đầu câu — chỉ áp dụng cho các trường trong mục
     // "TÓM TẮT BỆNH ÁN" khi thực sự CÓ dữ liệu điền vào (theo yêu cầu:
@@ -680,6 +680,11 @@
       ? '<span class="fill">' + esc(s) + '</span>'
       : '<span class="fill-line"></span>';
   }
+  // Viết hoa chữ cái đầu tiên của chuỗi (giữ nguyên phần còn lại)
+  function capFirst(s) {
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
   function line(left, right, size, opt, build) {
     opt = opt || {};
     var idx = lineCounter++;
@@ -738,7 +743,7 @@
     html += line(44, 568, 9.5, { flex: true }, function () { return "+ " + fillEnd(d.phuongPhapThuThuat); });
 
     html += line(44, 568, 9.5, { flex: true }, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillEnd(d.kyThuatThuoc); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillEnd(d.tinhTrang); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillEnd(capFirst(d.tinhTrang)); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
     html += line(44, 400, 9.5, {}, function () { return circ("1", is1a || is1b) + ". Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
@@ -746,10 +751,10 @@
     html += line(66, 568, 9.5, {}, function () { return box(is1b, true) + "Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
     html += line(44, 568, 9.5, {}, function () { return "&nbsp;" + circ("2", is2) + ". Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
 
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Hướng điều trị: " + fillEnd(d.huongDieuTri); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Hướng điều trị: " + fillEnd(capFirst(d.huongDieuTri)); });
     html += line(44, 568, 9.5, { flex: true }, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillEnd(d.chuyenHoi); });
     html += line(44, 568, 9.5, { flex: true }, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillEnd(d.coGiaTri1Nam); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Phương tiện vận chuyển: " + fillEnd(d.phuongTien); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "- Phương tiện vận chuyển: " + fillEnd(capFirst(d.phuongTien)); });
     html += line(44, 568, 9.5, { gap: 30, flex: true }, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillEnd(d.nguoiHoTong); });
 
     // Khoảng trống lớn bên trên để chừa chỗ cho khối "Ngày.../ĐẠI DIỆN CSKCB/
