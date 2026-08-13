@@ -126,17 +126,18 @@
     ".ct-block:hover .ct-eye,.ct-block.dragging .ct-eye{display:flex;}",
     ".ct-block.ct-hidden-print{opacity:.35;outline:1.5px dashed #999;}",
     ".ct-stampguide{position:absolute;border:1.5px dashed #ff5050;border-radius:50%;pointer-events:none;opacity:.55;display:none;}",
+    /* Chỉ áp dụng khi html có class ct-printing (gắn/gỡ đúng lúc bấm nút "In"),
+       để KHÔNG đè lên bản in của các trang khác dùng chung layout (vd trang sinh hiệu). */
     "@media print{",
-    "  html,body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
-    "  body *{visibility:hidden !important;}",
-    "  #ctSheet, #ctSheet *{visibility:visible !important;}",
-    "  .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
-    "  #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
-    "  .ct-stampguide,.ct-resize,.ct-eye{display:none !important;}",
-    "  .ct-modal-overlay{display:none !important;}",
-    "  .ct-hidden-print{display:none !important;}",
-    "  .ct-block{cursor:default !important;}",
-    "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
+    "  html.ct-printing,html.ct-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
+    "  html.ct-printing body *{visibility:hidden !important;}",
+    "  html.ct-printing #ctSheet, html.ct-printing #ctSheet *{visibility:visible !important;}",
+    "  html.ct-printing .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
+    "  html.ct-printing #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
+    "  html.ct-printing .ct-stampguide,html.ct-printing .ct-resize,html.ct-printing .ct-eye{display:none !important;}",
+    "  html.ct-printing .ct-modal-overlay{display:none !important;}",
+    "  html.ct-printing .ct-hidden-print{display:none !important;}",
+    "  html.ct-printing .ct-block{cursor:default !important;}",
     "}"
   ].join("\n");
   document.head.appendChild(style);
@@ -1114,6 +1115,31 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* 6b. Bật/tắt chế độ in: gắn class ct-printing (scope CSS ở mục 1)   */
+  /*     và chèn/gỡ riêng @page (không thể giới hạn theo class được).  */
+  /* ---------------------------------------------------------------- */
+  function setPrintPageRule(on) {
+    var id = "ctPrintPageStyle";
+    var existing = document.getElementById(id);
+    if (existing) existing.parentNode.removeChild(existing);
+    if (on) {
+      var s = document.createElement("style");
+      s.id = id;
+      s.textContent = "@page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}";
+      document.head.appendChild(s);
+    }
+  }
+  function ctBeforePrint() {
+    document.documentElement.classList.add("ct-printing");
+    setPrintPageRule(true);
+  }
+  function ctAfterPrint() {
+    document.documentElement.classList.remove("ct-printing");
+    setPrintPageRule(false);
+  }
+  window.addEventListener("afterprint", ctAfterPrint);
+
+  /* ---------------------------------------------------------------- */
   /* 7. Gắn sự kiện UI                                                  */
   /* ---------------------------------------------------------------- */
   function bindUI() {
@@ -1160,7 +1186,10 @@
     });
     document.getElementById("ctSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("ctPrintBtn").addEventListener("click", function () {
+      ctBeforePrint();
       window.print();
+      // Phòng khi trình duyệt không bắn sự kiện afterprint (một số Safari cũ):
+      setTimeout(ctAfterPrint, 1000);
     });
     document.getElementById("ctEditModeToggle").addEventListener("change", function (e) {
       settings.editMode = e.target.checked;
