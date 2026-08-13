@@ -290,42 +290,187 @@
   <script defer src="js/sinh-hieu.js"></script>
 
   <div class="page" id="page-insulin">
-    <div class="wrap">
-      <div class="panel">
-        <h1>💉 Tính số bút Insulin</h1>
-        <div class="sub">Nhập liều Insulin (UI) mỗi mũi tiêm trong ngày để tính tổng liều và số bút cần cấp mỗi tháng.</div>
+    <style>
+      .ins-split{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:20px;
+        max-width:980px;
+        margin:0 auto;
+        align-items:start;
+      }
+      @media (max-width:820px){ .ins-split{grid-template-columns:1fr;} }
 
-        <div class="field">
-          <label for="insSang">Sáng (UI)</label>
-          <input type="number" min="0" step="0.5" id="insSang" placeholder="0" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label for="insTrua">Trưa (UI)</label>
-          <input type="number" min="0" step="0.5" id="insTrua" placeholder="0" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label for="insChieu">Chiều (UI)</label>
-          <input type="number" min="0" step="0.5" id="insChieu" placeholder="0" inputmode="decimal">
-        </div>
-        <div class="field">
-          <label for="insSoNgay">Số ngày cấp bút</label>
-          <input type="number" min="1" step="1" id="insSoNgay" placeholder="30" inputmode="numeric">
-        </div>
+      /* ---- Glucose converter panel ---- */
+      #glucosePanel .gc-block{
+        display:grid;
+        grid-template-columns:1fr 40px 1fr;
+        align-items:center;
+        gap:8px;
+        margin-bottom:6px;
+      }
+      #glucosePanel .gc-input-wrap{ position:relative; }
+      #glucosePanel .gc-input-wrap input{ padding-right:62px; width:100%; }
+      #glucosePanel .gc-unit-badge{
+        position:absolute;
+        right:10px; top:50%; transform:translateY(-50%);
+        font-size:12px; font-weight:700; color:var(--muted);
+        pointer-events:none;
+      }
+      #glucosePanel .gc-swap-btn{
+        display:flex;align-items:center;justify-content:center;
+        width:36px;height:36px;
+        border-radius:50%;
+        border:1px solid var(--border);
+        background:var(--surface-2);
+        color:var(--blue,#0066FF);
+        font-size:16px;
+        cursor:pointer;
+        transition:transform .18s ease, filter .15s;
+        flex-shrink:0;
+      }
+      #glucosePanel .gc-swap-btn:hover{ filter:brightness(1.1); }
+      #glucosePanel .gc-swap-btn.spin{ transform:rotate(180deg); }
+      #glucosePanel .gc-output{
+        padding:9px 10px;
+        border-radius:8px;
+        background:var(--surface-2);
+        border:1px solid var(--border);
+        font-weight:800;
+        font-size:14.5px;
+        color:var(--blue,#0066FF);
+        min-height:38px;
+        display:flex;align-items:center;justify-content:space-between;gap:6px;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+      }
+      #glucosePanel .gc-output .gc-output-unit{
+        font-size:11.5px;font-weight:700;color:var(--muted);flex-shrink:0;
+      }
+      #glucosePanel .gc-alert{
+        border-radius:9px;
+        padding:9px 11px;
+        font-size:12.5px;
+        line-height:1.5;
+        font-weight:600;
+        display:flex;gap:8px;align-items:flex-start;
+        margin-top:6px;
+      }
+      #glucosePanel .gc-alert .gc-icon{font-size:14px;line-height:1.4;}
+      #glucosePanel .gc-alert.normal{ background:rgba(26,158,92,.12); color:var(--green,#1a9e5c); }
+      #glucosePanel .gc-alert.pre{ background:rgba(201,138,31,.14); color:#c98a1f; }
+      #glucosePanel .gc-alert.high{ background:rgba(224,69,61,.12); color:var(--red,#e0453d); }
+      #glucosePanel .gc-alert.low{ background:rgba(0,102,255,.10); color:var(--blue,#0066FF); }
+      #glucosePanel .gc-alert.neutral{ background:var(--surface-2); color:var(--muted); font-weight:500; }
 
-        <div class="ins-pen-field">
-          <label for="insPenSize">Liều mỗi bút (UI/bút)</label>
-          <input type="number" min="1" step="1" id="insPenSize" value="300">
-        </div>
+      #glucosePanel .gc-ref{
+        margin-top:16px;
+        border-top:1px solid var(--border);
+        padding-top:12px;
+      }
+      #glucosePanel .gc-ref h3{
+        font-size:11px;text-transform:uppercase;letter-spacing:.4px;
+        color:var(--muted);margin:0 0 8px;
+      }
+      #glucosePanel .gc-ref-row{
+        display:flex;gap:8px;align-items:flex-start;
+        font-size:11.8px;padding:6px 0;
+        border-bottom:1px dashed var(--border);
+      }
+      #glucosePanel .gc-ref-row:last-child{border-bottom:none;}
+      #glucosePanel .gc-tag{
+        flex-shrink:0;
+        padding:2px 8px;border-radius:20px;
+        font-size:10px;font-weight:800;
+        text-transform:uppercase;letter-spacing:.3px;
+        white-space:nowrap;
+      }
+      #glucosePanel .gc-tag.high{ background:rgba(224,69,61,.12); color:var(--red,#e0453d); }
+      #glucosePanel .gc-tag.pre{ background:rgba(201,138,31,.14); color:#c98a1f; }
+      #glucosePanel .gc-tag.low{ background:rgba(0,102,255,.10); color:var(--blue,#0066FF); }
+      #glucosePanel .gc-ref-row .gc-txt{color:var(--muted);}
+      #glucosePanel .gc-ref-row .gc-txt b{color:var(--text);}
+    </style>
 
-        <div class="ins-result">
-          <div class="ins-row">Liều: <span class="ins-big" id="insDailyDose">0</span> UI/ngày</div>
-          <div class="ins-breakdown" id="insBreakdown"></div>
-          <div class="ins-row-main" id="insPensPerMonth">Cần cấp cho BN: 0 bút/tháng</div>
+    <div class="ins-split">
+      <div class="wrap" style="margin:0;">
+        <div class="panel">
+          <h1>💉 Tính số bút Insulin</h1>
+          <div class="sub">Nhập liều Insulin (UI) mỗi mũi tiêm trong ngày để tính tổng liều và số bút cần cấp mỗi tháng.</div>
+
+          <div class="field">
+            <label for="insSang">Sáng (UI)</label>
+            <input type="number" min="0" step="0.5" id="insSang" placeholder="0" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="insTrua">Trưa (UI)</label>
+            <input type="number" min="0" step="0.5" id="insTrua" placeholder="0" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="insChieu">Chiều (UI)</label>
+            <input type="number" min="0" step="0.5" id="insChieu" placeholder="0" inputmode="decimal">
+          </div>
+          <div class="field">
+            <label for="insSoNgay">Số ngày cấp bút</label>
+            <input type="number" min="1" step="1" id="insSoNgay" placeholder="30" inputmode="numeric">
+          </div>
+
+          <div class="ins-pen-field">
+            <label for="insPenSize">Liều mỗi bút (UI/bút)</label>
+            <input type="number" min="1" step="1" id="insPenSize" value="300">
+          </div>
+
+          <div class="ins-result">
+            <div class="ins-row">Liều: <span class="ins-big" id="insDailyDose">0</span> UI/ngày</div>
+            <div class="ins-breakdown" id="insBreakdown"></div>
+            <div class="ins-row-main" id="insPensPerMonth">Cần cấp cho BN: 0 bút/tháng</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="wrap" style="margin:0;">
+        <div class="panel" id="glucosePanel">
+          <h1>🩸 Đổi đơn vị đường huyết</h1>
+          <div class="sub">Chuyển đổi mg/dL ⇄ mmol/L và cảnh báo phân loại lâm sàng theo ngưỡng chẩn đoán.</div>
+
+          <div class="field">
+            <label for="gcInput" id="gcInputLabel">Chỉ số đường huyết (mmol/L)</label>
+            <div class="gc-block">
+              <div class="gc-input-wrap">
+                <input type="number" min="0" step="0.1" id="gcInput" placeholder="VD: 6.6" inputmode="decimal">
+                <span class="gc-unit-badge" id="gcInputUnitBadge">mmol/L</span>
+              </div>
+              <button type="button" class="gc-swap-btn" id="gcSwapBtn" title="Hoán đổi đơn vị">⇄</button>
+              <div class="gc-output" id="gcOutput">
+                <span id="gcOutputValue">—</span>
+                <span class="gc-output-unit" id="gcOutputUnitBadge">mg/dL</span>
+              </div>
+            </div>
+          </div>
+          <div class="gc-alert neutral" id="gcAlert"><span class="gc-icon">ℹ️</span><span>Nhập chỉ số đường huyết để xem phân loại</span></div>
+
+          <div class="gc-ref">
+            <h3>Ngưỡng chẩn đoán tham khảo</h3>
+            <div class="gc-ref-row">
+              <span class="gc-tag high">ĐTĐ</span>
+              <span class="gc-txt">Đường huyết bất kỳ <b>&gt;200 mg/dL (11,1 mmol/L)</b> · Đói (&gt;8h) <b>&gt;126 mg/dL (7,0 mmol/L)</b> · HbA1c <b>&gt;6,5%</b></span>
+            </div>
+            <div class="gc-ref-row">
+              <span class="gc-tag pre">Tiền ĐTĐ</span>
+              <span class="gc-txt">Rối loạn ĐH đói: <b>100–125 mg/dL (5,6–6,9 mmol/L)</b> · HbA1c <b>5,7–6,4%</b></span>
+            </div>
+            <div class="gc-ref-row">
+              <span class="gc-tag low">Hạ ĐH</span>
+              <span class="gc-txt">Đường huyết <b>&lt;70 mg/dL (&lt;3,9 mmol/L)</b></span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
     <script defer src="js/insulin-calc.js"></script>
+    <script defer src="js/glucose-convert.js"></script>
   </div>
 
   <div class="page" id="page-ldl">
