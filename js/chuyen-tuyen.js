@@ -685,9 +685,21 @@
   function dots(n) { return new Array((n || 20) + 1).join("."); }
   // Đã điền -> chỉ hiện chữ (không viền, không chấm). Chưa điền -> hiện chấm
   // để chừa chỗ viết tay, giống hệt bản giấy gốc.
+  // Nới khoảng cách giữa 2 trường cùng hàng KHI trường trước đã có dữ liệu
+  // (tránh nhìn dính chữ, dễ hiểu nhầm nội dung); khi còn để trống (dấu
+  // chấm) thì giữ khoảng cách như cũ vì dấu chấm đã tự tạo khoảng trống rồi.
+  function gapAfter(val) {
+    return val ? "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;" : "&nbsp;&nbsp;";
+  }
   function fillOr(s, dotLen) {
     return s
       ? '<span class="fill">' + esc(s) + '</span>'
+      : '<span class="fill empty">' + dots(dotLen) + '</span>';
+  }
+  // Biến thể in đậm — dùng cho các trường cần nổi bật (vd: "Kính gửi").
+  function fillOrBold(s, dotLen) {
+    return s
+      ? '<span class="fill" style="font-weight:bold;">' + esc(s) + '</span>'
       : '<span class="fill empty">' + dots(dotLen) + '</span>';
   }
   function box(checked, big) { return '<span class="' + (big ? "chkbig" : "chk") + '">' + (checked ? "X" : "") + '</span>'; }
@@ -742,15 +754,15 @@
 
     html += line(44, 568, 12.5, { bold: true, center: true, gap: 8 }, function () { return "PHIẾU CHUYỂN CƠ SỞ KHÁM BỆNH, CHỮA BỆNH BẢO HIỂM Y TẾ"; });
 
-    html += line(44, 568, 10, { center: true, gap: 5 }, function () { return "Kính gửi: " + fillOr(d.kinhGui, 46); });
+    html += line(44, 568, 10, { center: true, gap: 5 }, function () { return "Kính gửi: " + fillOrBold(d.kinhGui, 46); });
     html += line(44, 568, 9.5, { gap: 8 }, function () { return esc(d.coSoGioiThieu || "Bệnh viện Đa khoa Bình Dương") + " trân trọng giới thiệu:"; });
 
     html += line(44, 568, 9.5, {}, function () {
-      return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + "&nbsp;&nbsp;Giới tính: " + fillOr(d.gioiTinh, 8) + "&nbsp;&nbsp;Năm sinh: " + fillOr(d.namSinh, 8);
+      return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + gapAfter(d.hoTen) + "Giới tính: " + fillOr(d.gioiTinh, 8) + gapAfter(d.gioiTinh) + "Năm sinh: " + fillOr(d.namSinh, 8);
     });
     html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Địa chỉ: </span>" + fillEnd(d.diaChi); });
-    html += line(44, 568, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + "&nbsp;&nbsp;Quốc tịch: " + fillOr(d.quocTich, 30); });
-    html += line(44, 568, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + "&nbsp;&nbsp;Nơi làm việc: " + fillOr(d.noiLamViec, 26); });
+    html += line(44, 568, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + gapAfter(d.danToc) + "Quốc tịch: " + fillOr(d.quocTich, 30); });
+    html += line(44, 568, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + gapAfter(d.ngheNghiep) + "Nơi làm việc: " + fillOr(d.noiLamViec, 26); });
     html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Số thẻ bảo hiểm y tế: </span>" + fillEnd(d.soThe); });
     html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: </span>" + fillEnd(d.hanThe); });
     html += line(54, 500, 9.5, { gap: 8 }, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); });
