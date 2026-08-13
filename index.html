@@ -83,7 +83,7 @@
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
-    <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF → Word (AI)</a>
+    <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Chuyển đổi tài liệu (AI)</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Giấy nghỉ việc BHXH</a>
   </nav>
@@ -95,7 +95,7 @@
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
-    <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> PDF→Word</a>
+    <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Đổi tài liệu</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Nghỉ việc BHXH</a>
   </nav>
@@ -155,8 +155,8 @@
 
         <a href="/pdf2word" class="hcard" data-page="pdf2word" data-path="/pdf2word">
           <div class="ic">📄</div>
-          <h2>PDF → Word (AI)</h2>
-          <p>Chuyển PDF (kể cả bản scan/hình ảnh) sang file Word có thể chỉnh sửa, giữ nguyên bảng biểu, căn lề, tiêu đề.</p>
+          <h2>Chuyển đổi tài liệu (AI)</h2>
+          <p>Chuyển đổi 2 chiều giữa PDF, Word, Excel, PowerPoint, Ảnh (kể cả bản scan) — tự OCR, giữ nguyên bảng biểu, căn lề, tiêu đề.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -691,32 +691,182 @@
   </div>
 
   <div class="page" id="page-pdf2word">
-    <div class="wrap">
-      <div class="panel">
-        <h1>PDF → Word (AI, giữ bảng biểu &amp; layout)</h1>
-        <div class="sub" style="font-size:12.5px;color:var(--muted);margin:-6px 0 14px;">
-          Chuyển PDF (kể cả bản scan/ảnh chụp) thành file Word (.docx) chỉnh sửa được, tự nhận diện chữ (OCR), giữ nguyên bảng, căn lề, tiêu đề, in đậm. Tối đa 500 lượt chuyển miễn phí / tháng.
+    <div class="wrap p2w-wrap">
+      <div class="panel p2w-panel">
+        <h1>Chuyển đổi định dạng tài liệu (AI)</h1>
+        <div class="sub" style="font-size:12.5px;color:var(--muted);margin:-6px 0 16px;">
+          Chuyển đổi 2 chiều giữa PDF và Word / Excel / PowerPoint / Ảnh — tự nhận diện chữ (OCR) với bản scan, giữ nguyên bảng, căn lề, tiêu đề, in đậm. Tối đa 500 lượt chuyển miễn phí / tháng.
         </div>
 
-        <div class="p2w-dropzone" id="p2wDropzone" tabindex="0" role="button" aria-label="Chọn hoặc kéo thả file PDF">
-          <input type="file" id="p2wFileInput" accept="application/pdf" hidden>
-          <div class="p2w-drop-icon">📄</div>
-          <div class="p2w-drop-text"><b>Bấm để chọn file PDF</b> hoặc kéo-thả file vào đây</div>
-          <div class="p2w-drop-hint">Chỉ nhận file .pdf — dung lượng tối đa khoảng 25MB</div>
+        <div class="p2w-format-bar">
+          <div class="p2w-format-group">
+            <label class="p2w-format-label" for="p2wFromSelect">Chuyển từ</label>
+            <select id="p2wFromSelect" class="p2w-select">
+              <option value="pdf">📄 PDF (.pdf)</option>
+              <option value="docx">📝 Word (.docx, .doc)</option>
+              <option value="xlsx">📊 Excel (.xlsx, .xls)</option>
+              <option value="pptx">📽️ PowerPoint (.pptx, .ppt)</option>
+              <option value="image">🖼️ Ảnh (.png, .jpg)</option>
+            </select>
+          </div>
+
+          <button type="button" class="p2w-swap-btn" id="p2wSwapBtn" title="Đảo chiều chuyển đổi">⇄</button>
+
+          <div class="p2w-format-group">
+            <label class="p2w-format-label" for="p2wToSelect">Sang</label>
+            <select id="p2wToSelect" class="p2w-select">
+              <option value="docx">📝 Word (.docx)</option>
+              <option value="xlsx">📊 Excel (.xlsx)</option>
+              <option value="pptx">📽️ PowerPoint (.pptx)</option>
+              <option value="image">🖼️ Ảnh (.jpg)</option>
+              <option value="pdf">📄 PDF (.pdf)</option>
+            </select>
+          </div>
+        </div>
+        <div class="p2w-format-hint" id="p2wFormatHint"></div>
+
+        <div class="p2w-dropzone" id="p2wDropzone" tabindex="0" role="button" aria-label="Chọn hoặc kéo thả file">
+          <input type="file" id="p2wFileInput" accept="application/pdf" multiple hidden>
+          <div class="p2w-drop-icon" id="p2wDropIcon">📄</div>
+          <div class="p2w-drop-text"><b>Bấm để chọn file</b> hoặc kéo-thả file vào đây (chọn được nhiều file cùng lúc)</div>
+          <div class="p2w-drop-hint" id="p2wDropHint">Chỉ nhận file .pdf — dung lượng tối đa khoảng 25MB / file</div>
         </div>
 
-        <div class="p2w-file-row" id="p2wFileRow" style="display:none;">
-          <span class="p2w-file-icon">📄</span>
-          <span class="p2w-file-name" id="p2wFileName"></span>
-          <button type="button" class="p2w-remove-btn" id="p2wRemoveBtn" title="Bỏ chọn file">✕</button>
-        </div>
+        <div class="p2w-file-list" id="p2wFileList" style="display:none;"></div>
 
-        <button type="button" class="p2w-convert-btn" id="p2wConvertBtn" disabled>Chuyển sang Word</button>
+        <button type="button" class="p2w-convert-btn" id="p2wConvertBtn" disabled>Chuyển đổi</button>
 
         <div class="p2w-status" id="p2wStatus"></div>
+
+        <div class="p2w-batch-actions" id="p2wBatchActions" style="display:none;">
+          <button type="button" class="p2w-downloadall-btn" id="p2wDownloadAllBtn">⬇ Tải tất cả (.zip)</button>
+        </div>
       </div>
     </div>
   </div>
+
+  <style>
+    /* ==== PDF/Word/Excel/PPT/Ảnh converter — giao diện chuyên nghiệp, gọn gàng ==== */
+    .p2w-wrap{ padding:28px 16px 60px; }
+    .p2w-panel{
+      max-width:640px; margin:0 auto; box-sizing:border-box;
+      padding:28px clamp(18px,4vw,34px) 32px;
+    }
+    .p2w-panel *{ box-sizing:border-box; }
+    .p2w-panel h1{ font-size:20px; margin:0 0 6px; }
+
+    .p2w-format-bar{
+      display:flex; align-items:flex-end; gap:10px; margin-bottom:6px; flex-wrap:wrap;
+    }
+    .p2w-format-group{ flex:1 1 180px; min-width:150px; display:flex; flex-direction:column; gap:5px; }
+    .p2w-format-label{ font-size:11.5px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+    .p2w-select{
+      width:100%; font-size:13.5px; padding:9px 10px; border-radius:9px;
+      border:1px solid var(--border); background:var(--surface-2); color:var(--text);
+      appearance:none; cursor:pointer;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23888' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat:no-repeat; background-position:right 10px center; padding-right:30px;
+      transition:border-color .15s;
+    }
+    .p2w-select:focus{ outline:none; border-color:var(--blue); }
+    .p2w-swap-btn{
+      flex:0 0 auto; width:36px; height:36px; margin-bottom:1px; border-radius:50%;
+      border:1px solid var(--border); background:var(--surface-2); color:var(--blue);
+      font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+      transition:transform .2s ease, background .15s;
+    }
+    .p2w-swap-btn:hover{ background:var(--blue); color:#fff; transform:rotate(180deg); }
+
+    .p2w-format-hint{
+      font-size:11.5px; color:var(--muted); min-height:16px; margin:2px 0 16px;
+    }
+    .p2w-format-hint.warn{ color:var(--red,#e0453d); font-weight:600; }
+
+    .p2w-dropzone{
+      display:flex; flex-direction:column; align-items:center; justify-content:center;
+      text-align:center; gap:6px; width:100%;
+      padding:30px 16px; border-radius:14px; cursor:pointer;
+      border:2px dashed var(--border); background:var(--surface-2);
+      transition:border-color .15s, background .15s;
+    }
+    .p2w-dropzone:hover, .p2w-dropzone:focus-visible{ border-color:var(--blue); background:var(--green-light,rgba(0,102,255,.05)); outline:none; }
+    .p2w-dropzone.dragover{ border-color:var(--blue); background:var(--green-light,rgba(0,102,255,.08)); }
+    .p2w-drop-icon{ font-size:34px; line-height:1; }
+    .p2w-drop-text{ font-size:13.5px; }
+    .p2w-drop-text b{ color:var(--blue); }
+    .p2w-drop-hint{ font-size:11.5px; color:var(--muted); }
+
+    .p2w-file-list{ display:flex; flex-direction:column; gap:8px; margin-top:12px; width:100%; }
+    .p2w-file-row{
+      display:flex; align-items:center; gap:10px; padding:9px 12px;
+      border-radius:10px; border:1px solid var(--border); background:var(--surface-2);
+      width:100%;
+    }
+    .p2w-file-icon{ font-size:18px; flex-shrink:0; }
+    .p2w-file-name{ flex:1; font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+    .p2w-file-meta{ font-size:11px; color:var(--muted); flex-shrink:0; }
+    .p2w-file-badge{
+      flex-shrink:0; font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px;
+      background:var(--border); color:var(--muted); white-space:nowrap;
+    }
+    .p2w-file-badge.waiting{ background:var(--border); color:var(--muted); }
+    .p2w-file-badge.working{ background:rgba(0,102,255,.12); color:var(--blue); }
+    .p2w-file-badge.done{ background:rgba(26,158,92,.12); color:var(--green,#1a9e5c); }
+    .p2w-file-badge.error{ background:rgba(224,69,61,.12); color:var(--red,#e0453d); }
+    .p2w-file-dl{
+      flex-shrink:0; font-size:12px; font-weight:700; color:var(--green,#1a9e5c); text-decoration:none;
+      padding:3px 8px; border-radius:7px; border:1px solid var(--green,#1a9e5c);
+    }
+    .p2w-file-dl:hover{ filter:brightness(1.08); }
+    .p2w-remove-btn{
+      flex-shrink:0; border:none; background:none; color:var(--muted); font-size:15px;
+      cursor:pointer; padding:4px 6px; line-height:1; border-radius:6px;
+    }
+    .p2w-remove-btn:hover{ color:var(--red,#e0453d); background:rgba(224,69,61,.1); }
+
+    .p2w-batch-actions{ margin-top:12px; }
+    .p2w-downloadall-btn{
+      width:100%; padding:11px 16px; font-size:13.5px; font-weight:700;
+      border:1px solid var(--green,#1a9e5c); border-radius:10px; background:transparent;
+      color:var(--green,#1a9e5c); cursor:pointer; transition:background .15s, color .15s;
+    }
+    .p2w-downloadall-btn:hover{ background:var(--green,#1a9e5c); color:#fff; }
+
+    .p2w-convert-btn{
+      width:100%; margin-top:16px; padding:12px 16px; font-size:14.5px; font-weight:700;
+      border:none; border-radius:10px; background:var(--blue); color:#fff; cursor:pointer;
+      transition:filter .15s, transform .1s;
+    }
+    .p2w-convert-btn:hover:not(:disabled){ filter:brightness(1.08); }
+    .p2w-convert-btn:active:not(:disabled){ transform:scale(.99); }
+    .p2w-convert-btn:disabled{ opacity:.5; cursor:not-allowed; }
+
+    .p2w-status{ margin-top:14px; font-size:13px; line-height:1.6; word-break:break-word; }
+    .p2w-status.error{ color:var(--red,#e0453d); }
+    .p2w-status.success{ color:var(--green,#1a9e5c); }
+
+    .p2w-download-btn{
+      display:inline-flex; align-items:center; gap:6px; margin-top:8px; padding:10px 18px;
+      border-radius:9px; background:var(--green,#1a9e5c); color:#fff !important; font-weight:700;
+      text-decoration:none; font-size:13.5px;
+    }
+    .p2w-download-btn:hover{ filter:brightness(1.08); }
+
+    .p2w-spinner{
+      display:inline-block; width:13px; height:13px; margin-right:7px; vertical-align:-2px;
+      border:2px solid rgba(0,102,255,.25); border-top-color:var(--blue);
+      border-radius:50%; animation:p2wspin .7s linear infinite;
+    }
+    @keyframes p2wspin{ to{ transform:rotate(360deg); } }
+
+    @media (max-width:480px){
+      .p2w-wrap{ padding:16px 10px 50px; }
+      .p2w-panel{ padding:20px 16px 26px; border-radius:14px; }
+      .p2w-format-bar{ gap:8px; }
+      .p2w-swap-btn{ width:32px; height:32px; align-self:center; margin-bottom:0; }
+      .p2w-dropzone{ padding:24px 12px; }
+    }
+  </style>
 
   <div class="page" id="page-chuyentuyen">
     <!-- Khung nội dung cho tính năng "Phiếu chuyển tuyến".
@@ -775,6 +925,7 @@
 <script defer src="js/spa-router.js"></script>
 
 <script defer src="js/pdf-to-word.js"></script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
 <!-- Phiếu chuyển tuyến: chưa triển khai. Khi làm xong, chỉ cần tạo file js/chuyen-tuyen.js
      và upload vào thư mục js/ — KHÔNG cần sửa lại index.html, dòng dưới đây đã sẵn sàng.
