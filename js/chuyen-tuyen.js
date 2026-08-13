@@ -277,29 +277,87 @@
   /* 4. Đọc & nhận diện file nguồn                                     */
   /* ---------------------------------------------------------------- */
 
-  // Giải mã escape \uNNNN? kiểu RTF -> ký tự thật, và loại control-word.
+  // Bảng mã cp1252 cho vùng 0x80-0x9F (không trùng Latin-1/Unicode trực
+  // tiếp) — cần để giải đúng các escape "\'XX" (dấu ngoặc kép kiểu chữ,
+  // gạch ngang dài...) khi chúng đứng riêng, không kèm theo \uNNNN.
+  var CP1252_80_9F = {
+    0x80: 0x20AC, 0x82: 0x201A, 0x83: 0x0192, 0x84: 0x201E, 0x85: 0x2026,
+    0x86: 0x2020, 0x87: 0x2021, 0x88: 0x02C6, 0x89: 0x2030, 0x8A: 0x0160,
+    0x8B: 0x2039, 0x8C: 0x0152, 0x8E: 0x017D, 0x91: 0x2018, 0x92: 0x2019,
+    0x93: 0x201C, 0x94: 0x201D, 0x95: 0x2022, 0x96: 0x2013, 0x97: 0x2014,
+    0x98: 0x02DC, 0x99: 0x2122, 0x9A: 0x0161, 0x9B: 0x203A, 0x9C: 0x0153,
+    0x9E: 0x017E, 0x9F: 0x0178
+  };
+
+  // Giải mã escape RTF -> ký tự thật, và loại control-word.
   function decodeRtfChunk(s) {
-    s = s.replace(/\\u(-?\d+)\??/g, function (m, code) {
+    // Trường hợp \uNNNN đi kèm ký tự dự phòng ngay sau (dạng "?" đơn giản,
+    // hoặc dạng "\'XX" theo mã cp1252 - thường gặp ở các file RTF xuất chi
+    // tiết từng ký tự một, khác với goc.rtf) -> chỉ lấy ký tự Unicode thật
+    // từ \uNNNN, bỏ hẳn phần dự phòng phía sau.
+    s = s.replace(/\\u(-?\d+)(?:\?|\\'[0-9a-fA-F]{2})?/g, function (m, code) {
       var c = parseInt(code, 10);
       if (c < 0) c += 65536;
       try { return String.fromCharCode(c); } catch (e) { return ""; }
     });
+    // "\'XX" còn sót lại (không đi kèm \u phía trước, vd dấu ngoặc kép,
+    // gạch ngang... trong vùng 0x80-0x9F của cp1252) -> tra bảng, các mã
+    // còn lại (0xA0-0xFF) trùng Latin-1 nên dùng thẳng mã ký tự.
+    s = s.replace(/\\'([0-9a-fA-F]{2})/g, function (m, hex) {
+      var b = parseInt(hex, 16);
+      var code = CP1252_80_9F[b] || b;
+      try { return String.fromCharCode(code); } catch (e) { return ""; }
+    });
     s = s.replace(/\\par[d]?/g, " ");
-    s = s.replace(/\\[a-zA-Z]+-?\d*/g, "");
+    s = s.replace(/\\[a-zA-Z]+-?\d*[ ]?/g, "");
     s = s.replace(/[{}]/g, "");
     return s.replace(/\s+/g, " ").trim();
   }
 
-  // Trích các "shape" định vị tuyệt đối trong RTF (kiểu goc.rtf), gom theo hàng
-  // (cùng khoảng shptop) thành từng dòng văn bản theo đúng thứ tự trình bày gốc.
+  // Trích các "shape" định vị tuyệt đối trong RTF, gom theo hàng (cùng
+  // khoảng shptop) thành từng dòng văn bản theo đúng thứ tự trình bày gốc.
   function rtfToLines(rtfText) {
-    var re = /shpleft(-?\d+)\\shpright(-?\d+)\\shptop(-?\d+)\\shpbottom(-?\d+)[\s\S]*?\\shptxt\{([\s\S]*?)\}\}\}\}/g;
+    // Quan trọng: KHÔNG giả định nội dung nhóm \shptxt luôn kết thúc bằng
+    // đúng 4 dấu "}" liên tiếp — điều đó chỉ đúng với RTF xuất "phẳng"
+    // (như goc.rtf). Nhiều file RTF khác (vd xuất từ Word với định dạng
+    // chi tiết từng ký tự) lồng nhiều cấp ngoặc {} bên trong \shptxt hơn,
+    // khiến cắt hụt nội dung hoặc không khớp được gì cả -> phải ĐẾM NGOẶC
+    // CÂN BẰNG để lấy trọn vẹn nhóm \shptxt bất kể độ sâu lồng nhau.
+    // Quan trọng: \shpleft / \shptop có thể nằm TRƯỚC hoặc SAU \shpinst tuỳ
+    // từng file RTF (goc.rtf: toạ độ nằm TRƯỚC \shpinst; file khác: toạ độ
+    // nằm SAU \shpinst) -> không thể neo theo \shpinst. Thay vào đó: với
+    // mỗi khối "{\shptxt" tìm được, quét NGƯỢC một đoạn hợp lý phía trước
+    // nó để lấy toạ độ shpleft/shptop GẦN NHẤT (thuộc cùng 1 shape).
+    function lastNum(str, propName) {
+      var re = new RegExp(propName + "(-?\\d+)", "g");
+      var m, last = null;
+      while ((m = re.exec(str)) !== null) last = m[1];
+      return last !== null ? parseInt(last, 10) : null;
+    }
+    var WINDOW = 1200;
     var items = [];
-    var m;
-    while ((m = re.exec(rtfText)) !== null) {
-      var left = parseInt(m[1], 10), top = parseInt(m[3], 10);
-      var txt = decodeRtfChunk(m[5]);
+    var searchFrom = 0;
+    while (true) {
+      var startIdx = rtfText.indexOf("{\\shptxt", searchFrom);
+      if (startIdx === -1) break;
+      var back = rtfText.slice(Math.max(0, startIdx - WINDOW), startIdx);
+      var left = lastNum(back, "shpleft");
+      var top = lastNum(back, "shptop");
+      if (left === null || top === null) { searchFrom = startIdx + 8; continue; }
+      var depth = 0, endIdx = -1;
+      for (var i = startIdx; i < rtfText.length; i++) {
+        var c = rtfText.charAt(i);
+        if (c === "{") depth++;
+        else if (c === "}") {
+          depth--;
+          if (depth === 0) { endIdx = i; break; }
+        }
+      }
+      if (endIdx === -1) { searchFrom = startIdx + 8; continue; }
+      var chunk = rtfText.slice(startIdx, endIdx + 1);
+      var txt = decodeRtfChunk(chunk);
       if (txt) items.push({ top: top, left: left, text: txt });
+      searchFrom = endIdx + 1;
     }
     if (!items.length) return [];
     items.sort(function (a, b) { return a.top - b.top || a.left - b.left; });
@@ -353,10 +411,16 @@
     // DÒNG SỐ ĐỨNG RIÊNG LẺ (vd "20030") ở vùng đầu trang, do lệch toạ độ
     // với chữ "Số hồ sơ:" nên không nằm cùng dòng với nhãn nào. Nhận diện
     // bằng cách tìm dòng CHỈ TOÀN CHỮ SỐ (3-8 số) trong vài dòng đầu tiên.
+    // SVV: nằm ở đầu trang (góc phải trên). File nguồn không có nhãn "SVV"
+    // đi kèm — chỉ là một cụm số bị dính vào CUỐI dòng tiêu đề đầu tiên
+    // (do trùng toạ độ hàng với "SỞ Y TẾ...", "Số hồ sơ:"...) hoặc đôi khi
+    // đứng riêng hẳn 1 dòng, tuỳ file. Nhận diện bằng cách tìm CỤM SỐ Ở
+    // CUỐI DÒNG (3-8 chữ số) trong vài dòng đầu tiên của phiếu.
     d.svv = "";
     for (var _i = 0; _i < Math.min(lines.length, 8); _i++) {
       var _ln = (lines[_i] || "").trim();
-      if (/^\d{3,8}$/.test(_ln)) { d.svv = _ln; break; }
+      var _mSvv = _ln.match(/(?:^|\s)(\d{3,8})\s*$/);
+      if (_mSvv) { d.svv = _mSvv[1]; break; }
     }
 
     // "Vào sổ chuyển CSKCB số:" trong file nguồn hay bị dính chung dòng với
@@ -406,16 +470,31 @@
     d.dieuTri1 = dtLines[0] ? dtLines[0].replace(/^\+\s*/, "").trim() : "";
     d.dieuTri2 = dtLines[1] ? dtLines[1].replace(/^\+\s*/, "").trim() : "";
 
-    d.tomTatLamSang = grab(text, /Tóm tắt dấu hiệu lâm sàng\s*:\s*([^\n]+)/i);
-    d.tomTatCLS = grab(text, /Tóm tắt kết quả xét nghiệm[^:]*:\s*([^\n]+)/i);
-    d.chanDoan = grab(text, /Chẩn đoán\s*:\s*([^\n]+)/i);
+    // Viết hoa chữ cái đầu câu — chỉ áp dụng cho các trường trong mục
+    // "TÓM TẮT BỆNH ÁN" khi thực sự CÓ dữ liệu điền vào (theo yêu cầu:
+    // "chỗ nào điền vào thì viết hoa đầu câu"; chỗ để trống thì giữ trống,
+    // không viết hoa chữ gì cả).
+    function capFirst(s) {
+      s = (s || "").trim();
+      if (!s) return "";
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+
+    d.tomTatLamSang = capFirst(grab(text, /Tóm tắt dấu hiệu lâm sàng\s*:\s*([^\n]+)/i));
+    // Tóm tắt CLS: CHỈ lấy kết quả cận lâm sàng thật sự có trong file gốc
+    // (siêu âm, CTM, XN...); KHÔNG được lấy nhầm nội dung của dòng "Chẩn
+    // đoán" phía dưới — 2 trường này luôn nằm ở 2 DÒNG RIÊNG biệt sau khi
+    // rtfToLines() tách dòng, nên regex chỉ dò trong đúng dòng của nó
+    // (dừng lại ở \n) là đủ an toàn, không vô tình nuốt cả dòng chẩn đoán.
+    d.tomTatCLS = capFirst(grab(text, /Tóm tắt kết quả xét nghiệm[^:]*:\s*([^\n]+)/i));
+    d.chanDoan = capFirst(grab(text, /Chẩn đoán\s*:\s*([^\n]+)/i));
     // Lưu ý: dùng [ \t]* (KHÔNG phải \s*) ngay sau dấu ":" — vì \s* khớp cả
     // ký tự xuống dòng, nên nếu trường này để trống trong file gốc (dấu ":"
     // là cuối dòng, không có gì phía sau), \s* sẽ "tràn" qua dòng kế tiếp và
     // bắt nhầm nội dung của trường hoàn toàn khác (vd trường tiếp theo trong
     // phiếu) làm giá trị của trường này. Cùng lỗi áp dụng cho "nguoiHoTong".
-    d.phuongPhapThuThuat = grab(text, /Phương pháp, thủ thuật đã thực hiện[^:]*:[ \t]*([^\n]+)/i);
-    d.kyThuatThuoc = grab(text, /(?:Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:?\s*([^\n]+)/i);
+    d.phuongPhapThuThuat = capFirst(grab(text, /Phương pháp, thủ thuật đã thực hiện[^:]*:[ \t]*([^\n]+)/i));
+    d.kyThuatThuoc = capFirst(grab(text, /(?:Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:?\s*([^\n]+)/i));
     d.tinhTrang = grab(text, /Tình trạng người bệnh lúc chuyển[^:]*:\s*([^\n]+)/i);
 
     // Quan trọng: KHÔNG được dò chữ "X" trên toàn văn bản (text) vì ô "X" luôn
