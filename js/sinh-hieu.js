@@ -73,8 +73,13 @@
       logUsage('sinhhieu_generate');
       const page = el('page-sinhhieu');
       page.classList.add('sh-printing');
-      window.print();
-      setTimeout(() => page.classList.remove('sh-printing'), 300);
+      // Ép trình duyệt reflow ngay để đảm bảo style mới (visibility/position) được áp dụng
+      // trước khi mở hộp thoại in — tránh race condition gây ra trang trắng khi in.
+      void page.offsetHeight;
+      setTimeout(() => {
+        window.print();
+        setTimeout(() => page.classList.remove('sh-printing'), 300);
+      }, 50);
     }
 
     el('shStartInput').addEventListener('change', updateEndFromSheets);
