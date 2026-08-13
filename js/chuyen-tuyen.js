@@ -103,7 +103,7 @@
     "#ctContentLayer .l-section{font-weight:bold;text-align:center;}",
     /* Đã điền -> chỉ hiện chữ, KHÔNG gạch chân / không chấm để đỡ rối mắt.
        Chưa điền -> hiện các dấu chấm (dots) làm chỗ trống để viết tay, không viền. */
-    "#ctContentLayer .fill{padding:0 1px;font-weight:600;white-space:pre-wrap;word-break:break-word;}",
+    "#ctContentLayer .fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     "#ctContentLayer .fill.empty{font-weight:400;color:#000;}",
     "#ctContentLayer .chk{display:inline-block;width:9px;height:9px;border:1px solid #000;text-align:center;line-height:8px;font-size:8px;margin:0 3px;vertical-align:1px;flex:none;}",
     "#ctContentLayer .chkbig{display:inline-block;width:13px;height:13px;border:1.3px solid #000;text-align:center;line-height:11px;font-size:11px;font-weight:bold;margin:0 4px 0 0;vertical-align:-2px;flex:none;}",
@@ -734,29 +734,29 @@
     html += line(44, 568, 9.5, {}, function () {
       return "- Họ và tên người bệnh: " + fillOr(d.hoTen, 34) + "&nbsp;&nbsp;Giới tính: " + fillOr(d.gioiTinh, 8) + "&nbsp;&nbsp;Năm sinh: " + fillOr(d.namSinh, 8);
     });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Địa chỉ: " + fillEnd(d.diaChi); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Địa chỉ: </span>" + fillEnd(d.diaChi); });
     html += line(44, 568, 9.5, {}, function () { return "- Dân tộc: " + fillOr(d.danToc, 30) + "&nbsp;&nbsp;Quốc tịch: " + fillOr(d.quocTich, 30); });
     html += line(44, 568, 9.5, {}, function () { return "- Nghề nghiệp: " + fillOr(d.ngheNghiep, 26) + "&nbsp;&nbsp;Nơi làm việc: " + fillOr(d.noiLamViec, 26); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Số thẻ bảo hiểm y tế: " + fillEnd(d.soThe); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: " + fillEnd(d.hanThe); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Số thẻ bảo hiểm y tế: </span>" + fillEnd(d.soThe); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Thời hạn sử dụng của thẻ bảo hiểm y tế đến ngày: </span>" + fillEnd(d.hanThe); });
     html += line(54, 500, 9.5, { gap: 8 }, function () { return "Hết thời hạn: " + box(false) + "&nbsp;&nbsp;&nbsp;Không xác định được thời hạn: " + box(false); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Đã được khám bệnh, điều trị:"; });
-    html += line(44, 568, 9.5, { flex: true, gap: 6 }, function () { return "&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri1); });
-    html += line(44, 568, 9.5, { gap: 8, flex: true }, function () { return d.dieuTri2 ? ("&nbsp;&nbsp;+ Tại: " + fillEnd(d.dieuTri2)) : "&nbsp;&nbsp;+ Tại:&nbsp;<span class=\"fill-line\"></span>"; });
+    html += line(44, 568, 9.5, { flex: true, gap: 6 }, function () { return "<span style=\"white-space:nowrap;flex:none;\">&nbsp;&nbsp;+ Tại:&nbsp;</span>" + fillEnd(d.dieuTri1); });
+    html += line(44, 568, 9.5, { gap: 8, flex: true }, function () { return d.dieuTri2 ? ("<span style=\"white-space:nowrap;flex:none;\">&nbsp;&nbsp;+ Tại:&nbsp;</span>" + fillEnd(d.dieuTri2)) : "<span style=\"white-space:nowrap;flex:none;\">&nbsp;&nbsp;+ Tại:&nbsp;</span><span class=\"fill-line\"></span>"; });
 
     html += line(44, 300, 10.5, { bold: true, gap: 6 }, function () { return "TÓM TẮT BỆNH ÁN"; });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Tóm tắt dấu hiệu lâm sàng: " + fillEnd(d.tomTatLamSang); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Tóm tắt dấu hiệu lâm sàng: </span>" + fillEnd(d.tomTatLamSang); });
     html += line(44, 568, 9.5, { flex: true }, function () {
-      return "- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: " + fillEnd(d.tomTatCLS);
+      return "<span style=\"white-space:nowrap;flex:none;\">- Tóm tắt kết quả xét nghiệm, cận lâm sàng chính có giá trị chẩn đoán, theo dõi điều trị: </span>" + fillEnd(d.tomTatCLS);
     });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Chẩn đoán: " + fillEnd(d.chanDoan) + "&nbsp;(ICD-10)"; });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Chẩn đoán: </span>" + fillEnd(d.chanDoan) + "&nbsp;(ICD-10)"; });
 
     html += line(44, 400, 9.5, {}, function () { return "- Phương pháp, thủ thuật đã thực hiện (nếu có):"; });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "+ " + fillEnd(d.phuongPhapThuThuat); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">+ </span>" + fillEnd(d.phuongPhapThuThuat); });
 
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Kỹ thuật, thuốc điều trị chính đã sử dụng: " + fillEnd(d.kyThuatThuoc); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Tình trạng người bệnh lúc chuyển cơ sở KCB: " + fillEnd(capFirst(d.tinhTrang)); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Kỹ thuật, thuốc điều trị chính đã sử dụng: </span>" + fillEnd(d.kyThuatThuoc); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Tình trạng người bệnh lúc chuyển cơ sở KCB: </span>" + fillEnd(capFirst(d.tinhTrang)); });
 
     html += line(44, 400, 9.5, {}, function () { return "- Lí do chuyển cơ sở khám bệnh, chữa bệnh:"; });
     html += line(44, 400, 9.5, {}, function () { return circ("1", is1a || is1b) + ". Đủ điều kiện chuyển cơ sở khám bệnh, chữa bệnh:"; });
@@ -764,11 +764,11 @@
     html += line(66, 568, 9.5, {}, function () { return box(is1b, true) + "Không phù hợp với khả năng đáp ứng của cơ sở khám bệnh, chữa bệnh"; });
     html += line(44, 568, 9.5, {}, function () { return "&nbsp;" + circ("2", is2) + ". Theo yêu cầu của người bệnh hoặc người đại diện hợp pháp của người bệnh."; });
 
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Hướng điều trị: " + fillEnd(capFirst(d.huongDieuTri)); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Chuyển cơ sở khám bệnh, chữa bệnh hồi: " + fillEnd(d.chuyenHoi); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Trường hợp chuyển có giá trị trong 01 năm: " + fillEnd(d.coGiaTri1Nam); });
-    html += line(44, 568, 9.5, { flex: true }, function () { return "- Phương tiện vận chuyển: " + fillEnd(capFirst(d.phuongTien)); });
-    html += line(44, 568, 9.5, { gap: 30, flex: true }, function () { return "- Họ tên, chức danh người hộ tống (nếu có): " + fillEnd(d.nguoiHoTong); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Hướng điều trị: </span>" + fillEnd(capFirst(d.huongDieuTri)); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Chuyển cơ sở khám bệnh, chữa bệnh hồi: </span>" + fillEnd(d.chuyenHoi); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Trường hợp chuyển có giá trị trong 01 năm: </span>" + fillEnd(d.coGiaTri1Nam); });
+    html += line(44, 568, 9.5, { flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Phương tiện vận chuyển: </span>" + fillEnd(capFirst(d.phuongTien)); });
+    html += line(44, 568, 9.5, { gap: 30, flex: true }, function () { return "<span style=\"white-space:nowrap;flex:none;\">- Họ tên, chức danh người hộ tống (nếu có): </span>" + fillEnd(d.nguoiHoTong); });
 
     // Khoảng trống lớn bên trên để chừa chỗ cho khối "Ngày.../ĐẠI DIỆN CSKCB/
     // Ký tên, đóng dấu" và khối "Ghi chú" (kéo-thả tự do, đặt đè lên khoảng
