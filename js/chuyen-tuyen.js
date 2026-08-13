@@ -228,7 +228,7 @@
     ["phuongPhapThuThuat", "Phương pháp, thủ thuật đã thực hiện", "textarea"],
     ["kyThuatThuoc", "Kỹ thuật, thuốc điều trị chính đã dùng", "textarea"],
     ["tinhTrang", "Tình trạng người bệnh lúc chuyển", "text"],
-    ["lyDo", "Lý do chuyển (a / b / 2)", "select:1a - a) Phù hợp quy định chuyển cấp CMKT,1b - b) Không phù hợp khả năng đáp ứng,2 - 2. Theo yêu cầu người bệnh"],
+    ["lyDo", "Lý do chuyển (a / b / 2)", "select:1.1. Phù hợp quy định chuyển cấp CMKT,1.2. Không phù hợp khả năng đáp ứng,2. Theo yêu cầu người bệnh"],
     ["huongDieuTri", "Hướng điều trị", "text"],
     ["chuyenHoi", "Chuyển cơ sở KCB hồi (giờ, ngày tháng năm)", "text"],
     ["coGiaTri1Nam", "Có giá trị trong 01 năm", "select:Có,Không"],
