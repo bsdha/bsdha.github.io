@@ -79,7 +79,7 @@
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
-    <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Tính số bút Insulin</a>
+    <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Insulin &amp; Đường huyết</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
@@ -129,8 +129,8 @@
 
         <a href="/insulin" class="hcard" data-page="insulin" data-path="/insulin">
           <div class="ic">💉</div>
-          <h2>Tính số bút Insulin</h2>
-          <p>Tính tổng liều Insulin/ngày từ 3 mũi Sáng - Trưa - Chiều, tự quy đổi ra số bút cần cấp mỗi tháng.</p>
+          <h2>Insulin &amp; Đường huyết</h2>
+          <p>Tính số bút Insulin cần cấp theo liều Sáng - Trưa - Chiều, và đổi đơn vị đường huyết mg/dL ⇄ mmol/L kèm cảnh báo phân loại.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -297,7 +297,16 @@
         gap:20px;
         max-width:980px;
         margin:0 auto;
-        align-items:start;
+        align-items:stretch;
+      }
+      .ins-split > .wrap{
+        display:flex;
+        height:100%;
+      }
+      .ins-split > .wrap > .panel{
+        display:flex;
+        flex-direction:column;
+        width:100%;
       }
       @media (max-width:820px){ .ins-split{grid-template-columns:1fr;} }
 
