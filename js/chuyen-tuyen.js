@@ -228,7 +228,7 @@
     ["phuongPhapThuThuat", "Phương pháp, thủ thuật đã thực hiện", "textarea"],
     ["kyThuatThuoc", "Kỹ thuật, thuốc điều trị chính đã dùng", "textarea"],
     ["tinhTrang", "Tình trạng người bệnh lúc chuyển", "text"],
-    ["lyDo", "Lý do chuyển (a / b / 2)", "select:1.1. Phù hợp quy định chuyển cấp CMKT,1.2. Không phù hợp khả năng đáp ứng,2. Theo yêu cầu người bệnh"],
+    ["lyDo", "Lý do chuyển (a / b / 2)", "select:1a - 1.1. Phù hợp quy định chuyển cấp CMKT,1b - 1.2. Không phù hợp khả năng đáp ứng,2 - 2. Theo yêu cầu người bệnh"],
     ["huongDieuTri", "Hướng điều trị", "text"],
     ["chuyenHoi", "Chuyển cơ sở KCB hồi (giờ, ngày tháng năm)", "text"],
     ["coGiaTri1Nam", "Có giá trị trong 01 năm", "select:Có,Không"],
@@ -577,8 +577,8 @@
     // thật trên phiếu gốc -> phải dò theo từng dòng (lineA / lineB) như dưới.
     var lineA = lines.filter(function (l) { return /Phù hợp với quy định chuyển cấp/i.test(l); })[0] || "";
     var lineB = lines.filter(function (l) { return /Không phù hợp với khả năng/i.test(l); })[0] || "";
-    if (/\bX\b/.test(lineA)) d.lyDo = "1a - a) Phù hợp quy định chuyển cấp CMKT";
-    else if (/\bX\b/.test(lineB)) d.lyDo = "1b - b) Không phù hợp khả năng đáp ứng";
+    if (/\bX\b/.test(lineA)) d.lyDo = "1a - 1.1. Phù hợp quy định chuyển cấp CMKT";
+    else if (/\bX\b/.test(lineB)) d.lyDo = "1b - 1.2. Không phù hợp khả năng đáp ứng";
     d.huongDieuTri = grab(text, /Hướng điều trị\s*:\s*([^\n]+)/i);
     d.chuyenHoi = grab(text, /Chuyển cơ sở khám bệnh, chữa bệnh hồi\s*:\s*([^\n]+)/i);
     var cgt = grab(text, /giá trị trong 01 năm\s*:\s*\(?([^)\n]+)/i);
