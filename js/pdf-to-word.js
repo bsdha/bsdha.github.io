@@ -44,7 +44,10 @@
     return false;
   }
 
-  function outExt(to) {
+  function outExt(to, contentType) {
+    // Nếu server trả về .zip (VD: PDF nhiều trang -> nhiều ảnh, đóng gói thành zip)
+    // thì luôn ưu tiên đuôi .zip bất kể "to" là gì, để tên file khớp với nội dung thật.
+    if (contentType && contentType.indexOf('zip') !== -1) return '.zip';
     if (to === 'docx') return '.docx';
     if (to === 'xlsx') return '.xlsx';
     if (to === 'pptx') return '.pptx';
@@ -239,8 +242,9 @@
         throw new Error(msg);
       }
       const blob = await resp.blob();
+      const contentType = resp.headers.get('content-type') || blob.type || '';
       const baseName = it.file.name.replace(/\.[^.]+$/i, '');
-      it.outName = baseName + outExt(to);
+      it.outName = baseName + outExt(to, contentType);
       it.blob = blob;
       it.blobUrl = URL.createObjectURL(blob);
       it.status = 'done';
