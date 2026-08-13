@@ -577,8 +577,8 @@
     // thật trên phiếu gốc -> phải dò theo từng dòng (lineA / lineB) như dưới.
     var lineA = lines.filter(function (l) { return /Phù hợp với quy định chuyển cấp/i.test(l); })[0] || "";
     var lineB = lines.filter(function (l) { return /Không phù hợp với khả năng/i.test(l); })[0] || "";
-    if (/\bX\b/.test(lineA)) d.lyDo = "1a - Phù hợp quy định chuyển cấp CMKT";
-    else if (/\bX\b/.test(lineB)) d.lyDo = "1b - Không phù hợp khả năng đáp ứng";
+    if (/\bX\b/.test(lineA)) d.lyDo = "1a - a) Phù hợp quy định chuyển cấp CMKT";
+    else if (/\bX\b/.test(lineB)) d.lyDo = "1b - b) Không phù hợp khả năng đáp ứng";
     d.huongDieuTri = grab(text, /Hướng điều trị\s*:\s*([^\n]+)/i);
     d.chuyenHoi = grab(text, /Chuyển cơ sở khám bệnh, chữa bệnh hồi\s*:\s*([^\n]+)/i);
     var cgt = grab(text, /giá trị trong 01 năm\s*:\s*\(?([^)\n]+)/i);
