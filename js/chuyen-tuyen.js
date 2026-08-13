@@ -539,6 +539,20 @@
     // file nguồn) -> nếu dò cả câu sẽ bắt nhầm dòng mẫu trống lên trước,
     // đẩy dòng có dữ liệu thật xuống sau (sai thứ tự). Phải dò theo từng
     // dòng đã tách sẵn (lines) và chỉ nhận dòng THỰC SỰ BẮT ĐẦU bằng "+ Tại:".
+    // Chuẩn hoá cách viết hoa/thường cho dòng "+ Tại: ..." (tên cơ sở KCB
+    // thường được nhận diện từ file nguồn ở dạng VIẾT HOA TOÀN BỘ) và bỏ
+    // khoảng trắng thừa ngay sau "(" / trước ")".
+    // Ví dụ: "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2 ( Cấp Cơ bản )"
+    //     -> "Bệnh viện Đa khoa Bình Dương - Cơ sở 2 (Cấp cơ bản)"
+    function fixCoSoCase(s) {
+      if (!s) return s;
+      return s
+        .replace(/BỆNH\s+VIỆN\s+ĐA\s+KHOA\s+BÌNH\s+DƯƠNG/gi, "Bệnh viện Đa khoa Bình Dương")
+        .replace(/CƠ\s+SỞ\s*(\d+)/gi, "Cơ sở $1")
+        .replace(/CẤP\s+CƠ\s+BẢN/gi, "Cấp cơ bản")
+        .replace(/\(\s+/g, "(")
+        .replace(/\s+\)/g, ")");
+    }
     var dtLines = lines.filter(function (l) { return /^\+\s*Tại\s*:/i.test((l || "").trim()); });
     // Loại bỏ nhãn "Tại:" đầu dòng, rồi loại bỏ TIẾP mọi cụm "Tại:" còn sót
     // lại ở GIỮA nội dung (không phải do dữ liệu thật, mà do lỗi gộp dòng
@@ -552,8 +566,8 @@
         .replace(/\s{2,}/g, " ")
         .trim();
     }
-    d.dieuTri1 = dtLines[0] ? stripStrayTai(dtLines[0]) : "";
-    d.dieuTri2 = dtLines[1] ? stripStrayTai(dtLines[1]) : "";
+    d.dieuTri1 = dtLines[0] ? fixCoSoCase(stripStrayTai(dtLines[0])) : "";
+    d.dieuTri2 = dtLines[1] ? fixCoSoCase(stripStrayTai(dtLines[1])) : "";
 
     // Viết hoa chữ cái đầu câu — chỉ áp dụng cho các trường trong mục
     // "TÓM TẮT BỆNH ÁN" khi thực sự CÓ dữ liệu điền vào (theo yêu cầu:
