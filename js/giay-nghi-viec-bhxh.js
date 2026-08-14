@@ -88,14 +88,13 @@
     ".nv-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}",
     ".nv-switch input:checked+.nv-slider{background:#16a34a;}",
     ".nv-switch input:checked+.nv-slider:before{transform:translateX(16px);}",
-    ".nv-btn.config{background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35);}",
-    ".nv-btn.config:hover{box-shadow:0 3px 10px rgba(99,102,241,.45);}",
-    ".nv-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center;}",
-    ".nv-modal-overlay.open{display:flex;}",
-    ".nv-modal{background:#fff;border-radius:12px;padding:20px;width:min(420px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.3);}",
-    ".nv-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}",
-    ".nv-modal-head h3{margin:0;}",
-    ".nv-modal-close{border:none;background:var(--surface-2,#eee);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;}",
+    ".nv-btn.config{background:linear-gradient(135deg,#64748b,#475569);color:#fff;box-shadow:0 2px 8px rgba(71,85,105,.35);}",
+    ".nv-btn.config:hover{box-shadow:0 3px 10px rgba(71,85,105,.45);}",
+    ".nv-panel-view.hidden{display:none;}",
+    ".nv-config-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}",
+    ".nv-config-head h3{margin:0;padding-top:0;border-top:none;}",
+    ".nv-close-btn{border:none;background:var(--surface-2,#eee);color:var(--text,#222);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12.5px;font-weight:500;white-space:nowrap;}",
+    ".nv-close-btn:hover{background:var(--border,#ddd);}",
     /* -------- vùng xem trước / bản in -------- */
     ".nv-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".nv-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
@@ -143,49 +142,54 @@
       '<div class="nv-grid">' +
 
         '<div class="nv-panel">' +
-          '<h3>① Tải file gốc</h3>' +
-          '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b>, <b>.docx</b> hoặc <b>.rtf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
-          '<input type="file" id="nvFileInput" accept=".pdf,.rtf,.docx" hidden>' +
-          '<div class="nv-filerow" id="nvFileRow" style="display:none;"><span id="nvFileName"></span><button id="nvFileRemove" title="Bỏ chọn">✕</button></div>' +
-          '<div class="nv-status" id="nvStatus"></div>' +
 
-          '<h3>② Thông tin đã nhận diện <span style="font-weight:400;color:var(--muted,#888);">(sửa nếu cần)</span></h3>' +
-          '<div id="nvFields"></div>' +
+          '<div class="nv-panel-view" id="nvViewMain">' +
+            '<h3>① Tải file gốc</h3>' +
+            '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b>, <b>.docx</b> hoặc <b>.rtf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
+            '<input type="file" id="nvFileInput" accept=".pdf,.rtf,.docx" hidden>' +
+            '<div class="nv-filerow" id="nvFileRow" style="display:none;"><span id="nvFileName"></span><button id="nvFileRemove" title="Bỏ chọn">✕</button></div>' +
+            '<div class="nv-status" id="nvStatus"></div>' +
 
-          '<h3>③ Tinh chỉnh khi in</h3>' +
-          '<div class="nv-field"><label>Cỡ nội dung (%)</label>' +
-            '<input type="range" id="nvScale" min="80" max="115" value="100"></div>' +
-          '<div class="nv-field"><label>Đẩy nội dung lên / xuống (mm)</label>' +
-            '<input type="range" id="nvShiftY" min="-15" max="15" value="0"></div>' +
-          '<div class="nv-field"><label>↕️ Giãn / co khoảng cách dòng (%)</label>' +
-            '<input type="range" id="nvLineSpread" min="70" max="180" value="100"></div>' +
+            '<h3>② Xuất file</h3>' +
+            '<button class="nv-btn" id="nvPrintBtn">🖨️ In / Tải PDF</button>' +
 
-          '<h3>④ Bù trừ lệch máy in</h3>' +
-          '<div class="nv-hint">Nếu bản in bị lệch đều theo 1 hướng so với xem trước, chỉnh 2 số dưới rồi in lại — hệ thống sẽ nhớ cho lần sau.</div>' +
-          '<div class="nv-row2">' +
-            '<div class="nv-field"><label>Lệch ngang (mm)</label><input type="number" id="nvCalX" value="0" step="0.5"></div>' +
-            '<div class="nv-field"><label>Lệch dọc (mm)</label><input type="number" id="nvCalY" value="0" step="0.5"></div>' +
+            '<h3>③ Tinh chỉnh khi in</h3>' +
+            '<div class="nv-field"><label>Cỡ nội dung (%)</label>' +
+              '<input type="range" id="nvScale" min="80" max="115" value="100"></div>' +
+            '<div class="nv-field"><label>Đẩy nội dung lên / xuống (mm)</label>' +
+              '<input type="range" id="nvShiftY" min="-15" max="15" value="0"></div>' +
+            '<div class="nv-field"><label>↕️ Giãn / co khoảng cách dòng (%)</label>' +
+              '<input type="range" id="nvLineSpread" min="70" max="180" value="100"></div>' +
+
+            '<h3>④ Bù trừ lệch máy in</h3>' +
+            '<div class="nv-hint">Nếu bản in bị lệch đều theo 1 hướng so với xem trước, chỉnh 2 số dưới rồi in lại — hệ thống sẽ nhớ cho lần sau.</div>' +
+            '<div class="nv-row2">' +
+              '<div class="nv-field"><label>Lệch ngang (mm)</label><input type="number" id="nvCalX" value="0" step="0.5"></div>' +
+              '<div class="nv-field"><label>Lệch dọc (mm)</label><input type="number" id="nvCalY" value="0" step="0.5"></div>' +
+            '</div>' +
+
+            '<button class="nv-btn config" id="nvConfigBtn" style="margin-top:14px;">⚙️ Cấu hình</button>' +
           '</div>' +
 
-          '<h3>⑤ Xuất file</h3>' +
-          '<button class="nv-btn config" id="nvConfigBtn">⚙️ Cấu hình</button>' +
-          '<button class="nv-btn" id="nvPrintBtn">🖨️ Tải / In PDF</button>' +
+          '<div class="nv-panel-view hidden" id="nvViewConfig">' +
+            '<div class="nv-config-head"><h3>⚙️ Cấu hình</h3><button class="nv-close-btn" id="nvConfigClose">✕ Đóng</button></div>' +
+
+            '<h3>Thông tin đã nhận diện <span style="font-weight:400;color:var(--muted,#888);">(sửa nếu cần)</span></h3>' +
+            '<div id="nvFields"></div>' +
+
+            '<h3>Bố cục</h3>' +
+            '<div class="nv-switchrow">' +
+              '<label class="nv-switch"><input type="checkbox" id="nvEditModeToggle"><span class="nv-slider"></span></label>' +
+              '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
+            '</div>' +
+            '<div class="nv-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối chữ ký khi chỉ muốn nhập liệu. Kéo khối chữ ký tới đúng vị trí con dấu đã đóng sẵn trên tờ giấy nếu cần.</div>' +
+            '<button class="nv-btn save" id="nvSaveBtn">💾 Lưu tinh chỉnh</button>' +
+            '<button class="nv-btn small secondary" id="nvResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
+          '</div>' +
+
         '</div>' +
 
         '<div class="nv-stage"><div class="nv-sheet-outer"><div id="nvSheet"></div></div></div>' +
-      '</div>' +
-
-      '<div class="nv-modal-overlay" id="nvConfigOverlay">' +
-        '<div class="nv-modal">' +
-          '<div class="nv-modal-head"><h3>⚙️ Cấu hình</h3><button class="nv-modal-close" id="nvConfigClose">✕</button></div>' +
-          '<div class="nv-switchrow">' +
-            '<label class="nv-switch"><input type="checkbox" id="nvEditModeToggle"><span class="nv-slider"></span></label>' +
-            '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
-          '</div>' +
-          '<div class="nv-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối chữ ký khi chỉ muốn nhập liệu. Kéo khối chữ ký tới đúng vị trí con dấu đã đóng sẵn trên tờ giấy nếu cần.</div>' +
-          '<button class="nv-btn save" id="nvSaveBtn">💾 Lưu tinh chỉnh</button>' +
-          '<button class="nv-btn small secondary" id="nvResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
-        '</div>' +
       '</div>' +
     '</div>';
 
@@ -749,13 +753,12 @@
     });
     document.getElementById("nvConfigBtn").addEventListener("click", function () {
       syncFieldsUIFromSettings();
-      document.getElementById("nvConfigOverlay").classList.add("open");
+      document.getElementById("nvViewMain").classList.add("hidden");
+      document.getElementById("nvViewConfig").classList.remove("hidden");
     });
     document.getElementById("nvConfigClose").addEventListener("click", function () {
-      document.getElementById("nvConfigOverlay").classList.remove("open");
-    });
-    document.getElementById("nvConfigOverlay").addEventListener("click", function (e) {
-      if (e.target.id === "nvConfigOverlay") e.currentTarget.classList.remove("open");
+      document.getElementById("nvViewConfig").classList.add("hidden");
+      document.getElementById("nvViewMain").classList.remove("hidden");
     });
     document.getElementById("nvEditModeToggle").addEventListener("change", function (e) {
       settings.editMode = e.target.checked; applyTransformSettings();

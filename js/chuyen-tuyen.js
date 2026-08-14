@@ -73,8 +73,8 @@
     ".ct-btn.small{width:auto;padding:6px 10px;font-size:12px;}",
     ".ct-btn.save{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;box-shadow:0 2px 8px rgba(22,163,74,.35);}",
     ".ct-btn.save:hover{box-shadow:0 3px 10px rgba(22,163,74,.45);}",
-    ".ct-btn.config{background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35);}",
-    ".ct-btn.config:hover{box-shadow:0 3px 10px rgba(99,102,241,.45);}",
+    ".ct-btn.config{background:linear-gradient(135deg,#64748b,#475569);color:#fff;box-shadow:0 2px 8px rgba(71,85,105,.35);}",
+    ".ct-btn.config:hover{box-shadow:0 3px 10px rgba(71,85,105,.45);}",
     ".ct-switchrow{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:13px;}",
     ".ct-switch{position:relative;display:inline-block;width:38px;height:22px;flex:none;}",
     ".ct-switch input{opacity:0;width:0;height:0;}",
@@ -82,12 +82,11 @@
     ".ct-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}",
     ".ct-switch input:checked+.ct-slider{background:#16a34a;}",
     ".ct-switch input:checked+.ct-slider:before{transform:translateX(16px);}",
-    ".ct-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center;}",
-    ".ct-modal-overlay.open{display:flex;}",
-    ".ct-modal{background:#fff;border-radius:12px;padding:20px;width:min(420px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.3);}",
-    ".ct-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}",
-    ".ct-modal-head h3{margin:0;}",
-    ".ct-modal-close{border:none;background:var(--surface-2,#eee);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;}",
+    ".ct-panel-view.hidden{display:none;}",
+    ".ct-config-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}",
+    ".ct-config-head h3{margin:0;padding-top:0;border-top:none;}",
+    ".ct-close-btn{border:none;background:var(--surface-2,#eee);color:var(--text,#222);border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12.5px;font-weight:500;white-space:nowrap;}",
+    ".ct-close-btn:hover{background:var(--border,#ddd);}",
     ".ct-btn.save.saved{background:linear-gradient(135deg,#16a34a,#15803d);animation:ctSavedPop .45s ease;}",
     "@keyframes ctSavedPop{0%{transform:scale(1);}35%{transform:scale(.94);box-shadow:0 0 0 0 rgba(34,197,94,.5);}70%{transform:scale(1.03);box-shadow:0 0 0 8px rgba(34,197,94,0);}100%{transform:scale(1);}}",
     ".ct-tools{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}",
@@ -139,7 +138,6 @@
     "  html.ct-printing .ct-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  html.ct-printing #ctSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
     "  html.ct-printing .ct-stampguide,html.ct-printing .ct-resize,html.ct-printing .ct-eye{display:none !important;}",
-    "  html.ct-printing .ct-modal-overlay{display:none !important;}",
     "  html.ct-printing .ct-hidden-print{display:none !important;}",
     "  html.ct-printing .ct-block{cursor:default !important;}",
     "}"
@@ -156,52 +154,57 @@
       '<div class="ct-grid">' +
 
         '<div class="ct-panel">' +
-          '<h3>① Tải file phiếu gốc</h3>' +
-          '<div class="ct-drop" id="ctDrop">📄 Bấm để chọn file <b>.rtf</b> hoặc <b>.docx</b><br><span class="ct-hint">(vd: goc.rtf, hoặc file word xuất từ phần mềm HIS)</span></div>' +
-          '<input type="file" id="ctFileInput" accept=".rtf,.docx" hidden>' +
-          '<div class="ct-filerow" id="ctFileRow" style="display:none;"><span id="ctFileName"></span><button id="ctFileRemove" title="Bỏ chọn">✕</button></div>' +
-          '<div class="ct-status" id="ctStatus"></div>' +
 
-          '<h3>② Thông tin đã nhận diện <span style="font-weight:400;color:var(--muted,#888);">(sửa nếu cần)</span></h3>' +
-          '<div id="ctFields"></div>' +
+          '<div class="ct-panel-view" id="ctViewMain">' +
+            '<h3>① Tải file phiếu gốc</h3>' +
+            '<div class="ct-drop" id="ctDrop">📄 Bấm để chọn file <b>.rtf</b> hoặc <b>.docx</b><br><span class="ct-hint">(vd: goc.rtf, hoặc file word xuất từ phần mềm HIS)</span></div>' +
+            '<input type="file" id="ctFileInput" accept=".rtf,.docx" hidden>' +
+            '<div class="ct-filerow" id="ctFileRow" style="display:none;"><span id="ctFileName"></span><button id="ctFileRemove" title="Bỏ chọn">✕</button></div>' +
+            '<div class="ct-status" id="ctStatus"></div>' +
 
-          '<h3>③ Tinh chỉnh khi in</h3>' +
-          '<div class="ct-field"><label>Cỡ khối nội dung chính (%)</label>' +
-            '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
-          '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
-            '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
-          '<div class="ct-field"><label>↕️ Cho phép kéo dãn dòng (%)</label>' +
-            '<input type="range" id="ctLineSpread" min="70" max="180" value="100"></div>' +
-          '<div class="ct-tools">' +
-            '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
+            '<h3>② Xuất file</h3>' +
+            '<button class="ct-btn" id="ctPrintBtn">🖨️ In / Tải PDF</button>' +
+
+            '<h3>③ Tinh chỉnh khi in</h3>' +
+            '<div class="ct-field"><label>Cỡ khối nội dung chính (%)</label>' +
+              '<input type="range" id="ctScale" min="80" max="115" value="100"></div>' +
+            '<div class="ct-field"><label>Đẩy khối nội dung lên / xuống (mm)</label>' +
+              '<input type="range" id="ctShiftY" min="-30" max="30" value="0"></div>' +
+            '<div class="ct-field"><label>↕️ Cho phép kéo dãn dòng (%)</label>' +
+              '<input type="range" id="ctLineSpread" min="70" max="180" value="100"></div>' +
+            '<div class="ct-tools">' +
+              '<button class="ct-btn small secondary" id="ctToggleGuide">🎯 Hiện/ẩn vòng canh dấu</button>' +
+            '</div>' +
+
+            '<h3>④ Bù trừ lệch máy in</h3>' +
+            '<div class="ct-hint">Nếu bản in bị lệch đều theo 1 hướng so với bản xem trước (do máy in/khay giấy), chỉnh 2 số dưới rồi in lại — hệ thống sẽ nhớ cho lần sau.</div>' +
+            '<div class="ct-row2">' +
+              '<div class="ct-field"><label>Lệch ngang (mm)</label><input type="number" id="ctCalX" value="0" step="0.5"></div>' +
+              '<div class="ct-field"><label>Lệch dọc (mm)</label><input type="number" id="ctCalY" value="0" step="0.5"></div>' +
+            '</div>' +
+
+            '<button class="ct-btn config" id="ctConfigBtn" style="margin-top:14px;">⚙️ Cấu hình</button>' +
           '</div>' +
 
-          '<h3>④ Bù trừ lệch máy in</h3>' +
-          '<div class="ct-hint">Nếu bản in bị lệch đều theo 1 hướng so với bản xem trước (do máy in/khay giấy), chỉnh 2 số dưới rồi in lại — hệ thống sẽ nhớ cho lần sau.</div>' +
-          '<div class="ct-row2">' +
-            '<div class="ct-field"><label>Lệch ngang (mm)</label><input type="number" id="ctCalX" value="0" step="0.5"></div>' +
-            '<div class="ct-field"><label>Lệch dọc (mm)</label><input type="number" id="ctCalY" value="0" step="0.5"></div>' +
+          '<div class="ct-panel-view hidden" id="ctViewConfig">' +
+            '<div class="ct-config-head"><h3>⚙️ Cấu hình</h3><button class="ct-close-btn" id="ctConfigClose">✕ Đóng</button></div>' +
+
+            '<h3>Thông tin đã nhận diện <span style="font-weight:400;color:var(--muted,#888);">(sửa nếu cần)</span></h3>' +
+            '<div id="ctFields"></div>' +
+
+            '<h3>Bố cục</h3>' +
+            '<div class="ct-switchrow">' +
+              '<label class="ct-switch"><input type="checkbox" id="ctEditModeToggle"><span class="ct-slider"></span></label>' +
+              '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả 5 khối: SỞ Y TẾ, CỘNG HÒA, SVV, chữ ký, ghi chú)</span>' +
+            '</div>' +
+            '<div class="ct-hint">Tắt đi để khoá, tránh vô tình kéo lệch các khối khi chỉ muốn nhập liệu.</div>' +
+            '<button class="ct-btn save" id="ctSaveBtn">💾 Lưu vị trí bố cục</button>' +
+            '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
           '</div>' +
 
-          '<h3>⑤ Xuất file</h3>' +
-          '<button class="ct-btn config" id="ctConfigBtn">⚙️ Cấu hình</button>' +
-          '<button class="ct-btn" id="ctPrintBtn">🖨️ Tải PDF</button>' +
         '</div>' +
 
         '<div class="ct-stage"><div class="ct-sheet-outer"><div id="ctSheet"></div></div></div>' +
-      '</div>' +
-
-      '<div class="ct-modal-overlay" id="ctConfigOverlay">' +
-        '<div class="ct-modal">' +
-          '<div class="ct-modal-head"><h3>⚙️ Cấu hình</h3><button class="ct-modal-close" id="ctConfigClose">✕</button></div>' +
-          '<div class="ct-switchrow">' +
-            '<label class="ct-switch"><input type="checkbox" id="ctEditModeToggle"><span class="ct-slider"></span></label>' +
-            '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả 5 khối: SỞ Y TẾ, CỘNG HÒA, SVV, chữ ký, ghi chú)</span>' +
-          '</div>' +
-          '<div class="ct-hint">Tắt đi để khoá, tránh vô tình kéo lệch các khối khi chỉ muốn nhập liệu.</div>' +
-          '<button class="ct-btn save" id="ctSaveBtn">💾 Lưu vị trí bố cục</button>' +
-          '<button class="ct-btn small secondary" id="ctResetSig">↺ Reset tất cả vị trí</button>' +
-        '</div>' +
       '</div>' +
     '</div>';
 
@@ -1231,13 +1234,12 @@
     });
     document.getElementById("ctConfigBtn").addEventListener("click", function () {
       document.getElementById("ctEditModeToggle").checked = settings.editMode;
-      document.getElementById("ctConfigOverlay").classList.add("open");
+      document.getElementById("ctViewMain").classList.add("hidden");
+      document.getElementById("ctViewConfig").classList.remove("hidden");
     });
     document.getElementById("ctConfigClose").addEventListener("click", function () {
-      document.getElementById("ctConfigOverlay").classList.remove("open");
-    });
-    document.getElementById("ctConfigOverlay").addEventListener("click", function (e) {
-      if (e.target.id === "ctConfigOverlay") e.currentTarget.classList.remove("open");
+      document.getElementById("ctViewConfig").classList.add("hidden");
+      document.getElementById("ctViewMain").classList.remove("hidden");
     });
 
     syncFieldsUIFromSettings();
