@@ -23,9 +23,14 @@
   var MAMMOTH_URL = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js";
   var PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
   var PDFJS_WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
-  // Dán URL Worker Cloudflare (nếu muốn đồng bộ vị trí canh in giữa các máy).
-  // Để trống ("") thì chỉ lưu trên máy (localStorage).
-  var KV_WORKER_URL = "";
+  // Dán URL Worker Cloudflare (đã tạo theo hướng dẫn cuối file worker.js đi
+  // kèm, dùng CHUNG với "Phiếu chuyển tuyến") vào đây, dạng
+  // "https://ten-worker.ten-tai-khoan.workers.dev". Để trống ("") thì công cụ
+  // chỉ lưu trên máy (localStorage) như trước, không đồng bộ server.
+  // Worker dùng chung phân biệt từng form qua path riêng (KV_SETTINGS_PATH)
+  // nên 2 form không ghi đè cấu hình của nhau.
+  var KV_WORKER_URL = "https://mapping-ct-bhxh.dhabolero.workers.dev";
+  var KV_SETTINGS_PATH = "/settings/nghiviec";
 
   var root = document.getElementById(ROOT_ID);
   if (!root) return;
@@ -498,28 +503,68 @@
   function saveSettingsLocal() {
     try { localStorage.setItem(LS_KEY, JSON.stringify(settings)); } catch (e) {}
   }
+  // Đồng bộ với Cloudflare KV (nếu đã cấu hình KV_WORKER_URL): tải cấu hình
+  // dùng chung từ server ngay khi mở trang, ghi đè lên bản localStorage nếu
+  // có dữ liệu mới hơn trên server. Không có mạng / chưa cấu hình -> im lặng
+  // bỏ qua, dùng luôn bản localStorage đã tải trước đó (không chặn giao diện).
+  // Cơ chế và endpoint ("/settings") giống hệt file chuyen-tuyen.js để có thể
+  // dùng chung một mẫu Worker Cloudflare cho cả 2 loại giấy tờ.
   function fetchSettingsFromKV() {
     if (!KV_WORKER_URL) return;
-    fetch(KV_WORKER_URL + "/get")
+    fetch(KV_WORKER_URL.replace(/\/$/, "") + KV_SETTINGS_PATH)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
-        if (data) { settings = Object.assign(settings, data); applyTransformSettings(); syncFieldsUIFromSettings(); }
+        if (!data || Object.keys(data).length === 0) return;
+        settings = Object.assign(settings, data);
+        localStorage.setItem(LS_KEY, JSON.stringify(settings));
+        applyTransformSettings();
+        syncFieldsUIFromSettings();
+        setStatus("Đã tải cấu hình canh chỉnh dùng chung từ máy chủ.", "ok");
       })
-      .catch(function () {});
+      .catch(function () { /* offline hoặc chưa cấu hình đúng -> bỏ qua êm */ });
   }
-  function pushSettingsToKV() {
-    if (!KV_WORKER_URL) return;
-    fetch(KV_WORKER_URL + "/set", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings)
-    }).catch(function () {});
+  function pushSettingsToKV(onDone) {
+    if (!KV_WORKER_URL) { onDone && onDone(null); return; }
+    fetch(KV_WORKER_URL.replace(/\/$/, "") + KV_SETTINGS_PATH, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(settings)
+    })
+      .then(function (r) { onDone && onDone(r.ok); })
+      .catch(function () { onDone && onDone(false); });
   }
   function saveSettings() {
     saveSettingsLocal();
-    pushSettingsToKV();
     var btn = document.getElementById("nvSaveBtn");
-    btn.classList.add("saved");
-    setTimeout(function () { btn.classList.remove("saved"); }, 500);
-    setStatus("Đã lưu tinh chỉnh.", "ok");
+    function flashButton(label) {
+      if (!btn) return;
+      if (btn._savedTimer) clearTimeout(btn._savedTimer);
+      var original = btn._originalLabel || btn.innerHTML;
+      btn._originalLabel = original;
+      btn.classList.remove("saved");
+      void btn.offsetWidth; // ép reflow để animation chạy lại mỗi lần bấm
+      btn.classList.add("saved");
+      btn.innerHTML = label;
+      btn._savedTimer = setTimeout(function () {
+        btn.innerHTML = original;
+        btn.classList.remove("saved");
+      }, 1500);
+    }
+    if (!KV_WORKER_URL) {
+      setStatus("Đã lưu vị trí canh chỉnh cho lần in sau (trên máy này).", "ok");
+      flashButton("✅ Đã lưu!");
+      return;
+    }
+    flashButton("⏳ Đang lưu...");
+    pushSettingsToKV(function (ok) {
+      if (ok) {
+        setStatus("Đã lưu vị trí canh chỉnh — dùng chung cho mọi máy/mọi người mở trang.", "ok");
+        flashButton("✅ Đã lưu (đồng bộ)!");
+      } else {
+        setStatus("Đã lưu trên máy này, nhưng đồng bộ máy chủ thất bại (kiểm tra mạng/cấu hình Worker).", "err");
+        flashButton("⚠️ Chỉ lưu máy");
+      }
+    });
   }
   function syncFieldsUIFromSettings() {
     document.getElementById("nvScale").value = settings.scale;

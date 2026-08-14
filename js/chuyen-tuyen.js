@@ -22,7 +22,11 @@
   // Dán URL Worker Cloudflare (đã tạo theo hướng dẫn trong worker.js) vào đây,
   // dạng "https://ten-worker.ten-tai-khoan.workers.dev". Để trống ("") thì
   // công cụ chỉ lưu trên máy (localStorage) như trước, không đồng bộ server.
-  var KV_WORKER_URL = "https://phieu-chuyen-tuyen.dhabolero.workers.dev";
+  // LƯU Ý: Worker này giờ dùng CHUNG cho nhiều form (xem worker.js), mỗi
+  // form gọi 1 path riêng (KV_SETTINGS_PATH bên dưới) để không đè cấu hình
+  // của nhau.
+  var KV_WORKER_URL = "https://mapping-ct-bhxh.dhabolero.workers.dev";
+  var KV_SETTINGS_PATH = "/settings/chuyentuyen";
 
   var root = document.getElementById(ROOT_ID);
   if (!root) return;
@@ -940,7 +944,7 @@
   // bỏ qua, dùng luôn bản localStorage đã tải trước đó (không chặn giao diện).
   function fetchSettingsFromKV() {
     if (!KV_WORKER_URL) return;
-    fetch(KV_WORKER_URL.replace(/\/$/, "") + "/settings")
+    fetch(KV_WORKER_URL.replace(/\/$/, "") + KV_SETTINGS_PATH)
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (data) {
         if (!data || Object.keys(data).length === 0) return;
@@ -954,7 +958,7 @@
   }
   function pushSettingsToKV(onDone) {
     if (!KV_WORKER_URL) { onDone && onDone(null); return; }
-    fetch(KV_WORKER_URL.replace(/\/$/, "") + "/settings", {
+    fetch(KV_WORKER_URL.replace(/\/$/, "") + KV_SETTINGS_PATH, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(settings)
