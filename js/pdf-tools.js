@@ -25,6 +25,31 @@
   let currentOp = 'combine';
   let isRunning = false;
 
+  // ---- Đếm số trang PDF (dùng để tự điền "toàn bộ trang" khi Adobe API bắt buộc pageRanges) ----
+  let pdfLibLoadPromise = null;
+  function loadPdfLib() {
+    if (window.PDFLib) return Promise.resolve(window.PDFLib);
+    if (pdfLibLoadPromise) return pdfLibLoadPromise;
+    pdfLibLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
+      s.onload = () => resolve(window.PDFLib);
+      s.onerror = () => reject(new Error('Không tải được thư viện đếm trang PDF.'));
+      document.head.appendChild(s);
+    });
+    return pdfLibLoadPromise;
+  }
+
+  async function countPdfPages(file) {
+    const PDFLib = await loadPdfLib();
+    const buf = await file.arrayBuffer();
+    const doc = await PDFLib.PDFDocument.load(buf, { ignoreEncryption: true });
+    return doc.getPageCount();
+  }
+
+  // Ngôn ngữ Adobe OCR KHÔNG hỗ trợ dù có trong danh sách UI (Adobe xác nhận không có tiếng Việt/Ả Rập)
+  const OCR_UNSUPPORTED_LOCALES = new Set(['vi', 'vi-vn', 'vi_vn', 'vietnamese', 'ar', 'ar-sa']);
+
   function setStatus(html, cls) {
     statusEl.className = 'pt-status' + (cls ? ' ' + cls : '');
     statusEl.innerHTML = html || '';
@@ -179,6 +204,28 @@
       if (op === 'delete' && !collectParams('delete').pages) {
         setStatus('Vui lòng nhập số trang muốn xóa.', 'error');
         return;
+      }
+
+      // Adobe RotatePages luôn yêu cầu pageRanges cụ thể, không tự hiểu "để trống = tất cả trang".
+      // Nếu người dùng để trống, tự đếm số trang và điền "1-N" trước khi gửi.
+      if (op === 'rotate' && !collectParams('rotate').pages) {
+        try {
+          setStatus('<span class="pt-spinner"></span>Đang xác định số trang…');
+          const total = await countPdfPages(items[0].file);
+          if (total > 0) document.getElementById('ptRotatePages').value = '1-' + total;
+        } catch (e) {
+          setStatus('❌ ' + (e && e.message ? e.message : 'Không đọc được số trang PDF.'), 'error');
+          return;
+        }
+      }
+
+      // Adobe OCR không hỗ trợ một số ngôn ngữ (vd. tiếng Việt, tiếng Ả Rập) dù UI cho chọn.
+      if (op === 'ocr') {
+        const locale = (collectParams('ocr').locale || '').toLowerCase();
+        if (OCR_UNSUPPORTED_LOCALES.has(locale)) {
+          setStatus('⚠️ Dịch vụ OCR (Adobe) hiện chưa hỗ trợ ngôn ngữ bạn chọn (vd. Tiếng Việt). Vui lòng chọn ngôn ngữ khác hoặc dùng công cụ OCR khác cho tài liệu tiếng Việt.', 'error');
+          return;
+        }
       }
 
       isRunning = true;
