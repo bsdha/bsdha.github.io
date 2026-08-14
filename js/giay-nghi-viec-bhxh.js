@@ -252,6 +252,37 @@
     return m ? m[1].trim() : "";
   }
 
+  // Sửa lỗi hay gặp khi đọc PDF in 2 liên (trên/dưới hoặc trái/phải): 1 cụm
+  // chữ bị lặp lại 2 lần dính liền nhau, vd "CÔNG TY ABC CÔNG TY ABC" hay
+  // "GIẤY CHỨNG NHẬN GIẤY CHỨNG NHẬN" -> chỉ giữ lại 1 lần.
+  function dedupeRepeat(s) {
+    if (!s) return s;
+    var str = s.trim();
+    // Trường hợp lặp nguyên khối, có/không dấu cách ở giữa: "A A" -> "A"
+    var m = /^(.+?)\s*\1$/.exec(str);
+    if (m) return m[1].trim();
+    // Trường hợp lặp từng từ liên tiếp: "A A B B C C" -> "A B C"
+    var words = str.split(/\s+/);
+    var out = [];
+    for (var i = 0; i < words.length; i++) {
+      if (words[i] !== words[i + 1]) out.push(words[i]);
+      else i++; // bỏ qua bản sao liền kề
+    }
+    return out.join(" ");
+  }
+
+  // Lỗi hay gặp khi đọc PDF: chữ cái cuối 1 từ tiếng Việt viết thường bị đọc
+  // nhầm thành "I" hoa (vd "chi" -> "chI"). Chuẩn hoá lại cho đúng chính tả.
+  function fixTrailingCapitalI(s) {
+    if (!s) return s;
+    return s.replace(/([a-zà-ỹ])I\b/g, "$1i");
+  }
+
+  function capitalizeFirst(s) {
+    if (!s) return s;
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
   function parseFields(text) {
     var t = text.replace(/\s+/g, " ").trim();
     var d = {};
@@ -262,7 +293,7 @@
 
     // Tên cơ sở KCB: dòng in hoa ở đầu văn bản, trước "Mẫu số"
     var hd = /^(.*?)Mẫu số/i.exec(t);
-    if (hd) d.tenCoSo = hd[1].replace(/[-–]\s*$/, "").trim();
+    if (hd) d.tenCoSo = dedupeRepeat(hd[1].replace(/[-–]\s*$/, "").trim());
 
     d.hoTen = grab(/Họ và tên:?\s*([A-ZÀ-Ỹ\s]+?)\s+Ngày sinh/i, t);
     d.ngaySinh = grab(/Ngày sinh:?\s*([0-9\/]+)/i, t);
@@ -270,9 +301,9 @@
     d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*(?!\d{1,2}\/\d{1,2}\/\d{4}(?:\s|$))([0-9A-Za-z\/]{6,40})/i, t);
     d.cccd = grab(/(?:Số CCCD\/CMND\/[^:]*):?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9\/]+)/i, t);
-    d.donViLamViec = grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t);
-    d.ngayKham = grab(/Ngày khám bệnh, chữa bệnh:?\s*(ngày[^;.]+?năm\s*[0-9]{4})/i, t);
-    d.chanDoan = grab(/phương pháp điều trị\s*(.+?)\s*Số ngày nghỉ/i, t);
+    d.donViLamViec = dedupeRepeat(grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t));
+    d.ngayKham = capitalizeFirst(grab(/Ngày khám bệnh, chữa bệnh:?\s*(ngày[^;.]+?năm\s*[0-9]{4})/i, t));
+    d.chanDoan = fixTrailingCapitalI(dedupeRepeat(grab(/phương pháp điều trị\s*(.+?)\s*Số ngày nghỉ/i, t)));
     d.soNgayNghi = grab(/Số ngày nghỉ:?\s*([0-9]+)/i, t);
     d.tuNgay = grab(/Từ ngày\s*([0-9\/]+)/i, t);
     d.denNgay = grab(/đến hết ngày\s*([0-9\/]+)/i, t);
@@ -532,7 +563,7 @@
     html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
     html += '<div class="l-row"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
             '<span class="l-item">Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</span></div>';
-    html += '<div class="l-row">Giới tính: ' + fillOrLine((d.gioiTinh || "").toUpperCase(), 14) + '</div>';
+    html += '<div class="l-row">Giới tính: ' + fillOrLine(d.gioiTinh || "", 14) + '</div>';
     html += '<div class="l-row">Đơn vị làm việc: ' + fillOrLine(d.donViLamViec, 70) + '</div>';
     html += '<div class="l-row">Ngày khám bệnh, chữa bệnh: ' + fillOrLine(d.ngayKham, 45) + '</div>';
 
