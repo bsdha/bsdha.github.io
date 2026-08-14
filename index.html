@@ -77,27 +77,35 @@
   <!-- Thanh điều hướng: sidebar (desktop) / topbar (mobile) — chuyển trang bằng pushState, không tải lại -->
   <nav class="sidebar" id="sidebarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
+    <!-- TODO: đặt tên cho nhóm công cụ dùng chung này (sẽ hiển thị ngay dưới nút Trang chủ), ví dụ:
+    <div class="nav-group-title">Tên nhóm chưa đặt</div>
+    -->
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
-    <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
     <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Insulin &amp; Đường huyết</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
-    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Chuyển đổi tài liệu (AI)</a>
     <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
+
+    <div class="nav-group-divider"></div>
+    <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
+    <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
+    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Giấy nghỉ việc BHXH</a>
   </nav>
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> ICD-10</a>
-    <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
     <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Insulin</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
-    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Đổi tài liệu</a>
     <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
+
+    <div class="nav-group-divider"></div>
+    <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
+    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Nghỉ việc BHXH</a>
   </nav>
@@ -117,13 +125,6 @@
           <div class="ic">🔎</div>
           <h2>Tra cứu ICD-10</h2>
           <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
-          <span class="tag">Đang hoạt động</span>
-        </a>
-
-        <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu">
-          <div class="ic">📋</div>
-          <h2>Tạo phiếu sinh hiệu</h2>
-          <p>Tạo &amp; in hàng loạt phiếu dấu hiệu sinh tồn (mạch, nhiệt độ, huyết áp...) theo khổ A4/A5, đánh số tự động.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -148,13 +149,6 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc">
-          <div class="ic">💊</div>
-          <h2>Kê đơn thuốc dịch vụ</h2>
-          <p>Soạn đơn thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
-          <span class="tag">Đang hoạt động</span>
-        </a>
-
         <a href="/pdf2word" class="hcard" data-page="pdf2word" data-path="/pdf2word">
           <div class="ic">📄</div>
           <h2>Chuyển đổi tài liệu (AI)</h2>
@@ -166,6 +160,26 @@
           <div class="ic">🛠️</div>
           <h2>Công cụ PDF</h2>
           <p>Ghép nhiều PDF, tách trang, xoay trang, xóa trang, nén dung lượng, OCR bản scan thành PDF có thể chọn/copy chữ.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+      </div>
+
+      <!-- TODO: đặt tên cho nhóm công cụ dùng chung ở trên -->
+      <div class="home-group-title">
+        <span>Nội bộ BVĐK Bình Dương CS2</span>
+      </div>
+      <div class="hgrid">
+        <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu">
+          <div class="ic">📋</div>
+          <h2>Tạo phiếu sinh hiệu</h2>
+          <p>Tạo &amp; in hàng loạt phiếu dấu hiệu sinh tồn (mạch, nhiệt độ, huyết áp...) theo khổ A4/A5, đánh số tự động.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc">
+          <div class="ic">💊</div>
+          <h2>Kê đơn thuốc dịch vụ</h2>
+          <p>Soạn đơn thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
