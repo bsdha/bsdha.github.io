@@ -29,10 +29,10 @@
   if (!root) return;
 
   /* ---------------------------------------------------------------- */
-  /* 0. Kích thước trang A4 (mm) - mỗi bản chiếm đúng NỬA chiều cao     */
+  /* 0. Kích thước trang: NỬA A4 (210 x 148.5mm) - chỉ 1 nội dung duy   */
+  /*    nhất, không nhân đôi. Muốn ra đủ 2 liên thì in tờ này 2 lần.   */
   /* ---------------------------------------------------------------- */
-  var PAGE_W_MM = 210, PAGE_H_MM = 297;
-  var HALF_H_MM = PAGE_H_MM / 2; // 148.5mm mỗi bản
+  var PAGE_W_MM = 210, PAGE_H_MM = 148.5;
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS                                                            */
@@ -81,11 +81,6 @@
     ".nv-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".nv-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
     "#nvSheet{width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;background:#fff;position:relative;overflow:hidden;font-family:'Times New Roman',Times,serif;color:#000;}",
-    ".nv-half{position:absolute;left:0;width:100%;height:" + HALF_H_MM + "mm;box-sizing:border-box;overflow:hidden;}",
-    ".nv-half.top{top:0;}",
-    ".nv-half.bottom{top:" + HALF_H_MM + "mm;}",
-    ".nv-cutline{position:absolute;left:0;top:" + HALF_H_MM + "mm;width:100%;border-top:1px dashed #999;height:0;z-index:3;}",
-    ".nv-cutline .scissors{position:absolute;left:2mm;top:-3mm;font-size:9px;color:#999;background:#fff;padding:0 2px;}",
     ".nv-body{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;padding:6mm 12mm 4mm;line-height:1.34;}",
     ".nv-body .l-row{position:relative;white-space:normal;box-sizing:border-box;margin-bottom:1.2mm;}",
     ".nv-hd{display:flex;justify-content:space-between;align-items:flex-start;}",
@@ -110,8 +105,6 @@
     "  html.nv-printing #nvSheet, html.nv-printing #nvSheet *{visibility:visible !important;}",
     "  html.nv-printing .nv-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  html.nv-printing #nvSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;overflow:hidden !important;}",
-    "  html.nv-printing .nv-cutline{border-top:none !important;}",
-    "  html.nv-printing .nv-cutline .scissors{display:none !important;}",
     "}"
   ].join("\n");
   document.head.appendChild(style);
@@ -138,12 +131,8 @@
           '<h3>③ Tinh chỉnh khi in</h3>' +
           '<div class="nv-field"><label>Cỡ nội dung (%)</label>' +
             '<input type="range" id="nvScale" min="80" max="115" value="100"></div>' +
-          '<div class="nv-field"><label>Đẩy nội dung lên / xuống trong mỗi nửa (mm)</label>' +
+          '<div class="nv-field"><label>Đẩy nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="nvShiftY" min="-15" max="15" value="0"></div>' +
-          '<div class="nv-switchrow">' +
-            '<label class="nv-switch"><input type="checkbox" id="nvShowCut" checked><span class="nv-slider"></span></label>' +
-            '<span>✂️ Hiện đường kẻ cắt đôi (chỉ xem trước, không in)</span>' +
-          '</div>' +
 
           '<h3>④ Bù trừ lệch máy in</h3>' +
           '<div class="nv-hint">Nếu bản in bị lệch đều theo 1 hướng so với xem trước, chỉnh 2 số dưới rồi in lại — hệ thống sẽ nhớ cho lần sau.</div>' +
@@ -154,7 +143,7 @@
 
           '<h3>⑤ Xuất file</h3>' +
           '<button class="nv-btn save" id="nvSaveBtn">💾 Lưu tinh chỉnh</button>' +
-          '<button class="nv-btn" id="nvPrintBtn">🖨️ Tải / In PDF (2 bản / A4)</button>' +
+          '<button class="nv-btn" id="nvPrintBtn">🖨️ Tải / In PDF</button>' +
         '</div>' +
 
         '<div class="nv-stage"><div class="nv-sheet-outer"><div id="nvSheet"></div></div></div>' +
@@ -385,16 +374,12 @@
     document.getElementById("nvShiftY").value = settings.shiftY;
     document.getElementById("nvCalX").value = settings.calX;
     document.getElementById("nvCalY").value = settings.calY;
-    document.getElementById("nvShowCut").checked = settings.showCut !== false;
   }
   function applyTransformSettings() {
     var scale = (settings.scale || 100) / 100;
     var shiftY = settings.shiftY || 0;
-    document.querySelectorAll(".nv-body").forEach(function (b) {
-      b.style.transform = "translate(" + (settings.calX || 0) + "mm," + ((settings.calY || 0) + shiftY) + "mm) scale(" + scale + ")";
-    });
-    var cut = document.getElementById("nvCutLine");
-    if (cut) cut.style.display = settings.showCut === false ? "none" : "block";
+    var b = document.querySelector(".nv-body");
+    if (b) b.style.transform = "translate(" + (settings.calX || 0) + "mm," + ((settings.calY || 0) + shiftY) + "mm) scale(" + scale + ")";
   }
 
   /* ---------------------------------------------------------------- */
@@ -459,11 +444,7 @@
 
   function renderSheet() {
     var sheet = document.getElementById("nvSheet");
-    var copyHtml = renderOneCopy();
-    sheet.innerHTML =
-      '<div class="nv-half top"><div class="nv-body">' + copyHtml + '</div></div>' +
-      '<div class="nv-cutline" id="nvCutLine"><span class="scissors">✂ cắt tại đây</span></div>' +
-      '<div class="nv-half bottom"><div class="nv-body">' + copyHtml + '</div></div>';
+    sheet.innerHTML = '<div class="nv-body">' + renderOneCopy() + '</div>';
     applyTransformSettings();
   }
 
@@ -518,9 +499,6 @@
     });
     document.getElementById("nvShiftY").addEventListener("input", function (e) {
       settings.shiftY = parseInt(e.target.value, 10); applyTransformSettings();
-    });
-    document.getElementById("nvShowCut").addEventListener("change", function (e) {
-      settings.showCut = e.target.checked; applyTransformSettings();
     });
     document.getElementById("nvCalX").addEventListener("input", function (e) {
       settings.calX = parseFloat(e.target.value) || 0; applyTransformSettings();
