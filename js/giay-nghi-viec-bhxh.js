@@ -106,9 +106,9 @@
     ".nv-section{font-weight:bold;font-size:12px;margin-top:2mm;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
-    ".l-flexrow{}",
+    ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.2mm;}",
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
-    ".l-item{display:inline-block;margin-right:15px;}",
+    ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
     ".l-item:last-child{margin-right:0;}",
     ".nv-footer{display:flex;justify-content:space-between;margin-top:3mm;text-align:center;font-size:11.5px;transform-origin:top left;}",
     "#nvSheet.nv-editon .nv-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
@@ -280,7 +280,7 @@
   // khi gộp trùng.
   function stripEmbeddedLabels(s) {
     if (!s) return s;
-    return s.replace(/(Đơn vị làm việc|Ngày khám bệnh,?\s*chữa bệnh|Số CCCD\/CMND[^:]*|Mã số BHXH\/Số thẻ BHYT|Họ và tên|Ngày sinh|Giới tính|Số ngày nghỉ|I{1,3}\.)\s*:?/gi, " ")
+    return s.replace(/(Chẩn đoán và phương pháp điều trị|Đơn vị làm việc|Ngày khám bệnh,?\s*chữa bệnh|Số CCCD\/CMND[^:]*|Mã số BHXH\/Số thẻ BHYT|Họ và tên|Ngày sinh|Giới tính|Số ngày nghỉ|I{1,3}\.)\s*:?/gi, " ")
       .replace(/\s+/g, " ").trim();
   }
 
@@ -324,7 +324,7 @@
 
     // Tên người ký thường xuất hiện lặp lại ngay sau cụm "(Ký, ghi rõ họ tên,)"
     var ky = /\(Ký,?\s*ghi rõ họ tên,?\)\s*([A-ZÀ-Ỹ][A-ZÀ-Ỹ\s]{4,40})/i.exec(t);
-    if (ky) d.nguoiHanhNghe = ky[1].trim();
+    if (ky) d.nguoiHanhNghe = dedupeRepeat(ky[1].trim());
 
     Object.keys(d).forEach(function (k) { if (d[k]) DATA[k] = d[k]; });
   }
@@ -567,10 +567,10 @@
     html += '<div class="nv-sub">(Chỉ áp dụng cho điều trị ngoại trú)</div>';
 
     html += '<div class="nv-section">I. Thông tin người bệnh</div>';
-    html += '<div class="l-row"><span class="l-item">Họ và tên: ' + fillOrLine(d.hoTen, 55) + '</span>' +
+    html += '<div class="l-row l-flexrow"><span class="l-item">Họ và tên: ' + fillOrLine(d.hoTen, 55) + '</span>' +
             '<span class="l-item">Ngày sinh: ' + fillOrLine(d.ngaySinh, 22) + '</span></div>';
     html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
-    html += '<div class="l-row"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
+    html += '<div class="l-row l-flexrow"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
             '<span class="l-item">Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</span></div>';
     html += '<div class="l-row">Giới tính: ' + fillOrLine(d.gioiTinh || "", 14) + '</div>';
     html += '<div class="l-row">Đơn vị làm việc: ' + fillOrLine(d.donViLamViec, 70) + '</div>';
