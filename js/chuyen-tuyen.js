@@ -150,7 +150,6 @@
   root.innerHTML =
     '<div id="ctWrap">' +
       '<h1>🚑 Phiếu chuyển cơ sở KCB (BHYT)</h1>' +
-      '<p class="ct-sub">Tải file gốc (.rtf/.docx) → tự nhận diện thông tin → đổ vào mẫu chuẩn → chỉnh vị trí bằng tay → in đúng khớp con dấu đã đóng sẵn.</p>' +
       '<div class="ct-grid">' +
 
         '<div class="ct-panel">' +

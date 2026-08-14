@@ -138,7 +138,6 @@
   root.innerHTML =
     '<div id="nvWrap">' +
       '<h1>📝 Giấy chứng nhận nghỉ việc hưởng BHXH</h1>' +
-      '<p class="nv-sub">Tải file gốc (.rtf/.docx) → tự nhận diện thông tin → đổ vào mẫu chuẩn → in 2 bản giống hệt nhau trên cùng 1 tờ A4 (cắt đôi thành 2 liên).</p>' +
       '<div class="nv-grid">' +
 
         '<div class="nv-panel">' +
