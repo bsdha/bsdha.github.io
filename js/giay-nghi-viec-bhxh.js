@@ -316,6 +316,36 @@
     document.head.appendChild(s);
   }
 
+  // Sắp lại các mảnh chữ theo đúng vị trí trên trang (trên->dưới, trái->phải)
+  // trước khi ghép thành văn bản. Cần thiết vì pdf.js trả text theo thứ tự
+  // trong luồng dữ liệu PDF (thường theo thứ tự vẽ khi tạo file), KHÔNG
+  // theo vị trí hiển thị -> nếu trang có nhiều khối/nhiều bản nội dung xếp
+  // cạnh nhau (như tờ A4 in 2 liên), text dễ bị xáo trộn giữa các khối nếu
+  // ghép thẳng theo thứ tự gốc.
+  function reorderPdfItems(items) {
+    var rows = items.map(function (it) {
+      return { str: it.str, x: it.transform[4], y: it.transform[5] };
+    }).filter(function (it) { return it.str && it.str.length; });
+    rows.sort(function (a, b) { return b.y - a.y || a.x - b.x; });
+    var TOL = 2.2; // dung sai (đơn vị PDF pt) coi là cùng 1 dòng
+    var lines = [];
+    var cur = null, curY = null;
+    rows.forEach(function (it) {
+      if (cur !== null && Math.abs(it.y - curY) <= TOL) {
+        cur.push(it);
+      } else {
+        if (cur) lines.push(cur);
+        cur = [it];
+        curY = it.y;
+      }
+    });
+    if (cur) lines.push(cur);
+    return lines.map(function (line) {
+      line.sort(function (a, b) { return a.x - b.x; });
+      return line.map(function (it) { return it.str; }).join(" ");
+    }).join("\n");
+  }
+
   function extractPdfText(arrayBuffer, cb) {
     ensurePdfJs(function () {
       window.pdfjsLib.getDocument({ data: arrayBuffer }).promise
@@ -329,7 +359,7 @@
             pdf.getPage(pageNum).then(function (page) {
               return page.getTextContent();
             }).then(function (content) {
-              fullText += content.items.map(function (it) { return it.str; }).join(" ") + "\n";
+              fullText += reorderPdfItems(content.items) + "\n\n";
               next();
             }).catch(function (err) { cb(err); });
           }
