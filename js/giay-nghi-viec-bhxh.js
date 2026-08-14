@@ -21,6 +21,8 @@
   var ROOT_ID = "nghiViecBhxhContent";
   var LS_KEY = "nv_nghiviecbhxh_settings_v1";
   var MAMMOTH_URL = "https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js";
+  var PDFJS_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+  var PDFJS_WORKER_URL = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
   // Dán URL Worker Cloudflare (nếu muốn đồng bộ vị trí canh in giữa các máy).
   // Để trống ("") thì chỉ lưu trên máy (localStorage).
   var KV_WORKER_URL = "";
@@ -77,11 +79,19 @@
     ".nv-slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 2px rgba(0,0,0,.3);}",
     ".nv-switch input:checked+.nv-slider{background:#16a34a;}",
     ".nv-switch input:checked+.nv-slider:before{transform:translateX(16px);}",
+    ".nv-btn.config{background:linear-gradient(135deg,#818cf8,#6366f1);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.35);}",
+    ".nv-btn.config:hover{box-shadow:0 3px 10px rgba(99,102,241,.45);}",
+    ".nv-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:50;align-items:center;justify-content:center;}",
+    ".nv-modal-overlay.open{display:flex;}",
+    ".nv-modal{background:#fff;border-radius:12px;padding:20px;width:min(420px,92vw);box-shadow:0 10px 40px rgba(0,0,0,.3);}",
+    ".nv-modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}",
+    ".nv-modal-head h3{margin:0;}",
+    ".nv-modal-close{border:none;background:var(--surface-2,#eee);border-radius:50%;width:28px;height:28px;cursor:pointer;font-size:14px;}",
     /* -------- vùng xem trước / bản in -------- */
     ".nv-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".nv-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
     "#nvSheet{width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;background:#fff;position:relative;overflow:hidden;font-family:'Times New Roman',Times,serif;color:#000;}",
-    ".nv-body{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;padding:6mm 12mm 4mm;line-height:1.34;}",
+    ".nv-body{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;padding:6mm 12mm 4mm;line-height:var(--nv-lh,1.34);}",
     ".nv-body .l-row{position:relative;white-space:normal;box-sizing:border-box;margin-bottom:1.2mm;}",
     ".nv-hd{display:flex;justify-content:space-between;align-items:flex-start;}",
     ".nv-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;max-width:60%;line-height:1.3;}",
@@ -94,7 +104,10 @@
     ".fill.empty{color:#000;}",
     ".l-flexrow{display:flex;align-items:baseline;flex-wrap:wrap;}",
     ".fill-line{flex:1 1 auto;min-width:14px;align-self:stretch;border-bottom:1px dotted #000;margin:0 2px 1px;}",
-    ".nv-footer{display:flex;justify-content:space-between;margin-top:3mm;text-align:center;font-size:11.5px;}",
+    ".nv-footer{display:flex;justify-content:space-between;margin-top:3mm;text-align:center;font-size:11.5px;transform-origin:top left;}",
+    "#nvSheet.nv-editon .nv-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
+    "#nvSheet.nv-editon .nv-footer:hover,#nvSheet.nv-editon .nv-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
+    "#nvSheet.nv-editon .nv-footer.dragging{cursor:grabbing;}",
     ".nv-footer .col{width:46%;}",
     ".nv-footer b{display:block;}",
     ".nv-footer .italic{font-style:italic;font-size:10.5px;}",
@@ -120,8 +133,8 @@
 
         '<div class="nv-panel">' +
           '<h3>① Tải file gốc</h3>' +
-          '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.rtf</b> hoặc <b>.docx</b><br><span class="nv-hint">(file xuất từ phần mềm HIS bệnh viện)</span></div>' +
-          '<input type="file" id="nvFileInput" accept=".rtf,.docx" hidden>' +
+          '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b>, <b>.docx</b> hoặc <b>.rtf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
+          '<input type="file" id="nvFileInput" accept=".pdf,.rtf,.docx" hidden>' +
           '<div class="nv-filerow" id="nvFileRow" style="display:none;"><span id="nvFileName"></span><button id="nvFileRemove" title="Bỏ chọn">✕</button></div>' +
           '<div class="nv-status" id="nvStatus"></div>' +
 
@@ -133,6 +146,8 @@
             '<input type="range" id="nvScale" min="80" max="115" value="100"></div>' +
           '<div class="nv-field"><label>Đẩy nội dung lên / xuống (mm)</label>' +
             '<input type="range" id="nvShiftY" min="-15" max="15" value="0"></div>' +
+          '<div class="nv-field"><label>↕️ Giãn / co khoảng cách dòng (%)</label>' +
+            '<input type="range" id="nvLineSpread" min="70" max="180" value="100"></div>' +
 
           '<h3>④ Bù trừ lệch máy in</h3>' +
           '<div class="nv-hint">Nếu bản in bị lệch đều theo 1 hướng so với xem trước, chỉnh 2 số dưới rồi in lại — hệ thống sẽ nhớ cho lần sau.</div>' +
@@ -142,11 +157,24 @@
           '</div>' +
 
           '<h3>⑤ Xuất file</h3>' +
+          '<button class="nv-btn config" id="nvConfigBtn">⚙️ Cấu hình</button>' +
           '<button class="nv-btn save" id="nvSaveBtn">💾 Lưu tinh chỉnh</button>' +
           '<button class="nv-btn" id="nvPrintBtn">🖨️ Tải / In PDF</button>' +
         '</div>' +
 
         '<div class="nv-stage"><div class="nv-sheet-outer"><div id="nvSheet"></div></div></div>' +
+      '</div>' +
+
+      '<div class="nv-modal-overlay" id="nvConfigOverlay">' +
+        '<div class="nv-modal">' +
+          '<div class="nv-modal-head"><h3>⚙️ Cấu hình</h3><button class="nv-modal-close" id="nvConfigClose">✕</button></div>' +
+          '<div class="nv-switchrow">' +
+            '<label class="nv-switch"><input type="checkbox" id="nvEditModeToggle"><span class="nv-slider"></span></label>' +
+            '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
+          '</div>' +
+          '<div class="nv-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối chữ ký khi chỉ muốn nhập liệu. Kéo khối chữ ký tới đúng vị trí con dấu đã đóng sẵn trên tờ giấy nếu cần.</div>' +
+          '<button class="nv-btn small secondary" id="nvResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
 
@@ -260,7 +288,7 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 5. Đọc file .docx (mammoth) hoặc .rtf (giải mã đơn giản)          */
+  /* 5. Đọc file .pdf (pdf.js) / .docx (mammoth) / .rtf (giải mã đơn giản) */
   /* ---------------------------------------------------------------- */
   var mammothLoaded = false;
   function ensureMammoth(cb) {
@@ -270,6 +298,43 @@
     s.onload = function () { mammothLoaded = true; cb(); };
     s.onerror = function () { setStatus("Không tải được thư viện đọc .docx (kiểm tra mạng).", "err"); };
     document.head.appendChild(s);
+  }
+
+  var pdfjsLoaded = false;
+  function ensurePdfJs(cb) {
+    if (pdfjsLoaded || window.pdfjsLib) { pdfjsLoaded = true; cb(); return; }
+    var s = document.createElement("script");
+    s.src = PDFJS_URL;
+    s.onload = function () {
+      pdfjsLoaded = true;
+      try { window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_URL; } catch (e) {}
+      cb();
+    };
+    s.onerror = function () { setStatus("Không tải được thư viện đọc .pdf (kiểm tra mạng).", "err"); };
+    document.head.appendChild(s);
+  }
+
+  function extractPdfText(arrayBuffer, cb) {
+    ensurePdfJs(function () {
+      window.pdfjsLib.getDocument({ data: arrayBuffer }).promise
+        .then(function (pdf) {
+          var pages = [];
+          for (var i = 1; i <= pdf.numPages; i++) pages.push(i);
+          var fullText = "";
+          function next() {
+            if (!pages.length) { cb(null, fullText); return; }
+            var pageNum = pages.shift();
+            pdf.getPage(pageNum).then(function (page) {
+              return page.getTextContent();
+            }).then(function (content) {
+              fullText += content.items.map(function (it) { return it.str; }).join(" ") + "\n";
+              next();
+            }).catch(function (err) { cb(err); });
+          }
+          next();
+        })
+        .catch(function (err) { cb(err); });
+    });
   }
 
   function decodeRtfSimple(rtf) {
@@ -296,7 +361,22 @@
     setStatus("Đang đọc file…", "");
     var ext = (file.name.split(".").pop() || "").toLowerCase();
     var reader = new FileReader();
-    if (ext === "docx") {
+    if (ext === "pdf") {
+      reader.onload = function (e) {
+        extractPdfText(e.target.result, function (err, text) {
+          if (err) { setStatus("Lỗi đọc .pdf: " + err.message, "err"); return; }
+          if (!text || !text.trim()) {
+            setStatus("File PDF này có vẻ là bản scan ảnh, không có lớp chữ để đọc tự động. Vui lòng nhập tay các trường bên trên.", "err");
+            return;
+          }
+          parseFields(text);
+          syncFieldsUIFromData();
+          renderSheet();
+          setStatus("Đã nhận diện thông tin từ file .pdf. Kiểm tra lại các trường bên trên.", "ok");
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    } else if (ext === "docx") {
       ensureMammoth(function () {
         reader.onload = function (e) {
           window.mammoth.extractRawText({ arrayBuffer: e.target.result })
@@ -322,7 +402,7 @@
       };
       reader.readAsText(file, "utf-8");
     } else {
-      setStatus("Chỉ hỗ trợ file .rtf hoặc .docx.", "err");
+      setStatus("Chỉ hỗ trợ file .pdf, .rtf hoặc .docx.", "err");
     }
   }
 
@@ -335,7 +415,7 @@
   /* ---------------------------------------------------------------- */
   /* 6. Cài đặt canh in (localStorage / KV Worker tuỳ chọn)            */
   /* ---------------------------------------------------------------- */
-  var settings = { scale: 100, shiftY: 0, calX: 0, calY: 0, showCut: true };
+  var settings = { scale: 100, shiftY: 0, calX: 0, calY: 0, lineSpread: 100, editMode: false, footerX: 0, footerY: 0 };
 
   function loadSettingsLocal() {
     try {
@@ -374,12 +454,21 @@
     document.getElementById("nvShiftY").value = settings.shiftY;
     document.getElementById("nvCalX").value = settings.calX;
     document.getElementById("nvCalY").value = settings.calY;
+    document.getElementById("nvLineSpread").value = settings.lineSpread;
+    var editEl = document.getElementById("nvEditModeToggle");
+    if (editEl) editEl.checked = !!settings.editMode;
   }
   function applyTransformSettings() {
     var scale = (settings.scale || 100) / 100;
     var shiftY = settings.shiftY || 0;
     var b = document.querySelector(".nv-body");
     if (b) b.style.transform = "translate(" + (settings.calX || 0) + "mm," + ((settings.calY || 0) + shiftY) + "mm) scale(" + scale + ")";
+    var lh = 1.34 * ((settings.lineSpread || 100) / 100);
+    if (b) b.style.setProperty("--nv-lh", lh.toFixed(3));
+    var footer = document.querySelector(".nv-footer");
+    if (footer) footer.style.transform = "translate(" + (settings.footerX || 0) + "mm," + (settings.footerY || 0) + "mm)";
+    var sheet = document.getElementById("nvSheet");
+    if (sheet) sheet.classList.toggle("nv-editon", !!settings.editMode);
   }
 
   /* ---------------------------------------------------------------- */
@@ -446,6 +535,38 @@
     var sheet = document.getElementById("nvSheet");
     sheet.innerHTML = '<div class="nv-body">' + renderOneCopy() + '</div>';
     applyTransformSettings();
+    bindFooterDrag();
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* 7b. Kéo-thả khối chữ ký "Ngày.../Đại diện đơn vị/Người hành nghề" */
+  /*     - chỉ hoạt động khi chế độ "Chỉnh sửa vị trí bố cục" đang bật */
+  /* ---------------------------------------------------------------- */
+  function bindFooterDrag() {
+    var footer = document.querySelector(".nv-footer");
+    if (!footer) return;
+    var dragging = false, startX, startY, baseX, baseY;
+    footer.addEventListener("mousedown", function (e) {
+      if (!settings.editMode) return;
+      dragging = true;
+      footer.classList.add("dragging");
+      startX = e.clientX; startY = e.clientY;
+      baseX = settings.footerX || 0; baseY = settings.footerY || 0;
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      var sheet = document.getElementById("nvSheet");
+      var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
+      settings.footerX = baseX + (e.clientX - startX) / pxPerMm;
+      settings.footerY = baseY + (e.clientY - startY) / pxPerMm;
+      applyTransformSettings();
+    });
+    window.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      footer.classList.remove("dragging");
+    });
   }
 
   /* ---------------------------------------------------------------- */
@@ -505,6 +626,29 @@
     });
     document.getElementById("nvCalY").addEventListener("input", function (e) {
       settings.calY = parseFloat(e.target.value) || 0; applyTransformSettings();
+    });
+    document.getElementById("nvLineSpread").addEventListener("input", function (e) {
+      settings.lineSpread = parseInt(e.target.value, 10) || 100; applyTransformSettings();
+    });
+    document.getElementById("nvConfigBtn").addEventListener("click", function () {
+      syncFieldsUIFromSettings();
+      document.getElementById("nvConfigOverlay").classList.add("open");
+    });
+    document.getElementById("nvConfigClose").addEventListener("click", function () {
+      document.getElementById("nvConfigOverlay").classList.remove("open");
+    });
+    document.getElementById("nvConfigOverlay").addEventListener("click", function (e) {
+      if (e.target.id === "nvConfigOverlay") e.currentTarget.classList.remove("open");
+    });
+    document.getElementById("nvEditModeToggle").addEventListener("change", function (e) {
+      settings.editMode = e.target.checked; applyTransformSettings();
+    });
+    document.getElementById("nvResetLayout").addEventListener("click", function () {
+      settings.lineSpread = 100; settings.footerX = 0; settings.footerY = 0;
+      settings.scale = 100; settings.shiftY = 0;
+      applyTransformSettings();
+      syncFieldsUIFromSettings();
+      setStatus("Đã đưa vị trí và khoảng cách dòng về mặc định (chưa lưu).", "ok");
     });
     document.getElementById("nvSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("nvPrintBtn").addEventListener("click", function () {
