@@ -34,7 +34,21 @@
   .page.active { display: block; }
 
 
-  #page-home .home-wrap { max-width: 1040px; margin: 0 auto; padding: 12px 18px 20px; min-height: calc(100vh - 32px); display: flex; flex-direction: column; }
+  /* Ảnh nền trang chủ, độ mờ 30% — dùng ::before để chỉ làm mờ ảnh, không ảnh hưởng nội dung phía trên */
+  #page-home { position: relative; }
+  #page-home::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("../img/bvdkbdcs2.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    opacity: 0.3;
+    z-index: 0;
+    pointer-events: none;
+  }
+  #page-home .home-wrap { position: relative; z-index: 1; max-width: 1040px; margin: 0 auto; padding: 12px 18px 20px; min-height: calc(100vh - 32px); display: flex; flex-direction: column; }
   #page-home header { text-align: center; margin-bottom: 14px; }
   #page-home header .logo { font-size: 36px; margin-bottom: 2px; }
   #page-home header h1 { margin: 0 0 4px; font-size: 29px; font-weight: 800; }
