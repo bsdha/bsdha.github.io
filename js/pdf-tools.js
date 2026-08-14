@@ -1,12 +1,30 @@
 (function () {
   // ==== Công cụ PDF: Ghép / Tách / Xoay / Xóa trang / Nén / OCR ====
   // Dùng chung 1 Cloudflare Worker với công cụ chuyển đổi (js/pdf-to-word.js), gọi tới route
-  // riêng /pdf-ops. Worker nhận field "op" để biết chạy thao tác Adobe PDF Services nào
-  // (CombinePDF, SplitPDF, RotatePages, DeletePages, CompressPDF, OCR) rồi trả file kết quả
-  // về đây — 1 file .pdf, hoặc 1 file .zip nếu thao tác (Tách PDF) sinh ra nhiều file.
-  // QUAN TRỌNG: cần thêm route /pdf-ops vào Worker hiện có (xem hướng dẫn kèm theo).
+  // riêng /pdf-ops. Worker giữ CLOUDCONVERT_API_KEY và gọi CloudConvert Jobs API
+  // (https://api.cloudconvert.com/v2/jobs) với các task tương ứng:
+  //   - combine  -> task "merge" (gộp nhiều PDF thành 1)
+  //   - split    -> nhiều task "convert" (engine "pdfcpu"), mỗi task 1 page_range, rồi export và
+  //                 đóng gói .zip nếu có >1 file kết quả
+  //   - rotate   -> task "convert" (engine "pdfcpu", option "rotate" + "page_range")
+  //   - delete   -> task "convert" (engine "pdfcpu", "page_range" = các trang GIỮ LẠI — Worker
+  //                 tự tính phần bù từ danh sách trang người dùng muốn xóa + tổng số trang)
+  //   - compress -> task "optimize" (dedicated CloudConvert task, có "profile": web/print/archive)
+  //   - ocr      -> task "convert" (option "ocr": true, "ocr_languages": [...]) — CloudConvert hỗ
+  //                 trợ tiếng Việt ("vie") và nhiều ngôn ngữ khác mà Adobe trước đây không hỗ trợ
+  // CloudConvert dùng mã ngôn ngữ ISO 639-2/B (3 ký tự, vd. "vie", "eng", "ara") thay vì "vi"/"en".
+  // QUAN TRỌNG: cần thêm route /pdf-ops vào Worker hiện có, chuyển toàn bộ logic gọi API từ
+  // Adobe PDF Services sang CloudConvert (xem hướng dẫn kèm theo).
   const WORKER_BASE = 'https://pdf2word-proxy.dhabolero.workers.dev';
   const PDF_OPS_URL = WORKER_BASE + '/pdf-ops';
+  const OCR_WORD_URL = WORKER_BASE + '/ocr-word';
+  // Nếu HTML có checkbox <input type="checkbox" id="ptOcrToWord"> trong panel OCR, tick vào đó
+  // sẽ gọi thẳng route /ocr-word (Google Vision -> Azure Read -> CloudConvert, xem worker.js) để
+  // xuất trực tiếp ra .docx với độ chính xác cao hơn nhiều so với "OCR rồi convert" thông thường.
+  // Nếu không có checkbox này trong HTML thì bỏ qua, hành vi OCR giữ nguyên như cũ (ra PDF có thể tìm kiếm).
+
+  // CloudConvert free tier: 25 conversion phút miễn phí / ngày (khác cơ chế giới hạn dung lượng
+  // file của Adobe). Vẫn giữ giới hạn 25MB phía client để tránh upload file quá lớn không cần thiết.
 
   const MAX_SIZE_BYTES = 25 * 1024 * 1024;
   const tabsEl = document.getElementById('ptTabs');
@@ -47,8 +65,67 @@
     return doc.getPageCount();
   }
 
-  // Ngôn ngữ Adobe OCR KHÔNG hỗ trợ dù có trong danh sách UI (Adobe xác nhận không có tiếng Việt/Ả Rập)
-  const OCR_UNSUPPORTED_LOCALES = new Set(['vi', 'vi-vn', 'vi_vn', 'vietnamese', 'ar', 'ar-sa']);
+  // Parse chuỗi kiểu "1-3,5,8-9" thành mảng số trang (1-based), có loại trùng.
+  function parsePageSpec(spec, total) {
+    const out = new Set();
+    (spec || '').split(',').map((s) => s.trim()).filter(Boolean).forEach((part) => {
+      const m = part.match(/^(\d+)\s*-\s*(\d+)$/);
+      if (m) {
+        let a = parseInt(m[1], 10), b = parseInt(m[2], 10);
+        if (a > b) [a, b] = [b, a];
+        for (let i = a; i <= b; i += 1) if (i >= 1 && i <= total) out.add(i);
+      } else {
+        const n = parseInt(part, 10);
+        if (!isNaN(n) && n >= 1 && n <= total) out.add(n);
+      }
+    });
+    return out;
+  }
+
+  // Từ tổng số trang + danh sách trang muốn xoá -> chuỗi range các trang cần GIỮ LẠI
+  // (định dạng CloudConvert pdfcpu hiểu được, vd. "1-2,4,6-8"). Trả về null nếu không hợp lệ
+  // (vd. xoá hết toàn bộ tài liệu).
+  function computeKeepRange(total, deleteSpec) {
+    if (!total || total < 1) return null;
+    const toDelete = parsePageSpec(deleteSpec, total);
+    const keep = [];
+    for (let i = 1; i <= total; i += 1) if (!toDelete.has(i)) keep.push(i);
+    if (!keep.length) return null;
+    const ranges = [];
+    let start = keep[0], prev = keep[0];
+    for (let i = 1; i < keep.length; i += 1) {
+      if (keep[i] === prev + 1) { prev = keep[i]; continue; }
+      ranges.push(start === prev ? String(start) : start + '-' + prev);
+      start = prev = keep[i];
+    }
+    ranges.push(start === prev ? String(start) : start + '-' + prev);
+    return ranges.join(',');
+  }
+
+  // CloudConvert (engine Tesseract OCR) hỗ trợ tiếng Việt và hầu hết ngôn ngữ trong danh sách UI,
+  // khác với Adobe trước đây. Chỉ cần map mã ngôn ngữ UI ("vi", "en", ...) sang mã CloudConvert
+  // (ISO 639-2/B, 3 ký tự) trước khi gửi lên Worker.
+  const OCR_UNSUPPORTED_LOCALES = new Set(); // hiện chưa có ngôn ngữ nào trong UI bị CloudConvert từ chối
+
+  // Map mã ngôn ngữ hiển thị trên UI (vd. select #ptOcrLocale) sang mã CloudConvert ISO 639-2/B.
+  // Nếu UI dùng sẵn mã 3 ký tự thì map thẳng qua, nếu không có trong bảng thì gửi nguyên giá trị.
+  const OCR_LOCALE_TO_CLOUDCONVERT = {
+    vi: 'vie', 'vi-vn': 'vie', vietnamese: 'vie',
+    en: 'eng', 'en-us': 'eng', 'en-gb': 'eng', english: 'eng',
+    ar: 'ara', 'ar-sa': 'ara', arabic: 'ara',
+    fr: 'fra', french: 'fra',
+    de: 'deu', german: 'deu',
+    ja: 'jpn', japanese: 'jpn',
+    ko: 'kor', korean: 'kor',
+    zh: 'chi_sim', 'zh-cn': 'chi_sim', 'zh-tw': 'chi_tra',
+    es: 'spa', spanish: 'spa',
+    ru: 'rus', russian: 'rus',
+    th: 'tha', thai: 'tha',
+  };
+  function toCloudConvertLocale(uiLocale) {
+    const key = (uiLocale || '').toLowerCase();
+    return OCR_LOCALE_TO_CLOUDCONVERT[key] || uiLocale;
+  }
 
   function setStatus(html, cls) {
     statusEl.className = 'pt-status' + (cls ? ' ' + cls : '');
@@ -184,9 +261,22 @@
       pages: (document.getElementById('ptRotatePages').value || '').trim(),
     };
     if (op === 'delete') return { pages: (document.getElementById('ptDeletePages').value || '').trim() };
-    if (op === 'compress') return { level: document.getElementById('ptCompressLevel').value };
-    if (op === 'ocr') return { locale: document.getElementById('ptOcrLocale').value };
+    if (op === 'compress') return { profile: mapCompressLevelToProfile(document.getElementById('ptCompressLevel').value) };
+    if (op === 'ocr') return { locale: toCloudConvertLocale(document.getElementById('ptOcrLocale').value) };
     return {};
+  }
+
+  // Adobe dùng mức "low/medium/high"; CloudConvert Optimize task dùng "profile": "web" (nén nhiều,
+  // chất lượng thấp hơn) / "print" (cân bằng) / "archive" (nén ít, giữ chất lượng cao nhất).
+  // Nếu UI (#ptCompressLevel) vẫn đang để value low/medium/high thì map tương ứng ở đây; nếu đã
+  // đổi trực tiếp value trong HTML thành web/print/archive thì hàm này chỉ trả nguyên giá trị.
+  function mapCompressLevelToProfile(uiValue) {
+    const v = (uiValue || '').toLowerCase();
+    if (v === 'low') return 'web';
+    if (v === 'medium') return 'print';
+    if (v === 'high') return 'archive';
+    if (v === 'web' || v === 'print' || v === 'archive') return v;
+    return 'print';
   }
 
   const OP_LABEL = {
@@ -206,8 +296,27 @@
         return;
       }
 
-      // Adobe RotatePages luôn yêu cầu pageRanges cụ thể, không tự hiểu "để trống = tất cả trang".
-      // Nếu người dùng để trống, tự đếm số trang và điền "1-N" trước khi gửi.
+      // CloudConvert (engine pdfcpu) không có tuỳ chọn "xoá trang X", chỉ có "page_range" = các
+      // trang GIỮ LẠI. Nên ở đây cần đếm tổng số trang rồi tính phần bù (trang không nằm trong
+      // danh sách người dùng muốn xoá) trước khi gửi lên Worker, thay vì gửi thẳng "pages" gốc.
+      let deleteKeepRange = null;
+      if (op === 'delete') {
+        try {
+          setStatus('<span class="pt-spinner"></span>Đang xác định số trang…');
+          const total = await countPdfPages(items[0].file);
+          deleteKeepRange = computeKeepRange(total, collectParams('delete').pages);
+          if (!deleteKeepRange) {
+            setStatus('❌ Danh sách trang muốn xoá không hợp lệ hoặc xoá hết toàn bộ tài liệu.', 'error');
+            return;
+          }
+        } catch (e) {
+          setStatus('❌ ' + (e && e.message ? e.message : 'Không đọc được số trang PDF.'), 'error');
+          return;
+        }
+      }
+
+      // Task "convert" (engine pdfcpu) của CloudConvert cũng yêu cầu page_range cụ thể, không tự
+      // hiểu "để trống = tất cả trang". Nếu người dùng để trống, tự đếm số trang và điền "1-N".
       if (op === 'rotate' && !collectParams('rotate').pages) {
         try {
           setStatus('<span class="pt-spinner"></span>Đang xác định số trang…');
@@ -219,30 +328,43 @@
         }
       }
 
-      // Adobe OCR không hỗ trợ một số ngôn ngữ (vd. tiếng Việt, tiếng Ả Rập) dù UI cho chọn.
+      // CloudConvert (Tesseract) hỗ trợ hầu hết ngôn ngữ trong UI, kể cả tiếng Việt — giữ lại
+      // bước kiểm tra này để phòng trường hợp sau này có ngôn ngữ nào đó chưa được hỗ trợ.
       if (op === 'ocr') {
-        const locale = (collectParams('ocr').locale || '').toLowerCase();
-        if (OCR_UNSUPPORTED_LOCALES.has(locale)) {
-          setStatus('⚠️ Dịch vụ OCR (Adobe) hiện chưa hỗ trợ ngôn ngữ bạn chọn (vd. Tiếng Việt). Vui lòng chọn ngôn ngữ khác hoặc dùng công cụ OCR khác cho tài liệu tiếng Việt.', 'error');
+        const rawLocale = (document.getElementById('ptOcrLocale').value || '').toLowerCase();
+        if (OCR_UNSUPPORTED_LOCALES.has(rawLocale)) {
+          setStatus('⚠️ Dịch vụ OCR (CloudConvert) hiện chưa hỗ trợ ngôn ngữ bạn chọn. Vui lòng chọn ngôn ngữ khác.', 'error');
           return;
         }
       }
 
+      // Nếu có checkbox "Xuất thẳng ra Word" (#ptOcrToWord) và đang tick -> đi theo nhánh riêng,
+      // gọi /ocr-word (Google Vision -> Azure Read -> CloudConvert), độ chính xác cao hơn nhiều.
+      const ocrToWordEl = document.getElementById('ptOcrToWord');
+      const useOcrToWord = op === 'ocr' && ocrToWordEl && ocrToWordEl.checked;
+
       isRunning = true;
       updateRunBtn(op);
-      setStatus(`<span class="pt-spinner"></span>Đang xử lý "${OP_LABEL[op]}"… có thể mất 10–40 giây tuỳ độ dài file.`);
+      setStatus(`<span class="pt-spinner"></span>Đang xử lý "${OP_LABEL[op]}"… có thể mất 10–60 giây tuỳ độ dài file.`);
 
       try {
         const form = new FormData();
-        form.append('op', op);
-        if (op === 'combine') {
-          items.forEach((it) => form.append('files', it.file, it.file.name));
-        } else {
+        if (useOcrToWord) {
           form.append('file', items[0].file, items[0].file.name);
+          form.append('locale', toCloudConvertLocale(document.getElementById('ptOcrLocale').value));
+        } else {
+          form.append('op', op);
+          if (op === 'combine') {
+            items.forEach((it) => form.append('files', it.file, it.file.name));
+          } else {
+            form.append('file', items[0].file, items[0].file.name);
+          }
+          const params = collectParams(op);
+          if (op === 'delete') params.pages = deleteKeepRange; // đã đổi thành "range cần giữ lại"
+          form.append('params', JSON.stringify(params));
         }
-        form.append('params', JSON.stringify(collectParams(op)));
 
-        const resp = await fetch(PDF_OPS_URL, { method: 'POST', body: form });
+        const resp = await fetch(useOcrToWord ? OCR_WORD_URL : PDF_OPS_URL, { method: 'POST', body: form });
         if (!resp.ok) {
           let msg = 'Lỗi máy chủ (' + resp.status + ')';
           try {
@@ -255,10 +377,19 @@
         const blob = await resp.blob();
         const isZip = (resp.headers.get('content-type') || '').includes('zip');
         const baseName = (items[0] ? items[0].file.name : 'ket-qua').replace(/\.[^.]+$/i, '');
-        const outName = isZip ? baseName + '-tach-trang.zip' : baseName + '-' + op + '.pdf';
+        let outName, kindLabel;
+        if (useOcrToWord) {
+          outName = baseName + '-ocr.docx';
+          kindLabel = 'Word (.docx)';
+        } else {
+          outName = isZip ? baseName + '-tach-trang.zip' : baseName + '-' + op + '.pdf';
+          kindLabel = isZip ? '.zip' : 'PDF';
+        }
         const url = URL.createObjectURL(blob);
+        const engineTag = useOcrToWord ? (resp.headers.get('X-OCR-Engine') || '') : '';
         setStatus(
-          `✅ "${OP_LABEL[op]}" thành công.<br><a class="pt-download-btn" href="${url}" download="${outName}">⬇ Tải file ${isZip ? '.zip' : 'PDF'} kết quả</a>`,
+          `✅ "${useOcrToWord ? 'OCR sang Word' : OP_LABEL[op]}" thành công${engineTag ? ' (engine: ' + engineTag + ')' : ''}.` +
+          `<br><a class="pt-download-btn" href="${url}" download="${outName}">⬇ Tải file ${kindLabel} kết quả</a>`,
           'success'
         );
       } catch (err) {

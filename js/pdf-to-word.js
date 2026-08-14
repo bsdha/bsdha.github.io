@@ -1,13 +1,25 @@
 (function () {
-  // ==== Công cụ chuyển đổi định dạng tài liệu (AI, giữ bảng/layout, OCR cho bản scan) ====
-  // Gọi tới 1 Cloudflare Worker trung gian (miễn phí) giữ bí mật client_secret của Adobe PDF
-  // Services API và thực hiện toàn bộ luồng: lấy access token -> upload file -> submit job
-  // (Export PDF sang docx/xlsx/pptx/ảnh, hoặc Create PDF từ docx/xlsx/pptx/ảnh) -> chờ xong
-  // -> trả file kết quả về đây.
+  // ==== Công cụ chuyển đổi định dạng tài liệu (giữ bảng/layout, OCR cho bản scan) ====
+  // Gọi tới 1 Cloudflare Worker trung gian (miễn phí) giữ bí mật CLOUDCONVERT_API_KEY và thực
+  // hiện toàn bộ luồng qua CloudConvert Jobs API (https://api.cloudconvert.com/v2/jobs):
+  //   1) tạo Job gồm 3 task: "import/upload" -> "convert" (input_format=from, output_format=to)
+  //      -> "export/url"
+  //   2) upload file lên URL mà CloudConvert trả về cho task import/upload
+  //   3) poll job cho tới khi task export/url có status "finished", lấy URL file kết quả
+  //   4) Worker tải file đó về rồi trả (proxy) lại cho trình duyệt ở đây, để client vẫn chỉ cần
+  //      gọi 1 endpoint như trước, không cần biết chi tiết luồng job/task của CloudConvert.
+  // CloudConvert dùng engine mặc định phù hợp theo cặp định dạng (LibreOffice cho docx/xlsx/pptx,
+  // pdfcpu/pdf.co-style cho các thao tác PDF khác) — không cần chỉ định trong request đơn giản này.
   // Hỗ trợ chuyển đổi HÀNG LOẠT: chọn/kéo nhiều file cùng lúc, xử lý tuần tự có giới hạn
-  // song song (tránh quá tải Worker free tier), rồi có thể tải gộp .zip (dùng JSZip qua CDN).
-  // QUAN TRỌNG: phải thay WORKER_URL bên dưới bằng URL Worker thật sau khi deploy (xem hướng dẫn).
+  // song song (tránh vượt quá số job đồng thời của gói CloudConvert), rồi có thể tải gộp .zip
+  // (dùng JSZip qua CDN).
+  // QUAN TRỌNG: phải thay WORKER_URL bên dưới bằng URL Worker thật sau khi deploy, và Worker phải
+  // được viết lại để gọi CloudConvert API thay vì Adobe PDF Services (xem hướng dẫn kèm theo).
   const WORKER_URL = 'https://pdf2word-proxy.dhabolero.workers.dev/convert';
+
+  // CloudConvert hỗ trợ thêm định dạng đích/nguồn "text" (.txt) và "html" cho PDF mà Adobe trước
+  // đây không có — có thể mở rộng FORMATS bên dưới nếu muốn thêm lựa chọn này vào UI (#p2wFromSelect
+  // / #p2wToSelect), miễn là thêm <option> tương ứng trong HTML.
 
   const dropzone = document.getElementById('p2wDropzone');
   const fileInput = document.getElementById('p2wFileInput');
@@ -36,6 +48,10 @@
     xlsx:  { label: 'Excel',      icon: '📊', ext: ['.xlsx', '.xls'],      accept: '.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel' },
     pptx:  { label: 'PowerPoint', icon: '📽️', ext: ['.pptx', '.ppt'],      accept: '.pptx,.ppt,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-powerpoint' },
     image: { label: 'Ảnh',        icon: '🖼️', ext: ['.png', '.jpg', '.jpeg'], accept: '.png,.jpg,.jpeg,image/png,image/jpeg' },
+    // CloudConvert hỗ trợ thêm 2 định dạng này cho PDF (Adobe trước đây không có). Chỉ hoạt động
+    // trên UI nếu #p2wFromSelect / #p2wToSelect có thêm <option value="txt"> / <option value="html">.
+    txt:   { label: 'Văn bản (.txt)', icon: '📃', ext: ['.txt'],  accept: '.txt,text/plain' },
+    html:  { label: 'HTML',       icon: '🌐', ext: ['.html', '.htm'], accept: '.html,.htm,text/html' },
   };
 
   function isPairSupported(from, to) {
@@ -53,6 +69,8 @@
     if (to === 'pptx') return '.pptx';
     if (to === 'image') return '.jpg';
     if (to === 'pdf') return '.pdf';
+    if (to === 'txt') return '.txt';
+    if (to === 'html') return '.html';
     return '';
   }
 
