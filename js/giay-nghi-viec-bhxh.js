@@ -597,7 +597,7 @@
                 '<b>Người hành nghề KB, CB</b>' +
                 '<div class="italic">(Ký, ghi rõ họ tên)</div>' +
                 '<div class="signspace"></div>' +
-                '<div class="fill">' + esc(d.nguoiHanhNghe || "") + '</div>' +
+                '<div class="fill" style="font-weight:700;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
               '</div>' +
             '</div>';
     return html;
