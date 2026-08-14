@@ -31,10 +31,14 @@
   if (!root) return;
 
   /* ---------------------------------------------------------------- */
-  /* 0. Kích thước trang: NỬA A4 (210 x 148.5mm) - chỉ 1 nội dung duy   */
-  /*    nhất, không nhân đôi. Muốn ra đủ 2 liên thì in tờ này 2 lần.   */
+  /* 0. Kích thước trang: A4 ĐẦY ĐỦ (210 x 297mm) - xem trước & in     */
+  /*    hiện trọn 1 tờ giấy như bản gốc.                               */
   /* ---------------------------------------------------------------- */
-  var PAGE_W_MM = 210, PAGE_H_MM = 148.5;
+  var PAGE_W_MM = 210, PAGE_H_MM = 297;
+
+  // Tên cơ sở KCB điền CỨNG (không lấy từ file nguồn vì file nguồn có thể
+  // sai / thuộc mẫu của đơn vị khác).
+  var HOSPITAL_NAME = "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG – CƠ SỞ 2";
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS                                                            */
@@ -184,7 +188,6 @@
   /* 3. Danh sách field + label hiển thị                               */
   /* ---------------------------------------------------------------- */
   var FIELD_DEFS = [
-    ["tenCoSo", "Tên cơ sở KCB (dòng đầu)", "text"],
     ["mauSo", "Mẫu số", "text"],
     ["soKCB", "Số (…/KCB)", "text"],
     ["soSeri", "Số seri", "text"],
@@ -271,6 +274,16 @@
     return out.join(" ");
   }
 
+  // Do PDF bị đọc lộn xộn (in 2 liên / thứ tự dòng đảo ngược), 1 giá trị đôi
+  // khi bị chen thêm tên nhãn của chính nó ở giữa, vd:
+  // "CÔNG TY ABC Đơn vị làm việc: CÔNG TY ABC" -> bỏ nhãn chen giữa trước
+  // khi gộp trùng.
+  function stripEmbeddedLabels(s) {
+    if (!s) return s;
+    return s.replace(/(Đơn vị làm việc|Ngày khám bệnh,?\s*chữa bệnh|Số CCCD\/CMND[^:]*|Mã số BHXH\/Số thẻ BHYT|Họ và tên|Ngày sinh|Giới tính|Số ngày nghỉ|I{1,3}\.)\s*:?/gi, " ")
+      .replace(/\s+/g, " ").trim();
+  }
+
   // Lỗi hay gặp khi đọc PDF: chữ cái cuối 1 từ tiếng Việt viết thường bị đọc
   // nhầm thành "I" hoa (vd "chi" -> "chI"). Chuẩn hoá lại cho đúng chính tả.
   function fixTrailingCapitalI(s) {
@@ -291,19 +304,15 @@
     d.soKCB = grab(/Số:?\s*([0-9]+\s*\/\s*KCB)/i, t).replace(/\s*\/\s*/, "/");
     d.soSeri = grab(/Số seri:?\s*([0-9]+)/i, t);
 
-    // Tên cơ sở KCB: dòng in hoa ở đầu văn bản, trước "Mẫu số"
-    var hd = /^(.*?)Mẫu số/i.exec(t);
-    if (hd) d.tenCoSo = dedupeRepeat(hd[1].replace(/[-–]\s*$/, "").trim());
-
     d.hoTen = grab(/Họ và tên:?\s*([A-ZÀ-Ỹ\s]+?)\s+Ngày sinh/i, t);
     d.ngaySinh = grab(/Ngày sinh:?\s*([0-9\/]+)/i, t);
     d.gioiTinh = /Giới tính:?\s*N[Ữữ]/i.test(t) ? "Nữ" : (/Giới tính:?\s*Nam/i.test(t) ? "Nam" : "");
     d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*(?!\d{1,2}\/\d{1,2}\/\d{4}(?:\s|$))([0-9A-Za-z\/]{6,40})/i, t);
     d.cccd = grab(/(?:Số CCCD\/CMND\/[^:]*):?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9\/]+)/i, t);
-    d.donViLamViec = dedupeRepeat(grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t));
+    d.donViLamViec = dedupeRepeat(stripEmbeddedLabels(grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t)));
     d.ngayKham = capitalizeFirst(grab(/Ngày khám bệnh, chữa bệnh:?\s*(ngày[^;.]+?năm\s*[0-9]{4})/i, t));
-    d.chanDoan = fixTrailingCapitalI(dedupeRepeat(grab(/phương pháp điều trị\s*(.+?)\s*Số ngày nghỉ/i, t)));
+    d.chanDoan = fixTrailingCapitalI(dedupeRepeat(stripEmbeddedLabels(grab(/phương pháp điều trị\s*(.+?)\s*Số ngày nghỉ/i, t))));
     d.soNgayNghi = grab(/Số ngày nghỉ:?\s*([0-9]+)/i, t);
     d.tuNgay = grab(/Từ ngày\s*([0-9\/]+)/i, t);
     d.denNgay = grab(/đến hết ngày\s*([0-9\/]+)/i, t);
@@ -547,7 +556,7 @@
     var d = DATA;
     var html = "";
     html += '<div class="l-row nv-hd">' +
-              '<div class="nv-hd-left">' + esc(d.tenCoSo || "BỆNH VIỆN / TRUNG TÂM Y TẾ …") + '</div>' +
+              '<div class="nv-hd-left">' + esc(HOSPITAL_NAME) + '</div>' +
               '<div class="nv-hd-right">Mẫu số: ' + fillOrLine(d.mauSo || "07", 10) + '<br>' +
                 'Số: ' + fillOrLine(d.soKCB, 20) + '/KCB<br>' +
                 'Số seri: ' + fillOrLine(d.soSeri, 25) +
