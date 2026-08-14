@@ -102,8 +102,10 @@
     ".nv-section{font-weight:bold;font-size:12px;margin-top:2mm;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
-    ".l-flexrow{display:flex;align-items:baseline;flex-wrap:wrap;}",
-    ".fill-line{flex:1 1 auto;min-width:14px;align-self:stretch;border-bottom:1px dotted #000;margin:0 2px 1px;}",
+    ".l-flexrow{}",
+    ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
+    ".l-item{display:inline-block;margin-right:15px;}",
+    ".l-item:last-child{margin-right:0;}",
     ".nv-footer{display:flex;justify-content:space-between;margin-top:3mm;text-align:center;font-size:11.5px;transform-origin:top left;}",
     "#nvSheet.nv-editon .nv-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#nvSheet.nv-editon .nv-footer:hover,#nvSheet.nv-editon .nv-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
@@ -158,7 +160,6 @@
 
           '<h3>⑤ Xuất file</h3>' +
           '<button class="nv-btn config" id="nvConfigBtn">⚙️ Cấu hình</button>' +
-          '<button class="nv-btn save" id="nvSaveBtn">💾 Lưu tinh chỉnh</button>' +
           '<button class="nv-btn" id="nvPrintBtn">🖨️ Tải / In PDF</button>' +
         '</div>' +
 
@@ -173,6 +174,7 @@
             '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
           '</div>' +
           '<div class="nv-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối chữ ký khi chỉ muốn nhập liệu. Kéo khối chữ ký tới đúng vị trí con dấu đã đóng sẵn trên tờ giấy nếu cần.</div>' +
+          '<button class="nv-btn save" id="nvSaveBtn">💾 Lưu tinh chỉnh</button>' +
           '<button class="nv-btn small secondary" id="nvResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
         '</div>' +
       '</div>' +
@@ -265,7 +267,7 @@
     d.hoTen = grab(/Họ và tên:?\s*([A-ZÀ-Ỹ\s]+?)\s+Ngày sinh/i, t);
     d.ngaySinh = grab(/Ngày sinh:?\s*([0-9\/]+)/i, t);
     d.gioiTinh = /Giới tính:?\s*N[Ữữ]/i.test(t) ? "Nữ" : (/Giới tính:?\s*Nam/i.test(t) ? "Nam" : "");
-    d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*([0-9A-Za-z\/]+)/i, t);
+    d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*(?!\d{1,2}\/\d{1,2}\/\d{4}(?:\s|$))([0-9A-Za-z\/]{6,40})/i, t);
     d.cccd = grab(/(?:Số CCCD\/CMND\/[^:]*):?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9\/]+)/i, t);
     d.donViLamViec = grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t);
@@ -495,24 +497,24 @@
     html += '<div class="nv-sub">(Chỉ áp dụng cho điều trị ngoại trú)</div>';
 
     html += '<div class="nv-section">I. Thông tin người bệnh</div>';
-    html += '<div class="l-row l-flexrow">Họ và tên: ' + fillOrLine(d.hoTen, 55) +
-            '&nbsp;&nbsp;Ngày sinh: ' + fillOrLine(d.ngaySinh, 22) + '</div>';
-    html += '<div class="l-row l-flexrow">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
-    html += '<div class="l-row l-flexrow">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) +
-            '&nbsp;&nbsp;Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</div>';
-    html += '<div class="l-row l-flexrow">Giới tính: ' + fillOrLine((d.gioiTinh || "").toUpperCase(), 14) + '</div>';
-    html += '<div class="l-row l-flexrow">Đơn vị làm việc: ' + fillOrLine(d.donViLamViec, 70) + '</div>';
-    html += '<div class="l-row l-flexrow">Ngày khám bệnh, chữa bệnh: ' + fillOrLine(d.ngayKham, 45) + '</div>';
+    html += '<div class="l-row"><span class="l-item">Họ và tên: ' + fillOrLine(d.hoTen, 55) + '</span>' +
+            '<span class="l-item">Ngày sinh: ' + fillOrLine(d.ngaySinh, 22) + '</span></div>';
+    html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
+    html += '<div class="l-row"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
+            '<span class="l-item">Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</span></div>';
+    html += '<div class="l-row">Giới tính: ' + fillOrLine((d.gioiTinh || "").toUpperCase(), 14) + '</div>';
+    html += '<div class="l-row">Đơn vị làm việc: ' + fillOrLine(d.donViLamViec, 70) + '</div>';
+    html += '<div class="l-row">Ngày khám bệnh, chữa bệnh: ' + fillOrLine(d.ngayKham, 45) + '</div>';
 
     html += '<div class="nv-section">II. Chẩn đoán và phương pháp điều trị</div>';
     html += '<div class="l-row">' + fillOrLine(d.chanDoan, 150) + '</div>';
-    html += '<div class="l-row l-flexrow">Số ngày nghỉ: ' + fillOrLine(d.soNgayNghi, 8) + ' (ngày)</div>';
-    html += '<div class="l-row l-flexrow">(Từ ngày ' + fillOrLine(d.tuNgay, 20) +
+    html += '<div class="l-row"><span class="l-item">Số ngày nghỉ: ' + fillOrLine(d.soNgayNghi, 8) + ' (ngày)</span></div>';
+    html += '<div class="l-row">(Từ ngày ' + fillOrLine(d.tuNgay, 20) +
             ' đến hết ngày ' + fillOrLine(d.denNgay, 20) + ')</div>';
 
     html += '<div class="nv-section">III. Thông tin cha, mẹ <span style="font-weight:400;font-style:italic;font-size:10.5px;">(chỉ áp dụng đối với trường hợp người bệnh là trẻ em dưới 07 tuổi)</span></div>';
-    html += '<div class="l-row l-flexrow">- Họ và tên cha: ' + fillOrLine(d.tenCha, 60) + '</div>';
-    html += '<div class="l-row l-flexrow">- Họ và tên mẹ: ' + fillOrLine(d.tenMe, 60) + '</div>';
+    html += '<div class="l-row">- Họ và tên cha: ' + fillOrLine(d.tenCha, 60) + '</div>';
+    html += '<div class="l-row">- Họ và tên mẹ: ' + fillOrLine(d.tenMe, 60) + '</div>';
 
     html += '<div class="nv-footer">' +
               '<div class="col">' +
