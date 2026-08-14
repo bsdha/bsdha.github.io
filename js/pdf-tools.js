@@ -65,6 +65,49 @@
     return doc.getPageCount();
   }
 
+  // ---- Tách PDF thành ảnh từng trang NGAY TRÊN TRÌNH DUYỆT (pdf.js), không tốn credit
+  // CloudConvert — chỉ dùng cho luồng "OCR sang Word" (Google Vision/Azure OCR ảnh). ----
+  let pdfJsLoadPromise = null;
+  function loadPdfJs() {
+    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
+    if (pdfJsLoadPromise) return pdfJsLoadPromise;
+    pdfJsLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js';
+      s.onload = () => {
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = () => reject(new Error('Không tải được thư viện đọc PDF (pdf.js).'));
+      document.head.appendChild(s);
+    });
+    return pdfJsLoadPromise;
+  }
+
+  // Vẽ từng trang PDF ra <canvas> rồi xuất JPEG chất lượng cao (scale 2 ~ tương đương 144dpi,
+  // đủ nét cho OCR). Trả về mảng { blob, filename } theo đúng thứ tự trang.
+  async function renderPdfPagesToJpeg(file, onProgress) {
+    const pdfjsLib = await loadPdfJs();
+    const buf = await file.arrayBuffer();
+    const doc = await pdfjsLib.getDocument({ data: buf }).promise;
+    const out = [];
+    for (let i = 1; i <= doc.numPages; i += 1) {
+      const page = await doc.getPage(i);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+      out.push({ blob, filename: 'page-' + String(i).padStart(3, '0') + '.jpg' });
+      if (onProgress) onProgress(i, doc.numPages);
+    }
+    return out;
+  }
+
+
   // Parse chuỗi kiểu "1-3,5,8-9" thành mảng số trang (1-based), có loại trùng.
   function parsePageSpec(spec, total) {
     const out = new Set();
@@ -343,6 +386,23 @@
       const ocrToWordEl = document.getElementById('ptOcrToWord');
       const useOcrToWord = op === 'ocr' && ocrToWordEl && ocrToWordEl.checked;
 
+      // Với nhánh OCR-Word: tách trang PDF thành ảnh NGAY TRÊN TRÌNH DUYỆT (pdf.js) trước khi
+      // gửi lên Worker, để không tốn credit CloudConvert cho bước rasterize (chỉ Google
+      // Vision/Azure OCR mới cần gọi tới Worker, cả 2 đều có quota miễn phí lớn hơn nhiều).
+      let renderedPages = null;
+      if (useOcrToWord) {
+        try {
+          setStatus('<span class="pt-spinner"></span>Đang tách trang PDF thành ảnh…');
+          renderedPages = await renderPdfPagesToJpeg(items[0].file, (done, total) => {
+            setStatus(`<span class="pt-spinner"></span>Đang tách trang PDF thành ảnh… (${done}/${total})`);
+          });
+          if (!renderedPages.length) throw new Error('Không đọc được trang nào từ file PDF.');
+        } catch (e) {
+          setStatus('❌ ' + (e && e.message ? e.message : 'Không tách được trang PDF.'), 'error');
+          return;
+        }
+      }
+
       isRunning = true;
       updateRunBtn(op);
       setStatus(`<span class="pt-spinner"></span>Đang xử lý "${OP_LABEL[op]}"… có thể mất 10–60 giây tuỳ độ dài file.`);
@@ -350,8 +410,9 @@
       try {
         const form = new FormData();
         if (useOcrToWord) {
-          form.append('file', items[0].file, items[0].file.name);
+          renderedPages.forEach((p) => form.append('images', p.blob, p.filename));
           form.append('locale', toCloudConvertLocale(document.getElementById('ptOcrLocale').value));
+          form.append('baseName', items[0].file.name.replace(/\.[^.]+$/i, ''));
         } else {
           form.append('op', op);
           if (op === 'combine') {
