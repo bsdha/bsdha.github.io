@@ -79,9 +79,15 @@
   /* ============================================================
      BANNER TIN TỨC Y KHOA + SỐ LIỆU SỬ DỤNG (marquee, chạy phải -> trái)
      ============================================================ */
+  .news-banner-group {
+    display: flex; flex-direction: column; gap: 6px;
+    margin: 4px 0 14px;
+  }
+  .news-banner-group .news-banner { margin: 0; }
+  .news-banner-group .nb-stats-banner .nb-live-dot { background: var(--blue); }
   .news-banner {
     position: relative; display: flex; align-items: center; gap: 10px;
-    margin: 4px 0 14px; padding: 0 0 0 12px; height: 34px;
+    padding: 0 0 0 12px; height: 34px;
     border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
     overflow: hidden; font-size: 13px;
   }
@@ -127,6 +133,7 @@
     .news-banner .nb-track-wrap { overflow-x: auto; }
   }
   @media (max-width: 640px) {
+    .news-banner-group { gap: 5px; }
     .news-banner { height: 30px; font-size: 12px; padding-left: 10px; }
     .news-banner .nb-item { gap: 5px; }
   }
