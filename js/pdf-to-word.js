@@ -316,6 +316,8 @@
     const okCount = items.filter((it) => it.status === 'done').length;
     const errCount = items.filter((it) => it.status === 'error').length;
 
+    if (okCount > 0 && typeof logUsage === 'function') logUsage('pdf2word_convert');
+
     if (!isBatch) {
       const it = items[0];
       if (it.status === 'done') {

@@ -53,33 +53,82 @@
   #page-home header .logo { font-size: 36px; margin-bottom: 2px; }
   #page-home header h1 { margin: 0 0 4px; font-size: 29px; font-weight: 800; }
   #page-home header p { margin: 0; color: var(--muted); font-size: 18px; }
-  #page-home .hgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  /* Thẻ trang chủ: dạng gọn (icon + tên), vì điều hướng đầy đủ đã có ở sidebar/topbar */
+  #page-home .hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
   #page-home .hcard {
-    display: flex; flex-direction: column; gap: 3px; text-align: left;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
     background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-    padding: 14px 14px; text-decoration: none; color: var(--text); font-family: inherit; cursor: pointer;
+    padding: 12px 8px; min-height: 68px; text-decoration: none; color: var(--text); font-family: inherit; cursor: pointer;
     transition: border-color .15s, transform .15s, background .15s;
   }
   #page-home .hcard:hover { border-color: var(--blue); background: var(--surface-2); transform: translateY(-2px); }
-  #page-home .hcard .ic { font-size: 22px; }
-  #page-home .hcard h2 { margin: 0; font-size: 20px; font-weight: 700; }
+  #page-home .hcard .ic { font-size: 21px; }
+  #page-home .hcard h2 { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.25; }
   #page-home .hcard p { display: none; }
-  #page-home .hcard .tag {
-    align-self: flex-start; margin-top: 1px; font-size: 9.5px; font-weight: 700;
-    padding: 2px 7px; border-radius: 999px; background: var(--green-light); color: var(--green);
-    border: 1px solid var(--green-border);
-  }
+  #page-home .hcard .tag { display: none; } /* nhãn "Đang hoạt động" lặp lại ở mọi thẻ, bỏ cho gọn */
   #page-home .hcard.soon { opacity: 0.55; cursor: default; }
   #page-home .hcard.soon:hover { border-color: var(--border); background: var(--surface); transform: none; }
-  #page-home .hcard.soon .tag { background: var(--amber-light); color: var(--amber); border: none; }
   #page-home footer { text-align: center; margin-top: auto; padding-top: 16px; font-size: 13px; color: var(--muted); line-height: 1.6; }
   @media (max-width: 640px) {
-    #page-home .hgrid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-    #page-home .hcard { padding: 12px 8px; border-radius: 12px; gap: 4px; text-align: center; align-items: center; }
-    #page-home .hcard .ic { font-size: 20px; }
-    #page-home .hcard h2 { font-size: 11px; line-height: 1.25; }
-    #page-home .hcard p { display: none; }
-    #page-home .hcard .tag { font-size: 8.5px; padding: 2px 6px; align-self: center; }
+    #page-home .hgrid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
+    #page-home .hcard { padding: 9px 4px; min-height: 60px; border-radius: 12px; gap: 4px; }
+    #page-home .hcard .ic { font-size: 19px; }
+    #page-home .hcard h2 { font-size: 10.5px; line-height: 1.25; }
+  }
+
+  /* ============================================================
+     BANNER TIN TỨC Y KHOA + SỐ LIỆU SỬ DỤNG (marquee, chạy phải -> trái)
+     ============================================================ */
+  .news-banner {
+    position: relative; display: flex; align-items: center; gap: 10px;
+    margin: 4px 0 14px; padding: 0 0 0 12px; height: 34px;
+    border: 1px solid var(--border); border-radius: 10px; background: var(--surface-2);
+    overflow: hidden; font-size: 13px;
+  }
+  .news-banner .nb-live-dot {
+    flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--green);
+    box-shadow: 0 0 0 0 rgba(31, 156, 143, .55); animation: nbPulse 2s infinite;
+  }
+  @keyframes nbPulse {
+    0%   { box-shadow: 0 0 0 0 rgba(31, 156, 143, .55); }
+    70%  { box-shadow: 0 0 0 6px rgba(31, 156, 143, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(31, 156, 143, 0); }
+  }
+  .news-banner .nb-track-wrap {
+    flex: 1; height: 100%; overflow: hidden; position: relative;
+    -webkit-mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+            mask-image: linear-gradient(to right, transparent 0, #000 24px, #000 calc(100% - 24px), transparent 100%);
+  }
+  .news-banner .nb-track {
+    display: flex; align-items: center; gap: 40px; white-space: nowrap; width: max-content; height: 100%;
+    animation: nbScroll var(--nb-duration, 40s) linear infinite; will-change: transform;
+  }
+  @keyframes nbScroll {
+    from { transform: translateX(0); }
+    to   { transform: translateX(-50%); }
+  }
+  .news-banner .nb-track:hover,
+  .news-banner.nb-paused .nb-track { animation-play-state: paused; }
+  .news-banner .nb-item { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 500; }
+  .news-banner .nb-item .nb-icon { flex: none; font-size: 13px; }
+  .news-banner .nb-item.nb-stat { color: var(--blue); font-weight: 700; }
+  .news-banner .nb-item.nb-news .nb-source { color: var(--muted); font-weight: 400; font-size: 11.5px; }
+  .news-banner .nb-item a { color: inherit; text-decoration: none; }
+  .news-banner .nb-item a:hover { text-decoration: underline; }
+  .news-banner .nb-dot-sep { color: var(--border); }
+  .news-banner .nb-toggle {
+    flex: none; width: 28px; height: 28px; margin-right: 4px;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 12px;
+  }
+  .news-banner .nb-toggle:hover { background: var(--surface); color: var(--text); }
+  @media (prefers-reduced-motion: reduce) {
+    .news-banner .nb-track { animation: none; }
+    .news-banner .nb-track-wrap { overflow-x: auto; }
+  }
+  @media (max-width: 640px) {
+    .news-banner { height: 30px; font-size: 12px; padding-left: 10px; }
+    .news-banner .nb-item { gap: 5px; }
   }
 
 #page-ldl .wrap { max-width: 640px; margin: 0 auto; padding: 28px 16px 60px; }#page-ldl .panel {

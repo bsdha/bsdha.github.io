@@ -447,6 +447,7 @@
           kindLabel = isZip ? '.zip' : 'PDF';
         }
         const url = URL.createObjectURL(blob);
+        if (typeof logUsage === 'function') logUsage('pdftools_use');
         const engineTag = useOcrToWord ? (resp.headers.get('X-OCR-Engine') || '') : '';
         setStatus(
           `✅ "${useOcrToWord ? 'OCR sang Word' : OP_LABEL[op]}" thành công${engineTag ? ' (engine: ' + engineTag + ')' : ''}.` +
