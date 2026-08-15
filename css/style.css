@@ -52,7 +52,7 @@
   #page-home header { text-align: center; margin-bottom: 14px; }
   #page-home header .logo { font-size: 36px; margin-bottom: 2px; }
   #page-home header h1 { margin: 0 0 4px; font-size: 29px; font-weight: 800; }
-  #page-home header p { margin: 0; color: var(--muted); font-size: 18px; }
+  #page-home header p { margin: 0; color: #454545; font-weight: 500; font-size: 18px; }
   /* Thẻ trang chủ: dạng gọn (icon + tên), vì điều hướng đầy đủ đã có ở sidebar/topbar */
   #page-home .hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; }
   #page-home .hcard {
@@ -68,7 +68,7 @@
   #page-home .hcard .tag { display: none; } /* nhãn "Đang hoạt động" lặp lại ở mọi thẻ, bỏ cho gọn */
   #page-home .hcard.soon { opacity: 0.55; cursor: default; }
   #page-home .hcard.soon:hover { border-color: var(--border); background: var(--surface); transform: none; }
-  #page-home footer { text-align: center; margin-top: auto; padding-top: 16px; font-size: 13px; color: var(--muted); line-height: 1.6; }
+  #page-home footer { text-align: center; margin-top: auto; padding-top: 16px; font-size: 13px; color: #454545; font-weight: 500; line-height: 1.6; }
   @media (max-width: 640px) {
     #page-home .hgrid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
     #page-home .hcard { padding: 9px 4px; min-height: 60px; border-radius: 12px; gap: 4px; }
@@ -137,6 +137,18 @@
     .news-banner { height: 30px; font-size: 12px; padding-left: 10px; }
     .news-banner .nb-item { gap: 5px; }
   }
+
+  /* ===== Dòng số liệu: canh giữa, hiện từng số liệu rồi mờ dần (không chạy marquee) ===== */
+  .news-banner-group .nb-stats-banner .nb-track-wrap {
+    -webkit-mask-image: none; mask-image: none;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .news-banner-group .nb-stats-banner .nb-track {
+    animation: none !important;
+    width: 100%; justify-content: center; gap: 0;
+    opacity: 1; transition: opacity .45s ease;
+  }
+  .news-banner-group .nb-stats-banner .nb-track.nb-stat-fade { opacity: 0; }
 
   /* ===== Popup đọc tin tức ngay trên trang ===== */
   .nb-modal-overlay {
@@ -1153,7 +1165,7 @@
     font-weight: 700;
     letter-spacing: .05em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: #454545;
     user-select: none;
   }
   .sidebar .nav-group-divider {
@@ -1188,7 +1200,7 @@
     font-weight: 700;
     letter-spacing: .05em;
     text-transform: uppercase;
-    color: var(--muted);
+    color: #454545;
     white-space: nowrap;
   }
 
