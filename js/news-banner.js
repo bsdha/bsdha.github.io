@@ -3,8 +3,10 @@
 
   // Dùng chung worker tracker hiện có (khớp với analytics.js và spa-router.js)
   const USAGE_WORKER_URL = "https://bsdha-usage-tracker.dhabolero.workers.dev";
-  const STATS_KEY = "guitar72";
-  const STATS_API = `${USAGE_WORKER_URL}/stats?key=${encodeURIComponent(STATS_KEY)}&format=json`;
+  // Banner chỉ cần TỔNG số liệu -> dùng route nhẹ /totals (nhanh, ổn định dù dữ liệu nhiều),
+  // không dùng /stats?format=json nữa vì route đó còn quét cả breakdown theo ngày (chậm dần theo thời gian).
+  // /totals không cần mật khẩu vì số liệu này vốn đã hiển thị công khai trên banner cho mọi người xem.
+  const STATS_API = `${USAGE_WORKER_URL}/totals`;
   const NEWS_API = `${USAGE_WORKER_URL}/news`; // xem worker-news-route.js để thêm route này
   const READ_API = `${USAGE_WORKER_URL}/read`; // lấy nội dung bài viết để hiển thị trong popup
 
@@ -170,7 +172,7 @@
     // 1) Số liệu tổng cộng, toàn thời gian (từ /stats?format=json -> totals) — dòng riêng
     // Chỉ hiển thị TỔNG, không hiển thị số theo từng ngày (số theo ngày còn ít, chưa đáng nói).
     try {
-      const stats = await fetchJSON(STATS_API, 20000);
+      const stats = await fetchJSON(STATS_API, 8000);
       const totals = stats && stats.totals;
       if (totals) {
         Object.keys(totals).forEach((k) => {
