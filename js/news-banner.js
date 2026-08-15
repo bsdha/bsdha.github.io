@@ -6,6 +6,7 @@
   const STATS_KEY = "guitar72";
   const STATS_API = `${USAGE_WORKER_URL}/stats?key=${encodeURIComponent(STATS_KEY)}&format=json`;
   const NEWS_API = `${USAGE_WORKER_URL}/news`; // xem worker-news-route.js để thêm route này
+  const READ_API = `${USAGE_WORKER_URL}/read`; // lấy nội dung bài viết để hiển thị trong popup
 
   const ICONS = {
     icd_search: "🔎", sinhhieu_generate: "📋", donthuoc_save: "💊",
@@ -63,19 +64,17 @@
         </div>
         <div class="nb-modal-body">
           <div class="nb-modal-loading" id="nbModalLoading">Đang tải bài viết...</div>
-          <iframe id="nbModalFrame" class="nb-modal-frame" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+          <div id="nbModalArticle" class="nb-modal-article"></div>
         </div>
       </div>`;
     document.body.appendChild(modal);
 
     const closeBtn = modal.querySelector("#nbModalCloseBtn");
-    const frame = modal.querySelector("#nbModalFrame");
-    const loading = modal.querySelector("#nbModalLoading");
 
     function close() {
       modal.classList.remove("open");
       document.body.classList.remove("nb-modal-lock");
-      frame.src = "about:blank";
+      modal.querySelector("#nbModalArticle").innerHTML = "";
     }
     closeBtn.addEventListener("click", close);
     modal.addEventListener("click", (e) => {
@@ -84,33 +83,43 @@
     document.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && modal.classList.contains("open")) close();
     });
-    frame.addEventListener("load", () => {
-      loading.style.display = "none";
-    });
 
     nbModalEl = modal;
     return modal;
   }
 
-  function openNewsModal(url, title, source) {
+  async function openNewsModal(url, title, source) {
     const modal = ensureNewsModal();
     modal.querySelector("#nbModalTitle").textContent = title || "";
     modal.querySelector("#nbModalSource").textContent = source ? "— " + source : "";
     modal.querySelector("#nbModalOpenNew").href = url;
     const loading = modal.querySelector("#nbModalLoading");
-    const frame = modal.querySelector("#nbModalFrame");
+    const article = modal.querySelector("#nbModalArticle");
+    article.innerHTML = "";
     loading.style.display = "flex";
     loading.textContent = "Đang tải bài viết...";
-    frame.src = url;
     modal.classList.add("open");
     document.body.classList.add("nb-modal-lock");
 
-    clearTimeout(openNewsModal._t);
-    openNewsModal._t = setTimeout(() => {
-      if (loading.style.display !== "none") {
-        loading.innerHTML = 'Bài viết đang tải hơi lâu hoặc trang nguồn không cho hiển thị trong popup. <a href="' + esc(url) + '" target="_blank" rel="noopener">Mở trong tab mới</a>.';
-      }
-    }, 5000);
+    try {
+      const data = await fetchJSON(`${READ_API}?url=${encodeURIComponent(url)}`, 12000);
+      if (!data || data.ok === false) throw new Error((data && data.error) || "lỗi tải bài viết");
+
+      if (data.title) modal.querySelector("#nbModalTitle").textContent = data.title;
+
+      const imgHTML = data.image
+        ? `<img src="${esc(data.image)}" alt="" class="nb-article-img">`
+        : "";
+      const bodyHTML = (data.paragraphs || [])
+        .map((p) => `<p>${esc(p)}</p>`)
+        .join("");
+
+      article.innerHTML = imgHTML + bodyHTML;
+      loading.style.display = "none";
+    } catch (err) {
+      loading.innerHTML =
+        'Không tải được nội dung bài viết ngay lúc này. <a href="' + esc(url) + '" target="_blank" rel="noopener">Mở trong tab mới</a>.';
+    }
   }
 
   document.addEventListener("click", (e) => {
