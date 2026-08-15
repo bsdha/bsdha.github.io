@@ -1864,3 +1864,96 @@
         color: var(--green, #1f8a5f);
         margin-top: 4px;
       }
+
+/* ===== #page-tuongtac — Tra cứu tương tác thuốc ===== */
+#page-tuongtac .ddi-input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+@media (max-width: 640px) { #page-tuongtac .ddi-input-grid { grid-template-columns: 1fr; } }
+#page-tuongtac .ddi-suggest-wrap { position: relative; }
+#page-tuongtac .ddi-suggest-list {
+  display: none;
+  position: absolute;
+  left: 0; right: 0; top: calc(100% + 2px);
+  z-index: 20;
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  max-height: 220px;
+  overflow-y: auto;
+}
+#page-tuongtac .ddi-suggest-list.show { display: block; }
+#page-tuongtac .ddi-suggest-item { padding: 9px 12px; font-size: 14px; cursor: pointer; color: var(--text); }
+#page-tuongtac .ddi-suggest-item:hover { background: var(--surface-2); }
+#page-tuongtac .ddi-suggest-item:not(:last-child) { border-bottom: 1px solid var(--surface-2); }
+
+#page-tuongtac .calc-btn { margin-top: 14px; }
+
+#page-tuongtac .ddi-result { margin-top: 16px; display: none; flex-direction: column; gap: 12px; }
+#page-tuongtac .ddi-result.show { display: flex; }
+
+#page-tuongtac .ddi-drug-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 640px) { #page-tuongtac .ddi-drug-grid { grid-template-columns: 1fr; } }
+#page-tuongtac .ddi-drug-card {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  color: var(--text);
+  line-height: 1.5;
+}
+#page-tuongtac .ddi-drug-name { font-weight: 800; font-size: 15px; margin-bottom: 4px; }
+#page-tuongtac .ddi-drug-row { margin-top: 2px; }
+#page-tuongtac .ddi-drug-card.ddi-drug-notfound { color: var(--muted); font-style: italic; }
+
+#page-tuongtac .ddi-interaction {
+  border-radius: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+#page-tuongtac .ddi-interaction-title { font-weight: 800; font-size: 14.5px; margin-bottom: 6px; }
+#page-tuongtac .ddi-interaction-note { color: var(--text); }
+#page-tuongtac .ddi-interaction.ddi-sev-nang { background: var(--red-light); border-color: var(--red-border); color: var(--red-dark); }
+#page-tuongtac .ddi-interaction.ddi-sev-nang .ddi-interaction-note { color: var(--red-dark); }
+#page-tuongtac .ddi-interaction.ddi-sev-trungbinh { background: var(--amber-light); border-color: var(--amber); color: var(--amber-dark); }
+#page-tuongtac .ddi-interaction.ddi-sev-trungbinh .ddi-interaction-note { color: var(--text); }
+#page-tuongtac .ddi-interaction.ddi-sev-nhe { background: var(--surface-2); color: var(--text); }
+#page-tuongtac .ddi-interaction.ddi-sev-none { background: var(--green-light); color: var(--green); }
+#page-tuongtac .ddi-interaction.ddi-sev-none b { color: var(--text); }
+
+/* ===== #page-tuongtac — Tra cứu mở rộng (openFDA) ===== */
+#page-tuongtac .ddi-extended {
+  border-radius: 12px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  background: #fff;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+#page-tuongtac .ddi-extended-loading { color: var(--muted); font-style: italic; }
+#page-tuongtac .ddi-extended-title { font-weight: 800; color: var(--text); margin-bottom: 8px; font-size: 13.5px; }
+#page-tuongtac .ddi-extended-item { margin-bottom: 8px; }
+#page-tuongtac .ddi-extended-item:last-of-type { margin-bottom: 0; }
+#page-tuongtac .ddi-extended-src { font-weight: 700; color: var(--text); font-size: 12.5px; margin-bottom: 2px; }
+#page-tuongtac .ddi-extended-quote { font-style: italic; color: var(--text); padding-left: 10px; border-left: 3px solid var(--border); }
+#page-tuongtac .ddi-extended-disclaimer { margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+#page-tuongtac .ddi-extended-found { border-style: solid; background: var(--surface-2); }
+
+/* ===== #page-tuongtac — toggle xem bản gốc tiếng Anh ===== */
+#page-tuongtac .ddi-extended-toggle {
+  margin-top: 4px;
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 2px 0;
+  text-decoration: underline;
+}
+#page-tuongtac .ddi-extended-toggle:hover { opacity: 0.8; }
+#page-tuongtac .ddi-extended-quote.ddi-extended-orig { display: none; margin-top: 6px; color: var(--muted); }
+#page-tuongtac .ddi-extended-quote.ddi-extended-orig.show { display: block; }
