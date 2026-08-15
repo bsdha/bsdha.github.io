@@ -33,7 +33,7 @@
   }
 
   function statItemHTML(key, count) {
-    return `<span class="nb-item nb-stat"><span class="nb-icon">${ICONS[key] || "📊"}</span>Đã có ${count.toLocaleString("vi-VN")} ${esc(LABELS[key] || key)}</span>`;
+    return `<span class="nb-item nb-stat"><span class="nb-icon">${ICONS[key] || "📊"}</span>${count.toLocaleString("vi-VN")} ${esc(LABELS[key] || key)}</span>`;
   }
 
   function newsItemHTML(item) {
@@ -149,6 +149,37 @@
     if (banner) banner.style.setProperty("--nb-duration", durationSeconds + "s");
   }
 
+  // ===== Dòng số liệu: hiện từng số liệu, canh giữa, mờ dần rồi đổi số khác =====
+  let statsCycleTimer = null;
+
+  function renderStatsCycle(track, htmlPieces, intervalMs) {
+    if (statsCycleTimer) {
+      clearInterval(statsCycleTimer);
+      statsCycleTimer = null;
+    }
+    if (!track || !htmlPieces.length) return;
+
+    let idx = 0;
+    const banner = track.closest(".news-banner");
+
+    function show(i) {
+      track.classList.add("nb-stat-fade");
+      setTimeout(() => {
+        track.innerHTML = htmlPieces[i];
+        track.classList.remove("nb-stat-fade");
+      }, 450);
+    }
+
+    show(idx);
+    if (htmlPieces.length <= 1) return; // chỉ 1 số liệu -> không cần xoay vòng
+
+    statsCycleTimer = setInterval(() => {
+      if (banner && banner.classList.contains("nb-paused")) return;
+      idx = (idx + 1) % htmlPieces.length;
+      show(idx);
+    }, intervalMs || 3500);
+  }
+
   async function fetchJSON(url, timeoutMs) {
     const ctrl = new AbortController();
     const t = setTimeout(() => ctrl.abort(), timeoutMs || 6000);
@@ -197,7 +228,7 @@
       if (statsBanner) statsBanner.style.display = "none";
     } else {
       if (statsBanner) statsBanner.style.display = "";
-      if (statsTrack) render(statsTrack, statsPieces);
+      if (statsTrack) renderStatsCycle(statsTrack, statsPieces);
     }
 
     if (newsTrack) render(newsTrack, newsPieces);
