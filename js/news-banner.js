@@ -14,7 +14,7 @@
   };
   const LABELS = {
     icd_search: "lượt tra ICD-10", sinhhieu_generate: "phiếu sinh hiệu",
-    donthuoc_save: "đơn thuốc đã lưu", egfr_calc: "lượt tính eGFR",
+    donthuoc_save: "lượt kê đơn thuốc", egfr_calc: "lượt tính eGFR",
     insulin_calc: "lượt tính Insulin", ldl_calc: "lượt tính LDL-C",
     pdf2word_convert: "lượt chuyển đổi tài liệu", pdftools_use: "lượt dùng Công cụ PDF",
   };
@@ -30,7 +30,7 @@
   }
 
   function statItemHTML(key, count) {
-    return `<span class="nb-item nb-stat"><span class="nb-icon">${ICONS[key] || "📊"}</span>${count.toLocaleString("vi-VN")} ${esc(LABELS[key] || key)} hôm nay</span>`;
+    return `<span class="nb-item nb-stat"><span class="nb-icon">${ICONS[key] || "📊"}</span>Đã có ${count.toLocaleString("vi-VN")} ${esc(LABELS[key] || key)}</span>`;
   }
 
   function newsItemHTML(item) {
@@ -77,13 +77,14 @@
 
     const pieces = [];
 
-    // 1) Số liệu thật hôm nay (từ /stats?format=json)
+    // 1) Số liệu tổng cộng, toàn thời gian (từ /stats?format=json -> totals)
+    // Chỉ hiển thị TỔNG, không hiển thị số theo từng ngày (số theo ngày còn ít, chưa đáng nói).
     try {
       const stats = await fetchJSON(STATS_API);
-      const today = stats && stats.today;
-      if (today) {
-        Object.keys(today).forEach((k) => {
-          if (today[k] > 0) pieces.push(statItemHTML(k, today[k]));
+      const totals = stats && stats.totals;
+      if (totals) {
+        Object.keys(totals).forEach((k) => {
+          if (totals[k] > 0) pieces.push(statItemHTML(k, totals[k]));
         });
       }
     } catch (e) { /* im lặng, banner vẫn chạy với phần còn lại */ }
