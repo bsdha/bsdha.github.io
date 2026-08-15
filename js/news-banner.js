@@ -170,7 +170,7 @@
     // 1) Số liệu tổng cộng, toàn thời gian (từ /stats?format=json -> totals) — dòng riêng
     // Chỉ hiển thị TỔNG, không hiển thị số theo từng ngày (số theo ngày còn ít, chưa đáng nói).
     try {
-      const stats = await fetchJSON(STATS_API);
+      const stats = await fetchJSON(STATS_API, 20000);
       const totals = stats && stats.totals;
       if (totals) {
         Object.keys(totals).forEach((k) => {
