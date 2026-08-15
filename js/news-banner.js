@@ -36,10 +36,89 @@
   function newsItemHTML(item) {
     const icon = item.type === "pubmed" ? "🌐" : "📰";
     const link = item.url
-      ? `<a href="${esc(item.url)}" target="_blank" rel="noopener">${esc(item.title)}</a>`
+      ? `<a href="#" class="nb-news-link" data-url="${esc(item.url)}" data-title="${esc(item.title)}" data-source="${esc(item.source)}">${esc(item.title)}</a>`
       : esc(item.title);
     return `<span class="nb-item nb-news"><span class="nb-icon">${icon}</span>${link}<span class="nb-source"> — ${esc(item.source)}</span></span>`;
   }
+
+  // ===== Popup đọc tin ngay trên trang (không rời sang tab khác) =====
+  let nbModalEl = null;
+
+  function ensureNewsModal() {
+    if (nbModalEl) return nbModalEl;
+    const modal = document.createElement("div");
+    modal.className = "nb-modal-overlay";
+    modal.id = "nbNewsModal";
+    modal.innerHTML = `
+      <div class="nb-modal-box" role="dialog" aria-modal="true" aria-labelledby="nbModalTitle">
+        <div class="nb-modal-head">
+          <div class="nb-modal-titlewrap">
+            <span id="nbModalTitle" class="nb-modal-title"></span>
+            <span id="nbModalSource" class="nb-modal-source"></span>
+          </div>
+          <div class="nb-modal-actions">
+            <a id="nbModalOpenNew" href="#" target="_blank" rel="noopener" class="nb-modal-newtab" title="Mở trong tab mới">↗</a>
+            <button type="button" class="nb-modal-close" id="nbModalCloseBtn" title="Đóng" aria-label="Đóng">✕</button>
+          </div>
+        </div>
+        <div class="nb-modal-body">
+          <div class="nb-modal-loading" id="nbModalLoading">Đang tải bài viết...</div>
+          <iframe id="nbModalFrame" class="nb-modal-frame" referrerpolicy="no-referrer" sandbox="allow-scripts allow-same-origin allow-popups allow-forms"></iframe>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const closeBtn = modal.querySelector("#nbModalCloseBtn");
+    const frame = modal.querySelector("#nbModalFrame");
+    const loading = modal.querySelector("#nbModalLoading");
+
+    function close() {
+      modal.classList.remove("open");
+      document.body.classList.remove("nb-modal-lock");
+      frame.src = "about:blank";
+    }
+    closeBtn.addEventListener("click", close);
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) close();
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && modal.classList.contains("open")) close();
+    });
+    frame.addEventListener("load", () => {
+      loading.style.display = "none";
+    });
+
+    nbModalEl = modal;
+    return modal;
+  }
+
+  function openNewsModal(url, title, source) {
+    const modal = ensureNewsModal();
+    modal.querySelector("#nbModalTitle").textContent = title || "";
+    modal.querySelector("#nbModalSource").textContent = source ? "— " + source : "";
+    modal.querySelector("#nbModalOpenNew").href = url;
+    const loading = modal.querySelector("#nbModalLoading");
+    const frame = modal.querySelector("#nbModalFrame");
+    loading.style.display = "flex";
+    loading.textContent = "Đang tải bài viết...";
+    frame.src = url;
+    modal.classList.add("open");
+    document.body.classList.add("nb-modal-lock");
+
+    clearTimeout(openNewsModal._t);
+    openNewsModal._t = setTimeout(() => {
+      if (loading.style.display !== "none") {
+        loading.innerHTML = 'Bài viết đang tải hơi lâu hoặc trang nguồn không cho hiển thị trong popup. <a href="' + esc(url) + '" target="_blank" rel="noopener">Mở trong tab mới</a>.';
+      }
+    }, 5000);
+  }
+
+  document.addEventListener("click", (e) => {
+    const link = e.target.closest(".nb-news-link");
+    if (!link) return;
+    e.preventDefault();
+    openNewsModal(link.dataset.url, link.dataset.title, link.dataset.source);
+  });
 
   function tipItemHTML(item) {
     return `<span class="nb-item"><span class="nb-icon">${item.icon}</span>${item.text}</span>`;
@@ -94,7 +173,7 @@
     // 2) Tin tức y khoa (từ /news — cần thêm route, xem worker-news-route.js) — dòng riêng
     try {
       const news = await fetchJSON(NEWS_API);
-      (news.items || []).slice(0, 14).forEach((item) => newsPieces.push(newsItemHTML(item)));
+      (news.items || []).slice(0, 8).forEach((item) => newsPieces.push(newsItemHTML(item)));
     } catch (e) { /* im lặng */ }
 
     // 3) Nếu dòng tin tức rỗng -> dùng mẹo/tip tĩnh, banner không bao giờ trống
