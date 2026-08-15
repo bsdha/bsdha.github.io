@@ -72,40 +72,50 @@
   }
 
   async function loadBanner() {
-    const track = document.getElementById("nbTrack");
-    if (!track) return;
+    const statsTrack = document.getElementById("nbStatsTrack");
+    const newsTrack = document.getElementById("nbTrack");
+    if (!statsTrack && !newsTrack) return;
 
-    const pieces = [];
+    const statsPieces = [];
+    const newsPieces = [];
 
-    // 1) Số liệu tổng cộng, toàn thời gian (từ /stats?format=json -> totals)
+    // 1) Số liệu tổng cộng, toàn thời gian (từ /stats?format=json -> totals) — dòng riêng
     // Chỉ hiển thị TỔNG, không hiển thị số theo từng ngày (số theo ngày còn ít, chưa đáng nói).
     try {
       const stats = await fetchJSON(STATS_API);
       const totals = stats && stats.totals;
       if (totals) {
         Object.keys(totals).forEach((k) => {
-          if (totals[k] > 0) pieces.push(statItemHTML(k, totals[k]));
+          if (totals[k] > 0) statsPieces.push(statItemHTML(k, totals[k]));
         });
       }
     } catch (e) { /* im lặng, banner vẫn chạy với phần còn lại */ }
 
-    // 2) Tin tức y khoa (từ /news — cần thêm route, xem worker-news-route.js)
+    // 2) Tin tức y khoa (từ /news — cần thêm route, xem worker-news-route.js) — dòng riêng
     try {
       const news = await fetchJSON(NEWS_API);
-      (news.items || []).slice(0, 8).forEach((item) => pieces.push(newsItemHTML(item)));
+      (news.items || []).slice(0, 8).forEach((item) => newsPieces.push(newsItemHTML(item)));
     } catch (e) { /* im lặng */ }
 
-    // 3) Nếu cả 2 nguồn đều rỗng -> dùng mẹo/tip tĩnh, banner không bao giờ trống
-    if (!pieces.length) {
-      FALLBACK_ITEMS.forEach((item) => pieces.push(tipItemHTML(item)));
+    // 3) Nếu dòng tin tức rỗng -> dùng mẹo/tip tĩnh, banner không bao giờ trống
+    if (!newsPieces.length) {
+      FALLBACK_ITEMS.forEach((item) => newsPieces.push(tipItemHTML(item)));
+    }
+    // Nếu dòng số liệu rỗng (chưa có lượt dùng nào) -> ẩn hẳn dòng đó
+    const statsBanner = document.getElementById("statsBanner");
+    if (!statsPieces.length) {
+      if (statsBanner) statsBanner.style.display = "none";
+    } else {
+      if (statsBanner) statsBanner.style.display = "";
+      if (statsTrack) render(statsTrack, statsPieces);
     }
 
-    render(track, pieces);
+    if (newsTrack) render(newsTrack, newsPieces);
   }
 
-  function initToggle() {
-    const banner = document.getElementById("newsBanner");
-    const btn = document.getElementById("nbToggle");
+  function initToggle(bannerId, btnId) {
+    const banner = document.getElementById(bannerId);
+    const btn = document.getElementById(btnId);
     if (!banner || !btn) return;
     btn.addEventListener("click", () => {
       const paused = banner.classList.toggle("nb-paused");
@@ -115,7 +125,8 @@
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    initToggle();
+    initToggle("statsBanner", "nbStatsToggle");
+    initToggle("newsBanner", "nbToggle");
     loadBanner();
     setInterval(loadBanner, 15 * 60 * 1000); // làm mới mỗi 15 phút nếu tab để mở lâu
   });
