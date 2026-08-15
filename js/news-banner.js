@@ -38,7 +38,8 @@
 
   function newsItemHTML(item) {
     const icon = item.type === "pubmed" ? "🌐" : "📰";
-    const link = item.url
+    const validUrl = item.url && /^https?:\/\//i.test(item.url);
+    const link = validUrl
       ? `<a href="#" class="nb-news-link" data-url="${esc(item.url)}" data-title="${esc(item.title)}" data-source="${esc(item.source)}">${esc(item.title)}</a>`
       : esc(item.title);
     return `<span class="nb-item nb-news"><span class="nb-icon">${icon}</span>${link}<span class="nb-source"> — ${esc(item.source)}</span></span>`;
