@@ -94,7 +94,7 @@
     // 2) Tin tức y khoa (từ /news — cần thêm route, xem worker-news-route.js) — dòng riêng
     try {
       const news = await fetchJSON(NEWS_API);
-      (news.items || []).slice(0, 8).forEach((item) => newsPieces.push(newsItemHTML(item)));
+      (news.items || []).slice(0, 14).forEach((item) => newsPieces.push(newsItemHTML(item)));
     } catch (e) { /* im lặng */ }
 
     // 3) Nếu dòng tin tức rỗng -> dùng mẹo/tip tĩnh, banner không bao giờ trống
