@@ -139,13 +139,23 @@
   }
 
   /* ===== Dòng số liệu: canh giữa, hiện từng số liệu rồi mờ dần (không chạy marquee) ===== */
+  .news-banner-group .nb-stats-banner {
+    border: none;
+    background: transparent;
+    justify-content: center;
+    gap: 8px;
+    padding: 4px 0;
+    height: auto;
+  }
   .news-banner-group .nb-stats-banner .nb-track-wrap {
+    flex: none; width: auto;
     -webkit-mask-image: none; mask-image: none;
     display: flex; align-items: center; justify-content: center;
   }
+  .news-banner-group .nb-stats-banner .nb-toggle { display: none; }
   .news-banner-group .nb-stats-banner .nb-track {
     animation: none !important;
-    width: 100%; justify-content: center; gap: 0;
+    width: auto; justify-content: center; gap: 0;
     opacity: 1; transition: opacity .45s ease;
   }
   .news-banner-group .nb-stats-banner .nb-track.nb-stat-fade { opacity: 0; }
