@@ -1708,15 +1708,6 @@
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
       logUsage('donthuoc_save');
-      savePrescriptionRecord({
-        doctor: doctor || '',
-        patient_initials: maskPatientName(name),
-        rx_date: fileDate,
-        age: Number.isFinite(age) ? age : null,
-        sex: sex || '',
-        diagnosis: diag || '',
-        drugs: rxRows.map(r => ({ brand: r.brand, generic: r.generic, days: r.days, qty: r.qty })),
-      });
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
