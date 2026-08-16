@@ -1218,6 +1218,7 @@
     });
     document.getElementById("ctSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("ctPrintBtn").addEventListener("click", function () {
+      if (typeof logUsage === 'function') logUsage('chuyentuyen_print');
       ctBeforePrint();
       window.print();
       // Phòng khi trình duyệt không bắn sự kiện afterprint (một số Safari cũ):

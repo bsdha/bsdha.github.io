@@ -388,6 +388,7 @@
     html += "</div>";
 
     if (entryA && entryB) {
+      if (typeof logUsage === 'function') logUsage('ddi_check');
       if (entryA.source === entryB.source && entryA.key === entryB.key) {
         html += '<div class="ddi-interaction ddi-sev-nhe">Hai ô đang trùng cùng 1 thuốc — hãy nhập 2 thuốc khác nhau để kiểm tra tương tác.</div>';
       } else {

@@ -780,6 +780,7 @@
     });
     document.getElementById("nvSaveBtn").addEventListener("click", saveSettings);
     document.getElementById("nvPrintBtn").addEventListener("click", function () {
+      if (typeof logUsage === 'function') logUsage('nghiviec_print');
       nvBeforePrint();
       window.print();
       setTimeout(nvAfterPrint, 1000);
