@@ -104,6 +104,7 @@
     ".nv-hd{display:flex;justify-content:space-between;align-items:flex-start;}",
     ".nv-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;max-width:60%;line-height:1.3;}",
     ".nv-hd-right{text-align:right;font-size:11px;}",
+    ".nv-hd-mauso{text-align:left;font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;}",
     ".nv-title{text-align:center;font-weight:bold;font-size:14px;margin:3mm 0 0;text-transform:uppercase;}",
     ".nv-title2{text-align:center;font-weight:bold;font-size:13px;text-transform:uppercase;}",
     ".nv-sub{text-align:center;font-style:italic;font-size:11px;margin-bottom:2mm;}",
@@ -604,10 +605,11 @@
     var d = DATA;
     var html = "";
     html += '<div class="l-row nv-hd">' +
-              '<div class="nv-hd-left">' + esc(HOSPITAL_NAME) + '</div>' +
-              '<div class="nv-hd-right">Mẫu số: ' + fillOrLine(d.mauSo || "07", 10) + '<br>' +
-                'Số: ' + fillOrLine(d.soKCB, 20) + '/KCB<br>' +
-                'Số seri: ' + fillOrLine(d.soSeri, 25) +
+              '<div class="nv-hd-left">' + esc(HOSPITAL_NAME) +
+                '<div class="nv-hd-mauso">Mẫu số: ' + fillOrLine(d.mauSo || "07", 10) + '<br>' +
+                  'Số: ' + fillOrLine(d.soKCB, 20) + '/KCB<br>' +
+                  'Số seri: ' + fillOrLine(d.soSeri, 25) +
+                '</div>' +
               '</div>' +
             '</div>';
     html += '<div class="nv-title">Giấy chứng nhận</div>';
