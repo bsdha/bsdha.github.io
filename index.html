@@ -613,8 +613,11 @@
   <div class="page" id="page-tuongtac">
     <div class="wrap">
       <div class="panel">
-        <h1>Tra cứu tương tác thuốc</h1>
-        <div class="sub">Nhập tên 2 thuốc (biệt dược hoặc hoạt chất), nhấn Enter hoặc bấm nút để kiểm tra. Dữ liệu rút gọn, tham khảo nhanh — không thay thế Dược thư Quốc gia Việt Nam.</div>
+        <h1>Tra cứu tương tác thuốc <button type="button" class="ddi-info-btn" id="ddiInfoBtn" aria-label="Thông tin nguồn dữ liệu">i</button></h1>
+        <div class="ddi-info-popover" id="ddiInfoPopover">
+          Công cụ tra cứu nhanh, kết hợp 3 nguồn: (1) CSDL rút gọn tự biên soạn tiếng Việt (có công dụng, liều tối đa, giải thích cơ chế), (2) CSDL DDInter 2.0 — <a href="https://ddinter2.scbdd.com" target="_blank" rel="noopener">ddinter2.scbdd.com</a> (gần 2.000 thuốc, 160.000+ cặp tương tác, chỉ có mức độ, chưa dịch cơ chế), và (3) tra cứu mở rộng tự động từ nhãn thuốc FDA — Hoa Kỳ (tiếng Anh, dịch tự động). Cả 3 nguồn đều KHÔNG đầy đủ. Liều tối đa nêu ra là liều tham khảo cho người lớn, chức năng gan/thận bình thường, luôn cần hiệu chỉnh theo từng bệnh nhân. Vui lòng đối chiếu Dược thư Quốc gia Việt Nam hoặc ý kiến dược sĩ lâm sàng trước khi quyết định điều trị.
+        </div>
+        <div class="sub">Nhập tên 2 thuốc (biệt dược hoặc hoạt chất), dùng phím ↑↓ để chọn gợi ý, nhấn Enter hoặc bấm nút để kiểm tra.</div>
 
         <div class="ddi-input-grid">
           <div class="field ddi-suggest-wrap">
@@ -632,10 +635,6 @@
         <button class="calc-btn" id="ddiCheckBtn">Kiểm tra tương tác</button>
 
         <div class="ddi-result" id="ddiResult"></div>
-
-        <div class="formula-note">
-          ⚠️ Công cụ tra cứu nhanh, kết hợp 3 nguồn: (1) CSDL rút gọn tự biên soạn tiếng Việt (có công dụng, liều tối đa, giải thích cơ chế), (2) CSDL DDInter 2.0 — <a href="https://ddinter2.scbdd.com" target="_blank" rel="noopener">ddinter2.scbdd.com</a> (gần 2.000 thuốc, 160.000+ cặp tương tác, chỉ có mức độ, chưa dịch cơ chế), và (3) tra cứu mở rộng tự động từ nhãn thuốc FDA — Hoa Kỳ (tiếng Anh, dịch tự động qua openFDA). Cả 3 nguồn đều KHÔNG đầy đủ. Liều tối đa nêu ra là liều tham khảo cho người lớn, chức năng gan/thận bình thường, luôn cần hiệu chỉnh theo từng bệnh nhân. Vui lòng đối chiếu Dược thư Quốc gia Việt Nam hoặc ý kiến dược sĩ lâm sàng trước khi quyết định điều trị.
-        </div>
       </div>
     </div>
     <script defer src="/ddinter-data.js"></script>
