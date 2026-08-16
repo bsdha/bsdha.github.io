@@ -432,32 +432,85 @@
     }
   }
 
-  function setupSuggest(inputEl, listEl, onPick) {
+  function setupSuggest(inputEl, listEl, onPick, onEnterNoSelection) {
+    let matches = [];
+    let activeIdx = -1;
+
     function close() {
       listEl.innerHTML = "";
       listEl.classList.remove("show");
+      matches = [];
+      activeIdx = -1;
     }
-    inputEl.addEventListener("input", () => {
-      const matches = suggestDrugs(inputEl.value, 8);
-      if (!matches.length) return close();
+
+    function itemLabel(e) {
+      return e.source === "local" ? DRUGS[e.key].name : DDI_BULK.drugs[e.key];
+    }
+
+    function renderList() {
       listEl.innerHTML = matches
-        .map((e) => {
-          const label = e.source === "local" ? DRUGS[e.key].name : DDI_BULK.drugs[e.key];
+        .map((e, i) => {
           const tag = e.source === "bulk" ? ' <span class="ddi-suggest-tag">DDInter</span>' : "";
-          return '<div class="ddi-suggest-item" data-source="' + e.source + '" data-key="' + e.key + '">' + esc(label) + tag + "</div>";
+          const activeCls = i === activeIdx ? " active" : "";
+          return '<div class="ddi-suggest-item' + activeCls + '" data-idx="' + i + '">' + esc(itemLabel(e)) + tag + "</div>";
         })
         .join("");
       listEl.classList.add("show");
+      const activeEl = listEl.querySelector(".ddi-suggest-item.active");
+      if (activeEl) activeEl.scrollIntoView({ block: "nearest" });
+    }
+
+    function pick(idx) {
+      const e = matches[idx];
+      if (!e) return;
+      inputEl.value = itemLabel(e);
+      close();
+      onPick();
+    }
+
+    inputEl.addEventListener("input", () => {
+      matches = suggestDrugs(inputEl.value, 8);
+      activeIdx = -1;
+      if (!matches.length) return close();
+      renderList();
     });
+
+    inputEl.addEventListener("keydown", (e) => {
+      if (matches.length && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+        e.preventDefault();
+        activeIdx = e.key === "ArrowDown" ? Math.min(activeIdx + 1, matches.length - 1) : Math.max(activeIdx - 1, 0);
+        renderList();
+        return;
+      }
+      if (matches.length && e.key === "Escape") {
+        close();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (matches.length && activeIdx >= 0) {
+          pick(activeIdx);
+        } else {
+          close();
+          if (onEnterNoSelection) onEnterNoSelection();
+        }
+      }
+    });
+
     listEl.addEventListener("mousedown", (e) => {
       const item = e.target.closest(".ddi-suggest-item");
       if (!item) return;
       e.preventDefault();
-      const source = item.dataset.source;
-      const key = source === "local" ? item.dataset.key : Number(item.dataset.key);
-      inputEl.value = source === "local" ? DRUGS[key].name : DDI_BULK.drugs[key];
-      close();
-      onPick();
+      pick(Number(item.dataset.idx));
+    });
+    listEl.addEventListener("mousemove", (e) => {
+      const item = e.target.closest(".ddi-suggest-item");
+      if (!item) return;
+      const idx = Number(item.dataset.idx);
+      if (idx !== activeIdx) {
+        activeIdx = idx;
+        listEl.querySelectorAll(".ddi-suggest-item").forEach((el, i) => el.classList.toggle("active", i === activeIdx));
+      }
     });
     inputEl.addEventListener("blur", () => setTimeout(close, 120));
     inputEl.addEventListener("focus", () => {
@@ -472,7 +525,13 @@
     const suggestB = document.getElementById("ddiSuggestB");
     const resultEl = document.getElementById("ddiResult");
     const btn = document.getElementById("ddiCheckBtn");
+    const infoBtn = document.getElementById("ddiInfoBtn");
+    const infoPopover = document.getElementById("ddiInfoPopover");
     if (!inputA || !inputB || !resultEl) return; // trang chưa có trên DOM, bỏ qua
+
+    if (infoBtn && infoPopover) {
+      infoBtn.addEventListener("click", () => infoPopover.classList.toggle("show"));
+    }
 
     resultEl.addEventListener("click", (e) => {
       const toggleBtn = e.target.closest(".ddi-extended-toggle");
@@ -487,28 +546,13 @@
       render(resultEl, inputA.value, inputB.value);
     }
 
-    setupSuggest(inputA, suggestA, check);
-    setupSuggest(inputB, suggestB, check);
+    setupSuggest(inputA, suggestA, check, () => {
+      if (!inputB.value.trim()) inputB.focus();
+      else check();
+    });
+    setupSuggest(inputB, suggestB, check, check);
 
-    inputA.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        if (!inputB.value.trim()) inputB.focus();
-        else check();
-      }
-    });
-    inputB.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        check();
-      }
-    });
     if (btn) btn.addEventListener("click", check);
-
-    if (typeof window.logUsage === "function") {
-      // Ghi nhận lượt dùng nếu worker đã hỗ trợ action này (bỏ qua im lặng nếu chưa).
-      // Xem README/worker.js: thêm "tuongtac_check" vào ALLOWED_ACTIONS nếu muốn thống kê.
-    }
   }
 
   document.addEventListener("DOMContentLoaded", init);
