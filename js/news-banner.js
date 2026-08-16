@@ -58,7 +58,6 @@
         <div class="nb-modal-head">
           <div class="nb-modal-titlewrap">
             <span id="nbModalTitle" class="nb-modal-title"></span>
-            <span id="nbModalSource" class="nb-modal-source"></span>
           </div>
           <div class="nb-modal-actions">
             <a id="nbModalOpenNew" href="#" target="_blank" rel="noopener" class="nb-modal-newtab" title="Mở trong tab mới">↗</a>
@@ -105,7 +104,6 @@
   async function openNewsModal(url, title, source) {
     const modal = ensureNewsModal();
     modal.querySelector("#nbModalTitle").textContent = stripSiteSuffix(title) || "";
-    modal.querySelector("#nbModalSource").textContent = source ? "— " + source : "";
     modal.querySelector("#nbModalOpenNew").href = url;
     const loading = modal.querySelector("#nbModalLoading");
     const article = modal.querySelector("#nbModalArticle");
