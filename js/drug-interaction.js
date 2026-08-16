@@ -155,37 +155,72 @@
       .trim();
   }
 
-  // Xây chỉ mục tìm kiếm: mỗi biến thể tên (đã chuẩn hoá) -> mã thuốc
+  // Xây chỉ mục tìm kiếm: mỗi biến thể tên (đã chuẩn hoá) -> {source, key}
+  // source 'local'  = có trong CSDL rút gọn tiếng Việt (đầy đủ công dụng/liều)
+  // source 'bulk'   = chỉ có trong DDInter 2.0 (chỉ có tên + mức độ tương tác, chưa dịch)
   const SEARCH_INDEX = [];
+  const SEEN_NORM = new Set();
   Object.keys(DRUGS).forEach((key) => {
     const d = DRUGS[key];
     const names = [d.name, ...(d.aliases || []), key];
     names.forEach((n) => {
-      SEARCH_INDEX.push({ norm: normalize(n), key });
+      const norm = normalize(n);
+      SEARCH_INDEX.push({ norm, source: "local", key });
+      SEEN_NORM.add(norm);
     });
   });
+
+  // ---------- CSDL mở rộng: DDInter 2.0 (nạp từ /ddinter-data.js nếu có) ----------
+  // Nguồn: https://ddinter2.scbdd.com — giấy phép CC BY-NC-SA 4.0.
+  // Chỉ gồm tên thuốc (tiếng Anh/quốc tế) + mức độ tương tác (0-3), KHÔNG có mô tả cơ chế.
+  const DDI_BULK = (window.DDINTER_DATA && Array.isArray(window.DDINTER_DATA.drugs)) ? window.DDINTER_DATA : { drugs: [], pairs: [] };
+  const DDI_NAME_TO_IDX = {};
+  DDI_BULK.drugs.forEach((name, idx) => {
+    const norm = normalize(name);
+    DDI_NAME_TO_IDX[norm] = idx;
+    if (!SEEN_NORM.has(norm)) {
+      SEARCH_INDEX.push({ norm, source: "bulk", key: idx });
+      SEEN_NORM.add(norm);
+    }
+  });
+  const DDI_PAIR_SEV = {}; // "idxNhỏ_idxLớn" -> mức độ (0-3)
+  DDI_BULK.pairs.forEach((p) => {
+    const a = p[0], b = p[1], s = p[2];
+    const k = a < b ? a + "_" + b : b + "_" + a;
+    DDI_PAIR_SEV[k] = s;
+  });
+  const BULK_SEV_MAP = { 0: null, 1: "nhe", 2: "trungbinh", 3: "nang" }; // 0=chưa phân loại -> bỏ qua
 
   function findDrug(query) {
     const q = normalize(query);
     if (!q) return null;
-    // Ưu tiên khớp đúng tuyệt đối, sau đó khớp chuỗi con
-    let hit = SEARCH_INDEX.find((e) => e.norm === q);
-    if (!hit) hit = SEARCH_INDEX.find((e) => e.norm.indexOf(q) === 0);
-    if (!hit) hit = SEARCH_INDEX.find((e) => e.norm.indexOf(q) !== -1);
-    return hit ? hit.key : null;
+    // Ưu tiên: khớp đúng tuyệt đối > khớp đầu chuỗi > khớp chuỗi con — và trong mỗi
+    // mức, ưu tiên nguồn 'local' (có đủ công dụng/liều) trước nguồn 'bulk'.
+    const bySource = (a, b) => (a.source === b.source ? 0 : a.source === "local" ? -1 : 1);
+    let candidates = SEARCH_INDEX.filter((e) => e.norm === q);
+    if (!candidates.length) candidates = SEARCH_INDEX.filter((e) => e.norm.indexOf(q) === 0);
+    if (!candidates.length) candidates = SEARCH_INDEX.filter((e) => e.norm.indexOf(q) !== -1);
+    if (!candidates.length) return null;
+    candidates.sort(bySource);
+    return { source: candidates[0].source, key: candidates[0].key };
+  }
+
+  function drugDisplayName(entry) {
+    return entry.source === "local" ? DRUGS[entry.key].name : DDI_BULK.drugs[entry.key];
   }
 
   function suggestDrugs(query, limit) {
     const q = normalize(query);
     if (!q) return [];
-    const seen = new Set();
+    const seenKey = new Set();
     const out = [];
     SEARCH_INDEX.forEach((e) => {
       if (out.length >= (limit || 8)) return;
-      if (seen.has(e.key)) return;
+      const dedupeKey = e.source + ":" + e.key;
+      if (seenKey.has(dedupeKey)) return;
       if (e.norm.indexOf(q) !== -1) {
-        seen.add(e.key);
-        out.push(e.key);
+        seenKey.add(dedupeKey);
+        out.push({ source: e.source, key: e.key });
       }
     });
     return out;
@@ -199,6 +234,21 @@
     );
   }
 
+  // Tra cứu mức độ (severity-only) trong DDInter 2.0 — dùng khi CSDL nội bộ không có
+  // sẵn giải thích cho cặp thuốc này. entryA/entryB là {source,key} từ findDrug().
+  function findBulkSeverity(entryA, entryB) {
+    const normA = entryA.source === "local" ? normalize(DRUGS[entryA.key].name) : normalize(DDI_BULK.drugs[entryA.key]);
+    const normB = entryB.source === "local" ? normalize(DRUGS[entryB.key].name) : normalize(DDI_BULK.drugs[entryB.key]);
+    const idxA = DDI_NAME_TO_IDX[normA];
+    const idxB = DDI_NAME_TO_IDX[normB];
+    if (idxA === undefined || idxB === undefined) return null;
+    const k = idxA < idxB ? idxA + "_" + idxB : idxB + "_" + idxA;
+    const raw = DDI_PAIR_SEV[k];
+    if (raw === undefined) return null;
+    const severity = BULK_SEV_MAP[raw];
+    return severity ? { severity } : null;
+  }
+
   const SEVERITY_LABEL = { nang: "⛔ Nghiêm trọng", trungbinh: "⚠️ Trung bình", nhe: "ℹ️ Nhẹ / cần lưu ý" };
   const SEVERITY_CLASS = { nang: "ddi-sev-nang", trungbinh: "ddi-sev-trungbinh", nhe: "ddi-sev-nhe" };
 
@@ -206,13 +256,23 @@
     return String(s || "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  function drugCardHTML(key) {
-    const d = DRUGS[key];
+  function drugCardHTML(entry) {
+    if (entry.source === "local") {
+      const d = DRUGS[entry.key];
+      return (
+        '<div class="ddi-drug-card">' +
+        '<div class="ddi-drug-name">' + esc(d.name) + "</div>" +
+        '<div class="ddi-drug-row"><b>Công dụng:</b> ' + esc(d.uses) + "</div>" +
+        '<div class="ddi-drug-row"><b>Liều tối đa (người lớn, tham khảo):</b> ' + esc(d.maxDose) + "</div>" +
+        "</div>"
+      );
+    }
+    // Nguồn 'bulk' (DDInter): chỉ có tên, chưa có công dụng/liều trong CSDL rút gọn.
+    const name = DDI_BULK.drugs[entry.key];
     return (
-      '<div class="ddi-drug-card">' +
-      '<div class="ddi-drug-name">' + esc(d.name) + "</div>" +
-      '<div class="ddi-drug-row"><b>Công dụng:</b> ' + esc(d.uses) + "</div>" +
-      '<div class="ddi-drug-row"><b>Liều tối đa (người lớn, tham khảo):</b> ' + esc(d.maxDose) + "</div>" +
+      '<div class="ddi-drug-card ddi-drug-bulk">' +
+      '<div class="ddi-drug-name">' + esc(name) + "</div>" +
+      '<div class="ddi-drug-row ddi-drug-bulk-note">Nhận diện được tên thuốc (theo DDInter 2.0), nhưng trang chưa có sẵn công dụng/liều tối đa tiếng Việt cho thuốc này. Xem phần tra cứu mở rộng bên dưới.</div>' +
       "</div>"
     );
   }
@@ -319,31 +379,42 @@
       return;
     }
 
-    const keyA = rawA.trim() ? findDrug(rawA) : null;
-    const keyB = rawB.trim() ? findDrug(rawB) : null;
+    const entryA = rawA.trim() ? findDrug(rawA) : null;
+    const entryB = rawB.trim() ? findDrug(rawB) : null;
 
     let html = '<div class="ddi-drug-grid">';
-    html += rawA.trim() ? (keyA ? drugCardHTML(keyA) : notFoundCardHTML(rawA)) : "";
-    html += rawB.trim() ? (keyB ? drugCardHTML(keyB) : notFoundCardHTML(rawB)) : "";
+    html += rawA.trim() ? (entryA ? drugCardHTML(entryA) : notFoundCardHTML(rawA)) : "";
+    html += rawB.trim() ? (entryB ? drugCardHTML(entryB) : notFoundCardHTML(rawB)) : "";
     html += "</div>";
 
-    if (keyA && keyB) {
-      if (keyA === keyB) {
+    if (entryA && entryB) {
+      if (entryA.source === entryB.source && entryA.key === entryB.key) {
         html += '<div class="ddi-interaction ddi-sev-nhe">Hai ô đang trùng cùng 1 thuốc — hãy nhập 2 thuốc khác nhau để kiểm tra tương tác.</div>';
       } else {
-        const inter = findInteraction(keyA, keyB);
+        // Ưu tiên 1: CSDL nội bộ tiếng Việt (chỉ áp dụng khi cả 2 đều là thuốc 'local').
+        const inter = (entryA.source === "local" && entryB.source === "local") ? findInteraction(entryA.key, entryB.key) : null;
         if (inter) {
           html +=
             '<div class="ddi-interaction ' + SEVERITY_CLASS[inter.severity] + '">' +
-            '<div class="ddi-interaction-title">' + SEVERITY_LABEL[inter.severity] + " — Có tương tác giữa " + esc(DRUGS[keyA].name) + " và " + esc(DRUGS[keyB].name) + "</div>" +
+            '<div class="ddi-interaction-title">' + SEVERITY_LABEL[inter.severity] + " — Có tương tác giữa " + esc(drugDisplayName(entryA)) + " và " + esc(drugDisplayName(entryB)) + "</div>" +
             '<div class="ddi-interaction-note">' + esc(inter.note) + "</div>" +
             "</div>";
         } else {
-          html +=
-            '<div class="ddi-interaction ddi-sev-none">' +
-            "Không tìm thấy tương tác đáng chú ý giữa <b>" + esc(DRUGS[keyA].name) + "</b> và <b>" + esc(DRUGS[keyB].name) + "</b> trong dữ liệu rút gọn này. " +
-            "Điều này KHÔNG có nghĩa là chắc chắn không có tương tác — hãy đối chiếu thêm với Dược thư Quốc gia Việt Nam hoặc dược sĩ lâm sàng nếu cần." +
-            "</div>";
+          // Ưu tiên 2: CSDL mở rộng DDInter 2.0 — chỉ có mức độ, không có giải thích cơ chế.
+          const bulk = findBulkSeverity(entryA, entryB);
+          if (bulk) {
+            html +=
+              '<div class="ddi-interaction ' + SEVERITY_CLASS[bulk.severity] + '">' +
+              '<div class="ddi-interaction-title">' + SEVERITY_LABEL[bulk.severity] + " — Có tương tác giữa " + esc(drugDisplayName(entryA)) + " và " + esc(drugDisplayName(entryB)) + " (theo DDInter 2.0)</div>" +
+              '<div class="ddi-interaction-note">Cơ sở dữ liệu DDInter 2.0 ghi nhận mức độ tương tác này nhưng không kèm mô tả cơ chế/xử trí chi tiết. Xem phần tra cứu mở rộng (nhãn thuốc FDA) bên dưới để biết thêm chi tiết, hoặc đối chiếu Dược thư Quốc gia Việt Nam.</div>' +
+              "</div>";
+          } else {
+            html +=
+              '<div class="ddi-interaction ddi-sev-none">' +
+              "Không tìm thấy tương tác đáng chú ý giữa <b>" + esc(drugDisplayName(entryA)) + "</b> và <b>" + esc(drugDisplayName(entryB)) + "</b> trong dữ liệu rút gọn này. " +
+              "Điều này KHÔNG có nghĩa là chắc chắn không có tương tác — hãy đối chiếu thêm với Dược thư Quốc gia Việt Nam hoặc dược sĩ lâm sàng nếu cần." +
+              "</div>";
+          }
         }
       }
     }
@@ -370,7 +441,11 @@
       const matches = suggestDrugs(inputEl.value, 8);
       if (!matches.length) return close();
       listEl.innerHTML = matches
-        .map((k) => '<div class="ddi-suggest-item" data-key="' + k + '">' + esc(DRUGS[k].name) + "</div>")
+        .map((e) => {
+          const label = e.source === "local" ? DRUGS[e.key].name : DDI_BULK.drugs[e.key];
+          const tag = e.source === "bulk" ? ' <span class="ddi-suggest-tag">DDInter</span>' : "";
+          return '<div class="ddi-suggest-item" data-source="' + e.source + '" data-key="' + e.key + '">' + esc(label) + tag + "</div>";
+        })
         .join("");
       listEl.classList.add("show");
     });
@@ -378,7 +453,9 @@
       const item = e.target.closest(".ddi-suggest-item");
       if (!item) return;
       e.preventDefault();
-      inputEl.value = DRUGS[item.dataset.key].name;
+      const source = item.dataset.source;
+      const key = source === "local" ? item.dataset.key : Number(item.dataset.key);
+      inputEl.value = source === "local" ? DRUGS[key].name : DDI_BULK.drugs[key];
       close();
       onPick();
     });
