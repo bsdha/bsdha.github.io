@@ -42,7 +42,7 @@
     const link = validUrl
       ? `<a href="#" class="nb-news-link" data-url="${esc(item.url)}" data-title="${esc(item.title)}" data-source="${esc(item.source)}">${esc(item.title)}</a>`
       : esc(item.title);
-    return `<span class="nb-item nb-news"><span class="nb-icon">${icon}</span>${link}<span class="nb-source"> — ${esc(item.source)}</span></span>`;
+    return `<span class="nb-item nb-news"><span class="nb-icon">${icon}</span>${link}</span>`;
   }
 
   // ===== Popup đọc tin ngay trên trang (không rời sang tab khác) =====
@@ -160,14 +160,18 @@
     }
     if (!track || !htmlPieces.length) return;
 
+    const dotEl = document.getElementById("nbStatsDot");
+    const textEl = document.getElementById("nbStatsText") || track;
     let idx = 0;
     const banner = track.closest(".news-banner");
 
     function show(i) {
-      track.classList.add("nb-stat-fade");
+      textEl.classList.add("nb-stat-fade");
       setTimeout(() => {
-        track.innerHTML = htmlPieces[i];
-        track.classList.remove("nb-stat-fade");
+        textEl.innerHTML = htmlPieces[i];
+        textEl.classList.remove("nb-stat-fade");
+        // Có dữ liệu rồi -> chấm ngưng nảy, đứng yên ở đầu dòng làm dấu chấm đầu mục.
+        if (dotEl) dotEl.classList.remove("nb-dot-loading");
       }, 450);
     }
 
