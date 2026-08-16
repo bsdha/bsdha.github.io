@@ -380,16 +380,31 @@
       // CloudConvert (engine pdfcpu) không có tuỳ chọn "xoá trang X", chỉ có "page_range" = các
       // trang GIỮ LẠI. Nên ở đây cần đếm tổng số trang rồi tính phần bù (trang không nằm trong
       // danh sách người dùng muốn xoá) trước khi gửi lên Worker, thay vì gửi thẳng "pages" gốc.
+      // Tổng số trang cũng được gửi kèm lên Worker (params.total) để dùng khi cần dự phòng
+      // Adobe PDF Services (Adobe biểu diễn "trang cần xoá" khác CloudConvert nên phải tính lại).
       let deleteKeepRange = null;
+      let deleteTotalPages = null;
       if (op === 'delete') {
         try {
           setStatus('<span class="pt-spinner"></span>Đang xác định số trang…');
-          const total = await countPdfPages(items[0].file);
-          deleteKeepRange = computeKeepRange(total, collectParams('delete').pages);
+          deleteTotalPages = await countPdfPages(items[0].file);
+          deleteKeepRange = computeKeepRange(deleteTotalPages, collectParams('delete').pages);
           if (!deleteKeepRange) {
             setStatus('❌ Danh sách trang muốn xoá không hợp lệ hoặc xoá hết toàn bộ tài liệu.', 'error');
             return;
           }
+        } catch (e) {
+          setStatus('❌ ' + (e && e.message ? e.message : 'Không đọc được số trang PDF.'), 'error');
+          return;
+        }
+      }
+
+      // Tách trang: cũng cần tổng số trang để Worker tính được phần bù khi dự phòng Adobe.
+      let splitTotalPages = null;
+      if (op === 'split') {
+        try {
+          setStatus('<span class="pt-spinner"></span>Đang xác định số trang…');
+          splitTotalPages = await countPdfPages(items[0].file);
         } catch (e) {
           setStatus('❌ ' + (e && e.message ? e.message : 'Không đọc được số trang PDF.'), 'error');
           return;
@@ -459,7 +474,8 @@
             form.append('file', items[0].file, items[0].file.name);
           }
           const params = collectParams(op);
-          if (op === 'delete') params.pages = deleteKeepRange; // đã đổi thành "range cần giữ lại"
+          if (op === 'delete') { params.pages = deleteKeepRange; params.total = deleteTotalPages; } // đã đổi thành "range cần giữ lại" + tổng số trang
+          if (op === 'split') params.total = splitTotalPages;
           form.append('params', JSON.stringify(params));
         }
 
