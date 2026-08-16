@@ -51,7 +51,8 @@
   #page-home .home-wrap { position: relative; z-index: 1; max-width: 1040px; margin: 0 auto; padding: 12px 18px 20px; min-height: calc(100vh - 32px); display: flex; flex-direction: column; }
   #page-home #siteFooter {
     color: #1a1a1a;
-    margin-top: 18px;
+    margin-top: auto;
+    padding-top: 18px;
     font-size: 13px;
     line-height: 1.7;
     text-align: center;
