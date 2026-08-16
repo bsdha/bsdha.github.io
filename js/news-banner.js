@@ -91,9 +91,20 @@
     return modal;
   }
 
+  // Trang báo (VnExpress, Tuổi Trẻ...) thường để tên báo ngay trong thẻ <title>
+  // (vd. "...tốt hơn? - Báo VnExpress Sức khỏe"), trong khi modal đã có dòng
+  // nguồn riêng ("— VnExpress Sức khỏe") ngay bên dưới -> bị lặp. Cắt bỏ hậu tố
+  // này khỏi tiêu đề trước khi hiển thị.
+  function stripSiteSuffix(title) {
+    if (!title) return title;
+    return title
+      .replace(/\s*[-|–—]\s*(Báo\s*)?(VnExpress(\.net)?|Tuổi\s*Trẻ(\s*Online)?|PubMed)\s*[^-|–—]*$/i, "")
+      .trim();
+  }
+
   async function openNewsModal(url, title, source) {
     const modal = ensureNewsModal();
-    modal.querySelector("#nbModalTitle").textContent = title || "";
+    modal.querySelector("#nbModalTitle").textContent = stripSiteSuffix(title) || "";
     modal.querySelector("#nbModalSource").textContent = source ? "— " + source : "";
     modal.querySelector("#nbModalOpenNew").href = url;
     const loading = modal.querySelector("#nbModalLoading");
@@ -108,7 +119,7 @@
       const data = await fetchJSON(`${READ_API}?url=${encodeURIComponent(url)}`, 12000);
       if (!data || data.ok === false) throw new Error((data && data.error) || "lỗi tải bài viết");
 
-      if (data.title) modal.querySelector("#nbModalTitle").textContent = data.title;
+      if (data.title) modal.querySelector("#nbModalTitle").textContent = stripSiteSuffix(data.title);
 
       const imgHTML = data.image
         ? `<img src="${esc(data.image)}" alt="" class="nb-article-img">`
