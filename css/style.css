@@ -162,11 +162,7 @@
     background: var(--blue); margin-right: 8px;
   }
   .news-banner-group .nb-stats-banner .nb-dot.nb-dot-loading {
-    animation: nbDotBounce 0.9s cubic-bezier(.45,0,.55,1) infinite alternate;
-  }
-  @keyframes nbDotBounce {
-    from { transform: translateY(-6px); opacity: .55; }
-    to   { transform: translateY(6px); opacity: 1; }
+    opacity: .8;
   }
   .news-banner-group .nb-stats-banner .nb-stat-text {
     opacity: 1; transition: opacity .45s ease;
