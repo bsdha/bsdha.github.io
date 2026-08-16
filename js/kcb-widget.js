@@ -266,7 +266,8 @@
     const rows = data.departments
       .map((d) => {
         const v = mode === "month" ? d.month : d.day;
-        return `<div class="kcb-detail-row"><span>${d.label.replace(/^PK CS2_/, "")}</span><b>${fmt(v)}</b></div>`;
+        const label = d.label.replace(/^PK CS2_/, "");
+        return `<tr><td>${label}</td><td>${fmt(v)}</td></tr>`;
       })
       .join("");
     container.innerHTML = rows;
@@ -277,9 +278,10 @@
     if (!widget) return;
     const textEl = document.getElementById("kcbWidgetText");
     const toggleBtn = document.getElementById("kcbWidgetToggle");
-    const detailBox = document.getElementById("kcbWidgetDetail");
+    const overlay = document.getElementById("kcbModalOverlay");
+    const closeBtn = document.getElementById("kcbModalClose");
     const detailRows = document.getElementById("kcbDetailRows");
-    const tabs = widget.querySelectorAll(".kcb-detail-tab");
+    const tabs = overlay ? overlay.querySelectorAll(".kcb-detail-tab") : [];
 
     let data = null;
     let mode = "day";
@@ -298,11 +300,20 @@
     ]);
     renderDetail(detailRows, data, mode);
 
-    toggleBtn.addEventListener("click", () => {
-      const willShow = detailBox.hasAttribute("hidden");
-      if (willShow) detailBox.removeAttribute("hidden");
-      else detailBox.setAttribute("hidden", "");
-      toggleBtn.textContent = willShow ? "▴" : "▾";
+    function openModal() {
+      overlay.classList.add("open");
+      document.body.classList.add("kcb-modal-lock");
+    }
+    function closeModal() {
+      overlay.classList.remove("open");
+      document.body.classList.remove("kcb-modal-lock");
+    }
+
+    toggleBtn.addEventListener("click", openModal);
+    closeBtn.addEventListener("click", closeModal);
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && overlay.classList.contains("open")) closeModal();
     });
 
     tabs.forEach((tab) => {
