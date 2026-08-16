@@ -372,6 +372,24 @@
     font-weight: 700;
     font-size: 13.5px;
   }#page-pdf2word .p2w-download-btn:hover { filter: brightness(1.06); }
+  #page-pdf2word .p2w-file-meta { color: var(--muted); font-size: 12px; flex: 0 0 auto; }
+  #page-pdf2word .p2w-file-badge {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  #page-pdf2word .p2w-file-badge.waiting { background: #eef0f2; color: #55606b; border: 1px solid #d7dce1; }
+  #page-pdf2word .p2w-file-badge.working { background: var(--blue-light); color: var(--blue); border: 1px solid var(--blue-border); }
+  #page-pdf2word .p2w-file-badge.done { background: var(--green-light); color: var(--green); border: 1px solid var(--green-border); }
+  #page-pdf2word .p2w-file-badge.error { background: var(--red-light); color: var(--red-dark); border: 1px solid var(--red-border); }
+  #page-pdf2word .p2w-file-dl { color: var(--blue); font-weight: 700; font-size: 12.5px; text-decoration: none; flex: 0 0 auto; }
+  #page-pdf2word .p2w-file-dl:hover { text-decoration: underline; }
   #page-pdf2word .p2w-spinner {
     display: inline-block;
     width: 13px;
