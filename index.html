@@ -120,14 +120,28 @@
         <div class="kcb-widget-head">
           <span class="kcb-widget-dot" title="Số liệu KCB"></span>
           <span class="kcb-widget-text" id="kcbWidgetText">Đang tải số liệu…</span>
-          <button class="kcb-widget-toggle" id="kcbWidgetToggle" title="Xem chi tiết theo phòng khám">▾</button>
+          <button type="button" class="kcb-widget-toggle" id="kcbWidgetToggle" title="Xem chi tiết theo phòng khám">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18M3 6h18M3 14h12M3 18h8"/></svg>
+            <span>Chi tiết</span>
+          </button>
         </div>
-        <div class="kcb-widget-detail" id="kcbWidgetDetail" hidden>
-          <div class="kcb-detail-tabs">
+      </div>
+
+      <div class="kcb-modal-overlay" id="kcbModalOverlay">
+        <div class="kcb-modal-box" role="dialog" aria-modal="true" aria-labelledby="kcbModalTitle">
+          <div class="kcb-modal-head">
+            <span id="kcbModalTitle">📊 Số liệu khám chữa bệnh</span>
+            <button type="button" class="kcb-modal-close" id="kcbModalClose" title="Đóng">✕</button>
+          </div>
+          <div class="kcb-modal-tabs">
             <button type="button" class="kcb-detail-tab active" data-mode="day">Hôm nay</button>
             <button type="button" class="kcb-detail-tab" data-mode="month">Tổng tháng</button>
           </div>
-          <div class="kcb-detail-rows" id="kcbDetailRows"></div>
+          <div class="kcb-modal-body">
+            <table class="kcb-detail-table">
+              <tbody id="kcbDetailRows"></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
