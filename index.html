@@ -116,6 +116,21 @@
 
   <div class="page active" id="page-home">
     <div class="home-wrap">
+      <div class="kcb-widget" id="kcbWidget">
+        <div class="kcb-widget-head">
+          <span class="kcb-widget-dot" title="Số liệu KCB"></span>
+          <span class="kcb-widget-text" id="kcbWidgetText">Đang tải số liệu…</span>
+          <button class="kcb-widget-toggle" id="kcbWidgetToggle" title="Xem chi tiết theo phòng khám">▾</button>
+        </div>
+        <div class="kcb-widget-detail" id="kcbWidgetDetail" hidden>
+          <div class="kcb-detail-tabs">
+            <button type="button" class="kcb-detail-tab active" data-mode="day">Hôm nay</button>
+            <button type="button" class="kcb-detail-tab" data-mode="month">Tổng tháng</button>
+          </div>
+          <div class="kcb-detail-rows" id="kcbDetailRows"></div>
+        </div>
+      </div>
+
       <header>
         <div class="logo">🩺</div>
         <h1>BSDHA - Bộ công cụ Y khoa</h1>
@@ -1412,6 +1427,7 @@
 <script defer src="js/spa-router.js"></script>
 
 <script defer src="js/news-banner.js?v=2"></script>
+<script defer src="js/kcb-widget.js?v=1"></script>
 
 <script defer src="js/pdf-to-word.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
