@@ -1957,3 +1957,18 @@
 #page-tuongtac .ddi-extended-toggle:hover { opacity: 0.8; }
 #page-tuongtac .ddi-extended-quote.ddi-extended-orig { display: none; margin-top: 6px; color: var(--muted); }
 #page-tuongtac .ddi-extended-quote.ddi-extended-orig.show { display: block; }
+
+/* ===== #page-tuongtac — thuốc chỉ có trong DDInter (chưa có công dụng/liều tiếng Việt) ===== */
+#page-tuongtac .ddi-drug-card.ddi-drug-bulk { border-style: dashed; }
+#page-tuongtac .ddi-drug-bulk-note { color: var(--muted); font-style: italic; font-size: 12.5px; }
+#page-tuongtac .ddi-suggest-tag {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 1px 5px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
