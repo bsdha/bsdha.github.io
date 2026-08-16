@@ -34,7 +34,8 @@
 
   const CYCLE_MS = 3500;
   const CACHE_KEY = "kcbWidgetCache_v1";
-  const CACHE_MS = 10 * 60 * 1000; // 10 phút — tránh gọi Google Sheet liên tục mỗi lần vào trang chủ
+  const REFRESH_MS = 3 * 60 * 1000; // 3 phút — tự động làm mới, không cần F5
+  const CACHE_MS = REFRESH_MS; // cache khớp với chu kỳ làm mới, tránh gọi Sheet thừa khi vừa load trang
 
   // Nhãn các phòng khám cần lấy (khớp với cột B trong sheet). "TỔNG_KB" là dòng
   // tổng lượt khám mỗi ngày (dòng "KHÁM"), hiển thị riêng ở phần rút gọn phía trên.
@@ -219,8 +220,8 @@
     }
   }
 
-  async function fetchData() {
-    const cached = readCache();
+  async function fetchData(forceFresh) {
+    const cached = forceFresh ? null : readCache();
     if (cached) return cached;
 
     // Thử tab tháng hiện tại trước, không được thì lùi dần về tối đa 2 tháng trước
@@ -326,6 +327,25 @@
         renderDetail(detailRows, data, mode);
       });
     });
+
+    // Tự động làm mới số liệu mỗi REFRESH_MS, không cần người dùng bấm F5. Chỉ chạy
+    // khi tab đang hiển thị (bỏ qua lúc chuyển sang tab trình duyệt khác) để đỡ tốn
+    // lượt gọi Google Sheet không cần thiết.
+    setInterval(async () => {
+      if (document.hidden) return;
+      try {
+        const fresh = await fetchData(true);
+        data = fresh;
+        const freshShortDate = data.selectedDate.slice(0, 5);
+        renderCycle(textEl, [
+          `Hôm nay (${freshShortDate}): <b>${fmt(data.todayTotal)}</b> lượt khám`,
+          `Tổng tháng: <b>${fmt(data.monthTotal)}</b> lượt khám`,
+        ]);
+        if (overlay.classList.contains("open")) renderDetail(detailRows, data, mode);
+      } catch (e) {
+        // Lỗi tạm thời (mạng chập chờn...) -> giữ nguyên số liệu cũ, thử lại ở chu kỳ sau.
+      }
+    }, REFRESH_MS);
   }
 
   if (document.readyState === "loading") {
