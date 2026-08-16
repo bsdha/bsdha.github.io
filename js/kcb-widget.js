@@ -263,6 +263,8 @@
   }
 
   function renderDetail(container, data, mode) {
+    const totalVal = mode === "month" ? data.monthTotal : data.todayTotal;
+    const totalRow = `<tr class="kcb-detail-total"><td>Tổng cộng</td><td>${fmt(totalVal)}</td></tr>`;
     const rows = data.departments
       .map((d) => {
         const v = mode === "month" ? d.month : d.day;
@@ -270,7 +272,7 @@
         return `<tr><td>${label}</td><td>${fmt(v)}</td></tr>`;
       })
       .join("");
-    container.innerHTML = rows;
+    container.innerHTML = totalRow + rows;
   }
 
   async function init() {
