@@ -45,16 +45,29 @@
 
   // ---- Đếm số trang PDF (dùng để tự điền "toàn bộ trang" khi Adobe API bắt buộc pageRanges) ----
   let pdfLibLoadPromise = null;
-  function loadPdfLib() {
-    if (window.PDFLib) return Promise.resolve(window.PDFLib);
+  const PDFLIB_SOURCES = [
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js',
+    'https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js',
+  ];
+  async function loadPdfLib() {
+    if (window.PDFLib) return window.PDFLib;
     if (pdfLibLoadPromise) return pdfLibLoadPromise;
-    pdfLibLoadPromise = new Promise((resolve, reject) => {
-      const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js';
-      s.onload = () => resolve(window.PDFLib);
-      s.onerror = () => reject(new Error('Không tải được thư viện đếm trang PDF.'));
-      document.head.appendChild(s);
-    });
+    pdfLibLoadPromise = (async () => {
+      for (const src of PDFLIB_SOURCES) {
+        try {
+          await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = src;
+            s.onload = resolve;
+            s.onerror = () => reject(new Error('load fail: ' + src));
+            document.head.appendChild(s);
+          });
+          return window.PDFLib;
+        } catch (e) { /* thử nguồn kế tiếp */ }
+      }
+      pdfLibLoadPromise = null;
+      throw new Error('Không tải được thư viện đếm trang PDF — vui lòng kiểm tra kết nối mạng và thử lại.');
+    })();
     return pdfLibLoadPromise;
   }
 
@@ -68,20 +81,44 @@
   // ---- Tách PDF thành ảnh từng trang NGAY TRÊN TRÌNH DUYỆT (pdf.js), không tốn credit
   // CloudConvert — chỉ dùng cho luồng "OCR sang Word" (Google Vision/Azure OCR ảnh). ----
   let pdfJsLoadPromise = null;
-  function loadPdfJs() {
-    if (window.pdfjsLib) return Promise.resolve(window.pdfjsLib);
-    if (pdfJsLoadPromise) return pdfJsLoadPromise;
-    pdfJsLoadPromise = new Promise((resolve, reject) => {
+  // 2 nguồn CDN dự phòng — nếu nguồn 1 lỗi/timeout (mạng, chặn CDN...) tự thử nguồn 2
+  // trước khi báo lỗi hẳn cho người dùng.
+  const PDFJS_SOURCES = [
+    {
+      lib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js',
+      worker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js',
+    },
+    {
+      lib: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js',
+      worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js',
+    },
+  ];
+  function loadScriptOnce(src) {
+    return new Promise((resolve, reject) => {
       const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js';
-      s.onload = () => {
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-          'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js';
-        resolve(window.pdfjsLib);
-      };
-      s.onerror = () => reject(new Error('Không tải được thư viện đọc PDF (pdf.js).'));
+      s.src = src;
+      s.onload = () => resolve();
+      s.onerror = () => reject(new Error('load fail: ' + src));
       document.head.appendChild(s);
     });
+  }
+  async function loadPdfJs() {
+    if (window.pdfjsLib) return window.pdfjsLib;
+    if (pdfJsLoadPromise) return pdfJsLoadPromise;
+    pdfJsLoadPromise = (async () => {
+      let lastErr = null;
+      for (const src of PDFJS_SOURCES) {
+        try {
+          await loadScriptOnce(src.lib);
+          window.pdfjsLib.GlobalWorkerOptions.workerSrc = src.worker;
+          return window.pdfjsLib;
+        } catch (e) {
+          lastErr = e;
+        }
+      }
+      pdfJsLoadPromise = null;
+      throw new Error('Không tải được thư viện đọc PDF (pdf.js) — vui lòng kiểm tra kết nối mạng và thử lại.');
+    })();
     return pdfJsLoadPromise;
   }
 
@@ -176,6 +213,7 @@
   }
 
   function fmtSize(bytes) {
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + ' KB';
     return (bytes / 1024 / 1024).toFixed(1) + ' MB';
   }
 
@@ -448,9 +486,8 @@
         }
         const url = URL.createObjectURL(blob);
         if (typeof logUsage === 'function') logUsage('pdftools_use');
-        const engineTag = useOcrToWord ? (resp.headers.get('X-OCR-Engine') || '') : '';
         setStatus(
-          `✅ "${useOcrToWord ? 'OCR sang Word' : OP_LABEL[op]}" thành công${engineTag ? ' (engine: ' + engineTag + ')' : ''}.` +
+          `✅ "${useOcrToWord ? 'OCR sang Word' : OP_LABEL[op]}" thành công.` +
           `<br><a class="pt-download-btn" href="${url}" download="${outName}">⬇ Tải file ${kindLabel} kết quả</a>`,
           'success'
         );
