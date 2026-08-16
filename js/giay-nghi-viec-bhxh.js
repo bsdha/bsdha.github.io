@@ -333,7 +333,14 @@
 
     // Tên người ký thường xuất hiện lặp lại ngay sau cụm "(Ký, ghi rõ họ tên,)"
     var ky = /\(Ký,?\s*ghi rõ họ tên,?\)\s*([A-ZÀ-Ỹ][A-ZÀ-Ỹ\s]{4,40})/i.exec(t);
-    if (ky) d.nguoiHanhNghe = dedupeRepeat(ky[1].trim());
+    if (ky) {
+      var kyName = dedupeRepeat(ky[1].trim());
+      // Loại các cụm không phải tên (VD: dòng ghi chú "Khám lại xin mang theo đơn này"
+      // vô tình lọt vào do nằm gần khu vực chữ ký trong file nguồn).
+      if (!/KHÁM LẠI|MANG THEO|ĐƠN NÀY|TOA NÀY/i.test(kyName)) {
+        d.nguoiHanhNghe = kyName;
+      }
+    }
 
     Object.keys(d).forEach(function (k) { if (d[k]) DATA[k] = d[k]; });
   }
