@@ -304,6 +304,52 @@
   .nb-modal-overlay.open { display: flex; }
   body.nb-modal-lock { overflow: hidden; }
   body.kcb-modal-lock { overflow: hidden; }
+  body.ilock-lock { overflow: hidden; }
+
+  /* ===== Popup khoá "chỉ dành cho nội bộ" (Phiếu chuyển tuyến / Giấy nghỉ việc BHXH) ===== */
+  .ilock-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 10000;
+    background: rgba(15, 20, 30, .6);
+    align-items: center; justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(2px);
+  }
+  .ilock-overlay.open { display: flex; }
+  .ilock-box {
+    width: min(320px, 100%);
+    background: var(--surface, #fff);
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35);
+    padding: 24px 22px 20px;
+    text-align: center;
+    animation: kcbModalPop .18s ease;
+  }
+  .ilock-box.ilock-shake { animation: ilockShake .35s ease; }
+  @keyframes ilockShake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  }
+  .ilock-icon { font-size: 30px; margin-bottom: 6px; }
+  .ilock-title { font-size: 14px; font-weight: 700; color: var(--text); line-height: 1.5; margin-bottom: 16px; }
+  .ilock-form { display: flex; flex-direction: column; gap: 10px; }
+  .ilock-input {
+    width: 100%; padding: 10px 12px; font-size: 14px;
+    border: 1px solid var(--border); border-radius: 8px;
+    text-align: center; letter-spacing: 2px;
+  }
+  .ilock-input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px var(--blue-light); }
+  .ilock-err { color: var(--red-dark); font-size: 12px; }
+  .ilock-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .ilock-cancel, .ilock-submit {
+    flex: 1; padding: 9px 10px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer;
+  }
+  .ilock-cancel { border: 1px solid var(--border); background: #fff; color: var(--muted); }
+  .ilock-cancel:hover { background: var(--surface-2); }
+  .ilock-submit { border: 1px solid var(--blue); background: var(--blue); color: #fff; }
+  .ilock-submit:hover { background: #1a5fb4; }
 
   .nb-modal-box {
     width: min(880px, 100%);
