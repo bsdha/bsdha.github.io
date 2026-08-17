@@ -34,7 +34,83 @@
     });
   }
 
-  function showPage(key, push) {
+  // --- Khoá "chỉ dành cho nội bộ" cho 2 trang: Phiếu chuyển tuyến, Giấy nghỉ việc BHXH.
+  // Yêu cầu nhập mật khẩu cố định 1 lần mỗi phiên trình duyệt (sessionStorage — tự
+  // yêu cầu lại khi tắt hẳn trình duyệt rồi mở lại, không hỏi lại khi chỉ chuyển tab/trang).
+  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh'];
+  const INTERNAL_PASSWORD = 'cs2';
+  const UNLOCK_FLAG = 'bsdha_internal_unlocked';
+  let lockModalEl = null;
+
+  function isUnlocked() {
+    return sessionStorage.getItem(UNLOCK_FLAG) === '1';
+  }
+
+  function ensureLockModal() {
+    if (lockModalEl) return lockModalEl;
+    const overlay = document.createElement('div');
+    overlay.className = 'ilock-overlay';
+    overlay.innerHTML =
+      '<div class="ilock-box" role="dialog" aria-modal="true" aria-labelledby="ilockTitle">' +
+        '<div class="ilock-icon">🔒</div>' +
+        '<div id="ilockTitle" class="ilock-title">Chỉ dành cho nội bộ, vui lòng nhập mật khẩu!</div>' +
+        '<form class="ilock-form" id="ilockForm" autocomplete="off">' +
+          '<input type="password" id="ilockInput" class="ilock-input" placeholder="Mật khẩu" autocomplete="off">' +
+          '<div class="ilock-err" id="ilockErr" hidden>Mật khẩu không đúng, vui lòng thử lại.</div>' +
+          '<div class="ilock-actions">' +
+            '<button type="button" class="ilock-cancel" id="ilockCancel">Huỷ</button>' +
+            '<button type="submit" class="ilock-submit">Xác nhận</button>' +
+          '</div>' +
+        '</form>' +
+      '</div>';
+    document.body.appendChild(overlay);
+    lockModalEl = overlay;
+    return overlay;
+  }
+
+  function promptUnlock(key, push) {
+    const overlay = ensureLockModal();
+    const form = overlay.querySelector('#ilockForm');
+    const input = overlay.querySelector('#ilockInput');
+    const err = overlay.querySelector('#ilockErr');
+    const cancelBtn = overlay.querySelector('#ilockCancel');
+
+    err.hidden = true;
+    input.value = '';
+    overlay.classList.add('open');
+    document.body.classList.add('ilock-lock');
+    requestAnimationFrame(() => input.focus());
+
+    function cleanup() {
+      overlay.classList.remove('open');
+      document.body.classList.remove('ilock-lock');
+      form.removeEventListener('submit', onSubmit);
+      cancelBtn.removeEventListener('click', onCancel);
+    }
+    function onSubmit(e) {
+      e.preventDefault();
+      if (input.value === INTERNAL_PASSWORD) {
+        sessionStorage.setItem(UNLOCK_FLAG, '1');
+        cleanup();
+        actuallyShowPage(key, push);
+      } else {
+        err.hidden = false;
+        input.value = '';
+        input.focus();
+        overlay.querySelector('.ilock-box').classList.remove('ilock-shake');
+        void overlay.offsetWidth; // restart animation
+        overlay.querySelector('.ilock-box').classList.add('ilock-shake');
+      }
+    }
+    function onCancel() {
+      cleanup();
+      // Không hủy nhu cầu điều hướng nếu người dùng đang ở trang khác — ở lại trang hiện tại.
+    }
+    form.addEventListener('submit', onSubmit);
+    cancelBtn.addEventListener('click', onCancel);
+  }
+
+  function actuallyShowPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
     navEls.forEach(b => {
       if (b.classList.contains('home-btn')) return;
@@ -46,6 +122,14 @@
       const path = KEY_PATH[key] || '/';
       if (location.pathname !== path) history.pushState({ page: key }, '', path);
     }
+  }
+
+  function showPage(key, push) {
+    if (GUARDED_PAGES.indexOf(key) !== -1 && !isUnlocked()) {
+      promptUnlock(key, push);
+      return;
+    }
+    actuallyShowPage(key, push);
   }
 
   navEls.forEach(el => {
