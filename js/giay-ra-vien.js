@@ -112,6 +112,10 @@
     "#grSheet.gr-editon .gr-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#grSheet.gr-editon .gr-footer:hover,#grSheet.gr-editon .gr-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#grSheet.gr-editon .gr-footer.dragging{cursor:grabbing;}",
+    "#grSheet.gr-editon .gr-hd{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
+    "#grSheet.gr-editon .gr-hd:hover,#grSheet.gr-editon .gr-hd.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
+    "#grSheet.gr-editon .gr-hd.dragging{cursor:grabbing;}",
+    ".gr-hd{transform-origin:top left;}",
     ".gr-footer .col{width:46%;}",
     ".gr-footer b{display:block;}",
     ".gr-footer .italic{font-style:italic;font-size:10.5px;}",
@@ -174,9 +178,9 @@
             '<h3>Bố cục</h3>' +
             '<div class="gr-switchrow">' +
               '<label class="gr-switch"><input type="checkbox" id="grEditModeToggle"><span class="gr-slider"></span></label>' +
-              '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
+              '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối tiêu đề "Sở Y tế/Bệnh viện/Cộng hòa..." và khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
             '</div>' +
-            '<div class="gr-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối chữ ký khi chỉ muốn nhập liệu. Kéo khối chữ ký tới đúng vị trí con dấu đã đóng sẵn trên tờ giấy nếu cần.</div>' +
+            '<div class="gr-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối tiêu đề hoặc chữ ký khi chỉ muốn nhập liệu. Kéo từng khối tới đúng vị trí mong muốn trên tờ giấy nếu cần.</div>' +
             '<button class="gr-btn save" id="grSaveBtn">💾 Lưu tinh chỉnh</button>' +
             '<button class="gr-btn small secondary" id="grResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
           '</div>' +
@@ -258,6 +262,23 @@
     return m ? m[1].trim() : "";
   }
 
+  // Lấy nội dung sau 1 nhãn cho tới nhãn KẾ TIẾP GẦN NHẤT (bất kể nhãn nào
+  // trong danh sách "stopLabels" xuất hiện trước) — tránh trường hợp field
+  // trước "ăn lấn" luôn nội dung của field theo sau nếu thứ tự nhãn trong
+  // văn bản gốc không đúng như thứ tự regex cũ giả định cố định.
+  function grabUntilAny(startRe, stopLabels, text) {
+    var m = startRe.exec(text);
+    if (!m) return "";
+    var rest = text.slice(m.index + m[0].length);
+    var stopIdx = -1;
+    for (var i = 0; i < stopLabels.length; i++) {
+      var sm = stopLabels[i].exec(rest);
+      if (sm && (stopIdx === -1 || sm.index < stopIdx)) stopIdx = sm.index;
+    }
+    var val = stopIdx !== -1 ? rest.slice(0, stopIdx) : rest;
+    return val.replace(/^[\s:.\-]+/, "").trim();
+  }
+
   function dedupeRepeat(s) {
     if (!s) return s;
     var str = s.trim();
@@ -320,28 +341,59 @@
     var idBlock = extractIdentityBlock(lines);
     if (idBlock) Object.assign(d, idBlock);
 
+    // Dự phòng: nếu PDF nguồn có thứ tự nhãn:giá trị THẲNG HÀNG bình thường
+    // (không bị đảo lộn như trường hợp extractIdentityBlock xử lý ở trên),
+    // dò trực tiếp label:value liền kề cho các trường còn thiếu.
+    if (!d.hoTen) d.hoTen = grabUntilAny(/Họ tên người bệnh:?\s*/i, [/-?\s*Ngày\/tháng\/năm sinh/i, /-?\s*Dân tộc/i], t);
+    if (!d.danToc) d.danToc = grabUntilAny(/(?:^|[^A-Za-zÀ-Ỹà-ỹ])Dân tộc:?\s*/i, [/Nghề nghiệp/i, /-?\s*Số CCCD/i], t);
+    if (!d.ngheNghiep) d.ngheNghiep = grabUntilAny(/Nghề nghiệp:?\s*/i, [/-?\s*Số CCCD/i, /-?\s*Dân tộc/i], t);
+    if (!d.vaoVien) d.vaoVien = grabUntilAny(/Vào viện lúc:?\s*/i, [/-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i], t);
+
     var tuoiM = /\(?Tuổi:?\s*([0-9]{1,3})\s*tuổi/i.exec(t);
     if (tuoiM) d.tuoi = tuoiM[1];
     if (/Nam\/n[ữu]:?\s*Nữ/i.test(t) || /Giới tính:?\s*Nữ/i.test(t)) d.gioiTinh = "Nữ";
     else if (/Nam\/n[ữu]:?\s*Nam/i.test(t) || /Giới tính:?\s*Nam/i.test(t)) d.gioiTinh = "Nam";
 
+    // "Số:" (đầu trang) và "Số hồ sơ/Số BA:" — 2 trường này trước đây chưa
+    // được bóc tách (luôn để trống dù file nguồn có giá trị thật).
+    d.soGiay = grab(/(?:^|\s)Số:?\s*([0-9][0-9A-Za-z\/\-]{0,20})(?=\s|$)/i, t);
+    d.soHoSo = grab(/Số hồ sơ\/Số BA:?\s*([0-9A-Za-z\/\-]{1,25})/i, t);
+
     d.cccd = grab(/Số CCCD\/CMND\/[^:]*:?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i, t);
     d.maBHXH = grab(/Mã số BHXH\/Thẻ BHYT số\s*\(nếu có\):?\s*([0-9A-Za-z\/]{6,40})/i, t);
 
-    d.diaChi = dedupeRepeat(grab(/Địa chỉ:?\s*(.+?)\s*-\s*Ra viện lúc/i, t));
-    d.vaoVien = d.vaoVien || grab(/Vào viện lúc:?\s*(.+?)\s*-\s*(?:Ra viện lúc|Chẩn đoán)/i, t);
-    d.raVien = grab(/Ra viện lúc:?\s*(.+?)\s*-\s*Chẩn đoán/i, t);
-    d.chanDoan = grab(/Chẩn đoán:?\s*(.+?)\s*-\s*Phương pháp điều trị/i, t);
-    d.phuongPhap = grab(/Phương pháp điều trị\s*:?\s*(.+?)\s*-\s*Ghi chú/i, t);
-    d.ghiChu = grab(/Ghi chú:?\s*(.+?)(?:\(Tuổi|Đại diện đơn vị|$)/i, t);
+    // Các nhãn "- Địa chỉ / - Vào viện lúc / - Ra viện lúc / - Chẩn đoán /
+    // - Phương pháp điều trị / - Ghi chú" có thể không xuất hiện đúng thứ tự
+    // cố định trong luồng text đọc từ PDF (tuỳ máy in/PDF nguồn) — trước đây
+    // mỗi field chỉ dừng lại ở ĐÚNG 1 nhãn kế tiếp giả định cố định, nên khi
+    // thứ tự khác đi, field trước sẽ "ăn lấn" luôn nội dung field sau (ví dụ
+    // "Địa chỉ" nuốt luôn cả "Vào viện lúc" nếu "Ra viện lúc" không đứng
+    // ngay sau nó). Sửa: mỗi field dừng lại ở nhãn GẦN NHẤT trong các nhãn
+    // còn lại phía sau, không cứ nhãn cố định như cũ.
+    var stop_diaChi = [/-?\s*Vào viện lúc/i, /-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i];
+    var stop_vaoVien = [/-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i];
+    var stop_raVien = [/-?\s*Chẩn đoán/i];
+    var stop_chanDoan = [/-?\s*Phương pháp điều trị/i];
+    var stop_phuongPhap = [/-?\s*Ghi chú/i];
+    var stop_ghiChu = [/\(Tuổi/i, /Đại diện đơn vị/i, /Người hành nghề/i, /Ngày\s+[0-9]{1,2}\s*tháng\s*[0-9]{1,2}\s*năm\s*[0-9]{4}/];
 
-    // Ngày ký ở cuối trang — lấy occurrence "Ngày...tháng...năm..." SAU cụm
-    // "Đại diện đơn vị" (tránh nhầm với ngày vào/ra viện đứng trước đó).
-    var afterIdx = t.search(/Đại diện đơn vị/i);
-    var tail = afterIdx !== -1 ? t.slice(afterIdx) : t;
-    var kyM = /Ngày\s*([0-9]{1,2})\s*tháng\s*([0-9]{1,2})\s*năm\s*([0-9]{4})/i.exec(tail);
-    if (kyM) { d.ngayKyNgay = kyM[1]; d.ngayKyThang = kyM[2]; d.ngayKyNam = kyM[3]; }
+    d.diaChi = dedupeRepeat(grabUntilAny(/Địa chỉ:?\s*/i, stop_diaChi, t));
+    d.vaoVien = d.vaoVien || grabUntilAny(/Vào viện lúc:?\s*/i, stop_vaoVien, t);
+    d.raVien = grabUntilAny(/Ra viện lúc:?\s*/i, stop_raVien, t);
+    d.chanDoan = grabUntilAny(/Chẩn đoán:?\s*/i, stop_chanDoan, t);
+    d.phuongPhap = grabUntilAny(/Phương pháp điều trị\s*:?\s*/i, stop_phuongPhap, t);
+    d.ghiChu = grabUntilAny(/Ghi chú:?\s*/i, stop_ghiChu, t);
+
+    // Ngày ký ở cuối trang: dòng "Ngày DD tháng MM năm YYYY" viết hoa chữ
+    // "Ngày" đứng đầu câu (khác với "ngày" thường trong "...lúc: ..giờ..,
+    // ngày 11 tháng 08 năm 2026" của Vào/Ra viện). Dò TOÀN VĂN BẢN (không
+    // phụ thuộc việc nó nằm trước/sau cụm "Đại diện đơn vị" — thứ tự này có
+    // thể khác nhau tuỳ PDF nguồn) và lấy occurrence CUỐI CÙNG khớp mẫu.
+    var kyRe = /(?:^|[^a-zà-ỹ])Ngày\s+([0-9]{1,2})\s*tháng\s*([0-9]{1,2})\s*năm\s*([0-9]{4})/g;
+    var kyM, kyLast = null;
+    while ((kyM = kyRe.exec(t)) !== null) kyLast = kyM;
+    if (kyLast) { d.ngayKyNgay = kyLast[1]; d.ngayKyThang = kyLast[2]; d.ngayKyNam = kyLast[3]; }
 
     // Bỏ các giá trị chỉ toàn dấu chấm/gạch (placeholder mẫu trống chưa điền).
     Object.keys(d).forEach(function (k) {
@@ -505,7 +557,7 @@
   /* ---------------------------------------------------------------- */
   /* 6. Cài đặt canh in (localStorage / KV Worker tuỳ chọn)            */
   /* ---------------------------------------------------------------- */
-  var settings = { scale: 100, shiftY: 0, calX: 0, calY: 0, lineSpread: 100, editMode: false, footerX: 0, footerY: 0 };
+  var settings = { scale: 100, shiftY: 0, calX: 0, calY: 0, lineSpread: 100, editMode: false, footerX: 0, footerY: 0, headerX: 0, headerY: 0 };
 
   function loadSettingsLocal() {
     try {
@@ -591,6 +643,8 @@
     if (b) b.style.setProperty("--gr-lh", lh.toFixed(3));
     var footer = document.querySelector(".gr-footer");
     if (footer) footer.style.transform = "translate(" + (settings.footerX || 0) + "mm," + (settings.footerY || 0) + "mm)";
+    var header = document.querySelector(".gr-hd");
+    if (header) header.style.transform = "translate(" + (settings.headerX || 0) + "mm," + (settings.headerY || 0) + "mm)";
     var sheet = document.getElementById("grSheet");
     if (sheet) sheet.classList.toggle("gr-editon", !!settings.editMode);
   }
@@ -664,6 +718,7 @@
     sheet.innerHTML = '<div class="gr-body">' + renderSheetBody() + '</div>';
     applyTransformSettings();
     bindFooterDrag();
+    bindHeaderDrag();
   }
 
   /* ---------------------------------------------------------------- */
@@ -693,6 +748,37 @@
       if (!dragging) return;
       dragging = false;
       footer.classList.remove("dragging");
+    });
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* 7c. Kéo-thả cụm tiêu đề "Sở Y tế/Bệnh viện .../Cộng hòa .../MS.../ */
+  /*      Số hồ sơ" (khối .gr-hd đầu trang)                            */
+  /* ---------------------------------------------------------------- */
+  function bindHeaderDrag() {
+    var header = document.querySelector(".gr-hd");
+    if (!header) return;
+    var dragging = false, startX, startY, baseX, baseY;
+    header.addEventListener("mousedown", function (e) {
+      if (!settings.editMode) return;
+      dragging = true;
+      header.classList.add("dragging");
+      startX = e.clientX; startY = e.clientY;
+      baseX = settings.headerX || 0; baseY = settings.headerY || 0;
+      e.preventDefault();
+    });
+    window.addEventListener("mousemove", function (e) {
+      if (!dragging) return;
+      var sheet = document.getElementById("grSheet");
+      var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
+      settings.headerX = baseX + (e.clientX - startX) / pxPerMm;
+      settings.headerY = baseY + (e.clientY - startY) / pxPerMm;
+      applyTransformSettings();
+    });
+    window.addEventListener("mouseup", function () {
+      if (!dragging) return;
+      dragging = false;
+      header.classList.remove("dragging");
     });
   }
 
@@ -771,6 +857,7 @@
     });
     document.getElementById("grResetLayout").addEventListener("click", function () {
       settings.lineSpread = 100; settings.footerX = 0; settings.footerY = 0;
+      settings.headerX = 0; settings.headerY = 0;
       settings.scale = 100; settings.shiftY = 0;
       applyTransformSettings();
       syncFieldsUIFromSettings();
