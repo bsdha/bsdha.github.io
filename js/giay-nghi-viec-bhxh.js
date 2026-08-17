@@ -111,11 +111,9 @@
     ".nv-section{font-weight:bold;font-size:12px;margin-top:2mm;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
-    ".nv-bhxh-box-line{display:flex;justify-content:flex-end;align-items:center;margin-top:-0.5mm !important;}",
-    ".nv-bhxh-box-row{display:flex;align-items:center;}",
-    ".nv-box-cell{display:inline-flex;align-items:center;justify-content:center;width:4.6mm;height:5.2mm;border:0.25mm solid #000;font-size:9.5px;font-weight:700;box-sizing:border-box;margin-left:-0.25mm;}",
+    ".nv-bhxh-box-row{display:inline-flex;align-items:center;vertical-align:middle;}",
+    ".nv-box-cell{display:inline-flex;align-items:center;justify-content:center;min-width:5mm;height:5mm;padding:0 1.5mm;border:0.25mm solid #000;font-size:10px;font-weight:700;box-sizing:border-box;margin-left:-0.25mm;white-space:nowrap;}",
     ".nv-box-cell:first-child{margin-left:0;}",
-    ".nv-box-gap{width:2.4mm;flex:none;}",
     ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.2mm;}",
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
@@ -617,19 +615,16 @@
     return '<span class="fill-line" style="min-width:' + (widthHint || 40) + 'mm"></span>';
   }
 
-  // Vẽ mã dạng ô vuông (mỗi ký tự 1 ô), các nhóm cách nhau bởi khoảng trắng
-  // nhỏ, vd "DN 4 79 7414156533" -> [D][N] [4] [7][9] [7][4]...[3]
+  // Vẽ mã dạng 4 ô (mỗi ô 1 nhóm), có dấu "/" phía trước, vd
+  // "DN 4 79 7414156533" -> / [DN][4][79][7414156533]
   function renderBoxCode(code) {
     if (!code || !String(code).trim()) return "";
     var groups = String(code).trim().split(/\s+/);
-    var html = '<div class="nv-bhxh-box-row">';
-    groups.forEach(function (g, gi) {
-      if (gi > 0) html += '<span class="nv-box-gap"></span>';
-      for (var i = 0; i < g.length; i++) {
-        html += '<span class="nv-box-cell">' + esc(g[i]) + '</span>';
-      }
+    var html = '<span class="nv-bhxh-box-row">/ ';
+    groups.forEach(function (g) {
+      html += '<span class="nv-box-cell">' + esc(g) + '</span>';
     });
-    html += '</div>';
+    html += '</span>';
     return html;
   }
 
@@ -651,10 +646,8 @@
     html += '<div class="nv-section">I. Thông tin người bệnh</div>';
     html += '<div class="l-row l-flexrow"><span class="l-item">Họ và tên: ' + fillOrLine(d.hoTen, 55) + '</span>' +
             '<span class="l-item">Ngày sinh: ' + fillOrLine(d.ngaySinh, 22) + '</span></div>';
-    html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
-    if (d.maBHXHBox && String(d.maBHXHBox).trim()) {
-      html += '<div class="l-row nv-bhxh-box-line">' + renderBoxCode(d.maBHXHBox) + '</div>';
-    }
+    html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) +
+            (d.maBHXHBox && String(d.maBHXHBox).trim() ? '&nbsp;&nbsp;' + renderBoxCode(d.maBHXHBox) : '') + '</div>';
     html += '<div class="l-row l-flexrow"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
             '<span class="l-item">Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</span></div>';
     html += '<div class="l-row">Giới tính: ' + fillOrLine(d.gioiTinh || "", 14) + '</div>';
