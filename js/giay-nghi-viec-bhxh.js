@@ -112,7 +112,7 @@
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
     ".nv-bhxh-box-row{display:inline-flex;align-items:center;vertical-align:middle;}",
-    ".nv-box-cell{display:inline-flex;align-items:center;justify-content:center;min-width:5mm;height:5mm;padding:0 1.5mm;border:0.25mm solid #000;font-size:10px;font-weight:700;box-sizing:border-box;margin-left:-0.25mm;white-space:nowrap;}",
+    ".nv-box-cell{display:inline-flex;align-items:center;justify-content:center;min-width:6.5mm;height:6.5mm;padding:0 2mm;border:0.3mm solid #000;font-size:12px;font-weight:400;box-sizing:border-box;margin-left:-0.3mm;white-space:nowrap;}",
     ".nv-box-cell:first-child{margin-left:0;}",
     ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.2mm;}",
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
@@ -620,7 +620,7 @@
   function renderBoxCode(code) {
     if (!code || !String(code).trim()) return "";
     var groups = String(code).trim().split(/\s+/);
-    var html = '<span class="nv-bhxh-box-row">/ ';
+    var html = '<span class="nv-bhxh-box-row">/&nbsp;';
     groups.forEach(function (g) {
       html += '<span class="nv-box-cell">' + esc(g) + '</span>';
     });
