@@ -96,12 +96,13 @@
     "#grSheet{width:" + PAGE_W_MM + "mm;height:" + PAGE_H_MM + "mm;background:#fff;position:relative;overflow:hidden;font-family:'Times New Roman',Times,serif;color:#000;}",
     ".gr-body{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;padding:14mm 16mm 4mm;line-height:var(--gr-lh,1.5);}",
     ".gr-body .l-row{position:relative;white-space:normal;box-sizing:border-box;margin-bottom:1.6mm;}",
-    ".gr-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:10mm;}",
-    ".gr-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;max-width:55%;line-height:1.35;text-align:center;}",
-    ".gr-hd-right{text-align:center;font-size:11.5px;max-width:55%;}",
-    ".gr-hd-right b{display:block;text-decoration:underline;}",
-    ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;text-align:center;}",
-    ".gr-hd-ms{font-weight:400;font-size:11px;margin-top:2mm;}",
+    ".gr-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:6mm;}",
+    ".gr-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;line-height:1.35;text-align:left;flex:0 0 auto;transform-origin:top left;}",
+    ".gr-hd-mid{text-align:center;font-size:11.5px;flex:0 0 auto;transform-origin:top left;}",
+    ".gr-hd-mid b{display:block;text-decoration:underline;}",
+    ".gr-hd-right{text-align:right;font-size:11.5px;flex:0 0 auto;white-space:nowrap;transform-origin:top left;}",
+    ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;text-align:left;}",
+    ".gr-hd-ms{font-weight:400;font-size:11px;}",
     ".gr-title{text-align:center;font-weight:bold;font-size:16px;margin:5mm 0 4mm;text-transform:uppercase;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.6mm;}",
@@ -112,10 +113,9 @@
     "#grSheet.gr-editon .gr-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#grSheet.gr-editon .gr-footer:hover,#grSheet.gr-editon .gr-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#grSheet.gr-editon .gr-footer.dragging{cursor:grabbing;}",
-    "#grSheet.gr-editon .gr-hd{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
-    "#grSheet.gr-editon .gr-hd:hover,#grSheet.gr-editon .gr-hd.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
-    "#grSheet.gr-editon .gr-hd.dragging{cursor:grabbing;}",
-    ".gr-hd{transform-origin:top left;}",
+    "#grSheet.gr-editon .gr-hd-left,#grSheet.gr-editon .gr-hd-mid,#grSheet.gr-editon .gr-hd-right{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;padding:1mm;}",
+    "#grSheet.gr-editon .gr-hd-left:hover,#grSheet.gr-editon .gr-hd-mid:hover,#grSheet.gr-editon .gr-hd-right:hover,#grSheet.gr-editon .gr-hd-left.dragging,#grSheet.gr-editon .gr-hd-mid.dragging,#grSheet.gr-editon .gr-hd-right.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
+    "#grSheet.gr-editon .gr-hd-left.dragging,#grSheet.gr-editon .gr-hd-mid.dragging,#grSheet.gr-editon .gr-hd-right.dragging{cursor:grabbing;}",
     ".gr-footer .col{width:46%;}",
     ".gr-footer b{display:block;}",
     ".gr-footer .italic{font-style:italic;font-size:10.5px;}",
@@ -178,9 +178,9 @@
             '<h3>Bố cục</h3>' +
             '<div class="gr-switchrow">' +
               '<label class="gr-switch"><input type="checkbox" id="grEditModeToggle"><span class="gr-slider"></span></label>' +
-              '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả khối tiêu đề "Sở Y tế/Bệnh viện/Cộng hòa..." và khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
+              '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả riêng từng cụm tiêu đề "Sở Y tế/Bệnh viện...", "Cộng hòa...", "MS/Số hồ sơ..." và khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
             '</div>' +
-            '<div class="gr-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối tiêu đề hoặc chữ ký khi chỉ muốn nhập liệu. Kéo từng khối tới đúng vị trí mong muốn trên tờ giấy nếu cần.</div>' +
+            '<div class="gr-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối tiêu đề hoặc chữ ký khi chỉ muốn nhập liệu. 3 cụm tiêu đề đầu trang (Sở Y tế/Bệnh viện — Cộng hòa/Độc lập — MS/Số hồ sơ) kéo-thả ĐỘC LẬP với nhau, mặc định vẫn nằm 3 cột như trên tờ giấy gốc.</div>' +
             '<button class="gr-btn save" id="grSaveBtn">💾 Lưu tinh chỉnh</button>' +
             '<button class="gr-btn small secondary" id="grResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
           '</div>' +
@@ -671,7 +671,11 @@
   /* ---------------------------------------------------------------- */
   /* 6. Cài đặt canh in (localStorage / KV Worker tuỳ chọn)            */
   /* ---------------------------------------------------------------- */
-  var settings = { scale: 100, shiftY: 0, calX: 0, calY: 0, lineSpread: 100, editMode: false, footerX: 0, footerY: 0, headerX: 0, headerY: 0 };
+  var settings = {
+    scale: 100, shiftY: 0, calX: 0, calY: 0, lineSpread: 100, editMode: false,
+    footerX: 0, footerY: 0,
+    hdLeftX: 0, hdLeftY: 0, hdMidX: 0, hdMidY: 0, hdRightX: 0, hdRightY: 0
+  };
 
   function loadSettingsLocal() {
     try {
@@ -757,8 +761,12 @@
     if (b) b.style.setProperty("--gr-lh", lh.toFixed(3));
     var footer = document.querySelector(".gr-footer");
     if (footer) footer.style.transform = "translate(" + (settings.footerX || 0) + "mm," + (settings.footerY || 0) + "mm)";
-    var header = document.querySelector(".gr-hd");
-    if (header) header.style.transform = "translate(" + (settings.headerX || 0) + "mm," + (settings.headerY || 0) + "mm)";
+    var hdLeft = document.querySelector(".gr-hd-left");
+    if (hdLeft) hdLeft.style.transform = "translate(" + (settings.hdLeftX || 0) + "mm," + (settings.hdLeftY || 0) + "mm)";
+    var hdMid = document.querySelector(".gr-hd-mid");
+    if (hdMid) hdMid.style.transform = "translate(" + (settings.hdMidX || 0) + "mm," + (settings.hdMidY || 0) + "mm)";
+    var hdRight = document.querySelector(".gr-hd-right");
+    if (hdRight) hdRight.style.transform = "translate(" + (settings.hdRightX || 0) + "mm," + (settings.hdRightY || 0) + "mm)";
     var sheet = document.getElementById("grSheet");
     if (sheet) sheet.classList.toggle("gr-editon", !!settings.editMode);
   }
@@ -780,7 +788,8 @@
               '<div class="gr-hd-left">' + esc(SO_Y_TE) + '<br>' + esc(HOSPITAL_NAME) +
                 '<div class="gr-hd-so">Số: ' + fillOrLine(d.soGiay, 45) + '</div>' +
               '</div>' +
-              '<div class="gr-hd-right">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b>' +
+              '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b></div>' +
+              '<div class="gr-hd-right">' +
                 '<div class="gr-hd-ms">MS: 02</div>' +
                 '<div>Số hồ sơ/Số BA: ' + fillOrLine(d.soHoSo, 40) + '</div>' +
               '</div>' +
@@ -866,33 +875,45 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 7c. Kéo-thả cụm tiêu đề "Sở Y tế/Bệnh viện .../Cộng hòa .../MS.../ */
-  /*      Số hồ sơ" (khối .gr-hd đầu trang)                            */
+  /* 7c. Kéo-thả 3 cụm tiêu đề đầu trang, ĐỘC LẬP với nhau:            */
+  /*     - .gr-hd-left  : Sở Y tế / Bệnh viện / Số:                   */
+  /*     - .gr-hd-mid   : Cộng hòa .../Độc lập...                     */
+  /*     - .gr-hd-right : MS: 02 / Số hồ sơ...                        */
+  /* Mặc định cả 3 vẫn nằm trên cùng 1 hàng, chia 3 cột (trái-giữa-   */
+  /* phải) như mẫu giấy gốc; khi bật "Chỉnh sửa vị trí" có thể kéo    */
+  /* từng cụm đi bất kỳ đâu, độc lập với 2 cụm còn lại.                */
   /* ---------------------------------------------------------------- */
   function bindHeaderDrag() {
-    var header = document.querySelector(".gr-hd");
-    if (!header) return;
-    var dragging = false, startX, startY, baseX, baseY;
-    header.addEventListener("mousedown", function (e) {
-      if (!settings.editMode) return;
-      dragging = true;
-      header.classList.add("dragging");
-      startX = e.clientX; startY = e.clientY;
-      baseX = settings.headerX || 0; baseY = settings.headerY || 0;
-      e.preventDefault();
-    });
-    window.addEventListener("mousemove", function (e) {
-      if (!dragging) return;
-      var sheet = document.getElementById("grSheet");
-      var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
-      settings.headerX = baseX + (e.clientX - startX) / pxPerMm;
-      settings.headerY = baseY + (e.clientY - startY) / pxPerMm;
-      applyTransformSettings();
-    });
-    window.addEventListener("mouseup", function () {
-      if (!dragging) return;
-      dragging = false;
-      header.classList.remove("dragging");
+    [
+      { sel: ".gr-hd-left", xKey: "hdLeftX", yKey: "hdLeftY" },
+      { sel: ".gr-hd-mid", xKey: "hdMidX", yKey: "hdMidY" },
+      { sel: ".gr-hd-right", xKey: "hdRightX", yKey: "hdRightY" }
+    ].forEach(function (cfg) {
+      var el = document.querySelector(cfg.sel);
+      if (!el) return;
+      var dragging = false, startX, startY, baseX, baseY;
+      el.addEventListener("mousedown", function (e) {
+        if (!settings.editMode) return;
+        dragging = true;
+        el.classList.add("dragging");
+        startX = e.clientX; startY = e.clientY;
+        baseX = settings[cfg.xKey] || 0; baseY = settings[cfg.yKey] || 0;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      window.addEventListener("mousemove", function (e) {
+        if (!dragging) return;
+        var sheet = document.getElementById("grSheet");
+        var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
+        settings[cfg.xKey] = baseX + (e.clientX - startX) / pxPerMm;
+        settings[cfg.yKey] = baseY + (e.clientY - startY) / pxPerMm;
+        applyTransformSettings();
+      });
+      window.addEventListener("mouseup", function () {
+        if (!dragging) return;
+        dragging = false;
+        el.classList.remove("dragging");
+      });
     });
   }
 
@@ -971,7 +992,9 @@
     });
     document.getElementById("grResetLayout").addEventListener("click", function () {
       settings.lineSpread = 100; settings.footerX = 0; settings.footerY = 0;
-      settings.headerX = 0; settings.headerY = 0;
+      settings.hdLeftX = 0; settings.hdLeftY = 0;
+      settings.hdMidX = 0; settings.hdMidY = 0;
+      settings.hdRightX = 0; settings.hdRightY = 0;
       settings.scale = 100; settings.shiftY = 0;
       applyTransformSettings();
       syncFieldsUIFromSettings();
