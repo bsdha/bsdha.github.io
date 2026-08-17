@@ -199,6 +199,13 @@
   }
   #page-home .kcb-widget-text.kcb-fade { opacity: 0; }
   #page-home .kcb-widget-text b { color: var(--blue); }
+  #page-home .kcb-hidden-link {
+    color: var(--amber-dark);
+    font-weight: 700;
+    text-decoration: underline dotted;
+    cursor: pointer;
+  }
+  #page-home .kcb-hidden-link:hover { color: var(--blue); }
   #page-home .kcb-widget-toggle {
     flex: none;
     display: flex; align-items: center; gap: 5px;
@@ -264,6 +271,30 @@
     transition: background .15s, color .15s, border-color .15s;
   }
   .kcb-detail-tab.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  .kcb-date-nav {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 0;
+    flex-shrink: 0;
+  }
+  .kcb-date-nav[hidden] { display: none; }
+  .kcb-date-arrow {
+    flex: none;
+    width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--border); background: #fff; color: var(--text);
+    border-radius: 8px; font-size: 17px; font-weight: 700; line-height: 1; cursor: pointer;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .kcb-date-arrow:hover:not(:disabled) { background: var(--blue); border-color: var(--blue); color: #fff; }
+  .kcb-date-arrow:disabled { opacity: .35; cursor: not-allowed; }
+  .kcb-date-input {
+    flex: 1;
+    border: 1px solid var(--border); border-radius: 8px;
+    padding: 5px 8px; font-size: 12.5px; color: var(--text);
+    text-align: center;
+  }
+  .kcb-date-input:focus { outline: none; border-color: var(--blue); }
 
   .kcb-modal-body { flex: 1; min-height: 0; overflow-y: auto; padding: 10px 16px 16px; }
   .kcb-detail-table { width: 100%; border-collapse: collapse; }
