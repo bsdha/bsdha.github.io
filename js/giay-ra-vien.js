@@ -300,96 +300,208 @@
     return /^[.\-_\/\s]*$/.test(s);
   }
 
-  // Phần mềm HIS xuất "Giấy ra viện" thường in nhóm nhãn ("- Họ tên người
-  // bệnh:- Dân tộc:- Vào viện lúc:- Ngày/tháng/năm sinh: <ngày sinh>") trên
-  // 1 dòng, còn giá trị của 3 nhãn đầu lại nằm tách riêng ở 3 dòng NGAY SAU
-  // đó nhưng theo thứ tự NGƯỢC LẠI (dân tộc, vào viện, họ tên) — đây là đặc
-  // điểm cố định của bản in này (đã kiểm chứng qua nhiều phiếu mẫu thật),
-  // nên tách khối này riêng thay vì dò theo nhãn:giá trị liền kề như phần còn lại.
-  function extractIdentityBlock(lines) {
-    for (var i = 0; i < lines.length; i++) {
-      if (/Ngày\/tháng\/năm sinh/i.test(lines[i]) && /Họ tên người bệnh/i.test(lines[i])) {
-        var out = {};
-        var ns = /Ngày\/tháng\/năm sinh:?\s*([0-9\/]+)/i.exec(lines[i]);
-        if (ns) out.ngaySinh = ns[1];
+  // Các khối chữ "trang trí/tiêu đề cố định" hay lẫn vào giữa dữ liệu khi
+  // thứ tự đọc PDF bị xáo trộn — dùng làm điểm DỪNG chung cho mọi field
+  // dạng "nhãn: giá trị liền kề", để field không "ăn lấn" sang các khối này.
+  var GLOBAL_STOPS = [
+    /SỞ Y TẾ/i, /BỆNH VIỆN/i, /CỘNG HÒA XÃ HỘI/i, /Độc lập\s*-\s*Tự do/i,
+    /GIẤY RA VIỆN/i, /(?:^|\s)MS:/i, /Đại diện đơn vị/i, /Người hành nghề/i,
+    /Ký,\s*ghi rõ/i, /đóng dấu/i,
+    /[0-9]{1,2}\s*giờ\s*[0-9]{1,2}\s*phút/i,                                  // cụm giờ-ngày (vào/ra viện)
+    /Ngày\s+[0-9]{1,2}\s*tháng\s*[0-9]{1,2}\s*năm\s*[0-9]{4}/,                // ngày ký (chữ N hoa)
+    /[A-ZÀ-Ỹ]{2,}(?:\s+[A-ZÀ-Ỹ]{2,}){2,}/                                    // cụm chữ hoa dài (tên người/tiêu đề)
+  ];
 
-        var lDanToc = (lines[i + 1] || "").trim();
-        var lVaoVien = (lines[i + 2] || "").trim();
-        var lHoTen = (lines[i + 3] || "").trim();
-        var lNgheDong = (lines[i + 4] || "").trim();
+  // Lấy nội dung sau 1 nhãn cho tới điểm DỪNG gần nhất — hoặc là 1 nhãn khác
+  // trong "stopLabels" riêng của field, hoặc là 1 trong các GLOBAL_STOPS
+  // (khối trang trí/tiêu đề/ngày-giờ hay lẫn vào do PDF đọc không đúng thứ
+  // tự hiển thị). Nhờ vậy field không còn "ăn lấn" nội dung không liên quan
+  // dù nhãn kế tiếp thực sự trong văn bản là nhãn nào, ở đâu.
+  function grabUntilAny(startRe, stopLabels, text, maxLen) {
+    var m = startRe.exec(text);
+    if (!m) return "";
+    var rest = text.slice(m.index + m[0].length);
+    var allStops = stopLabels.concat(GLOBAL_STOPS);
+    var stopIdx = -1;
+    for (var i = 0; i < allStops.length; i++) {
+      var sm = allStops[i].exec(rest);
+      if (sm && (stopIdx === -1 || sm.index < stopIdx)) stopIdx = sm.index;
+    }
+    if (maxLen && (stopIdx === -1 || stopIdx > maxLen)) stopIdx = maxLen;
+    var val = stopIdx !== -1 ? rest.slice(0, stopIdx) : rest;
+    return val.replace(/^[\s:.\-]+/, "").replace(/[\s\-]+$/, "").trim();
+  }
 
-        if (lDanToc && lDanToc.length <= 25 && !/[0-9]/.test(lDanToc)) out.danToc = lDanToc;
-        if (/gi[oờ]/i.test(lVaoVien) && /ng[aà]y/i.test(lVaoVien)) out.vaoVien = lVaoVien;
-        if (/^[A-ZÀ-Ỹ][A-ZÀ-Ỹ\s]{3,60}$/.test(lHoTen)) out.hoTen = lHoTen;
-        var ngheMatch = /Nghề nghiệp:?\s*(.+)/i.exec(lNgheDong);
-        if (ngheMatch) out.ngheNghiep = ngheMatch[1].trim();
+  function dedupeRepeat(s) {
+    if (!s) return s;
+    var str = s.trim();
+    var m = /^(.+?)\s*\1$/.exec(str);
+    if (m) return m[1].trim();
+    var words = str.split(/\s+/);
+    var out = [];
+    for (var i = 0; i < words.length; i++) {
+      if (words[i] !== words[i + 1]) out.push(words[i]);
+      else i++;
+    }
+    return out.join(" ");
+  }
 
-        return out;
+  // Danh sách các dân tộc Việt Nam thường gặp trên giấy tờ — dò TRỰC TIẾP
+  // theo tên dân tộc trong toàn văn bản, KHÔNG phụ thuộc việc nó có nằm
+  // liền ngay sau nhãn "Dân tộc:" hay không (mẫu PDF của bệnh viện hay in
+  // tách rời nhãn và giá trị dân tộc, giá trị có thể "trôi" tới vị trí khác
+  // hẳn trong luồng văn bản đọc được).
+  var ETHNIC_GROUPS = ["Kinh","Tày","Thái","Mường","Khmer","Hoa","Nùng","Hmông","Mông","Dao",
+    "Gia Rai","Ê Đê","Ba Na","Xơ Đăng","Sán Chay","Cơ Ho","Chăm","Sán Dìu","Hrê","Ra Glai",
+    "Mnông","Thổ","Xtiêng","Khơ Mú","Bru Vân Kiều","Cơ Tu","Giáy","Tà Ôi","Mạ","Co","Chơ Ro",
+    "Xinh Mun","Hà Nhì","Chu Ru","Lào","La Chí","Phù Lá","La Hủ","Lự","Lô Lô","Chứt","Mảng",
+    "Pà Thẻn","Cơ Lao","Cống","Bố Y","Si La","Pu Péo","Rơ Măm","Brâu","Ơ Đu"];
+  function findDanToc(text) {
+    for (var i = 0; i < ETHNIC_GROUPS.length; i++) {
+      var re = new RegExp("(?:^|[^A-Za-zÀ-Ỹà-ỹ])" + ETHNIC_GROUPS[i].replace(/\s+/g, "\\s+") + "(?![A-Za-zÀ-Ỹà-ỹ])");
+      if (re.test(text)) return ETHNIC_GROUPS[i];
+    }
+    return "";
+  }
+
+  var NAME_BLACKLIST_WORDS = ["SỞ","TẾ","BỆNH","VIỆN","CƠ","CỘNG","HÒA","XÃ","HỘI","CHỦ",
+    "NGHĨA","VIỆT","NAM","GIẤY","RA","ĐỘC","LẬP","TỰ","DO","HẠNH","PHÚC","ĐẠI","DIỆN","ĐƠN",
+    "VỊ","NGƯỜI","HÀNH","NGHỀ","KHÁM","CHỮA","THÀNH","PHỐ","HỒ","CHÍ","MINH","BÌNH","TP","MS"];
+
+  function findHoTen(text) {
+    // Tách các "token viết hoa liên tục" (>=2 ký tự) trong toàn văn bản, ghi
+    // lại vị trí bắt đầu/kết thúc. Nếu ký tự NGAY SAU token là chữ thường
+    // (có dấu) — nghĩa là token vừa "ăn lấn" 1 ký tự hoa đầu của từ liền sau
+    // (do PDF không có khoảng trắng phân tách, VD "GIANGNghề nghiệp") — cắt
+    // bớt ký tự cuối token đó.
+    var tokRe = /\p{Lu}{2,}/gu;
+    var toks = [];
+    var m;
+    while ((m = tokRe.exec(text)) !== null) {
+      var w = m[0], start = m.index, end = m.index + w.length;
+      var nextCh = text[end] || "";
+      if (/[a-zà-ỹ]/.test(nextCh) && w.length > 2) w = w.slice(0, -1);
+      toks.push({ word: w, start: start, end: start + w.length });
+    }
+    // Gom các token LIỀN NHAU (chỉ cách nhau bởi khoảng trắng) thành từng
+    // cụm, rồi trong mỗi cụm tìm đoạn liên tiếp dài nhất gồm toàn token
+    // KHÔNG nằm trong danh sách loại trừ (tên đơn vị/tiêu đề cố định).
+    var best = null;
+    var run = [];
+    function flushRun() {
+      if (run.length >= 2 && run.length <= 6) {
+        var cand = run.map(function (r) { return r.word; }).join(" ");
+        if (!best || cand.length > best.length) best = cand;
+      }
+      run = [];
+    }
+    for (var i = 0; i < toks.length; i++) {
+      var isBlack = NAME_BLACKLIST_WORDS.indexOf(toks[i].word) !== -1;
+      var adjacentToPrev = i > 0 && /^\s+$/.test(text.slice(toks[i - 1].end, toks[i].start));
+      if (!adjacentToPrev) flushRun();
+      if (isBlack) { flushRun(); continue; }
+      run.push(toks[i]);
+    }
+    flushRun();
+    return best || "";
+  }
+
+  // Cụm "<giờ> giờ <phút> phút, ngày <dd> tháng <mm> năm <yyyy>" xuất hiện
+  // đúng 2 lần trên phiếu: 1 lần cho "Vào viện lúc", 1 lần cho "Ra viện
+  // lúc". Thay vì giả định nhãn đứng ngay trước/sau giá trị, ta tìm TẤT CẢ
+  // các cụm này rồi gán cho field nào có NHÃN GẦN NHẤT (đo bằng khoảng cách
+  // ký tự trong văn bản, không quan tâm nhãn đó nằm trước hay sau) — cách
+  // này đúng bất kể PDF nguồn xáo trộn thứ tự nhãn/giá trị thế nào.
+  function findVaoRaVien(text) {
+    var dtRe = /([0-9]{1,2})\s*giờ\s*([0-9]{1,2})\s*phút,?\s*ngày\s*([0-9]{1,2})\s*tháng\s*([0-9]{1,2})\s*năm\s*([0-9]{4})/gi;
+    var occ = [];
+    var m;
+    while ((m = dtRe.exec(text)) !== null) occ.push({ index: m.index, text: m[0].trim() });
+    if (!occ.length) return { vaoVien: "", raVien: "" };
+
+    function allPositions(re) {
+      var pos = [], mm;
+      var r = new RegExp(re.source, re.flags.indexOf("g") === -1 ? re.flags + "g" : re.flags);
+      while ((mm = r.exec(text)) !== null) pos.push(mm.index);
+      return pos;
+    }
+    var vaoPos = allPositions(/Vào viện lúc/i);
+    var raPos = allPositions(/Ra viện lúc/i);
+
+    function nearestDist(idx, positions) {
+      var best = Infinity;
+      positions.forEach(function (p) { best = Math.min(best, Math.abs(p - idx)); });
+      return best;
+    }
+
+    var vaoVien = "", raVien = "";
+    if (occ.length === 1) {
+      // Chỉ tìm thấy 1 cụm — gán theo nhãn gần hơn.
+      var dV = nearestDist(occ[0].index, vaoPos), dR = nearestDist(occ[0].index, raPos);
+      if (dV <= dR) vaoVien = occ[0].text; else raVien = occ[0].text;
+    } else {
+      // >=2 cụm: gán mỗi cụm cho nhãn gần nhất; nếu cả 2 cùng gần 1 nhãn
+      // nhất (hoặc không xác định được), dùng thứ tự thời gian làm dự phòng
+      // (ra viện luôn sau vào viện).
+      var scored = occ.map(function (o) {
+        return { o: o, dV: nearestDist(o.index, vaoPos), dR: nearestDist(o.index, raPos) };
+      });
+      var closerToVao = scored.filter(function (s) { return s.dV < s.dR; });
+      var closerToRa = scored.filter(function (s) { return s.dR <= s.dV; });
+      if (closerToVao.length === 1 && closerToRa.length >= 1) {
+        vaoVien = closerToVao[0].o.text;
+        raVien = closerToRa[closerToRa.length - 1].o.text;
+      } else if (closerToRa.length === 1 && closerToVao.length >= 1) {
+        raVien = closerToRa[0].o.text;
+        vaoVien = closerToVao[0].o.text;
+      } else {
+        // Dự phòng: sắp theo thứ tự xuất hiện trong text, cụm đầu = vào viện.
+        vaoVien = occ[0].text;
+        raVien = occ[occ.length - 1].text;
       }
     }
-    return null;
+    return { vaoVien: vaoVien, raVien: raVien };
   }
 
   function parseFields(rawText) {
-    // Giữ nguyên xuống dòng (cần cho khối nhận diện họ tên/dân tộc/vào viện ở
-    // trên) — chỉ gọn khoảng trắng THỪA trong TỪNG dòng, không gộp các dòng lại.
-    var lines = rawText.split("\n").map(function (s) { return s.replace(/\s+/g, " ").trim(); }).filter(Boolean);
-    var t = rawText.replace(/\s+/g, " ").trim(); // bản gộp 1 dòng, dùng cho các field label:value liền kề
-
+    var t = rawText.replace(/\s+/g, " ").trim(); // bản gộp 1 dòng
     var d = {};
 
-    var idBlock = extractIdentityBlock(lines);
-    if (idBlock) Object.assign(d, idBlock);
+    // ----- Các trường nhận diện theo MẪU DỮ LIỆU đặc trưng, không phụ
+    // thuộc vị trí liền kề với nhãn (an toàn với mọi kiểu xáo trộn thứ tự) -----
+    d.hoTen = findHoTen(t);
+    d.danToc = findDanToc(t);
+    var vr = findVaoRaVien(t);
+    d.vaoVien = vr.vaoVien;
+    d.raVien = vr.raVien;
 
-    // Dự phòng: nếu PDF nguồn có thứ tự nhãn:giá trị THẲNG HÀNG bình thường
-    // (không bị đảo lộn như trường hợp extractIdentityBlock xử lý ở trên),
-    // dò trực tiếp label:value liền kề cho các trường còn thiếu.
-    if (!d.hoTen) d.hoTen = grabUntilAny(/Họ tên người bệnh:?\s*/i, [/-?\s*Ngày\/tháng\/năm sinh/i, /-?\s*Dân tộc/i], t);
-    if (!d.danToc) d.danToc = grabUntilAny(/(?:^|[^A-Za-zÀ-Ỹà-ỹ])Dân tộc:?\s*/i, [/Nghề nghiệp/i, /-?\s*Số CCCD/i], t);
-    if (!d.ngheNghiep) d.ngheNghiep = grabUntilAny(/Nghề nghiệp:?\s*/i, [/-?\s*Số CCCD/i, /-?\s*Dân tộc/i], t);
-    if (!d.vaoVien) d.vaoVien = grabUntilAny(/Vào viện lúc:?\s*/i, [/-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i], t);
-
+    var nsM = /Ngày\/tháng\/năm sinh:?\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i.exec(t);
+    if (nsM) d.ngaySinh = nsM[1];
     var tuoiM = /\(?Tuổi:?\s*([0-9]{1,3})\s*tuổi/i.exec(t);
     if (tuoiM) d.tuoi = tuoiM[1];
     if (/Nam\/n[ữu]:?\s*Nữ/i.test(t) || /Giới tính:?\s*Nữ/i.test(t)) d.gioiTinh = "Nữ";
     else if (/Nam\/n[ữu]:?\s*Nam/i.test(t) || /Giới tính:?\s*Nam/i.test(t)) d.gioiTinh = "Nam";
 
-    // "Số:" (đầu trang) và "Số hồ sơ/Số BA:" — 2 trường này trước đây chưa
-    // được bóc tách (luôn để trống dù file nguồn có giá trị thật).
-    d.soGiay = grab(/(?:^|\s)Số:?\s*([0-9][0-9A-Za-z\/\-]{0,20})(?=\s|$)/i, t);
-    d.soHoSo = grab(/Số hồ sơ\/Số BA:?\s*([0-9A-Za-z\/\-]{1,25})/i, t);
-
+    // ----- Các trường mà giá trị luôn LIỀN KỀ nhãn của nó (đã kiểm chứng
+    // qua nhiều bản PDF thật) — dò theo nhãn:giá trị, dừng ở điểm gần nhất
+    // trong (nhãn riêng của field + GLOBAL_STOPS) để không ăn lấn nội dung
+    // không liên quan lỡ bị trôi tới ngay sau. -----
+    d.soGiay = grab(/(?:^|\s)Số:?\s*([0-9][0-9\/\-]{0,20})(?=\s|$)/i, t);
+    d.soHoSo = grab(/Số hồ sơ\/Số BA:?\s*([0-9][0-9\/\-]{0,20})/i, t);
     d.cccd = grab(/Số CCCD\/CMND\/[^:]*:?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i, t);
-    d.maBHXH = grab(/Mã số BHXH\/Thẻ BHYT số\s*\(nếu có\):?\s*([0-9A-Za-z\/]{6,40})/i, t);
+    d.maBHXH = grab(/Mã số BHXH\/Thẻ BHYT số\s*\(nếu có\):?\s*([A-Za-z]{0,4}[0-9]{6,15})/i, t);
 
-    // Các nhãn "- Địa chỉ / - Vào viện lúc / - Ra viện lúc / - Chẩn đoán /
-    // - Phương pháp điều trị / - Ghi chú" có thể không xuất hiện đúng thứ tự
-    // cố định trong luồng text đọc từ PDF (tuỳ máy in/PDF nguồn) — trước đây
-    // mỗi field chỉ dừng lại ở ĐÚNG 1 nhãn kế tiếp giả định cố định, nên khi
-    // thứ tự khác đi, field trước sẽ "ăn lấn" luôn nội dung field sau (ví dụ
-    // "Địa chỉ" nuốt luôn cả "Vào viện lúc" nếu "Ra viện lúc" không đứng
-    // ngay sau nó). Sửa: mỗi field dừng lại ở nhãn GẦN NHẤT trong các nhãn
-    // còn lại phía sau, không cứ nhãn cố định như cũ.
-    var stop_diaChi = [/-?\s*Vào viện lúc/i, /-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i];
-    var stop_vaoVien = [/-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i];
-    var stop_raVien = [/-?\s*Chẩn đoán/i];
-    var stop_chanDoan = [/-?\s*Phương pháp điều trị/i];
-    var stop_phuongPhap = [/-?\s*Ghi chú/i];
-    var stop_ghiChu = [/\(Tuổi/i, /Đại diện đơn vị/i, /Người hành nghề/i, /Ngày\s+[0-9]{1,2}\s*tháng\s*[0-9]{1,2}\s*năm\s*[0-9]{4}/];
-
-    d.diaChi = dedupeRepeat(grabUntilAny(/Địa chỉ:?\s*/i, stop_diaChi, t));
-    d.vaoVien = d.vaoVien || grabUntilAny(/Vào viện lúc:?\s*/i, stop_vaoVien, t);
-    d.raVien = grabUntilAny(/Ra viện lúc:?\s*/i, stop_raVien, t);
-    d.chanDoan = grabUntilAny(/Chẩn đoán:?\s*/i, stop_chanDoan, t);
-    d.phuongPhap = grabUntilAny(/Phương pháp điều trị\s*:?\s*/i, stop_phuongPhap, t);
-    d.ghiChu = grabUntilAny(/Ghi chú:?\s*/i, stop_ghiChu, t);
+    d.ngheNghiep = grabUntilAny(/Nghề nghiệp:?\s*/i, [/-?\s*Số CCCD/i, /-?\s*Dân tộc/i, /-?\s*Địa chỉ/i], t, 40);
+    d.diaChi = dedupeRepeat(grabUntilAny(/Địa chỉ:?\s*/i, [/-?\s*Vào viện lúc/i, /-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i], t, 200));
+    d.chanDoan = grabUntilAny(/Chẩn đoán:?\s*/i, [/-?\s*Phương pháp điều trị/i, /-?\s*Ghi chú/i], t, 200);
+    d.phuongPhap = grabUntilAny(/Phương pháp điều trị\s*:?\s*/i, [/-?\s*Ghi chú/i, /-?\s*Chẩn đoán/i], t, 150);
+    d.ghiChu = grabUntilAny(/Ghi chú:?\s*/i, [/\(Tuổi/i], t, 150);
 
     // Ngày ký ở cuối trang: dòng "Ngày DD tháng MM năm YYYY" viết hoa chữ
-    // "Ngày" đứng đầu câu (khác với "ngày" thường trong "...lúc: ..giờ..,
-    // ngày 11 tháng 08 năm 2026" của Vào/Ra viện). Dò TOÀN VĂN BẢN (không
-    // phụ thuộc việc nó nằm trước/sau cụm "Đại diện đơn vị" — thứ tự này có
-    // thể khác nhau tuỳ PDF nguồn) và lấy occurrence CUỐI CÙNG khớp mẫu.
+    // "Ngày" đứng đầu câu (khác với "ngày" thường trong cụm giờ-phút của
+    // Vào/Ra viện). Dò TOÀN VĂN BẢN, lấy occurrence CUỐI CÙNG khớp mẫu —
+    // không phụ thuộc việc nó nằm trước/sau cụm "Đại diện đơn vị".
     var kyRe = /(?:^|[^a-zà-ỹ])Ngày\s+([0-9]{1,2})\s*tháng\s*([0-9]{1,2})\s*năm\s*([0-9]{4})/g;
     var kyM, kyLast = null;
     while ((kyM = kyRe.exec(t)) !== null) kyLast = kyM;
@@ -429,31 +541,33 @@
     document.head.appendChild(s);
   }
 
-  // Sắp lại các mảnh chữ theo đúng vị trí trên trang (trên->dưới, trái->phải)
-  // trước khi ghép thành văn bản — pdf.js trả text theo thứ tự trong luồng dữ
-  // liệu PDF, không theo vị trí hiển thị.
+  // Sắp lại các mảnh chữ trước khi ghép thành văn bản.
+  // GHI CHÚ QUAN TRỌNG: bản cũ sắp xếp lại theo toạ độ (trên->dưới,
+  // trái->phải), nhưng với mẫu "Giấy ra viện" này (dạng bảng/mẫu có nhiều
+  // khối chữ có toạ độ y gần bằng nhau do lệch baseline/dấu), cách sort đó
+  // cho kết quả THIẾU ỔN ĐỊNH — xáo trộn khác nhau mỗi lần và có thể LÀM MẤT
+  // hẳn một số đoạn chữ (đã kiểm chứng thực tế). Trong khi đó, GIỮ NGUYÊN
+  // thứ tự các mảnh chữ như trong luồng dữ liệu PDF (thứ tự pdf.js trả về)
+  // lại cho văn bản đầy đủ và ổn định hơn nhiều, dù đôi khi nhãn và giá trị
+  // không nằm liền kề nhau (mẫu HIS xuất giấy ra viện có xu hướng in nhãn
+  // và giá trị theo khối tách biệt). Vì vậy: không sort theo toạ độ nữa,
+  // chỉ nối theo đúng thứ tự luồng, tự thêm xuống dòng khi độ lệch y giữa
+  // 2 mảnh liên tiếp đủ lớn (gợi ý ranh giới dòng, phục vụ vài chỗ còn dùng
+  // dạng "lines" phía dưới) — logic nhận diện field bên dưới KHÔNG còn phụ
+  // thuộc vào việc nhãn/giá trị phải liền kề nhau nữa (xem parseFields).
   function reorderPdfItems(items) {
-    var rows = items.map(function (it) {
-      return { str: it.str, x: it.transform[4], y: it.transform[5] };
-    }).filter(function (it) { return it.str && it.str.length; });
-    rows.sort(function (a, b) { return b.y - a.y || a.x - b.x; });
-    var TOL = 2.2;
-    var lines = [];
-    var cur = null, curY = null;
-    rows.forEach(function (it) {
-      if (cur !== null && Math.abs(it.y - curY) <= TOL) {
-        cur.push(it);
-      } else {
-        if (cur) lines.push(cur);
-        cur = [it];
-        curY = it.y;
+    var parts = [];
+    var lastY = null;
+    items.forEach(function (it) {
+      if (!it.str || !it.str.length) return;
+      var y = it.transform[5];
+      if (lastY !== null) {
+        parts.push(Math.abs(y - lastY) > 2.2 ? "\n" : " ");
       }
+      parts.push(it.str);
+      lastY = y;
     });
-    if (cur) lines.push(cur);
-    return lines.map(function (line) {
-      line.sort(function (a, b) { return a.x - b.x; });
-      return line.map(function (it) { return it.str; }).join(" ");
-    }).join("\n");
+    return parts.join("");
   }
 
   function extractPdfText(arrayBuffer, cb) {
