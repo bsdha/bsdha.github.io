@@ -137,10 +137,6 @@
     border: none; background: transparent; color: var(--muted); border-radius: 6px; cursor: pointer; font-size: 12px;
   }
   .news-banner .nb-toggle:hover { background: var(--surface); color: var(--text); }
-  @media (prefers-reduced-motion: reduce) {
-    .news-banner .nb-track { animation: none; }
-    .news-banner .nb-track-wrap { overflow-x: auto; }
-  }
   @media (max-width: 640px) {
     .news-banner-group { gap: 5px; }
     .news-banner { height: 30px; font-size: 12px; padding-left: 10px; }
