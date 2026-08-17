@@ -137,6 +137,11 @@
             <button type="button" class="kcb-detail-tab active" data-mode="day">Hôm nay</button>
             <button type="button" class="kcb-detail-tab" data-mode="month">Tổng tháng</button>
           </div>
+          <div class="kcb-date-nav" id="kcbDateNav">
+            <button type="button" class="kcb-date-arrow" id="kcbDatePrev" title="Xem ngày trước">‹</button>
+            <input type="date" class="kcb-date-input" id="kcbDateInput" title="Chọn ngày cần xem">
+            <button type="button" class="kcb-date-arrow" id="kcbDateNext" title="Xem ngày sau">›</button>
+          </div>
           <div class="kcb-modal-body">
             <table class="kcb-detail-table">
               <tbody id="kcbDetailRows"></tbody>
@@ -1441,7 +1446,7 @@
 <script defer src="js/spa-router.js"></script>
 
 <script defer src="js/news-banner.js?v=2"></script>
-<script defer src="js/kcb-widget.js?v=1"></script>
+<script defer src="js/kcb-widget.js?v=2"></script>
 
 <script defer src="js/pdf-to-word.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
