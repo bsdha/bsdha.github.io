@@ -68,7 +68,7 @@
     return overlay;
   }
 
-  function promptUnlock(key, push) {
+  function requestUnlock(onSuccess, onCancel) {
     const overlay = ensureLockModal();
     const form = overlay.querySelector('#ilockForm');
     const input = overlay.querySelector('#ilockInput');
@@ -85,14 +85,14 @@
       overlay.classList.remove('open');
       document.body.classList.remove('ilock-lock');
       form.removeEventListener('submit', onSubmit);
-      cancelBtn.removeEventListener('click', onCancel);
+      cancelBtn.removeEventListener('click', onCancelClick);
     }
     function onSubmit(e) {
       e.preventDefault();
       if (input.value === INTERNAL_PASSWORD) {
         sessionStorage.setItem(UNLOCK_FLAG, '1');
         cleanup();
-        actuallyShowPage(key, push);
+        if (onSuccess) onSuccess();
       } else {
         err.hidden = false;
         input.value = '';
@@ -102,13 +102,17 @@
         overlay.querySelector('.ilock-box').classList.add('ilock-shake');
       }
     }
-    function onCancel() {
+    function onCancelClick() {
       cleanup();
-      // Không hủy nhu cầu điều hướng nếu người dùng đang ở trang khác — ở lại trang hiện tại.
+      if (onCancel) onCancel();
     }
     form.addEventListener('submit', onSubmit);
-    cancelBtn.addEventListener('click', onCancel);
+    cancelBtn.addEventListener('click', onCancelClick);
   }
+
+  // Cho phép các script khác (VD widget số liệu KCB) dùng chung cơ chế khoá mật
+  // khẩu "cs2" và cùng 1 trạng thái mở-khoá theo phiên trình duyệt.
+  window.BSDHA_LOCK = { isUnlocked, requestUnlock };
 
   function actuallyShowPage(key, push) {
     pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
@@ -126,7 +130,7 @@
 
   function showPage(key, push) {
     if (GUARDED_PAGES.indexOf(key) !== -1 && !isUnlocked()) {
-      promptUnlock(key, push);
+      requestUnlock(() => actuallyShowPage(key, push));
       return;
     }
     actuallyShowPage(key, push);

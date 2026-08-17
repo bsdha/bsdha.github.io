@@ -33,7 +33,7 @@
   }
 
   const CYCLE_MS = 3500;
-  const CACHE_KEY = "kcbWidgetCache_v1";
+  const CACHE_KEY = "kcbWidgetCache_v2";
   const REFRESH_MS = 3 * 60 * 1000; // 3 phút — tự động làm mới, không cần F5
   const CACHE_MS = REFRESH_MS; // cache khớp với chu kỳ làm mới, tránh gọi Sheet thừa khi vừa load trang
 
@@ -128,6 +128,10 @@
     headerRow.forEach((c, idx) => {
       if (/^\d{2}\/\d{2}\/\d{4}$/.test(norm(c))) dateCols.push({ idx, date: norm(c) });
     });
+    // Đảm bảo thứ tự tăng dần theo ngày thực (không chỉ theo thứ tự cột trên sheet),
+    // để nút "Ngày trước/Ngày sau" luôn di chuyển đúng hướng.
+    dateCols.sort((a, b) => toDateObj(a.date) - toDateObj(b.date));
+
     let monthlyCol = -1;
     headerRow.forEach((c, idx) => { if (normKey(c) === normKey(MONTHLY_TOTAL_HEADER)) monthlyCol = idx; });
 
@@ -137,7 +141,7 @@
     DEPT_LABELS.forEach((l) => { deptKeyToLabel[normKey(l)] = l; });
 
     let totalRow = null;
-    const deptRows = {}; // label -> row array
+    const deptRows = {}; // label -> row array (raw CSV cells)
 
     for (let i = headerRowIdx + 1; i < rows.length; i += 1) {
       const r = rows[i];
@@ -150,44 +154,40 @@
       }
     }
 
-    function readDayValue(row, dateStr) {
-      if (!row) return 0;
-      const col = dateCols.find((d) => d.date === dateStr);
-      if (!col) return 0;
-      return toNumber(row[col.idx]);
-    }
-    function readMonthlyValue(row) {
-      if (!row || monthlyCol === -1) return 0;
-      return toNumber(row[monthlyCol]);
+    const data = { dateCols, monthlyCol, totalRow, deptRows, fetchedAt: Date.now() };
+
+    function hasAnyDataOn(dateStr) {
+      if (dayValue(data, totalRow, dateStr) > 0) return true;
+      return Object.values(deptRows).some((r) => dayValue(data, r, dateStr) > 0);
     }
 
-    // Ngày hiển thị mặc định: hôm nay nếu có cột, không thì lấy cột ngày gần nhất có dữ liệu.
+    // Ngày xem mặc định: hôm nay nếu có cột, không thì lấy cột ngày gần nhất có dữ liệu.
     let selectedDate = todayStr();
     if (!dateCols.some((d) => d.date === selectedDate)) {
       let lastWithData = null;
-      dateCols.forEach((d) => {
-        const v = readDayValue(totalRow, d.date);
-        if (v > 0 || row_has_any(deptRows, d.date, readDayValue)) lastWithData = d.date;
-      });
+      dateCols.forEach((d) => { if (hasAnyDataOn(d.date)) lastWithData = d.date; });
       selectedDate = lastWithData || (dateCols.length ? dateCols[dateCols.length - 1].date : selectedDate);
     }
-    function row_has_any(rowsObj, dateStr, reader) {
-      return Object.values(rowsObj).some((r) => reader(r, dateStr) > 0);
-    }
 
-    const departments = DEPT_LABELS.map((label) => ({
-      label,
-      day: readDayValue(deptRows[label], selectedDate),
-      month: readMonthlyValue(deptRows[label]),
-    }));
+    data.selectedDate = selectedDate;
+    data.monthTotal = monthValue(data, totalRow);
+    return data;
+  }
 
-    return {
-      selectedDate,
-      todayTotal: readDayValue(totalRow, selectedDate),
-      monthTotal: readMonthlyValue(totalRow),
-      departments,
-      fetchedAt: Date.now(),
-    };
+  // Đọc giá trị 1 ngày cụ thể từ 1 hàng CSV thô (dùng chung cho tổng & từng khoa phòng).
+  function dayValue(data, row, dateStr) {
+    if (!row) return 0;
+    const col = data.dateCols.find((d) => d.date === dateStr);
+    if (!col) return 0;
+    return toNumber(row[col.idx]);
+  }
+  function monthValue(data, row) {
+    if (!row || data.monthlyCol === -1) return 0;
+    return toNumber(row[data.monthlyCol]);
+  }
+  function toDateObj(ddmmyyyy) {
+    const [dd, mm, yyyy] = ddmmyyyy.split("/").map(Number);
+    return new Date(yyyy, mm - 1, dd);
   }
 
   function readCache() {
@@ -263,17 +263,31 @@
     }, CYCLE_MS);
   }
 
-  function renderDetail(container, data, mode) {
-    const totalVal = mode === "month" ? data.monthTotal : data.todayTotal;
-    const totalRow = `<tr class="kcb-detail-total"><td>Tổng cộng</td><td>${fmt(totalVal)}</td></tr>`;
-    const rows = data.departments
-      .map((d) => {
-        const v = mode === "month" ? d.month : d.day;
-        const label = d.label.replace(/^PK CS2_/, "");
-        return `<tr><td>${label}</td><td>${fmt(v)}</td></tr>`;
-      })
-      .join("");
-    container.innerHTML = totalRow + rows;
+  function renderDetail(container, data, mode, viewDate) {
+    const totalVal = mode === "month" ? data.monthTotal : dayValue(data, data.totalRow, viewDate);
+    const totalRowHtml = `<tr class="kcb-detail-total"><td>Tổng cộng</td><td>${fmt(totalVal)}</td></tr>`;
+    const rows = DEPT_LABELS.map((label) => {
+      const row = data.deptRows[label];
+      const v = mode === "month" ? monthValue(data, row) : dayValue(data, row, viewDate);
+      const short = label.replace(/^PK CS2_/, "");
+      return `<tr><td>${short}</td><td>${fmt(v)}</td></tr>`;
+    }).join("");
+    container.innerHTML = totalRowHtml + rows;
+  }
+
+  function dayLabel(dateStr) {
+    const short = dateStr.slice(0, 5);
+    return dateStr === todayStr() ? `Hôm nay (${short})` : `Ngày ${short}`;
+  }
+
+  // "dd/mm/yyyy" <-> "yyyy-mm-dd" (định dạng <input type="date">)
+  function toInputDate(ddmmyyyy) {
+    const [dd, mm, yyyy] = ddmmyyyy.split("/");
+    return yyyy + "-" + mm + "-" + dd;
+  }
+  function fromInputDate(yyyymmdd) {
+    const [yyyy, mm, dd] = yyyymmdd.split("-");
+    return dd + "/" + mm + "/" + yyyy;
   }
 
   async function init() {
@@ -285,9 +299,14 @@
     const closeBtn = document.getElementById("kcbModalClose");
     const detailRows = document.getElementById("kcbDetailRows");
     const tabs = overlay ? overlay.querySelectorAll(".kcb-detail-tab") : [];
+    const prevBtn = document.getElementById("kcbDatePrev");
+    const nextBtn = document.getElementById("kcbDateNext");
+    const dateInput = document.getElementById("kcbDateInput");
+    const dateNavEl = document.getElementById("kcbDateNav");
 
     let data = null;
     let mode = "day";
+    let viewDate = null;
 
     try {
       data = await fetchData();
@@ -295,15 +314,65 @@
       textEl.textContent = "Không tải được số liệu KCB";
       return;
     }
+    viewDate = data.selectedDate;
 
-    const shortDate = data.selectedDate.slice(0, 5); // dd/mm
-    renderCycle(textEl, [
-      `Hôm nay (${shortDate}): <b>${fmt(data.todayTotal)}</b> lượt khám`,
-      `Tổng tháng: <b>${fmt(data.monthTotal)}</b> lượt khám`,
-    ]);
-    renderDetail(detailRows, data, mode);
+    function isUnlocked() {
+      return !!(window.BSDHA_LOCK && window.BSDHA_LOCK.isUnlocked());
+    }
+
+    function renderWidgetText() {
+      if (!isUnlocked()) {
+        textEl.innerHTML = `${dayLabel(viewDate)}: <span class="kcb-hidden-link" id="kcbHiddenLink">đang ẩn</span>`;
+        const link = document.getElementById("kcbHiddenLink");
+        if (link) link.addEventListener("click", (e) => { e.stopPropagation(); unlockThenReveal(); });
+        return;
+      }
+      renderCycle(textEl, [
+        `${dayLabel(viewDate)}: <b>${fmt(dayValue(data, data.totalRow, viewDate))}</b> lượt khám`,
+        `Tổng tháng: <b>${fmt(data.monthTotal)}</b> lượt khám`,
+      ]);
+    }
+
+    function updateDateNavButtons() {
+      const idx = data.dateCols.findIndex((d) => d.date === viewDate);
+      if (prevBtn) prevBtn.disabled = idx <= 0;
+      if (nextBtn) nextBtn.disabled = idx === -1 || idx >= data.dateCols.length - 1;
+      if (dateInput) {
+        dateInput.value = toInputDate(viewDate);
+        if (data.dateCols.length) {
+          dateInput.min = toInputDate(data.dateCols[0].date);
+          dateInput.max = toInputDate(data.dateCols[data.dateCols.length - 1].date);
+        }
+      }
+    }
+
+    function renderModalContent() {
+      if (dateNavEl) dateNavEl.hidden = mode !== "day";
+      renderDetail(detailRows, data, mode, viewDate);
+      updateDateNavButtons();
+    }
+
+    function goToDate(dateStr) {
+      if (!data.dateCols.some((d) => d.date === dateStr)) return;
+      viewDate = dateStr;
+      renderWidgetText();
+      if (overlay.classList.contains("open")) renderModalContent();
+    }
+
+    if (prevBtn) prevBtn.addEventListener("click", () => {
+      const idx = data.dateCols.findIndex((d) => d.date === viewDate);
+      if (idx > 0) goToDate(data.dateCols[idx - 1].date);
+    });
+    if (nextBtn) nextBtn.addEventListener("click", () => {
+      const idx = data.dateCols.findIndex((d) => d.date === viewDate);
+      if (idx !== -1 && idx < data.dateCols.length - 1) goToDate(data.dateCols[idx + 1].date);
+    });
+    if (dateInput) dateInput.addEventListener("change", () => {
+      if (dateInput.value) goToDate(fromInputDate(dateInput.value));
+    });
 
     function openModal() {
+      renderModalContent();
       overlay.classList.add("open");
       document.body.classList.add("kcb-modal-lock");
     }
@@ -312,7 +381,18 @@
       document.body.classList.remove("kcb-modal-lock");
     }
 
-    toggleBtn.addEventListener("click", openModal);
+    function unlockThenReveal(thenOpenModal) {
+      if (!window.BSDHA_LOCK) return;
+      window.BSDHA_LOCK.requestUnlock(() => {
+        renderWidgetText();
+        if (thenOpenModal) openModal();
+      });
+    }
+
+    toggleBtn.addEventListener("click", () => {
+      if (!isUnlocked()) { unlockThenReveal(true); return; }
+      openModal();
+    });
     closeBtn.addEventListener("click", closeModal);
     overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
     document.addEventListener("keydown", (e) => {
@@ -324,9 +404,11 @@
         tabs.forEach((t) => t.classList.remove("active"));
         tab.classList.add("active");
         mode = tab.dataset.mode;
-        renderDetail(detailRows, data, mode);
+        renderModalContent();
       });
     });
+
+    renderWidgetText();
 
     // Tự động làm mới số liệu mỗi REFRESH_MS, không cần người dùng bấm F5. Chỉ chạy
     // khi tab đang hiển thị (bỏ qua lúc chuyển sang tab trình duyệt khác) để đỡ tốn
@@ -336,12 +418,13 @@
       try {
         const fresh = await fetchData(true);
         data = fresh;
-        const freshShortDate = data.selectedDate.slice(0, 5);
-        renderCycle(textEl, [
-          `Hôm nay (${freshShortDate}): <b>${fmt(data.todayTotal)}</b> lượt khám`,
-          `Tổng tháng: <b>${fmt(data.monthTotal)}</b> lượt khám`,
-        ]);
-        if (overlay.classList.contains("open")) renderDetail(detailRows, data, mode);
+        // Nếu người dùng đang xem đúng ngày hôm nay thì bám theo ngày mới nhất; nếu đang
+        // xem 1 ngày quá khứ cụ thể (đã tự chọn) thì giữ nguyên ngày đó, chỉ số liệu tự cập nhật.
+        if (viewDate === data.selectedDate || !data.dateCols.some((d) => d.date === viewDate)) {
+          viewDate = data.selectedDate;
+        }
+        renderWidgetText();
+        if (overlay.classList.contains("open")) renderModalContent();
       } catch (e) {
         // Lỗi tạm thời (mạng chập chờn...) -> giữ nguyên số liệu cũ, thử lại ở chu kỳ sau.
       }
