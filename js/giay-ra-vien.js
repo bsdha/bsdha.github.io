@@ -159,7 +159,14 @@
 
             '<h3>Mapping bổ sung</h3>' +
             '<div class="gr-field"><label>Số vào viện</label><input type="text" id="grSoVaoVien" data-mk="soVaoVien"></div>' +
-            '<div class="gr-field"><label>Tên khoa</label><input type="text" id="grTenKhoa" data-mk="tenKhoa"></div>' +
+            '<div class="gr-field"><label>Tên khoa</label><select id="grTenKhoa" data-mk="tenKhoa">' +
+              '<option value="">--</option>' +
+              '<option value="KHOA CẤP CỨU">KHOA CẤP CỨU</option>' +
+              '<option value="KHOA KHÁM BỆNH - CẤP CỨU">KHOA KHÁM BỆNH - CẤP CỨU</option>' +
+              '<option value="KHOA NỘI">KHOA NỘI</option>' +
+              '<option value="KHOA NỘI - NHI - NHIỄM">KHOA NỘI - NHI - NHIỄM</option>' +
+              '<option value="KHOA NGOẠI">KHOA NGOẠI</option>' +
+            '</select></div>' +
             '<div class="gr-field"><label>Mã bệnh nhân</label><input type="text" id="grMaBenhNhan" data-mk="maBenhNhan"></div>' +
 
             '<h3>② Xuất file</h3>' +
@@ -269,11 +276,25 @@
   // 3 ô "Mapping bổ sung" (Số vào viện / Tên khoa / Mã bệnh nhân) nằm NGOÀI
   // menu Cấu hình, ngay dưới mục chọn file — điền tay trực tiếp, không nhận
   // diện tự động từ file nguồn.
+  var MAPPING_BOSUNG_ORDER = ["grSoVaoVien", "grTenKhoa", "grMaBenhNhan"];
   function bindMappingBoSungUI() {
-    document.querySelectorAll("[data-mk]").forEach(function (el) {
+    var els = document.querySelectorAll("[data-mk]");
+    els.forEach(function (el) {
       el.addEventListener("input", function () {
         DATA[el.getAttribute("data-mk")] = el.value;
         renderSheet();
+      });
+      // Enter -> nhảy xuống ô kế tiếp trong nhóm (Số vào viện -> Tên khoa ->
+      // Mã bệnh nhân); ở ô cuối cùng, Enter sẽ bỏ focus (đóng bàn phím ảo
+      // trên di động, tránh submit/reload trang ngoài ý muốn).
+      el.addEventListener("keydown", function (e) {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        var idx = MAPPING_BOSUNG_ORDER.indexOf(el.id);
+        var nextId = idx > -1 ? MAPPING_BOSUNG_ORDER[idx + 1] : null;
+        var next = nextId ? document.getElementById(nextId) : null;
+        if (next) { next.focus(); if (next.select) next.select(); }
+        else el.blur();
       });
     });
   }
