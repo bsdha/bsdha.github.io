@@ -2,7 +2,7 @@
    js/giay-ra-vien.js
    Tính năng: GIẤY RA VIỆN (Mẫu số 02, theo mẫu Bộ Y tế / TT liên quan)
 
-   - Đọc file nguồn (.pdf / .docx / .rtf) do phần mềm bệnh viện xuất ra
+   - Đọc file nguồn (.pdf) do phần mềm bệnh viện xuất ra
    - Tự nhận diện các trường thông tin (họ tên, ngày sinh, chẩn đoán,
      ngày vào/ra viện...) và ánh xạ vào MẪU CHUẨN A4 (1 trang, đúng bố
      cục "Giấy ra viện" hiện hành — không thay đổi nội dung/cấu trúc mẫu)
@@ -152,8 +152,8 @@
 
           '<div class="gr-panel-view" id="grViewMain">' +
             '<h3>① Tải file gốc</h3>' +
-            '<div class="gr-drop" id="grDrop">📄 Bấm để chọn file <b>.pdf</b>, <b>.docx</b> hoặc <b>.rtf</b><br><span class="gr-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
-            '<input type="file" id="grFileInput" accept=".pdf,.rtf,.docx" hidden>' +
+            '<div class="gr-drop" id="grDrop">📄 Bấm để chọn file <b>.pdf</b><br><span class="gr-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
+            '<input type="file" id="grFileInput" accept=".pdf" hidden>' +
             '<div class="gr-filerow" id="grFileRow" style="display:none;"><span id="grFileName"></span><button id="grFileRemove" title="Bỏ chọn">✕</button></div>' +
             '<div class="gr-status" id="grStatus"></div>' +
 
@@ -264,7 +264,7 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 4. Nhận diện thông tin từ văn bản nguồn (đã giải mã .rtf/.docx/.pdf) */
+  /* 4. Nhận diện thông tin từ văn bản nguồn (trích xuất từ .pdf)      */
   /* ---------------------------------------------------------------- */
   function grab(re, text) {
     var m = re.exec(text);
@@ -536,7 +536,7 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 5. Đọc file .pdf (pdf.js) / .docx (mammoth) / .rtf (giải mã đơn giản) */
+  /* 5. Đọc file .pdf (pdf.js)                                          */
   /* ---------------------------------------------------------------- */
   var mammothLoaded = false;
   function ensureMammoth(cb) {
@@ -653,33 +653,8 @@
         });
       };
       reader.readAsArrayBuffer(file);
-    } else if (ext === "docx") {
-      ensureMammoth(function () {
-        reader.onload = function (e) {
-          window.mammoth.extractRawText({ arrayBuffer: e.target.result })
-            .then(function (res) {
-              parseFields(res.value || "");
-              syncFieldsUIFromData();
-              renderSheet();
-              setStatus("Đã nhận diện thông tin từ file .docx. Kiểm tra lại các trường bên trên.", "ok");
-            })
-            .catch(function (err) { setStatus("Lỗi đọc .docx: " + err.message, "err"); });
-        };
-        reader.readAsArrayBuffer(file);
-      });
-    } else if (ext === "rtf") {
-      reader.onload = function (e) {
-        try {
-          var text = decodeRtfSimple(String(e.target.result));
-          parseFields(text);
-          syncFieldsUIFromData();
-          renderSheet();
-          setStatus("Đã nhận diện thông tin từ file .rtf. Kiểm tra lại các trường bên trên.", "ok");
-        } catch (err) { setStatus("Lỗi đọc .rtf: " + err.message, "err"); }
-      };
-      reader.readAsText(file, "utf-8");
     } else {
-      setStatus("Chỉ hỗ trợ file .pdf, .rtf hoặc .docx.", "err");
+      setStatus("Chỉ hỗ trợ file .pdf.", "err");
     }
   }
 

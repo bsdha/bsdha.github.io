@@ -2,8 +2,9 @@
    js/nghiviecbhxh.js
    Tính năng: GIẤY CHỨNG NHẬN NGHỈ VIỆC HƯỞNG BẢO HIỂM XÃ HỘI
    (Chỉ áp dụng cho điều trị ngoại trú) - Mẫu số 07
+   - CHỈ hỗ trợ đọc file nguồn .pdf (không còn hỗ trợ .docx / .rtf)
 
-   - Đọc file nguồn (.rtf / .docx) do phần mềm bệnh viện xuất ra
+   - Đọc file nguồn (.pdf) do phần mềm bệnh viện xuất ra
    - Tự nhận diện các trường thông tin (họ tên, ngày sinh, mã BHXH, CCCD,
      chẩn đoán, số ngày nghỉ...)
    - Đổ dữ liệu vào MẪU CHUẨN, in 2 BẢN GIỐNG HỆT NHAU xếp trên cùng
@@ -52,7 +53,7 @@
   style.textContent = [
     "#nvWrap{max-width:1400px;margin:0 auto;padding:16px;font-family:inherit;color:var(--text,#222);}",
     "#nvWrap h1{font-size:20px;margin:0 0 4px;}",
-    "#nvWrap .nv-sub{color:var(--muted,#777);font-size:13px;margin:0 0 16px;}",
+    "#nvWrap .nv-page-sub{color:var(--muted,#777);font-size:13px;margin:0 0 16px;text-align:left;font-style:normal;}",
     ".nv-grid{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start;}",
     ".nv-grid>.nv-panel{order:2;}",
     ".nv-grid>.nv-stage{order:1;}",
@@ -139,15 +140,15 @@
   root.innerHTML =
     '<div id="nvWrap">' +
       '<h1>📝 Giấy chứng nhận nghỉ việc hưởng BHXH</h1>' +
-      '<p class="nv-sub">Mẫu số 07 — khổ A4</p>' +
+      '<p class="nv-page-sub">Mẫu số 07 — khổ A4</p>' +
       '<div class="nv-grid">' +
 
         '<div class="nv-panel">' +
 
           '<div class="nv-panel-view" id="nvViewMain">' +
             '<h3>① Tải file gốc</h3>' +
-            '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b>, <b>.docx</b> hoặc <b>.rtf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
-            '<input type="file" id="nvFileInput" accept=".pdf,.rtf,.docx" hidden>' +
+            '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
+            '<input type="file" id="nvFileInput" accept=".pdf" hidden>' +
             '<div class="nv-filerow" id="nvFileRow" style="display:none;"><span id="nvFileName"></span><button id="nvFileRemove" title="Bỏ chọn">✕</button></div>' +
             '<div class="nv-status" id="nvStatus"></div>' +
 
@@ -258,7 +259,7 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 4. Nhận diện thông tin từ văn bản nguồn (đã giải mã .rtf/.docx)   */
+  /* 4. Nhận diện thông tin từ văn bản nguồn (trích xuất từ .pdf)      */
   /* ---------------------------------------------------------------- */
   function grab(re, text) {
     var m = re.exec(text);
@@ -347,7 +348,7 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 5. Đọc file .pdf (pdf.js) / .docx (mammoth) / .rtf (giải mã đơn giản) */
+  /* 5. Đọc file .pdf (pdf.js)                                          */
   /* ---------------------------------------------------------------- */
   var mammothLoaded = false;
   function ensureMammoth(cb) {
@@ -465,33 +466,8 @@
         });
       };
       reader.readAsArrayBuffer(file);
-    } else if (ext === "docx") {
-      ensureMammoth(function () {
-        reader.onload = function (e) {
-          window.mammoth.extractRawText({ arrayBuffer: e.target.result })
-            .then(function (res) {
-              parseFields(res.value || "");
-              syncFieldsUIFromData();
-              renderSheet();
-              setStatus("Đã nhận diện thông tin từ file .docx. Kiểm tra lại các trường bên trên.", "ok");
-            })
-            .catch(function (err) { setStatus("Lỗi đọc .docx: " + err.message, "err"); });
-        };
-        reader.readAsArrayBuffer(file);
-      });
-    } else if (ext === "rtf") {
-      reader.onload = function (e) {
-        try {
-          var text = decodeRtfSimple(String(e.target.result));
-          parseFields(text);
-          syncFieldsUIFromData();
-          renderSheet();
-          setStatus("Đã nhận diện thông tin từ file .rtf. Kiểm tra lại các trường bên trên.", "ok");
-        } catch (err) { setStatus("Lỗi đọc .rtf: " + err.message, "err"); }
-      };
-      reader.readAsText(file, "utf-8");
     } else {
-      setStatus("Chỉ hỗ trợ file .pdf, .rtf hoặc .docx.", "err");
+      setStatus("Chỉ hỗ trợ file .pdf.", "err");
     }
   }
 
