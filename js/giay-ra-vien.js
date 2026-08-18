@@ -875,6 +875,7 @@
                   '<div class="signspace"></div>' +
                 '</div>' +
                 '<div class="col">' +
+                  '<div class="italic" style="visibility:hidden;">Ngày ' + fillOrLine(d.ngayKyNgay, 8) + ' tháng ' + fillOrLine(d.ngayKyThang, 8) + ' năm ' + fillOrLine(d.ngayKyNam, 12) + '</div>' +
                   '<b>Người hành nghề khám bệnh, chữa bệnh</b>' +
                   '<div class="italic">(Ký, ghi rõ họ tên)</div>' +
                   '<div class="signspace"></div>' +
