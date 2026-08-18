@@ -142,6 +142,7 @@
   root.innerHTML =
     '<div id="nvWrap">' +
       '<h1>📝 Giấy chứng nhận nghỉ việc hưởng BHXH</h1>' +
+      '<p class="nv-sub">Mẫu số 07 — khổ A4</p>' +
       '<div class="nv-grid">' +
 
         '<div class="nv-panel">' +
