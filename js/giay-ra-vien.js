@@ -101,7 +101,7 @@
     ".gr-hd-mid{text-align:center;font-size:11.5px;flex:0 0 auto;transform-origin:top left;}",
     ".gr-hd-mid b{display:block;text-decoration:underline;}",
     ".gr-hd-right{text-align:right;font-size:11.5px;flex:0 0 auto;white-space:nowrap;transform-origin:top left;}",
-    ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;text-align:left;}",
+    ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;text-align:center;}",
     ".gr-hd-ms{font-weight:400;font-size:11px;}",
     ".gr-title{text-align:center;font-weight:bold;font-size:16px;margin:5mm 0 4mm;text-transform:uppercase;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
@@ -364,8 +364,14 @@
     return "";
   }
 
+  // GHI CHÚ: "ĐỘC LẬP", "TỰ DO", "HẠNH PHÚC" đã bị loại khỏi danh sách này —
+  // cụm "Độc lập - Tự do - Hạnh phúc" trên mẫu giấy luôn in dạng chữ hoa/
+  // thường xen kẽ (chỉ chữ cái đầu viết hoa), KHÔNG BAO GIỜ in toàn bộ chữ
+  // hoa, nên không cần loại trừ — trong khi "HẠNH" lại là tên đệm/tên riêng
+  // rất phổ biến của người Việt (đã kiểm chứng: từng bị cắt mất "HẠNH" khỏi
+  // họ tên bệnh nhân thật "HUỲNH BỬU HẠNH" do trùng từ loại trừ này).
   var NAME_BLACKLIST_WORDS = ["SỞ","TẾ","BỆNH","VIỆN","CƠ","CỘNG","HÒA","XÃ","HỘI","CHỦ",
-    "NGHĨA","VIỆT","NAM","GIẤY","RA","ĐỘC","LẬP","TỰ","DO","HẠNH","PHÚC","ĐẠI","DIỆN","ĐƠN",
+    "NGHĨA","VIỆT","NAM","GIẤY","RA","ĐẠI","DIỆN","ĐƠN",
     "VỊ","NGƯỜI","HÀNH","NGHỀ","KHÁM","CHỮA","THÀNH","PHỐ","HỒ","CHÍ","MINH","BÌNH","TP","MS"];
 
   function findHoTen(text) {
@@ -486,17 +492,23 @@
     // qua nhiều bản PDF thật) — dò theo nhãn:giá trị, dừng ở điểm gần nhất
     // trong (nhãn riêng của field + GLOBAL_STOPS) để không ăn lấn nội dung
     // không liên quan lỡ bị trôi tới ngay sau. -----
-    d.soGiay = grab(/(?:^|\s)Số:?\s*([0-9][0-9\/\-]{0,20})(?=\s|$)/i, t);
-    d.soHoSo = grab(/Số hồ sơ\/Số BA:?\s*([0-9][0-9\/\-]{0,20})/i, t);
+    // "Số:" đầu trang (nay đã đổi sang định dạng cố định "Số ..../GRV ....",
+    // luôn để trống 2 ô cho điền tay — không còn dò/điền tự động từ file nguồn).
+    // KHÔNG nhận diện/điền "Số hồ sơ/Số BA" nữa — theo yêu cầu, ô này luôn để
+    // trống trên mẫu in ra, không map với bất kỳ dữ liệu nào từ file nguồn.
+
+    // Giới hạn ký tự (maxLen) của các trường bên dưới trước đây quá thấp,
+    // khiến nội dung DÀI (đặc biệt "Chẩn đoán" có nhiều mã bệnh kèm mô tả)
+    // bị CẮT CỤT giữa chừng — nới rộng đáng kể để không mất chữ.
+    d.diaChi = dedupeRepeat(grabUntilAny(/Địa chỉ:?\s*/i, [/-?\s*Vào viện lúc/i, /-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i], t, 300));
+    d.chanDoan = grabUntilAny(/Chẩn đoán:?\s*/i, [/-?\s*Phương pháp điều trị/i, /-?\s*Ghi chú/i], t, 700);
+    d.phuongPhap = grabUntilAny(/Phương pháp điều trị\s*:?\s*/i, [/-?\s*Ghi chú/i, /-?\s*Chẩn đoán/i], t, 300);
+    d.ghiChu = grabUntilAny(/Ghi chú:?\s*/i, [/\(Tuổi/i], t, 300);
     d.cccd = grab(/Số CCCD\/CMND\/[^:]*:?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9]{1,2}\/[0-9]{1,2}\/[0-9]{4})/i, t);
     d.maBHXH = grab(/Mã số BHXH\/Thẻ BHYT số\s*\(nếu có\):?\s*([A-Za-z]{0,4}[0-9]{6,15})/i, t);
 
     d.ngheNghiep = grabUntilAny(/Nghề nghiệp:?\s*/i, [/-?\s*Số CCCD/i, /-?\s*Dân tộc/i, /-?\s*Địa chỉ/i], t, 40);
-    d.diaChi = dedupeRepeat(grabUntilAny(/Địa chỉ:?\s*/i, [/-?\s*Vào viện lúc/i, /-?\s*Ra viện lúc/i, /-?\s*Chẩn đoán/i], t, 200));
-    d.chanDoan = grabUntilAny(/Chẩn đoán:?\s*/i, [/-?\s*Phương pháp điều trị/i, /-?\s*Ghi chú/i], t, 200);
-    d.phuongPhap = grabUntilAny(/Phương pháp điều trị\s*:?\s*/i, [/-?\s*Ghi chú/i, /-?\s*Chẩn đoán/i], t, 150);
-    d.ghiChu = grabUntilAny(/Ghi chú:?\s*/i, [/\(Tuổi/i], t, 150);
 
     // Ngày ký ở cuối trang: dòng "Ngày DD tháng MM năm YYYY" viết hoa chữ
     // "Ngày" đứng đầu câu (khác với "ngày" thường trong cụm giờ-phút của
@@ -786,12 +798,12 @@
 
     html += '<div class="l-row gr-hd">' +
               '<div class="gr-hd-left">' + esc(SO_Y_TE) + '<br>' + esc(HOSPITAL_NAME) +
-                '<div class="gr-hd-so">Số: ' + fillOrLine(d.soGiay, 45) + '</div>' +
+                '<div class="gr-hd-so">Số' + fillOrLine(null, 22) + '/GRV' + fillOrLine(null, 22) + '</div>' +
               '</div>' +
               '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b></div>' +
               '<div class="gr-hd-right">' +
                 '<div class="gr-hd-ms">MS: 02</div>' +
-                '<div>Số hồ sơ/Số BA: ' + fillOrLine(d.soHoSo, 40) + '</div>' +
+                '<div>Số hồ sơ/Số BA: ' + fillOrLine(null, 40) + '</div>' +
               '</div>' +
             '</div>';
 
