@@ -97,11 +97,14 @@
     ".gr-body{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;padding:14mm 16mm 4mm;line-height:var(--gr-lh,1.5);}",
     ".gr-body .l-row{position:relative;white-space:normal;box-sizing:border-box;margin-bottom:1.6mm;}",
     ".gr-hd{display:flex;justify-content:space-between;align-items:flex-start;gap:6mm;}",
-    ".gr-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;line-height:1.35;text-align:left;flex:0 0 auto;transform-origin:top left;}",
+    ".gr-hd-left{font-size:11.5px;line-height:1.35;text-align:center;flex:0 0 auto;transform-origin:top left;}",
+    ".gr-hd-left .gr-hd-soyte{font-weight:400;text-transform:uppercase;}",
+    ".gr-hd-left .gr-hd-hospital{font-weight:bold;text-transform:uppercase;}",
+    ".gr-hd-left .gr-hd-rule{border:none;border-top:1px solid #000;width:60%;margin:1mm auto;}",
     ".gr-hd-mid{text-align:center;font-size:11.5px;flex:0 0 auto;transform-origin:top left;}",
     ".gr-hd-mid b{display:block;text-decoration:underline;}",
     ".gr-hd-right{text-align:right;font-size:11.5px;flex:0 0 auto;white-space:nowrap;transform-origin:top left;}",
-    ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;text-align:center;}",
+    ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;text-align:center;}",
     ".gr-hd-ms{font-weight:400;font-size:11px;}",
     ".gr-title{text-align:center;font-weight:bold;font-size:16px;margin:5mm 0 4mm;text-transform:uppercase;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
@@ -797,8 +800,11 @@
     var html = "";
 
     html += '<div class="l-row gr-hd">' +
-              '<div class="gr-hd-left">' + esc(SO_Y_TE) + '<br>' + esc(HOSPITAL_NAME) +
-                '<div class="gr-hd-so">Số' + fillOrLine(null, 22) + '/GRV' + fillOrLine(null, 22) + '</div>' +
+              '<div class="gr-hd-left">' +
+                '<div class="gr-hd-soyte">' + esc(SO_Y_TE) + '</div>' +
+                '<div class="gr-hd-hospital">' + esc(HOSPITAL_NAME) + '</div>' +
+                '<hr class="gr-hd-rule">' +
+                '<div class="gr-hd-so">Số' + fillOrLine(null, 22) + '/GRV-' + fillOrLine(null, 22) + '</div>' +
               '</div>' +
               '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b></div>' +
               '<div class="gr-hd-right">' +
