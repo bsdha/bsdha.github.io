@@ -423,9 +423,71 @@
   // họ tên bệnh nhân thật "HUỲNH BỬU HẠNH" do trùng từ loại trừ này).
   var NAME_BLACKLIST_WORDS = ["SỞ","TẾ","BỆNH","VIỆN","CƠ","CỘNG","HÒA","XÃ","HỘI","CHỦ",
     "NGHĨA","VIỆT","NAM","GIẤY","RA","ĐẠI","DIỆN","ĐƠN",
-    "VỊ","NGƯỜI","HÀNH","NGHỀ","KHÁM","CHỮA","THÀNH","PHỐ","HỒ","CHÍ","MINH","BÌNH","TP","MS"];
+    "VỊ","NGƯỜI","HÀNH","NGHỀ","KHÁM","CHỮA","BÌNH","TP","MS"];
+  // GHI CHÚ: "THÀNH","PHỐ","HỒ","CHÍ","MINH" đã bị loại khỏi danh sách loại
+  // từng-từ ở trên — lý do tương tự trường hợp "HẠNH" đã ghi chú: đây đều
+  // là các họ/tên đệm/tên riêng rất phổ biến của người Việt (VD "HỒ VĂN
+  // THỦY" từng bị cắt mất chữ "HỒ" do trùng với cụm "...THÀNH PHỐ HỒ CHÍ
+  // MINH" ở tiêu đề Sở Y tế). Thay vào đó, loại bỏ NGUYÊN CỤM cố định
+  // "(TP.|THÀNH PHỐ) HỒ CHÍ MINH" khỏi bản sao văn bản dùng riêng để dò
+  // tên (không ảnh hưởng các field khác), để không đụng vào tên bệnh nhân.
+  var HOTEN_FIXED_PHRASE_STRIP = [
+    /THÀNH\s*PHỐ\s*HỒ\s*CHÍ\s*MINH/gi,
+    /TP\.?\s*HỒ\s*CHÍ\s*MINH/gi
+  ];
 
-  function findHoTen(text) {
+  // ================================================================
+  // CÁCH DÒ TÊN CHÍNH (đáng tin cậy, KHÔNG dùng blacklist loại trừ theo
+  // từ — nên KHÔNG còn nguy cơ "cắt nhầm" họ/tên bệnh nhân dù trùng bất
+  // kỳ chữ nào trong tiêu đề, kể cả các tên rất phổ biến như "Nam",
+  // "Việt", "Hòa", "Hồ", "Hạnh"...):
+  //
+  // Qua kiểm chứng nhiều bản PDF thật của bệnh viện, dù thứ tự nhãn/giá
+  // trị trong luồng văn bản bị xáo trộn thế nào, TÊN BỆNH NHÂN LUÔN ĐỨNG
+  // NGAY TRƯỚC nhãn "Nghề nghiệp:" trong khối giá trị. Đây là một điểm
+  // neo (anchor) cố định theo BỐ CỤC của mẫu HIS xuất ra — không phụ
+  // thuộc nội dung tên là gì. Ta tìm nhãn "Nghề nghiệp:", lùi lại một
+  // đoạn, rồi lấy CỤM CHỮ HOA LIÊN TIẾP gần nhãn đó nhất làm tên.
+  // ================================================================
+  function findHoTenByAnchor(text) {
+    var idx = text.search(/Nghề\s*nghiệp\s*:/i);
+    if (idx === -1) return "";
+    var before = text.slice(Math.max(0, idx - 150), idx);
+    var tokRe = /\p{Lu}{2,}/gu;
+    var toks = [], m;
+    while ((m = tokRe.exec(before)) !== null) {
+      var w = m[0], start = m.index, end = m.index + w.length;
+      var nextCh = before[end] || "";
+      if (/[a-zà-ỹ]/.test(nextCh) && w.length > 2) w = w.slice(0, -1);
+      toks.push({ word: w, start: start, end: end });
+    }
+    // Gom token liền nhau thành từng cụm (run), lấy cụm GẦN nhãn nhất
+    // (cụm cuối cùng trước "Nghề nghiệp:") — đó chính là tên bệnh nhân.
+    var runs = [], run = [];
+    for (var i = 0; i < toks.length; i++) {
+      var adjacentToPrev = i > 0 && /^\s+$/.test(before.slice(toks[i - 1].end, toks[i].start));
+      if (!adjacentToPrev) { if (run.length) runs.push(run); run = []; }
+      run.push(toks[i]);
+    }
+    if (run.length) runs.push(run);
+    if (!runs.length) return "";
+    var lastRun = runs[runs.length - 1];
+    if (lastRun.length < 2 || lastRun.length > 6) return ""; // không hợp lệ -> để hàm dự phòng xử lý
+    return lastRun.map(function (r) { return r.word; }).join(" ");
+  }
+
+  // ================================================================
+  // CÁCH DÒ TÊN DỰ PHÒNG (chỉ chạy khi cách neo ở trên KHÔNG áp dụng
+  // được — VD nhãn "Nghề nghiệp:" bị lỗi đọc/không có trong file nguồn).
+  // Đây là thuật toán CŨ, dùng blacklist loại trừ theo từ nên VẪN CÒN
+  // rủi ro cắt nhầm nếu tên bệnh nhân trùng đúng 1 trong các từ blacklist
+  // — chấp nhận được vì đây chỉ là lưới an toàn dự phòng, không phải
+  // đường xử lý chính.
+  // ================================================================
+  function findHoTenFallback(text) {
+    HOTEN_FIXED_PHRASE_STRIP.forEach(function (re) {
+      text = text.replace(re, function (m) { return m.replace(/\S/g, " "); });
+    });
     // Tách các "token viết hoa liên tục" (>=2 ký tự) trong toàn văn bản, ghi
     // lại vị trí bắt đầu/kết thúc. Nếu ký tự NGAY SAU token là chữ thường
     // (có dấu) — nghĩa là token vừa "ăn lấn" 1 ký tự hoa đầu của từ liền sau
@@ -526,7 +588,7 @@
 
     // ----- Các trường nhận diện theo MẪU DỮ LIỆU đặc trưng, không phụ
     // thuộc vị trí liền kề với nhãn (an toàn với mọi kiểu xáo trộn thứ tự) -----
-    d.hoTen = findHoTen(t);
+    d.hoTen = findHoTenByAnchor(t) || findHoTenFallback(t);
     d.danToc = findDanToc(t);
     var vr = findVaoRaVien(t);
     d.vaoVien = vr.vaoVien;
