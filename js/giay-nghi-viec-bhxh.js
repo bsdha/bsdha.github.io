@@ -112,6 +112,10 @@
     ".nv-section{font-weight:bold;font-size:12px;margin-top:2mm;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
+    ".nv-bhxh-row{display:flex;align-items:center;flex-wrap:wrap;column-gap:2px;}",
+    ".nv-idbox{display:inline-flex;vertical-align:middle;border:1px solid #000;}",
+    ".nv-idbox span{padding:0 5px;border-right:1px solid #000;font-weight:bold;white-space:nowrap;line-height:1.6;}",
+    ".nv-idbox span:last-child{border-right:none;}",
     ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.2mm;}",
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
@@ -312,13 +316,13 @@
     var d = {};
 
     d.mauSo = grab(/Mẫu số:?\s*([0-9]+)/i, t);
-    d.soKCB = grab(/Số:?\s*([0-9]+\s*\/\s*KCB)/i, t).replace(/\s*\/\s*/, "/");
+    d.soKCB = grab(/Số:?\s*([0-9]+)\s*\/\s*KCB/i, t);
     d.soSeri = grab(/Số seri:?\s*([0-9]+)/i, t);
 
     d.hoTen = grab(/Họ và tên:?\s*([A-ZÀ-Ỹ\s]+?)\s+Ngày sinh/i, t);
     d.ngaySinh = grab(/Ngày sinh:?\s*([0-9\/]+)/i, t);
     d.gioiTinh = /Giới tính:?\s*N[Ữữ]/i.test(t) ? "Nữ" : (/Giới tính:?\s*Nam/i.test(t) ? "Nam" : "");
-    d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*(?!\d{1,2}\/\d{1,2}\/\d{4}(?:\s|$))([0-9A-Za-z\/]{6,40})/i, t);
+    d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*(?!\d{1,2}\/\d{1,2}\/\d{4}(?:\s|$))(.+?)\s*(?=Số CCCD|Giới tính|Đơn vị làm việc|$)/i, t);
     d.cccd = grab(/(?:Số CCCD\/CMND\/[^:]*):?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9\/]+)/i, t);
     d.donViLamViec = dedupeRepeat(stripEmbeddedLabels(grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t)));
@@ -585,6 +589,29 @@
     return '<span class="fill-line" style="min-width:' + (widthHint || 40) + 'mm"></span>';
   }
 
+  // "Mã số BHXH/Số thẻ BHYT" trên mẫu gốc có 2 phần: mã số BHXH (viết
+  // thường) và số thẻ BHYT được in trong các ô vuông tách biệt theo từng
+  // nhóm ký tự (vd DN | 4 | 79 | 7414156533). Hàm này tách chuỗi đã nhận
+  // diện được (dạng "7414156533 / DN 4 79 7414156533") thành 2 phần và vẽ
+  // lại đúng bố cục ô vuông như mẫu.
+  function renderMaBHXHRow(val) {
+    var label = "Mã số BHXH/Số thẻ BHYT: ";
+    var str = (val || "").trim();
+    if (!str) return '<div class="l-row">' + label + fillOrLine("", 50) + "</div>";
+    var slashIdx = str.indexOf("/");
+    var left = slashIdx === -1 ? str : str.slice(0, slashIdx).trim();
+    var right = slashIdx === -1 ? "" : str.slice(slashIdx + 1).trim();
+    var html = '<div class="l-row nv-bhxh-row">' + label + '<span class="fill">' + esc(left) + "</span>";
+    if (right) {
+      var tokens = right.split(/\s+/).filter(Boolean);
+      html += ' / <span class="nv-idbox">' + tokens.map(function (tok) {
+        return '<span>' + esc(tok) + "</span>";
+      }).join("") + "</span>";
+    }
+    html += "</div>";
+    return html;
+  }
+
   function renderOneCopy() {
     var d = DATA;
     var html = "";
@@ -603,7 +630,7 @@
     html += '<div class="nv-section">I. Thông tin người bệnh</div>';
     html += '<div class="l-row l-flexrow"><span class="l-item">Họ và tên: ' + fillOrLine(d.hoTen, 55) + '</span>' +
             '<span class="l-item">Ngày sinh: ' + fillOrLine(d.ngaySinh, 22) + '</span></div>';
-    html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
+    html += renderMaBHXHRow(d.maBHXH);
     html += '<div class="l-row l-flexrow"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
             '<span class="l-item">Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</span></div>';
     html += '<div class="l-row">Giới tính: ' + fillOrLine(d.gioiTinh || "", 14) + '</div>';
