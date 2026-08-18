@@ -51,8 +51,9 @@
   var style = document.createElement("style");
   style.textContent = [
     "#nvWrap{max-width:1400px;margin:0 auto;padding:16px;font-family:inherit;color:var(--text,#222);}",
-    "#nvWrap h1{font-size:20px;margin:0 0 4px;}",
-    "#nvWrap .nv-sub{color:var(--muted,#777);font-size:13px;margin:0 0 16px;}",
+    "#nvWrap .nv-headrow{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:0 0 16px;text-align:left;}",
+    "#nvWrap .nv-headrow h1{font-size:20px;margin:0;}",
+    "#nvWrap .nv-page-sub{color:var(--muted,#777);font-size:13px;font-style:normal;text-align:left;}",
     ".nv-grid{display:grid;grid-template-columns:1fr 340px;gap:18px;align-items:start;}",
     ".nv-grid>.nv-panel{order:2;}",
     ".nv-grid>.nv-stage{order:1;}",
@@ -102,13 +103,13 @@
     ".nv-body{position:relative;width:100%;height:100%;transform-origin:top left;box-sizing:border-box;padding:6mm 12mm 4mm;line-height:var(--nv-lh,1.34);}",
     ".nv-body .l-row{position:relative;white-space:normal;box-sizing:border-box;margin-bottom:1.2mm;}",
     ".nv-hd{display:flex;justify-content:space-between;align-items:flex-start;}",
-    ".nv-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;max-width:60%;line-height:1.3;}",
+    ".nv-hd-left{font-weight:bold;text-transform:uppercase;font-size:13px;max-width:60%;line-height:1.3;}",
     ".nv-hd-right{text-align:right;font-size:11px;}",
-    ".nv-hd-mauso{text-align:left;font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;}",
-    ".nv-title{text-align:center;font-weight:bold;font-size:15.5px;margin:3mm 0 0;text-transform:uppercase;}",
-    ".nv-title2{text-align:center;font-weight:bold;font-size:14.5px;text-transform:uppercase;}",
-    ".nv-sub{text-align:center;font-style:italic;font-size:11px;margin-bottom:2mm;}",
-    ".nv-section{font-weight:bold;font-size:12px;margin-top:2mm;}",
+    ".nv-hd-mauso{text-align:left;font-weight:400;text-transform:none;font-size:13px;margin-top:1mm;}",
+    ".nv-title{text-align:center;font-weight:bold;font-size:16.5px;margin:3mm 0 0;text-transform:uppercase;}",
+    ".nv-title2{text-align:center;font-weight:bold;font-size:15.5px;text-transform:uppercase;}",
+    ".nv-sub{text-align:center;font-style:italic;font-size:13px;margin-bottom:2mm;}",
+    ".nv-section{font-weight:bold;font-size:13px;margin-top:2mm;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
     ".nv-bhxh-box-row{display:inline-flex;align-items:center;vertical-align:middle;}",
@@ -118,13 +119,13 @@
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
     ".l-item:last-child{margin-right:0;}",
-    ".nv-footer{display:flex;justify-content:space-between;margin-top:3mm;text-align:center;font-size:11.5px;transform-origin:top left;}",
+    ".nv-footer{display:flex;justify-content:space-between;margin-top:3mm;text-align:center;font-size:13px;transform-origin:top left;}",
     "#nvSheet.nv-editon .nv-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#nvSheet.nv-editon .nv-footer:hover,#nvSheet.nv-editon .nv-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#nvSheet.nv-editon .nv-footer.dragging{cursor:grabbing;}",
     ".nv-footer .col{width:46%;}",
     ".nv-footer b{display:block;}",
-    ".nv-footer .italic{font-style:italic;font-size:10.5px;}",
+    ".nv-footer .italic{font-style:italic;font-size:13px;}",
     ".nv-footer .signspace{height:14mm;}",
     "@media print{",
     "  html.nv-printing,html.nv-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -141,8 +142,7 @@
   /* ---------------------------------------------------------------- */
   root.innerHTML =
     '<div id="nvWrap">' +
-      '<h1>📝 Giấy chứng nhận nghỉ việc hưởng BHXH</h1>' +
-      '<p class="nv-sub">Mẫu số 07 — khổ A4</p>' +
+      '<div class="nv-headrow"><h1>📝 Giấy chứng nhận nghỉ việc hưởng BHXH</h1><span class="nv-page-sub">Mẫu số 07 — khổ A4</span></div>' +
       '<div class="nv-grid">' +
 
         '<div class="nv-panel">' +
@@ -315,7 +315,7 @@
     var d = {};
 
     d.mauSo = grab(/Mẫu số:?\s*([0-9]+)/i, t);
-    d.soKCB = grab(/Số:?\s*([0-9]+\s*\/\s*KCB)/i, t).replace(/\s*\/\s*/, "/");
+    d.soKCB = grab(/Số:?\s*([0-9]+)\s*\/\s*KCB/i, t);
     d.soSeri = grab(/Số seri:?\s*([0-9]+)/i, t);
 
     d.hoTen = grab(/Họ và tên:?\s*([A-ZÀ-Ỹ\s]+?)\s+Ngày sinh/i, t);
@@ -661,7 +661,7 @@
     html += '<div class="l-row">(Từ ngày ' + fillOrLine(d.tuNgay, 20) +
             ' đến hết ngày ' + fillOrLine(d.denNgay, 20) + ')</div>';
 
-    html += '<div class="nv-section">III. Thông tin cha, mẹ <span style="font-weight:400;font-style:italic;font-size:10.5px;">(chỉ áp dụng đối với trường hợp người bệnh là trẻ em dưới 07 tuổi)</span></div>';
+    html += '<div class="nv-section">III. Thông tin cha, mẹ <span style="font-weight:400;font-style:italic;font-size:13px;">(chỉ áp dụng đối với trường hợp người bệnh là trẻ em dưới 07 tuổi)</span></div>';
     html += '<div class="l-row">- Họ và tên cha: ' + fillOrLine(d.tenCha, 60) + '</div>';
     html += '<div class="l-row">- Họ và tên mẹ: ' + fillOrLine(d.tenMe, 60) + '</div>';
 
@@ -676,7 +676,7 @@
                 '<b>Người hành nghề KB, CB</b>' +
                 '<div class="italic">(Ký, ghi rõ họ tên)</div>' +
                 '<div class="signspace"></div>' +
-                '<div class="fill" style="font-weight:700;font-size:1rem;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
+                '<div class="fill" style="font-weight:700;font-size:13px;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
               '</div>' +
             '</div>';
     return html;
