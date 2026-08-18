@@ -113,7 +113,8 @@
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
     ".l-item:last-child{margin-right:0;}",
-    ".gr-footer{display:flex;justify-content:space-between;margin-top:5mm;text-align:center;font-size:16px;transform-origin:top left;position:relative;}",
+    ".gr-footer{margin-top:5mm;text-align:center;font-size:16px;transform-origin:top left;position:relative;}",
+    ".gr-footer-cols{display:flex;justify-content:space-between;}",
     "#grSheet.gr-editon .gr-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#grSheet.gr-editon .gr-footer:hover,#grSheet.gr-editon .gr-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#grSheet.gr-editon .gr-footer.dragging{cursor:grabbing;}",
@@ -866,17 +867,19 @@
     html += '<div class="l-row">- Ghi chú: ' + fillOrLine(d.ghiChu, 130) + '</div>';
 
     html += '<div class="gr-footer">' +
-              '<div class="col">' +
-                '<div>Ngày ' + fillOrLine(d.ngayKyNgay, 8) + ' tháng ' + fillOrLine(d.ngayKyThang, 8) + ' năm ' + fillOrLine(d.ngayKyNam, 12) + '</div>' +
-                '<b>Đại diện đơn vị</b>' +
-                '<div class="italic">(Ký, ghi rõ họ tên, đóng dấu)</div>' +
-                '<div class="signspace"></div>' +
-              '</div>' +
-              '<div class="col">' +
-                '<b>Người hành nghề khám bệnh, chữa bệnh</b>' +
-                '<div class="italic">(Ký, ghi rõ họ tên)</div>' +
-                '<div class="signspace"></div>' +
-                '<div class="fill" style="font-weight:700;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
+              '<div class="gr-footer-cols">' +
+                '<div class="col">' +
+                  '<div class="italic">Ngày ' + fillOrLine(d.ngayKyNgay, 8) + ' tháng ' + fillOrLine(d.ngayKyThang, 8) + ' năm ' + fillOrLine(d.ngayKyNam, 12) + '</div>' +
+                  '<b>Đại diện đơn vị</b>' +
+                  '<div class="italic">(Ký, ghi rõ họ tên, đóng dấu)</div>' +
+                  '<div class="signspace"></div>' +
+                '</div>' +
+                '<div class="col">' +
+                  '<b>Người hành nghề khám bệnh, chữa bệnh</b>' +
+                  '<div class="italic">(Ký, ghi rõ họ tên)</div>' +
+                  '<div class="signspace"></div>' +
+                  '<div class="fill" style="font-weight:700;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
+                '</div>' +
               '</div>' +
               '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
             '</div>';
