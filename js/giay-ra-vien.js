@@ -828,7 +828,7 @@
                 '<div class="gr-hd-soyte">' + esc(SO_Y_TE) + '</div>' +
                 '<div class="gr-hd-hospital">' + esc(HOSPITAL_NAME) + '</div>' +
                 '<hr class="gr-hd-rule">' +
-                '<div class="gr-hd-so">Số' + fillOrLine(d.soVaoVien, 22) + '/GRV-' + fillOrLine(d.tenKhoa, 22) + '</div>' +
+                '<div class="gr-hd-so">Số:' + fillOrLine(d.soVaoVien, 22) + '/GRV-' + fillOrLine(d.tenKhoa, 22) + '</div>' +
                 '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
               '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b><hr class="gr-hd-rule2">' +
