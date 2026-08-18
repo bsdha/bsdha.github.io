@@ -105,12 +105,15 @@
     ".nv-hd-left{font-weight:bold;text-transform:uppercase;font-size:11.5px;max-width:60%;line-height:1.3;}",
     ".nv-hd-right{text-align:right;font-size:11px;}",
     ".nv-hd-mauso{text-align:left;font-weight:400;text-transform:none;font-size:11px;margin-top:1mm;}",
-    ".nv-title{text-align:center;font-weight:bold;font-size:14px;margin:3mm 0 0;text-transform:uppercase;}",
-    ".nv-title2{text-align:center;font-weight:bold;font-size:13px;text-transform:uppercase;}",
+    ".nv-title{text-align:center;font-weight:bold;font-size:15.5px;margin:3mm 0 0;text-transform:uppercase;}",
+    ".nv-title2{text-align:center;font-weight:bold;font-size:14.5px;text-transform:uppercase;}",
     ".nv-sub{text-align:center;font-style:italic;font-size:11px;margin-bottom:2mm;}",
     ".nv-section{font-weight:bold;font-size:12px;margin-top:2mm;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".fill.empty{color:#000;}",
+    ".nv-bhxh-box-row{display:inline-flex;align-items:center;vertical-align:middle;}",
+    ".nv-box-cell{display:inline-flex;align-items:center;justify-content:center;min-width:6.5mm;height:6.5mm;padding:0 2mm;border:0.3mm solid #000;font-size:inherit;font-weight:400;box-sizing:border-box;margin-left:-0.3mm;white-space:nowrap;}",
+    ".nv-box-cell:first-child{margin-left:0;}",
     ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.2mm;}",
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
@@ -139,7 +142,6 @@
   root.innerHTML =
     '<div id="nvWrap">' +
       '<h1>📝 Giấy chứng nhận nghỉ việc hưởng BHXH</h1>' +
-      '<p class="nv-sub">Mẫu số 07 — khổ A4</p>' +
       '<div class="nv-grid">' +
 
         '<div class="nv-panel">' +
@@ -205,6 +207,7 @@
     ["ngaySinh", "Ngày sinh", "text"],
     ["gioiTinh", "Giới tính", "select:Nam,Nữ"],
     ["maBHXH", "Mã số BHXH/Số thẻ BHYT", "text"],
+    ["maBHXHBox", "Mã số dạng ô vuông (vd: DN 4 79 7414156533)", "text"],
     ["cccd", "Số CCCD/CMND/ĐDCD/Hộ chiếu", "text"],
     ["ngayCapCCCD", "Ngày cấp CCCD", "text"],
     ["donViLamViec", "Đơn vị làm việc", "text"],
@@ -318,6 +321,9 @@
     d.ngaySinh = grab(/Ngày sinh:?\s*([0-9\/]+)/i, t);
     d.gioiTinh = /Giới tính:?\s*N[Ữữ]/i.test(t) ? "Nữ" : (/Giới tính:?\s*Nam/i.test(t) ? "Nam" : "");
     d.maBHXH = grab(/Mã số BHXH\/Số thẻ BHYT:?\s*(?!\d{1,2}\/\d{1,2}\/\d{4}(?:\s|$))([0-9A-Za-z\/]{6,40})/i, t);
+    // Mã dạng ô vuông đi kèm mã BHXH trên mẫu gốc, dạng "/ DN 4 79 7414156533"
+    // (2 chữ tỉnh + 1 số + 2 số + số BHXH). Chuẩn hoá khoảng trắng thành 1 dấu cách.
+    d.maBHXHBox = grab(/\/\s*([A-ZĐ]{2}\s*\d\s*\d{1,2}\s*\d{6,14})(?=\s|$)/i, t).replace(/\s+/g, " ").trim();
     d.cccd = grab(/(?:Số CCCD\/CMND\/[^:]*):?\s*([0-9]{6,15})/i, t);
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9\/]+)/i, t);
     d.donViLamViec = dedupeRepeat(stripEmbeddedLabels(grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t)));
@@ -609,6 +615,19 @@
     return '<span class="fill-line" style="min-width:' + (widthHint || 40) + 'mm"></span>';
   }
 
+  // Vẽ mã dạng 4 ô (mỗi ô 1 nhóm), có dấu "/" phía trước, vd
+  // "DN 4 79 7414156533" -> / [DN][4][79][7414156533]
+  function renderBoxCode(code) {
+    if (!code || !String(code).trim()) return "";
+    var groups = String(code).trim().split(/\s+/);
+    var html = '<span class="nv-bhxh-box-row">/&nbsp;';
+    groups.forEach(function (g) {
+      html += '<span class="nv-box-cell">' + esc(g) + '</span>';
+    });
+    html += '</span>';
+    return html;
+  }
+
   function renderOneCopy() {
     var d = DATA;
     var html = "";
@@ -627,7 +646,8 @@
     html += '<div class="nv-section">I. Thông tin người bệnh</div>';
     html += '<div class="l-row l-flexrow"><span class="l-item">Họ và tên: ' + fillOrLine(d.hoTen, 55) + '</span>' +
             '<span class="l-item">Ngày sinh: ' + fillOrLine(d.ngaySinh, 22) + '</span></div>';
-    html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) + '</div>';
+    html += '<div class="l-row">Mã số BHXH/Số thẻ BHYT: ' + fillOrLine(d.maBHXH, 50) +
+            (d.maBHXHBox && String(d.maBHXHBox).trim() ? '&nbsp;&nbsp;' + renderBoxCode(d.maBHXHBox) : '') + '</div>';
     html += '<div class="l-row l-flexrow"><span class="l-item">Số CCCD/CMND/Định danh công dân/Hộ chiếu: ' + fillOrLine(d.cccd, 32) + '</span>' +
             '<span class="l-item">Ngày cấp: ' + fillOrLine(d.ngayCapCCCD, 20) + '</span></div>';
     html += '<div class="l-row">Giới tính: ' + fillOrLine(d.gioiTinh || "", 14) + '</div>';
@@ -655,7 +675,7 @@
                 '<b>Người hành nghề KB, CB</b>' +
                 '<div class="italic">(Ký, ghi rõ họ tên)</div>' +
                 '<div class="signspace"></div>' +
-                '<div class="fill" style="font-weight:700;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
+                '<div class="fill" style="font-weight:700;font-size:1rem;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
               '</div>' +
             '</div>';
     return html;
