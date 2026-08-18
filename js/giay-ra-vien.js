@@ -157,6 +157,11 @@
             '<div class="gr-filerow" id="grFileRow" style="display:none;"><span id="grFileName"></span><button id="grFileRemove" title="Bỏ chọn">✕</button></div>' +
             '<div class="gr-status" id="grStatus"></div>' +
 
+            '<h3>Mapping bổ sung</h3>' +
+            '<div class="gr-field"><label>Số vào viện</label><input type="text" id="grSoVaoVien" data-mk="soVaoVien"></div>' +
+            '<div class="gr-field"><label>Tên khoa</label><input type="text" id="grTenKhoa" data-mk="tenKhoa"></div>' +
+            '<div class="gr-field"><label>Mã bệnh nhân</label><input type="text" id="grMaBenhNhan" data-mk="maBenhNhan"></div>' +
+
             '<h3>② Xuất file</h3>' +
             '<button class="gr-btn" id="grPrintBtn">🖨️ In / Tải PDF</button>' +
 
@@ -204,8 +209,6 @@
   /* 3. Danh sách field + label hiển thị                               */
   /* ---------------------------------------------------------------- */
   var FIELD_DEFS = [
-    ["soGiay", "Số (đầu trang)", "text"],
-    ["soHoSo", "Số hồ sơ/Số BA", "text"],
     ["hoTen", "Họ tên người bệnh", "text"],
     ["ngaySinh", "Ngày/tháng/năm sinh", "text"],
     ["tuoi", "Tuổi", "text"],
@@ -260,6 +263,23 @@
     var wrap = document.getElementById("grFields");
     wrap.querySelectorAll("[data-k]").forEach(function (el) {
       el.value = DATA[el.getAttribute("data-k")] || "";
+    });
+  }
+
+  // 3 ô "Mapping bổ sung" (Số vào viện / Tên khoa / Mã bệnh nhân) nằm NGOÀI
+  // menu Cấu hình, ngay dưới mục chọn file — điền tay trực tiếp, không nhận
+  // diện tự động từ file nguồn.
+  function bindMappingBoSungUI() {
+    document.querySelectorAll("[data-mk]").forEach(function (el) {
+      el.addEventListener("input", function () {
+        DATA[el.getAttribute("data-mk")] = el.value;
+        renderSheet();
+      });
+    });
+  }
+  function syncMappingBoSungUIFromData() {
+    document.querySelectorAll("[data-mk]").forEach(function (el) {
+      el.value = DATA[el.getAttribute("data-mk")] || "";
     });
   }
 
@@ -787,7 +807,7 @@
                 '<div class="gr-hd-soyte">' + esc(SO_Y_TE) + '</div>' +
                 '<div class="gr-hd-hospital">' + esc(HOSPITAL_NAME) + '</div>' +
                 '<hr class="gr-hd-rule">' +
-                '<div class="gr-hd-so">Số' + fillOrLine(null, 22) + '/GRV-' + fillOrLine(null, 22) + '</div>' +
+                '<div class="gr-hd-so">Số' + fillOrLine(d.soVaoVien, 22) + '/GRV-' + fillOrLine(d.tenKhoa, 22) + '</div>' +
                 '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
               '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b><hr class="gr-hd-rule2">' +
@@ -795,7 +815,7 @@
               '</div>' +
               '<div class="gr-hd-right">' +
                 '<div class="gr-hd-ms">MS: 02</div>' +
-                '<div>Số hồ sơ/Số BA: ' + fillOrLine(null, 16) + '</div>' +
+                '<div>Số hồ sơ/Số BA: ' + fillOrLine(d.maBenhNhan, 16) + '</div>' +
                 '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
             '</div>';
@@ -1032,6 +1052,8 @@
   /* ---------------------------------------------------------------- */
   buildFieldsUI();
   bindUI();
+  bindMappingBoSungUI();
+  syncMappingBoSungUIFromData();
   loadSettingsLocal();
   syncFieldsUIFromSettings();
   renderSheet();
