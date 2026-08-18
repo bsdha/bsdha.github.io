@@ -337,7 +337,7 @@
   body.kcb-modal-lock { overflow: hidden; }
   body.ilock-lock { overflow: hidden; }
 
-  /* ===== Popup khoá "chỉ dành cho nội bộ" (Phiếu chuyển tuyến / Giấy nghỉ việc BHXH) ===== */
+  /* ===== Popup khoá "chỉ dành cho nội bộ" (Phiếu chuyển tuyến / Giấy nghỉ việc BHXH / Giấy ra viện) ===== */
   .ilock-overlay {
     display: none;
     position: fixed; inset: 0; z-index: 10000;
@@ -348,11 +348,11 @@
   }
   .ilock-overlay.open { display: flex; }
   .ilock-box {
-    width: min(320px, 100%);
+    width: min(380px, 100%);
     background: var(--surface, #fff);
     border-radius: 16px;
     box-shadow: 0 20px 60px rgba(0,0,0,.35);
-    padding: 24px 22px 20px;
+    padding: 24px 26px 20px;
     text-align: center;
     animation: kcbModalPop .18s ease;
   }
