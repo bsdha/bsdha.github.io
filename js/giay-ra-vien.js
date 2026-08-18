@@ -112,13 +112,18 @@
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
     ".l-item:last-child{margin-right:0;}",
-    ".gr-footer{display:flex;justify-content:space-between;margin-top:5mm;text-align:center;font-size:11.5px;transform-origin:top left;}",
+    ".gr-footer{display:flex;justify-content:space-between;margin-top:5mm;text-align:center;font-size:11.5px;transform-origin:top left;position:relative;}",
     "#grSheet.gr-editon .gr-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#grSheet.gr-editon .gr-footer:hover,#grSheet.gr-editon .gr-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#grSheet.gr-editon .gr-footer.dragging{cursor:grabbing;}",
-    "#grSheet.gr-editon .gr-hd-left,#grSheet.gr-editon .gr-hd-mid,#grSheet.gr-editon .gr-hd-right{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;padding:1mm;}",
+    "#grSheet.gr-editon .gr-hd-left,#grSheet.gr-editon .gr-hd-mid,#grSheet.gr-editon .gr-hd-right{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;padding:1mm;position:relative;}",
     "#grSheet.gr-editon .gr-hd-left:hover,#grSheet.gr-editon .gr-hd-mid:hover,#grSheet.gr-editon .gr-hd-right:hover,#grSheet.gr-editon .gr-hd-left.dragging,#grSheet.gr-editon .gr-hd-mid.dragging,#grSheet.gr-editon .gr-hd-right.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#grSheet.gr-editon .gr-hd-left.dragging,#grSheet.gr-editon .gr-hd-mid.dragging,#grSheet.gr-editon .gr-hd-right.dragging{cursor:grabbing;}",
+    // Chấm tròn xanh ở góc dưới-phải mỗi khối kéo-thả — kéo chấm này để
+    // phóng to/thu nhỏ (đồng thời tăng/giảm cỡ chữ) riêng cho từng khối,
+    // giống hệt cơ chế đã có ở "Phiếu chuyển tuyến".
+    ".gr-resize{position:absolute;right:-9px;bottom:-9px;width:14px;height:14px;border-radius:50%;background:#0066FF;border:2px solid #fff;cursor:nwse-resize;display:none;box-shadow:0 1px 3px rgba(0,0,0,.4);z-index:6;}",
+    "#grSheet.gr-editon .gr-hd-left:hover .gr-resize,#grSheet.gr-editon .gr-hd-mid:hover .gr-resize,#grSheet.gr-editon .gr-hd-right:hover .gr-resize,#grSheet.gr-editon .gr-footer:hover .gr-resize,#grSheet.gr-editon .gr-hd-left.dragging .gr-resize,#grSheet.gr-editon .gr-hd-mid.dragging .gr-resize,#grSheet.gr-editon .gr-hd-right.dragging .gr-resize,#grSheet.gr-editon .gr-footer.dragging .gr-resize{display:block;}",
     ".gr-footer .col{width:46%;}",
     ".gr-footer b{display:block;}",
     ".gr-footer .italic{font-style:italic;font-size:10.5px;}",
@@ -183,7 +188,7 @@
               '<label class="gr-switch"><input type="checkbox" id="grEditModeToggle"><span class="gr-slider"></span></label>' +
               '<span>✏️ Chỉnh sửa vị trí bố cục (kéo-thả riêng từng cụm tiêu đề "Sở Y tế/Bệnh viện...", "Cộng hòa...", "MS/Số hồ sơ..." và khối "Ngày.../Đại diện đơn vị/Người hành nghề, ký tên")</span>' +
             '</div>' +
-            '<div class="gr-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối tiêu đề hoặc chữ ký khi chỉ muốn nhập liệu. 3 cụm tiêu đề đầu trang (Sở Y tế/Bệnh viện — Cộng hòa/Độc lập — MS/Số hồ sơ) kéo-thả ĐỘC LẬP với nhau, mặc định vẫn nằm 3 cột như trên tờ giấy gốc.</div>' +
+            '<div class="gr-hint">Tắt đi để khoá, tránh vô tình kéo lệch khối tiêu đề hoặc chữ ký khi chỉ muốn nhập liệu. 3 cụm tiêu đề đầu trang (Sở Y tế/Bệnh viện — Cộng hòa/Độc lập — MS/Số hồ sơ) và khối chữ ký cuối trang kéo-thả ĐỘC LẬP với nhau, mặc định vẫn đúng vị trí như trên tờ giấy gốc. Rê chuột vào từng khối, kéo chấm tròn xanh ở góc dưới-phải để phóng to/thu nhỏ (tăng/giảm cỡ chữ) riêng cho khối đó.</div>' +
             '<button class="gr-btn save" id="grSaveBtn">💾 Lưu tinh chỉnh</button>' +
             '<button class="gr-btn small secondary" id="grResetLayout">↺ Đưa vị trí &amp; khoảng cách dòng về mặc định</button>' +
           '</div>' +
@@ -688,8 +693,10 @@
   /* ---------------------------------------------------------------- */
   var settings = {
     scale: 100, shiftY: 0, calX: 0, calY: 0, lineSpread: 100, editMode: false,
-    footerX: 0, footerY: 0,
-    hdLeftX: 0, hdLeftY: 0, hdMidX: 0, hdMidY: 0, hdRightX: 0, hdRightY: 0
+    footerX: 0, footerY: 0, footerScale: 100,
+    hdLeftX: 0, hdLeftY: 0, hdLeftScale: 100,
+    hdMidX: 0, hdMidY: 0, hdMidScale: 100,
+    hdRightX: 0, hdRightY: 0, hdRightScale: 100
   };
 
   function loadSettingsLocal() {
@@ -775,13 +782,13 @@
     var lh = 1.5 * ((settings.lineSpread || 100) / 100);
     if (b) b.style.setProperty("--gr-lh", lh.toFixed(3));
     var footer = document.querySelector(".gr-footer");
-    if (footer) footer.style.transform = "translate(" + (settings.footerX || 0) + "mm," + (settings.footerY || 0) + "mm)";
+    if (footer) footer.style.transform = "translate(" + (settings.footerX || 0) + "mm," + (settings.footerY || 0) + "mm) scale(" + ((settings.footerScale || 100) / 100) + ")";
     var hdLeft = document.querySelector(".gr-hd-left");
-    if (hdLeft) hdLeft.style.transform = "translate(" + (settings.hdLeftX || 0) + "mm," + (settings.hdLeftY || 0) + "mm)";
+    if (hdLeft) hdLeft.style.transform = "translate(" + (settings.hdLeftX || 0) + "mm," + (settings.hdLeftY || 0) + "mm) scale(" + ((settings.hdLeftScale || 100) / 100) + ")";
     var hdMid = document.querySelector(".gr-hd-mid");
-    if (hdMid) hdMid.style.transform = "translate(" + (settings.hdMidX || 0) + "mm," + (settings.hdMidY || 0) + "mm)";
+    if (hdMid) hdMid.style.transform = "translate(" + (settings.hdMidX || 0) + "mm," + (settings.hdMidY || 0) + "mm) scale(" + ((settings.hdMidScale || 100) / 100) + ")";
     var hdRight = document.querySelector(".gr-hd-right");
-    if (hdRight) hdRight.style.transform = "translate(" + (settings.hdRightX || 0) + "mm," + (settings.hdRightY || 0) + "mm)";
+    if (hdRight) hdRight.style.transform = "translate(" + (settings.hdRightX || 0) + "mm," + (settings.hdRightY || 0) + "mm) scale(" + ((settings.hdRightScale || 100) / 100) + ")";
     var sheet = document.getElementById("grSheet");
     if (sheet) sheet.classList.toggle("gr-editon", !!settings.editMode);
   }
@@ -805,11 +812,15 @@
                 '<div class="gr-hd-hospital">' + esc(HOSPITAL_NAME) + '</div>' +
                 '<hr class="gr-hd-rule">' +
                 '<div class="gr-hd-so">Số' + fillOrLine(null, 22) + '/GRV-' + fillOrLine(null, 22) + '</div>' +
+                '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
-              '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b></div>' +
+              '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b>' +
+                '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
+              '</div>' +
               '<div class="gr-hd-right">' +
                 '<div class="gr-hd-ms">MS: 02</div>' +
                 '<div>Số hồ sơ/Số BA: ' + fillOrLine(null, 40) + '</div>' +
+                '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
             '</div>';
 
@@ -850,6 +861,7 @@
                 '<div class="signspace"></div>' +
                 '<div class="fill" style="font-weight:700;">' + esc(d.nguoiHanhNghe || "") + '</div>' +
               '</div>' +
+              '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
             '</div>';
     return html;
   }
@@ -863,76 +875,88 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 7b. Kéo-thả khối chữ ký "Ngày.../Đại diện đơn vị/Người hành nghề" */
+  /* 7b. Hàm dùng CHUNG cho mọi khối kéo-thả tự do: kéo cả khối để đổi  */
+  /* vị trí (translate X/Y), và kéo chấm tròn xanh ở góc dưới-phải để   */
+  /* phóng to/thu nhỏ khối (đồng thời tăng/giảm cỡ chữ bên trong) —     */
+  /* giống hệt cơ chế đã dùng ở "Phiếu chuyển tuyến".                  */
   /* ---------------------------------------------------------------- */
-  function bindFooterDrag() {
-    var footer = document.querySelector(".gr-footer");
-    if (!footer) return;
-    var dragging = false, startX, startY, baseX, baseY;
-    footer.addEventListener("mousedown", function (e) {
+  function bindDragResize(el, xKey, yKey, scaleKey) {
+    if (!el) return;
+    var dragging = false, resizing = false;
+    var startX, startY, baseX, baseY, baseScale;
+
+    el.addEventListener("mousedown", function (e) {
       if (!settings.editMode) return;
+      if (e.target.classList.contains("gr-resize")) return; // nút resize xử lý riêng bên dưới
       dragging = true;
-      footer.classList.add("dragging");
+      el.classList.add("dragging");
       startX = e.clientX; startY = e.clientY;
-      baseX = settings.footerX || 0; baseY = settings.footerY || 0;
+      baseX = settings[xKey] || 0; baseY = settings[yKey] || 0;
       e.preventDefault();
+      e.stopPropagation();
     });
     window.addEventListener("mousemove", function (e) {
       if (!dragging) return;
       var sheet = document.getElementById("grSheet");
       var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
-      settings.footerX = baseX + (e.clientX - startX) / pxPerMm;
-      settings.footerY = baseY + (e.clientY - startY) / pxPerMm;
+      settings[xKey] = baseX + (e.clientX - startX) / pxPerMm;
+      settings[yKey] = baseY + (e.clientY - startY) / pxPerMm;
       applyTransformSettings();
     });
     window.addEventListener("mouseup", function () {
       if (!dragging) return;
       dragging = false;
-      footer.classList.remove("dragging");
+      el.classList.remove("dragging");
+    });
+
+    var handle = el.querySelector(".gr-resize");
+    if (!handle) return;
+    handle.addEventListener("mousedown", function (e) {
+      if (!settings.editMode) return;
+      e.preventDefault();
+      e.stopPropagation();
+      resizing = true;
+      el.classList.add("dragging");
+      startX = e.clientX;
+      baseScale = settings[scaleKey] || 100;
+    });
+    window.addEventListener("mousemove", function (e) {
+      if (!resizing) return;
+      var dx = e.clientX - startX;
+      var delta = dx / 2; // 2px kéo ~ 1% cỡ chữ, giống Phiếu chuyển tuyến
+      settings[scaleKey] = Math.max(50, Math.min(220, Math.round(baseScale + delta)));
+      applyTransformSettings();
+    });
+    window.addEventListener("mouseup", function () {
+      if (!resizing) return;
+      resizing = false;
+      el.classList.remove("dragging");
     });
   }
 
   /* ---------------------------------------------------------------- */
-  /* 7c. Kéo-thả 3 cụm tiêu đề đầu trang, ĐỘC LẬP với nhau:            */
+  /* 7c. Kéo-thả + phóng to/thu nhỏ khối chữ ký "Ngày.../Đại diện đơn  */
+  /* vị/Người hành nghề"                                                */
+  /* ---------------------------------------------------------------- */
+  function bindFooterDrag() {
+    bindDragResize(document.querySelector(".gr-footer"), "footerX", "footerY", "footerScale");
+  }
+
+  /* ---------------------------------------------------------------- */
+  /* 7d. Kéo-thả + phóng to/thu nhỏ 3 cụm tiêu đề đầu trang, ĐỘC LẬP    */
+  /* với nhau:                                                          */
   /*     - .gr-hd-left  : Sở Y tế / Bệnh viện / Số:                   */
   /*     - .gr-hd-mid   : Cộng hòa .../Độc lập...                     */
   /*     - .gr-hd-right : MS: 02 / Số hồ sơ...                        */
   /* Mặc định cả 3 vẫn nằm trên cùng 1 hàng, chia 3 cột (trái-giữa-   */
   /* phải) như mẫu giấy gốc; khi bật "Chỉnh sửa vị trí" có thể kéo    */
-  /* từng cụm đi bất kỳ đâu, độc lập với 2 cụm còn lại.                */
+  /* từng cụm đi bất kỳ đâu và phóng to/thu nhỏ riêng, độc lập với 2   */
+  /* cụm còn lại.                                                       */
   /* ---------------------------------------------------------------- */
   function bindHeaderDrag() {
-    [
-      { sel: ".gr-hd-left", xKey: "hdLeftX", yKey: "hdLeftY" },
-      { sel: ".gr-hd-mid", xKey: "hdMidX", yKey: "hdMidY" },
-      { sel: ".gr-hd-right", xKey: "hdRightX", yKey: "hdRightY" }
-    ].forEach(function (cfg) {
-      var el = document.querySelector(cfg.sel);
-      if (!el) return;
-      var dragging = false, startX, startY, baseX, baseY;
-      el.addEventListener("mousedown", function (e) {
-        if (!settings.editMode) return;
-        dragging = true;
-        el.classList.add("dragging");
-        startX = e.clientX; startY = e.clientY;
-        baseX = settings[cfg.xKey] || 0; baseY = settings[cfg.yKey] || 0;
-        e.preventDefault();
-        e.stopPropagation();
-      });
-      window.addEventListener("mousemove", function (e) {
-        if (!dragging) return;
-        var sheet = document.getElementById("grSheet");
-        var pxPerMm = sheet.getBoundingClientRect().width / PAGE_W_MM;
-        settings[cfg.xKey] = baseX + (e.clientX - startX) / pxPerMm;
-        settings[cfg.yKey] = baseY + (e.clientY - startY) / pxPerMm;
-        applyTransformSettings();
-      });
-      window.addEventListener("mouseup", function () {
-        if (!dragging) return;
-        dragging = false;
-        el.classList.remove("dragging");
-      });
-    });
+    bindDragResize(document.querySelector(".gr-hd-left"), "hdLeftX", "hdLeftY", "hdLeftScale");
+    bindDragResize(document.querySelector(".gr-hd-mid"), "hdMidX", "hdMidY", "hdMidScale");
+    bindDragResize(document.querySelector(".gr-hd-right"), "hdRightX", "hdRightY", "hdRightScale");
   }
 
   /* ---------------------------------------------------------------- */
@@ -1009,10 +1033,10 @@
       settings.editMode = e.target.checked; applyTransformSettings();
     });
     document.getElementById("grResetLayout").addEventListener("click", function () {
-      settings.lineSpread = 100; settings.footerX = 0; settings.footerY = 0;
-      settings.hdLeftX = 0; settings.hdLeftY = 0;
-      settings.hdMidX = 0; settings.hdMidY = 0;
-      settings.hdRightX = 0; settings.hdRightY = 0;
+      settings.lineSpread = 100; settings.footerX = 0; settings.footerY = 0; settings.footerScale = 100;
+      settings.hdLeftX = 0; settings.hdLeftY = 0; settings.hdLeftScale = 100;
+      settings.hdMidX = 0; settings.hdMidY = 0; settings.hdMidScale = 100;
+      settings.hdRightX = 0; settings.hdRightY = 0; settings.hdRightScale = 100;
       settings.scale = 100; settings.shiftY = 0;
       applyTransformSettings();
       syncFieldsUIFromSettings();
