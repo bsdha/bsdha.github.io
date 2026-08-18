@@ -102,17 +102,18 @@
     ".gr-hd-left .gr-hd-hospital{font-weight:bold;text-transform:uppercase;}",
     ".gr-hd-left .gr-hd-rule{border:none;border-top:1px solid #000;width:60%;margin:1mm auto;}",
     ".gr-hd-mid{text-align:center;font-size:11.5px;flex:0 0 auto;transform-origin:top left;}",
-    ".gr-hd-mid b{display:block;text-decoration:underline;}",
-    ".gr-hd-right{text-align:right;font-size:11.5px;flex:0 0 auto;white-space:nowrap;transform-origin:top left;}",
+    ".gr-hd-mid b{display:block;font-weight:400;}",
+    ".gr-hd-mid .gr-hd-rule2{border:none;border-top:1px solid #000;width:70%;margin:1mm auto 0;}",
+    ".gr-hd-right{text-align:left;font-size:11.5px;flex:0 0 auto;white-space:nowrap;transform-origin:top left;}",
     ".gr-hd-so{font-weight:400;text-transform:none;font-size:11px;text-align:center;}",
     ".gr-hd-ms{font-weight:400;font-size:11px;}",
-    ".gr-title{text-align:center;font-weight:bold;font-size:16px;margin:5mm 0 4mm;text-transform:uppercase;}",
+    ".gr-title{text-align:center;font-weight:bold;font-size:20px;margin:5mm 0 4mm;text-transform:uppercase;}",
     ".fill{padding:0 1px;font-weight:400;white-space:pre-wrap;word-break:break-word;}",
     ".l-flexrow{display:flex;flex-wrap:wrap;column-gap:15px;row-gap:1.6mm;}",
     ".fill-line{display:inline-block;min-width:14px;border-bottom:1px dotted #000;margin:0 2px 1px;vertical-align:-2px;}",
     ".l-item{display:inline-block;margin-right:15px;white-space:nowrap;}",
     ".l-item:last-child{margin-right:0;}",
-    ".gr-footer{display:flex;justify-content:space-between;margin-top:5mm;text-align:center;font-size:11.5px;transform-origin:top left;position:relative;}",
+    ".gr-footer{display:flex;justify-content:space-between;margin-top:5mm;text-align:center;font-size:16px;transform-origin:top left;position:relative;}",
     "#grSheet.gr-editon .gr-footer{cursor:grab;outline:1.5px dashed transparent;border-radius:6px;}",
     "#grSheet.gr-editon .gr-footer:hover,#grSheet.gr-editon .gr-footer.dragging{outline-color:#0066FF;background:rgba(0,102,255,.06);}",
     "#grSheet.gr-editon .gr-footer.dragging{cursor:grabbing;}",
@@ -126,7 +127,7 @@
     "#grSheet.gr-editon .gr-hd-left:hover .gr-resize,#grSheet.gr-editon .gr-hd-mid:hover .gr-resize,#grSheet.gr-editon .gr-hd-right:hover .gr-resize,#grSheet.gr-editon .gr-footer:hover .gr-resize,#grSheet.gr-editon .gr-hd-left.dragging .gr-resize,#grSheet.gr-editon .gr-hd-mid.dragging .gr-resize,#grSheet.gr-editon .gr-hd-right.dragging .gr-resize,#grSheet.gr-editon .gr-footer.dragging .gr-resize{display:block;}",
     ".gr-footer .col{width:46%;}",
     ".gr-footer b{display:block;}",
-    ".gr-footer .italic{font-style:italic;font-size:10.5px;}",
+    ".gr-footer .italic{font-style:italic;font-size:14.5px;}",
     ".gr-footer .signspace{height:16mm;}",
     "@media print{",
     "  html.gr-printing,html.gr-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -814,12 +815,12 @@
                 '<div class="gr-hd-so">Số' + fillOrLine(null, 22) + '/GRV-' + fillOrLine(null, 22) + '</div>' +
                 '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
-              '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b>' +
+              '<div class="gr-hd-mid">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM<b>Độc lập - Tự do - Hạnh phúc</b><hr class="gr-hd-rule2">' +
                 '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
               '<div class="gr-hd-right">' +
                 '<div class="gr-hd-ms">MS: 02</div>' +
-                '<div>Số hồ sơ/Số BA: ' + fillOrLine(null, 40) + '</div>' +
+                '<div>Số hồ sơ/Số BA: ' + fillOrLine(null, 16) + '</div>' +
                 '<div class="gr-resize" title="Kéo để phóng to/thu nhỏ"></div>' +
               '</div>' +
             '</div>';
