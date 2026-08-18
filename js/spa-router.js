@@ -34,10 +34,10 @@
     });
   }
 
-  // --- Khoá "chỉ dành cho nội bộ" cho 2 trang: Phiếu chuyển tuyến, Giấy nghỉ việc BHXH.
-  // Yêu cầu nhập mật khẩu cố định 1 lần mỗi phiên trình duyệt (sessionStorage — tự
+  // --- Khoá "chỉ dành cho nội bộ" cho 3 trang: Phiếu chuyển tuyến, Giấy nghỉ
+  // việc BHXH, Giấy ra viện. Yêu cầu nhập mật khẩu cố định 1 lần mỗi phiên trình duyệt (sessionStorage — tự
   // yêu cầu lại khi tắt hẳn trình duyệt rồi mở lại, không hỏi lại khi chỉ chuyển tab/trang).
-  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh'];
+  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh', 'giayravien'];
   const INTERNAL_PASSWORD = 'cs2';
   const UNLOCK_FLAG = 'bsdha_internal_unlocked';
   let lockModalEl = null;
@@ -53,7 +53,7 @@
     overlay.innerHTML =
       '<div class="ilock-box" role="dialog" aria-modal="true" aria-labelledby="ilockTitle">' +
         '<div class="ilock-icon">🔒</div>' +
-        '<div id="ilockTitle" class="ilock-title">Chỉ dành cho nội bộ, vui lòng nhập mật khẩu!</div>' +
+        '<div id="ilockTitle" class="ilock-title">Chỉ dành cho nội bộ, vui lòng nhập mật&nbsp;khẩu!</div>' +
         '<form class="ilock-form" id="ilockForm" autocomplete="off">' +
           '<input type="password" id="ilockInput" class="ilock-input" placeholder="Mật khẩu" autocomplete="off">' +
           '<div class="ilock-err" id="ilockErr" hidden>Mật khẩu không đúng, vui lòng thử lại.</div>' +
