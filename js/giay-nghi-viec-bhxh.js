@@ -149,8 +149,8 @@
 
           '<div class="nv-panel-view" id="nvViewMain">' +
             '<h3>① Tải file gốc</h3>' +
-            '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b>, <b>.docx</b> hoặc <b>.rtf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
-            '<input type="file" id="nvFileInput" accept=".pdf,.rtf,.docx" hidden>' +
+            '<div class="nv-drop" id="nvDrop">📄 Bấm để chọn file <b>.pdf</b><br><span class="nv-hint">(file gốc bệnh viện, hoặc bản scan/PDF có lớp chữ)</span></div>' +
+            '<input type="file" id="nvFileInput" accept=".pdf" hidden>' +
             '<div class="nv-filerow" id="nvFileRow" style="display:none;"><span id="nvFileName"></span><button id="nvFileRemove" title="Bỏ chọn">✕</button></div>' +
             '<div class="nv-status" id="nvStatus"></div>' +
 
@@ -472,33 +472,8 @@
         });
       };
       reader.readAsArrayBuffer(file);
-    } else if (ext === "docx") {
-      ensureMammoth(function () {
-        reader.onload = function (e) {
-          window.mammoth.extractRawText({ arrayBuffer: e.target.result })
-            .then(function (res) {
-              parseFields(res.value || "");
-              syncFieldsUIFromData();
-              renderSheet();
-              setStatus("Đã nhận diện thông tin từ file .docx. Kiểm tra lại các trường bên trên.", "ok");
-            })
-            .catch(function (err) { setStatus("Lỗi đọc .docx: " + err.message, "err"); });
-        };
-        reader.readAsArrayBuffer(file);
-      });
-    } else if (ext === "rtf") {
-      reader.onload = function (e) {
-        try {
-          var text = decodeRtfSimple(String(e.target.result));
-          parseFields(text);
-          syncFieldsUIFromData();
-          renderSheet();
-          setStatus("Đã nhận diện thông tin từ file .rtf. Kiểm tra lại các trường bên trên.", "ok");
-        } catch (err) { setStatus("Lỗi đọc .rtf: " + err.message, "err"); }
-      };
-      reader.readAsText(file, "utf-8");
     } else {
-      setStatus("Chỉ hỗ trợ file .pdf, .rtf hoặc .docx.", "err");
+      setStatus("Chỉ hỗ trợ file .pdf.", "err");
     }
   }
 
