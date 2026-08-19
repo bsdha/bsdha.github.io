@@ -1685,6 +1685,28 @@
 .rx-sb-status.ok { color: var(--green); }
 .rx-sb-status.err { color: var(--red); }
 #rxExcelInput { color: var(--muted); font-size: 12.5px; }
+#rxExcelInputOutside { color: var(--muted); font-size: 12.5px; }
+
+/* ===== Chọn chế độ kê đơn (Trong BV / Ngoài BV / In toa viết tay) ===== */
+.rx-mode-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
+.rx-mode-opt {
+  display: flex; align-items: center; gap: 6px;
+  border: 1.5px solid var(--border); border-radius: 999px;
+  padding: 7px 14px; font-size: 12.5px; font-weight: 600;
+  cursor: pointer; background: var(--surface); color: var(--text);
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.rx-mode-opt input[type="radio"] { accent-color: var(--blue); width: 15px; height: 15px; flex: none; }
+.rx-mode-opt:hover { border-color: var(--blue); }
+.rx-mode-opt:has(input:checked) { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+.rx-mode-opt.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
+@media (max-width: 700px) { .rx-mode-row { gap: 6px; } .rx-mode-opt { padding: 6px 11px; font-size: 12px; } }
+
+.rx-handwritten-box {
+  background: var(--surface-2); border: 1px dashed var(--border); border-radius: 12px;
+  padding: 14px; margin-bottom: 14px;
+}
+.rx-handwritten-box .field { max-width: 220px; margin-bottom: 8px; }
 
 .rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
 .rx-col-wide { grid-column: span 2; }
