@@ -772,6 +772,23 @@
     handwrittenBox.style.display = isHandwritten ? '' : 'none';
     const sBox = $('rxSuggestBox');
     if (sBox) sBox.classList.remove('show');
+
+    // Chế độ "Kê đơn ngoài Bệnh viện": không hiển thị ô/cột xem trước "Tên gốc, Hoạt chất"
+    // để tránh trường hợp người dùng đã sửa hàm lượng ở "Tên thương mại" (gõ tay) nhưng
+    // "Hoạt chất" vẫn còn hàm lượng cũ (điền tự động lúc chọn gợi ý), làm toa in ra sai lệch.
+    const isOutside = rxPrescribeMode === 'outside';
+    const genericWrap = $('rxFieldGenericWrap');
+    if (genericWrap) genericWrap.style.display = isOutside ? 'none' : '';
+    syncGenericColVisibility();
+  }
+
+  // Ẩn/hiện cột "Hoạt chất" trong bảng toa theo chế độ hiện tại (áp dụng lại sau mỗi lần renderRxTable
+  // vì các ô <td> được tạo mới hoàn toàn mỗi lần render).
+  function syncGenericColVisibility() {
+    const isOutside = rxPrescribeMode === 'outside';
+    document.querySelectorAll('.rx-table-wrap .rx-generic-col').forEach((el) => {
+      el.style.display = isOutside ? 'none' : '';
+    });
   }
 
   modeRadios.forEach((r) => {
@@ -988,7 +1005,11 @@
   function addRxRow() {
     const brand = brandInput.value.trim();
     if (!brand) { brandInput.focus(); return; }
-    const generic = genericInput.value.trim();
+    // Chế độ "Kê đơn ngoài Bệnh viện": bỏ qua "Tên gốc, Hoạt chất" tự điền từ danh mục.
+    // Người dùng có thể đã sửa tay hàm lượng ngay trong "Tên thương mại" (VD: đổi 500mg -> 650mg)
+    // mà không sửa lại ô "Hoạt chất", nếu vẫn lưu "Hoạt chất" cũ thì toa sẽ hiển thị 2 hàm lượng
+    // khác nhau cho cùng 1 thuốc -> chỉ lưu đúng những gì người dùng đã gõ/sửa ở "Tên thương mại".
+    const generic = rxPrescribeMode === 'outside' ? '' : genericInput.value.trim();
     const isDup = rxRows.some((r) => normalize(r.brand) === normalize(brand) && normalize(r.generic) === normalize(generic));
     if (isDup) {
       showDupWarning();
@@ -1147,6 +1168,7 @@
       emptyMsg.classList.add('show');
       if (tableWrap) tableWrap.classList.remove('has-rows');
       updateAutoNote();
+      syncGenericColVisibility();
       return;
     }
     emptyMsg.classList.remove('show');
@@ -1161,7 +1183,7 @@
           </span>
         </td>
         <td class="rx-truncate-cell" title="${escapeHtml(r.brand)}">${escapeHtml(r.brand)}</td>
-        <td class="rx-truncate-cell" title="${escapeHtml(r.generic)}">${escapeHtml(r.generic)}</td>
+        <td class="rx-truncate-cell rx-generic-col" title="${escapeHtml(r.generic)}">${escapeHtml(r.generic)}</td>
         <td>${escapeHtml(r.form)}</td>
         <td class="rx-edit-cell" data-idx="${i}" data-field="usage" title="Double-click để sửa">${escapeHtml(r.usage)}</td>
         <td class="rx-edit-cell" data-idx="${i}" data-field="days" title="Double-click để sửa">${escapeHtml(r.days)}</td>
@@ -1173,6 +1195,7 @@
         <td class="rx-del-cell"><button class="rx-row-del" data-idx="${i}" title="Xoá">✕</button></td>
       </tr>`).join('');
     updateAutoNote();
+    syncGenericColVisibility();
   }
 
   // Sửa nhanh từng ô (Cách dùng/Ngày/Sáng/Trưa/Chiều/Tối/Số lượng) bằng double-click, không cần xoá thuốc
