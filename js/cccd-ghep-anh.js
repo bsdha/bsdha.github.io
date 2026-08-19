@@ -43,29 +43,48 @@
 
   (function loadOpenCV() {
     if (window.cv && window.cv.Mat) { cvReady = true; return; }
-    var s = document.createElement("script");
-    s.src = "https://docs.opencv.org/4.x/opencv.js";
-    s.async = true;
-    s.onload = function () {
-      // opencv.js gọi cv['onRuntimeInitialized'] khi WASM sẵn sàng
-      function waitReady() {
-        if (window.cv && window.cv.Mat) { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); }
-        else { setTimeout(waitReady, 200); }
+
+    // Ưu tiên jsDelivr: CDN thương mại, có cache + CORS header đầy đủ, ổn
+    // định hơn nhiều so với docs.opencv.org (server tài liệu OpenCV, hay bị
+    // timeout/chặn ở mạng cơ quan vì không có CORS đáng tin). docs.opencv.org
+    // chỉ giữ lại làm phương án dự phòng cuối cùng.
+    var SOURCES = [
+      "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js",
+      "https://docs.opencv.org/4.x/opencv.js"
+    ];
+    var idx = 0;
+
+    function tryNext() {
+      if (idx >= SOURCES.length) {
+        cvFailed = true;
+        setCvStatus("Không tải được OpenCV.js (mạng chặn?) — dùng chế độ cắt viền cơ bản", false);
+        return;
       }
-      if (window.cv) {
-        window.cv["onRuntimeInitialized"] = function () { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); };
-        waitReady();
-      } else {
-        cvFailed = true; setCvStatus("Không tải được OpenCV.js — dùng chế độ cắt viền cơ bản", false);
-      }
-    };
-    s.onerror = function () {
-      cvFailed = true;
-      setCvStatus("Không tải được OpenCV.js (mạng chặn?) — dùng chế độ cắt viền cơ bản", false);
-    };
-    setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
-    document.head.appendChild(s);
+      var src = SOURCES[idx++];
+      setCvStatus("Đang tải OpenCV.js (" + idx + "/" + SOURCES.length + ")…", null);
+      var s = document.createElement("script");
+      s.src = src;
+      s.async = true;
+      s.onload = function () {
+        function waitReady(tries) {
+          if (window.cv && window.cv.Mat) { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); return; }
+          if (tries <= 0) { s.remove(); tryNext(); return; } // load xong nhưng không init được -> thử nguồn kế
+          setTimeout(function () { waitReady(tries - 1); }, 200);
+        }
+        if (window.cv) {
+          window.cv["onRuntimeInitialized"] = function () { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); };
+          waitReady(50); // ~10s chờ WASM init trước khi bỏ cuộc
+        } else {
+          tryNext();
+        }
+      };
+      s.onerror = function () { s.remove(); tryNext(); };
+      document.head.appendChild(s);
+    }
+
+    tryNext();
   })();
+
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS (tiền tố "cd-" để không đụng CSS các module khác)          */
