@@ -414,7 +414,15 @@
     if (cur) lines.push(cur);
     return lines.map(function (line) {
       line.sort(function (a, b) { return a.x - b.x; });
-      return line.map(function (it) { return it.str; }).join(" ");
+      var joined = line.map(function (it) { return it.str; }).join(" ").replace(/\s+/g, " ").trim();
+      // Mẫu giấy này thường có 2 liên xếp CẠNH NHAU trên cùng 1 trang (trái/phải
+      // hoặc trên/dưới rất sát nhau) => nhiều dòng bị lặp nguyên si 2 lần liền
+      // nhau ngay trên cùng 1 dòng ngang (vd 1 dòng dài của phần "Chẩn đoán" bị
+      // ghép thành "...ở dây chằng ...ở dây chằng" do lấy cả 2 liên). Phát hiện
+      // và chỉ giữ lại 1 nửa nếu dòng là 2 đoạn giống hệt nhau ghép liền kề.
+      var dupLine = /^(.{2,}?)\s*\1$/.exec(joined);
+      if (dupLine) joined = dupLine[1];
+      return joined;
     }).join("\n");
   }
 
