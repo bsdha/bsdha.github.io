@@ -11,6 +11,11 @@
      dịch ảnh trong khung — vì auto-trim không thể hoàn hảo 100% với ảnh
      chụp thủ công.
    - Thêm/xóa hàng (thêm người). In ra khổ A4 thật, ẩn toolbar khi in.
+   - Có nạp thêm OpenCV.js (tải từ CDN, không bắt buộc): khi tải xong, ảnh
+     sẽ được tự động XOAY THẲNG (deskew) theo đúng góc nghiêng của tấm thẻ
+     rồi cắt sát viền, chính xác hơn nhiều so với cách cắt viền đơn giản
+     trước đó. Nếu OpenCV.js chưa tải xong hoặc lỗi mạng, tự động dùng lại
+     cách cắt viền cũ (autoTrim) để không chặn người dùng.
    Không cần sửa index.html — file này tự render vào #cccdGhepAnhContent.
    ===================================================================== */
 (function () {
@@ -22,6 +27,45 @@
 
   var CARD_W_MM = 85.6;
   var CARD_H_MM = 54;
+
+  /* ---------------------------------------------------------------- */
+  /* 0. Nạp OpenCV.js không đồng bộ (không chặn giao diện)             */
+  /* ---------------------------------------------------------------- */
+  var cvReady = false;
+  var cvFailed = false;
+  var cvStatusEl = null; // gán sau khi dựng toolbar
+
+  function setCvStatus(text, ok) {
+    if (!cvStatusEl) return;
+    cvStatusEl.textContent = text;
+    cvStatusEl.style.color = ok === true ? "var(--green,#1f9c8f)" : (ok === false ? "var(--red,#d8433f)" : "var(--muted,#5a5a5a)");
+  }
+
+  (function loadOpenCV() {
+    if (window.cv && window.cv.Mat) { cvReady = true; return; }
+    var s = document.createElement("script");
+    s.src = "https://docs.opencv.org/4.x/opencv.js";
+    s.async = true;
+    s.onload = function () {
+      // opencv.js gọi cv['onRuntimeInitialized'] khi WASM sẵn sàng
+      function waitReady() {
+        if (window.cv && window.cv.Mat) { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); }
+        else { setTimeout(waitReady, 200); }
+      }
+      if (window.cv) {
+        window.cv["onRuntimeInitialized"] = function () { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); };
+        waitReady();
+      } else {
+        cvFailed = true; setCvStatus("Không tải được OpenCV.js — dùng chế độ cắt viền cơ bản", false);
+      }
+    };
+    s.onerror = function () {
+      cvFailed = true;
+      setCvStatus("Không tải được OpenCV.js (mạng chặn?) — dùng chế độ cắt viền cơ bản", false);
+    };
+    setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
+    document.head.appendChild(s);
+  })();
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS (tiền tố "cd-" để không đụng CSS các module khác)          */
@@ -72,6 +116,7 @@
         '<button type="button" id="cdAddRow">+ Thêm người (hàng mới)</button>' +
         '<button type="button" id="cdPrint" class="primary">🖨 In</button>' +
         '<button type="button" id="cdClear">Xóa hết, làm lại</button>' +
+        '<span id="cdCvStatus" style="font-size:12px;color:var(--muted,#5a5a5a);margin-left:4px;"></span>' +
       '</div>' +
       '<p class="cd-help">Mỗi hàng dành cho 1 người: khung trái là <b>mặt trước</b>, khung phải là <b>mặt sau</b> CCCD. ' +
       'Ảnh sẽ được tự động cắt bớt viền dư quanh mép. Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
@@ -80,6 +125,8 @@
     '</div>';
 
   var sheet = root.querySelector("#cdSheet");
+  cvStatusEl = root.querySelector("#cdCvStatus");
+  setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
 
   /* ---------------------------------------------------------------- */
   /* 3. Auto-trim viền dư quanh mép ảnh                                */
@@ -142,6 +189,102 @@
   }
 
   /* ---------------------------------------------------------------- */
+  /* 3b. Auto-deskew + crop bằng OpenCV.js (chính xác hơn autoTrim)   */
+  /*     - Tìm đường viền lớn nhất (thẻ CCCD) trong ảnh                */
+  /*     - Lấy hình chữ nhật xoay nhỏ nhất bao quanh (minAreaRect)     */
+  /*     - Xoay thẳng ảnh theo góc đó rồi cắt sát viền                 */
+  /* ---------------------------------------------------------------- */
+  function autoDeskewCrop(img, callback) {
+    if (!cvReady || !window.cv) { callback(null); return; }
+    try {
+      var cv = window.cv;
+      var src = cv.imread(img);
+      var gray = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+
+      var thresh = new cv.Mat();
+      cv.threshold(gray, thresh, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU);
+
+      // Cạnh CCCD thường tương phản với nền -> dùng Canny bổ trợ rồi giãn nở để nối viền đứt
+      var edges = new cv.Mat();
+      cv.Canny(gray, edges, 50, 150);
+      var kernel = cv.Mat.ones(5, 5, cv.CV_8U);
+      cv.dilate(edges, edges, kernel);
+
+      var contours = new cv.MatVector();
+      var hierarchy = new cv.Mat();
+      cv.findContours(edges, contours, hierarchy, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+      var bestIdx = -1, bestArea = 0;
+      for (var i = 0; i < contours.size(); i++) {
+        var area = cv.contourArea(contours.get(i));
+        if (area > bestArea) { bestArea = area; bestIdx = i; }
+      }
+
+      var imgArea = src.rows * src.cols;
+      if (bestIdx === -1 || bestArea < imgArea * 0.15) {
+        // Không tìm được viền thẻ đủ lớn và đáng tin -> bỏ qua, dùng autoTrim thay thế
+        [src, gray, thresh, edges, kernel, contours, hierarchy].forEach(function (m) { m.delete(); });
+        callback(null);
+        return;
+      }
+
+      var rect = cv.minAreaRect(contours.get(bestIdx));
+      var angle = rect.angle; // OpenCV.js: góc trong khoảng (-90, 0]
+      var center = new cv.Point(src.cols / 2, src.rows / 2);
+
+      // Chuẩn hoá góc để không xoay lệch 90°: đưa về khoảng gần 0 nhất
+      var rotAngle = angle;
+      if (rect.size.width < rect.size.height) rotAngle = angle + 90;
+      while (rotAngle > 45) rotAngle -= 90;
+      while (rotAngle < -45) rotAngle += 90;
+
+      var M = cv.getRotationMatrix2D(center, rotAngle, 1);
+      var rotated = new cv.Mat();
+      cv.warpAffine(src, rotated, M, new cv.Size(src.cols, src.rows), cv.INTER_LINEAR, cv.BORDER_REPLICATE);
+
+      // Sau khi xoay thẳng, tìm lại viền thẻ trên ảnh đã xoay để cắt sát mép
+      var gray2 = new cv.Mat();
+      cv.cvtColor(rotated, gray2, cv.COLOR_RGBA2GRAY);
+      cv.GaussianBlur(gray2, gray2, new cv.Size(5, 5), 0);
+      var edges2 = new cv.Mat();
+      cv.Canny(gray2, edges2, 50, 150);
+      cv.dilate(edges2, edges2, kernel);
+      var contours2 = new cv.MatVector();
+      var hierarchy2 = new cv.Mat();
+      cv.findContours(edges2, contours2, hierarchy2, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+
+      var bestIdx2 = -1, bestArea2 = 0;
+      for (var j = 0; j < contours2.size(); j++) {
+        var a2 = cv.contourArea(contours2.get(j));
+        if (a2 > bestArea2) { bestArea2 = a2; bestIdx2 = j; }
+      }
+
+      var outCanvas = document.createElement("canvas");
+      if (bestIdx2 !== -1) {
+        var box = cv.boundingRect(contours2.get(bestIdx2));
+        var pad = Math.round(Math.min(box.width, box.height) * 0.015);
+        var x = Math.max(0, box.x - pad), y = Math.max(0, box.y - pad);
+        var w2 = Math.min(rotated.cols - x, box.width + pad * 2);
+        var h2 = Math.min(rotated.rows - y, box.height + pad * 2);
+        var roi = rotated.roi(new cv.Rect(x, y, w2, h2));
+        cv.imshow(outCanvas, roi);
+        roi.delete();
+      } else {
+        cv.imshow(outCanvas, rotated);
+      }
+
+      [src, gray, thresh, edges, kernel, contours, hierarchy, rotated, gray2, edges2, contours2, hierarchy2].forEach(function (m) { m.delete(); });
+
+      callback(outCanvas.toDataURL("image/jpeg", 0.95));
+    } catch (err) {
+      // Bất kỳ lỗi nào từ OpenCV -> âm thầm rơi về autoTrim, không làm gián đoạn người dùng
+      callback(null);
+    }
+  }
+
+  /* ---------------------------------------------------------------- */
   /* 4. 1 khung ảnh (slot)                                            */
   /* ---------------------------------------------------------------- */
   function createSlot(labelText) {
@@ -178,7 +321,7 @@
       reader.onload = function (e) {
         var tmp = new Image();
         tmp.onload = function () {
-          autoTrim(tmp, function (finalSrc) {
+          function finish(finalSrc) {
             if (!img) {
               img = document.createElement("img");
               slot.insertBefore(img, slot.querySelector(".cd-slot-controls") || null);
@@ -197,6 +340,12 @@
             placeholder.style.display = "none";
             slot.classList.add("has-img");
             ensureControls();
+          }
+          // Ưu tiên OpenCV.js (tự xoay thẳng + cắt sát viền). Nếu chưa sẵn sàng
+          // hoặc không tìm được viền thẻ đáng tin -> rơi về autoTrim (cắt viền cơ bản).
+          autoDeskewCrop(tmp, function (cvResult) {
+            if (cvResult) { finish(cvResult); }
+            else { autoTrim(tmp, finish); }
           });
         };
         tmp.src = e.target.result;
