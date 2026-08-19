@@ -825,7 +825,7 @@
             </div>
           </div>
           <div class="rx-upload-box">
-            <div class="rx-cloud-title">📥 Nạp danh sách thuốc từ file Excel</div>
+            <div class="rx-cloud-title">📥 Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
             <p class="rx-cloud-desc">
               File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và <b>Tên gốc</b>
               (hoặc "Hoạt chất" / "Tên gốc, Hoạt chất"). Có thể có thêm cột "Dạng thuốc". Thuốc mới sẽ được
@@ -834,9 +834,37 @@
             <input type="file" id="rxExcelInput" accept=".xlsx,.xls">
             <span id="rxExcelStatus" class="rx-sb-status"></span>
           </div>
+
+          <div class="rx-upload-box">
+            <div class="rx-cloud-title">📥 Nạp danh sách thuốc "Ngoài Bệnh viện" từ file Excel</div>
+            <p class="rx-cloud-desc">
+              Dùng cho chế độ <b>Kê đơn ngoài Bệnh viện</b>. Đã có sẵn danh mục khởi điểm (tên gốc/hoạt chất phổ biến
+              theo nhiều nhóm bệnh) — có thể nạp thêm file Excel của riêng phòng khám (cùng định dạng cột như trên,
+              không giới hạn số lượng thuốc) để bổ sung, thuốc mới sẽ <b>cộng dồn</b>, tự bỏ qua thuốc trùng tên.
+            </p>
+            <input type="file" id="rxExcelInputOutside" accept=".xlsx,.xls">
+            <span id="rxExcelStatusOutside" class="rx-sb-status"></span>
+            <button type="button" class="rx-btn rx-btn-secondary" id="rxResetOutsideBtn" style="margin-top:8px;">↺ Khôi phục danh mục khởi điểm</button>
+          </div>
         </div>
 
         <div id="rxDrugFormArea">
+          <div class="rx-mode-row" id="rxModeRow">
+            <label class="rx-mode-opt">
+              <input type="radio" name="rxPrescribeMode" id="rxModeHospital" value="hospital" checked>
+              <span>Kê đơn trong Bệnh viện</span>
+            </label>
+            <label class="rx-mode-opt">
+              <input type="radio" name="rxPrescribeMode" id="rxModeOutside" value="outside">
+              <span>Kê đơn ngoài Bệnh viện</span>
+            </label>
+            <label class="rx-mode-opt">
+              <input type="radio" name="rxPrescribeMode" id="rxModeHandwritten" value="handwritten">
+              <span>In toa thuốc viết tay</span>
+            </label>
+          </div>
+
+          <div id="rxDigitalDrugArea">
           <div class="rx-sub">Tìm thuốc theo tên thương mại hoặc tên gốc/hoạt chất — nhập liều dùng — nhấn Enter ở ô cuối để thêm vào toa.</div>
 
           <div class="rx-drugname-row">
@@ -914,6 +942,18 @@
               <tbody id="rxTableBody"></tbody>
             </table>
             <div class="rx-empty" id="rxEmptyMsg">Chưa có thuốc nào trong toa.</div>
+          </div>
+          </div>
+
+          <div class="rx-handwritten-box" id="rxHandwrittenBox" style="display:none;">
+            <div class="field">
+              <label>Số dòng thuốc để trống</label>
+              <input type="number" id="rxHandwrittenLines" min="3" max="12" value="6">
+            </div>
+            <p class="rx-cloud-desc">
+              Khi in, toa sẽ chỉ có phần thông tin bệnh nhân + các dòng trống để bác sĩ <b>ghi tay</b>: mỗi dòng thuốc
+              gồm 1 dòng kẻ để ghi tên thuốc, và 1 dòng kẻ nhỏ hơn để ghi cách dùng (Sáng - Trưa - Chiều - Tối).
+            </p>
           </div>
 
           <div class="field rx-note-field">
