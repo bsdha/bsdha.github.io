@@ -13,8 +13,8 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/tuongtacthuoc': 'tuongtac', '/tuongtacthuoc/': 'tuongtac', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word', '/pdftools': 'pdftools', '/pdftools/': 'pdftools', '/chuyentuyen': 'chuyentuyen', '/chuyentuyen/': 'chuyentuyen', '/nghiviecbhxh': 'nghiviecbhxh', '/nghiviecbhxh/': 'nghiviecbhxh', '/giayravien': 'giayravien', '/giayravien/': 'giayravien' };
-  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', tuongtac: '/tuongtacthuoc', donthuoc: '/donthuoc', pdf2word: '/pdf2word', pdftools: '/pdftools', chuyentuyen: '/chuyentuyen', nghiviecbhxh: '/nghiviecbhxh', giayravien: '/giayravien' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/tuongtacthuoc': 'tuongtac', '/tuongtacthuoc/': 'tuongtac', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word', '/pdftools': 'pdftools', '/pdftools/': 'pdftools', '/chuyentuyen': 'chuyentuyen', '/chuyentuyen/': 'chuyentuyen', '/nghiviecbhxh': 'nghiviecbhxh', '/nghiviecbhxh/': 'nghiviecbhxh', '/giayravien': 'giayravien', '/giayravien/': 'giayravien', '/ghepcccd': 'cccd', '/ghepcccd/': 'cccd' };
+  const KEY_PATH = { home: '/', icd: '/icd10', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', tuongtac: '/tuongtacthuoc', donthuoc: '/donthuoc', pdf2word: '/pdf2word', pdftools: '/pdftools', chuyentuyen: '/chuyentuyen', nghiviecbhxh: '/nghiviecbhxh', giayravien: '/giayravien', cccd: '/ghepcccd' };
 
   function focusFirstField(key) {
     const pageEl = document.getElementById('page-' + key);
@@ -37,7 +37,7 @@
   // --- Khoá "chỉ dành cho nội bộ" cho 3 trang: Phiếu chuyển tuyến, Giấy nghỉ
   // việc BHXH, Giấy ra viện. Yêu cầu nhập mật khẩu cố định 1 lần mỗi phiên trình duyệt (sessionStorage — tự
   // yêu cầu lại khi tắt hẳn trình duyệt rồi mở lại, không hỏi lại khi chỉ chuyển tab/trang).
-  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh', 'giayravien'];
+  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh', 'giayravien', 'cccd'];
   const INTERNAL_PASSWORD = 'cs2';
   const UNLOCK_FLAG = 'bsdha_internal_unlocked';
   let lockModalEl = null;
