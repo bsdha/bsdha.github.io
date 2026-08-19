@@ -322,7 +322,7 @@
 
     function renderWidgetText() {
       if (!isUnlocked()) {
-        textEl.innerHTML = `${dayLabel(viewDate)}: <span class="kcb-hidden-link" id="kcbHiddenLink">đang ẩn</span>`;
+        textEl.innerHTML = `${dayLabel(viewDate)}: <span class="kcb-hidden-link" id="kcbHiddenLink">Hiển thị</span>`;
         const link = document.getElementById("kcbHiddenLink");
         if (link) link.addEventListener("click", (e) => { e.stopPropagation(); unlockThenReveal(); });
         return;
