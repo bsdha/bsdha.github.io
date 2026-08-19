@@ -1,6 +1,6 @@
 /* =====================================================================
    js/cccd-ghep-anh.js
-   Tính năng: GHÉP ẢNH CCCD ĐỂ IN
+   Tính năng: IN CCCD 2 MẶT
 
    - Mỗi hàng = 1 người, gồm 2 khung (mặt trước / mặt sau CCCD), đúng kích
      thước thật (85.6 x 54mm) để in ra cắt là vừa khít.
@@ -129,10 +129,10 @@
   /* ---------------------------------------------------------------- */
   root.innerHTML =
     '<div id="cdWrap">' +
-      '<h1>Ghép ảnh CCCD để in</h1>' +
-      '<p class="cd-sub">Ghép nhiều ảnh CCCD (mặt trước/sau) vào 1 trang A4 rồi in, cắt hàng ngang để kẹp hồ sơ — không cần chỉnh tay trong Word.</p>' +
+      '<h1>In CCCD 2 mặt</h1>' +
+      '<p class="cd-sub">Ghép CCCD (mặt trước/sau) vào 1 trang A4 rồi in, cắt hàng ngang để kẹp hồ sơ</p>' +
       '<div class="cd-toolbar">' +
-        '<button type="button" id="cdAddRow">+ Thêm người (hàng mới)</button>' +
+        '<button type="button" id="cdAddRow">Thêm hàng ảnh</button>' +
         '<button type="button" id="cdPrint" class="primary">🖨 In</button>' +
         '<button type="button" id="cdClear">Xóa hết, làm lại</button>' +
         '<span id="cdCvStatus" style="font-size:12px;color:var(--muted,#5a5a5a);margin-left:4px;"></span>' +
@@ -537,8 +537,8 @@
   root.querySelector("#cdClear").addEventListener("click", function () {
     if (!confirm("Xóa toàn bộ ảnh đã thêm?")) return;
     sheet.innerHTML = "";
-    for (var i = 0; i < 5; i++) sheet.appendChild(createRow());
+    sheet.appendChild(createRow());
   });
 
-  for (var i = 0; i < 5; i++) sheet.appendChild(createRow());
+  sheet.appendChild(createRow());
 })();
