@@ -1578,12 +1578,12 @@
   }
 
 /* ================= KÊ ĐƠN THUỐC ================= */
-.rx-wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
-.rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px; font-size: 13px; }
-.rx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.rx-wrap { max-width: 980px; margin: 0 auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 10px; }
+.rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; font-size: 13px; }
+.rx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
 .rx-panel-head h1 { margin: 0; font-size: 16.5px; font-weight: 800; color: #dc2626; }
-.rx-h2 { margin: 0 0 12px; font-size: 14.5px; font-weight: 800; color: #dc2626; }
-.rx-sub { color: var(--muted); font-size: 11.5px; margin: 8px 0 12px; }
+.rx-h2 { margin: 0 0 8px; font-size: 14.5px; font-weight: 800; color: #dc2626; }
+.rx-sub { color: var(--muted); font-size: 11.5px; margin: 4px 0 8px; }
 .rx-settings-btn {
   border: 1px solid var(--blue-dark, #1d4ed8); background: var(--blue, #2563eb); color: #fff;
   border-radius: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 700; cursor: pointer; font-family: inherit;
@@ -1653,13 +1653,13 @@
 }
 .rx-toast-inline.show { display: block; }
 .rx-logo-preview { max-height: 56px; max-width: 120px; border-radius: 6px; background: #fff; padding: 4px; }
-.rx-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.rx-label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 2px; }
 .rx-label-row label { margin-bottom: 0 !important; }
 .rx-inline-check { font-weight: 700; font-size: 11.5px; color: #000; margin-left: 0; cursor: pointer; }
-.rx-toggle-row-below { margin-top: 6px; margin-bottom: 0; justify-content: flex-start; }
-.rx-toggle-row-above { margin-top: 0; margin-bottom: 6px; }
+.rx-toggle-row-below { margin-top: 4px; margin-bottom: 0; justify-content: flex-start; }
+.rx-toggle-row-above { margin-top: 0; margin-bottom: 4px; }
 .rx-inline-check input { margin-right: 4px; vertical-align: middle; }
-.rx-address-new { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.rx-address-new { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .rx-uppercase-input { text-transform: uppercase; }
 .rx-row-move { display: inline-flex; flex-direction: column; gap: 2px; vertical-align: middle; margin-right: 4px; }
 .rx-row-move button {
@@ -1688,11 +1688,11 @@
 #rxExcelInputOutside { color: var(--muted); font-size: 12.5px; }
 
 /* ===== Chọn chế độ kê đơn (Trong BV / Ngoài BV / In toa viết tay) ===== */
-.rx-mode-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 16px; }
+.rx-mode-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
 .rx-mode-opt {
   display: flex; align-items: center; gap: 6px;
   border: 1.5px solid var(--border); border-radius: 999px;
-  padding: 7px 14px; font-size: 12.5px; font-weight: 600;
+  padding: 5px 12px; font-size: 12.5px; font-weight: 600;
   cursor: pointer; background: var(--surface); color: var(--text);
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
@@ -1700,33 +1700,33 @@
 .rx-mode-opt:hover { border-color: var(--blue); }
 .rx-mode-opt:has(input:checked) { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
 .rx-mode-opt.active { background: var(--blue-light); border-color: var(--blue); color: var(--blue); }
-@media (max-width: 700px) { .rx-mode-row { gap: 6px; } .rx-mode-opt { padding: 6px 11px; font-size: 12px; } }
+@media (max-width: 700px) { .rx-mode-row { gap: 5px; } .rx-mode-opt { padding: 5px 10px; font-size: 12px; } }
 
 .rx-handwritten-box {
   background: var(--surface-2); border: 1px dashed var(--border); border-radius: 12px;
-  padding: 14px; margin-bottom: 14px;
+  padding: 10px; margin-bottom: 10px;
 }
-.rx-handwritten-box .field { max-width: 220px; margin-bottom: 8px; }
+.rx-handwritten-box .field { max-width: 220px; margin-bottom: 6px; }
 
-.rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 4px; }
+.rx-form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 2px; }
 .rx-col-wide { grid-column: span 2; }
-.rx-drugname-row { display: grid; grid-template-columns: 1.4fr 1.4fr 0.8fr; gap: 8px; margin-bottom: 10px; }
+.rx-drugname-row { display: grid; grid-template-columns: 1.4fr 1.4fr 0.8fr; gap: 6px; margin-bottom: 6px; }
 @media (max-width: 700px) { .rx-drugname-row { grid-template-columns: 1fr; } }
-.rx-dosing-row { display: grid; grid-template-columns: 1.8fr repeat(6, 0.65fr) 1fr; gap: 6px; align-items: end; margin-bottom: 4px; }
+.rx-dosing-row { display: grid; grid-template-columns: 1.8fr repeat(6, 0.65fr) 1fr; gap: 5px; align-items: end; margin-bottom: 2px; }
 .rx-dosing-row .field label { font-size: 11px; }
-.rx-dosing-row .field input { padding: 6px 7px; font-size: 12px; }
-.rx-add-btn-field .rx-add-btn { width: 100%; padding: 9px 8px; font-size: 12.5px; height: 41px; box-sizing: border-box; border: 1.5px solid #000; border-radius: 9px; }
+.rx-dosing-row .field input { padding: 5px 6px; font-size: 12px; }
+.rx-add-btn-field .rx-add-btn { width: 100%; padding: 7px 8px; font-size: 12.5px; height: 34px; box-sizing: border-box; border: 1.5px solid #000; border-radius: 9px; }
 @media (max-width: 900px) { .rx-dosing-row { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 560px) { .rx-dosing-row { grid-template-columns: repeat(2, 1fr); } }
 @media (max-width: 780px) {
   .rx-form-grid { grid-template-columns: repeat(2, 1fr); }
   .rx-col-wide { grid-column: span 2; }
 }
-.rx-form-grid .field label, .rx-drugname-row .field label, .rx-dosing-row .field label, .rx-patient-grid .field label { display: block; font-size: 12px; font-weight: 700; color: #000000; margin-bottom: 4px; }
+.rx-form-grid .field label, .rx-drugname-row .field label, .rx-dosing-row .field label, .rx-patient-grid .field label { display: block; font-size: 11.5px; font-weight: 700; color: #000000; margin-bottom: 2px; }
 .rx-form-grid .field input:not([type="checkbox"]), .rx-settings-grid .field input:not([type="checkbox"]), .rx-cloud-grid .field input:not([type="checkbox"]), .rx-patient-grid .field input:not([type="checkbox"]), .rx-patient-grid .field select,
 .rx-drugname-row .field input:not([type="checkbox"]), .rx-dosing-row .field input:not([type="checkbox"]) {
-  width: 100%; background: var(--bg); border: 1.5px solid #000000; border-radius: 9px;
-  padding: 9px 10px; color: var(--text); font-size: 14px; font-family: inherit;
+  width: 100%; background: var(--bg); border: 1.5px solid #000000; border-radius: 8px;
+  padding: 6px 9px; color: var(--text); font-size: 13.5px; font-family: inherit;
 }
 .rx-form-grid .field input:focus, .rx-settings-grid .field input:focus, .rx-cloud-grid .field input:focus, .rx-patient-grid .field input:focus, .rx-patient-grid .field select:focus,
 .rx-drugname-row .field input:focus, .rx-dosing-row .field input:focus {
@@ -1763,14 +1763,14 @@
 .rx-btn-danger:hover { background: #b91c1c; }
 .rx-btn-print { background: var(--blue); color: #ffffff; }
 
-.rx-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.rx-patient-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
 @media (max-width: 700px) { .rx-patient-grid { grid-template-columns: 1fr 1fr; } }
 .rx-patient-grid .field, .rx-form-grid .field, .rx-drugname-row .field, .rx-dosing-row .field, .rx-vitals-row .field { min-width: 0; }
 .rx-col-full { grid-column: 1 / -1; }
-.rx-vitals-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.rx-vitals-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
 @media (max-width: 900px) { .rx-vitals-row { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 560px) { .rx-vitals-row { grid-template-columns: repeat(2, 1fr); } }
-.rx-patient-grid .field label { display: block; font-size: 12px; font-weight: 700; color: #000000; margin-bottom: 4px; }
+.rx-patient-grid .field label { display: block; font-size: 11.5px; font-weight: 700; color: #000000; margin-bottom: 2px; }
 .rx-bp-wrap { display: flex; align-items: center; gap: 4px; }
 .rx-bp-wrap input { min-width: 0; flex: 1 1 0; text-align: center; }
 .rx-bp-wrap .rx-bp-slash { font-weight: 600; color: #000; }
