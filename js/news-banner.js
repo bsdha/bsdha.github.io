@@ -149,15 +149,45 @@
     return `<span class="nb-dot-sep">•</span>`;
   }
 
+  // Tính lại tốc độ chạy chữ (dựa theo scrollWidth) và áp dụng vào biến CSS
+  // --nb-duration. CHỈ đo khi banner đang thực sự hiển thị trên màn hình:
+  // nếu người dùng đang ở trang khác (trang chủ bị display:none theo SPA
+  // router) thì scrollWidth luôn trả về 0, khiến tốc độ bị tính sai thành mức
+  // sàn 24s (nhanh hơn hẳn tốc độ ~40-90s bình thường) — đây chính là lý do
+  // marquee đột nhiên "chạy rất nhanh" sau khi loadBanner() tự làm mới định kỳ
+  // (mỗi 15 phút) trong lúc người dùng không ở trang chủ. Khi đang ẩn, bỏ qua
+  // và giữ nguyên tốc độ cũ thay vì ghi đè bằng số đo sai.
+  function applyDuration(track) {
+    if (!track) return;
+    const banner = track.closest(".news-banner");
+    if (!banner) return;
+    if (track.offsetParent === null) return; // đang ẩn -> không đo, giữ tốc độ hiện tại
+    const durationSeconds = Math.max(24, Math.round(track.scrollWidth / 55));
+    banner.style.setProperty("--nb-duration", durationSeconds + "s");
+  }
+
   function render(track, htmlPieces) {
     if (!track || !htmlPieces.length) return;
     const joined = htmlPieces.join(sepHTML());
     // Nhân đôi nội dung để loop mượt (animation dịch đúng -50%)
     track.innerHTML = joined + sepHTML() + joined + sepHTML();
-    const durationSeconds = Math.max(24, Math.round(track.scrollWidth / 55));
-    const banner = track.closest(".news-banner");
-    if (banner) banner.style.setProperty("--nb-duration", durationSeconds + "s");
+    applyDuration(track);
   }
+
+  // Khi người dùng quay lại trang chủ (banner hiện ra trở lại sau khi bị ẩn),
+  // tính lại tốc độ ngay lập tức thay vì đợi tới lần làm mới định kỳ tiếp theo
+  // (có thể mất tới 15 phút, khiến marquee chạy sai tốc độ suốt thời gian đó).
+  document.addEventListener("DOMContentLoaded", () => {
+    const homePageEl = document.getElementById("page-home");
+    if (homePageEl && window.MutationObserver) {
+      const mo = new MutationObserver(() => {
+        if (homePageEl.classList.contains("active")) {
+          applyDuration(document.getElementById("nbTrack"));
+        }
+      });
+      mo.observe(homePageEl, { attributes: true, attributeFilter: ["class"] });
+    }
+  });
 
   // ===== Dòng số liệu: hiện từng số liệu, canh giữa, mờ dần rồi đổi số khác =====
   let statsCycleTimer = null;
