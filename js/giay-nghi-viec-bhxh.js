@@ -329,7 +329,15 @@
     d.ngayCapCCCD = grab(/Ngày cấp:?\s*([0-9\/]+)/i, t);
     d.donViLamViec = dedupeRepeat(stripEmbeddedLabels(grab(/Đơn vị làm việc:?\s*(.+?)\s+(?:Ngày khám|II\.)/i, t)));
     d.ngayKham = capitalizeFirst(grab(/Ngày khám bệnh, chữa bệnh:?\s*(ngày[^;.]+?năm\s*[0-9]{4})/i, t));
-    d.chanDoan = fixTrailingCapitalI(dedupeRepeat(stripEmbeddedLabels(grab(/phương pháp điều trị\s*(.+?)\s*Số ngày nghỉ/i, t))));
+    // Ghi chú: file nguồn (PDF/Word) của BV thường in giấy này thành 2 liên
+    // trên cùng 1 trang => khi đọc text, đoạn "II. Chẩn đoán và phương pháp
+    // điều trị" và nội dung chẩn đoán có thể xuất hiện lặp lại 2 lần, xen kẽ
+    // với các trường khác ở giữa (không phải lặp dính liền để dedupeRepeat xử
+    // lý được). Vì vậy khi tìm nhãn "phương pháp điều trị", ta chủ động nhảy
+    // tới LẦN XUẤT HIỆN CUỐI CÙNG của nhãn này (ngay trước "Số ngày nghỉ")
+    // rồi mới lấy nội dung phía sau, để không bị dính thêm phần dư ở giữa
+    // hay bị lấy trùng 2 lần đoạn chẩn đoán.
+    d.chanDoan = fixTrailingCapitalI(dedupeRepeat(stripEmbeddedLabels(grab(/phương pháp điều trị\s*(?:[\s\S]*phương pháp điều trị\s*)?(.+?)\s*Số ngày nghỉ/i, t))));
     d.soNgayNghi = grab(/Số ngày nghỉ:?\s*([0-9]+)/i, t);
     d.tuNgay = grab(/Từ ngày\s*([0-9\/]+)/i, t);
     d.denNgay = grab(/đến hết ngày\s*([0-9\/]+)/i, t);
