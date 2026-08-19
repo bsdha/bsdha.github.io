@@ -1741,6 +1741,7 @@
       if (vWeight) vitalsParts.push(`Cân nặng: ${vWeight} kg`);
       const note = $('rxNote').value.trim();
       const dateWords = formatVNDateWords($('rxDate').value) || formatVNDateWords(todayLocalISO());
+      const blankDateSign = isHandwritten && !!$('rxHandwrittenBlankDate') && $('rxHandwrittenBlankDate').checked;
 
       // ---------- Tạo PDF bằng văn bản thật (vector, nhẹ, sắc nét, copy được chữ) ----------
       const { jsPDF } = window.jspdf;
@@ -1967,18 +1968,33 @@
       const signX = marginX + contentWidth * 0.55;
       const signW = contentWidth * 0.45;
       setF('normal', 10);
-      let t = dateWords;
-      let tw = pdf.getTextWidth(t);
-      textAt(t, signX + (signW - tw) / 2, y);
+      if (blankDateSign) {
+        // Để trống ngày khám: in nhãn "Ngày ..... tháng ..... năm ........." để bác sĩ tự ghi tay
+        const dateLabel = 'Ngày       tháng       năm';
+        const dlW = pdf.getTextWidth(dateLabel + '  ');
+        const dateBlankW = Math.max(14, signW - dlW);
+        const dateStartX = signX + (signW - (dlW + dateBlankW)) / 2;
+        textAt(dateLabel, dateStartX, y);
+        dottedBlank(dateStartX + dlW, y, dateBlankW, 10);
+      } else {
+        let t = dateWords;
+        let tw = pdf.getTextWidth(t);
+        textAt(t, signX + (signW - tw) / 2, y);
+      }
       y += 5.5;
       setF('bold', 10.5);
-      t = 'Bác sĩ khám bệnh';
-      tw = pdf.getTextWidth(t);
+      let t = 'Bác sĩ khám bệnh';
+      let tw = pdf.getTextWidth(t);
       textAt(t, signX + (signW - tw) / 2, y);
       y += 22;
       setF('bold', 10.5);
-      tw = pdf.getTextWidth(doctor);
-      textAt(doctor, signX + (signW - tw) / 2, y);
+      if (blankDateSign) {
+        // Để trống phần ký tên: chỉ để đường chấm để bác sĩ tự ký & ghi tên
+        dottedBlank(signX, y, signW, 10.5);
+      } else {
+        tw = pdf.getTextWidth(doctor);
+        textAt(doctor, signX + (signW - tw) / 2, y);
+      }
 
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
