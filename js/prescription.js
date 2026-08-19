@@ -1786,7 +1786,7 @@
       function dottedBlank(x, yy, w, size) {
         if (w <= 0) return;
         setF('normal', size);
-        const unit = '.  ';
+        const unit = '. ';
         const unitW = pdf.getTextWidth(unit);
         if (unitW <= 0) return;
         const count = Math.max(1, Math.floor(w / unitW));
