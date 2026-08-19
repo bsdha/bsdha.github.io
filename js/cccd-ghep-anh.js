@@ -223,34 +223,33 @@
     var bg = [0, 0, 0];
     corners.forEach(function (c) { bg[0] += c[0] / 4; bg[1] += c[1] / 4; bg[2] += c[2] / 4; });
 
-    var THRESH = 42;
+    var THRESH = 26;
     function diff(x, y) {
       var c = px(x, y);
       return Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]);
     }
     function rowHasContent(y) {
-      var hit = 0, step = Math.max(1, Math.floor(w / 200));
+      var hit = 0, step = Math.max(1, Math.floor(w / 300));
       for (var x = 0; x < w; x += step) { if (diff(x, y) > THRESH) hit++; }
-      return hit > (w / step) * 0.06;
+      return hit > (w / step) * 0.03;
     }
     function colHasContent(x) {
-      var hit = 0, step = Math.max(1, Math.floor(h / 200));
+      var hit = 0, step = Math.max(1, Math.floor(h / 300));
       for (var y = 0; y < h; y += step) { if (diff(x, y) > THRESH) hit++; }
-      return hit > (h / step) * 0.06;
+      return hit > (h / step) * 0.03;
     }
 
     var top = 0, bottom = h - 1, left = 0, right = w - 1;
-    while (top < h * 0.4 && !rowHasContent(top)) top++;
-    while (bottom > h * 0.6 && !rowHasContent(bottom)) bottom--;
-    while (left < w * 0.4 && !colHasContent(left)) left++;
-    while (right > w * 0.6 && !colHasContent(right)) right--;
+    while (top < h * 0.45 && !rowHasContent(top)) top++;
+    while (bottom > h * 0.55 && !rowHasContent(bottom)) bottom--;
+    while (left < w * 0.45 && !colHasContent(left)) left++;
+    while (right > w * 0.55 && !colHasContent(right)) right--;
 
-    if (right - left < w * 0.5 || bottom - top < h * 0.5) {
+    if (right - left < w * 0.4 || bottom - top < h * 0.4) {
       callback(img.src); return;
     }
-    var pad = Math.round(Math.min(w, h) * 0.01);
-    left = Math.max(0, left - pad); top = Math.max(0, top - pad);
-    right = Math.min(w - 1, right + pad); bottom = Math.min(h - 1, bottom + pad);
+    // Không thêm đệm — cắt sát mép nội dung để không sót viền nền thừa.
+    // (finish() sẽ zoom thêm một chút để bù phần rìa mờ/khử nhiễu còn sót).
 
     var cw = right - left, ch = bottom - top;
     var out = document.createElement("canvas");
@@ -294,7 +293,7 @@
       for (var i = 0; i < contours.size(); i++) {
         var cnt = contours.get(i);
         var area = cv.contourArea(cnt);
-        if (area < imgArea * 0.15) { continue; }
+        if (area < imgArea * 0.08) { continue; }
 
         // Thử xấp xỉ thành tứ giác (4 góc thẻ) -> cho phép nắn phối cảnh chuẩn
         var peri = cv.arcLength(cnt, true);
@@ -383,7 +382,7 @@
 
       if (bestIdx2 !== -1) {
         var box = cv.boundingRect(contours2.get(bestIdx2));
-        var pad = Math.round(Math.min(box.width, box.height) * 0.015);
+        var pad = -Math.round(Math.min(box.width, box.height) * 0.01);
         var x = Math.max(0, box.x - pad), y = Math.max(0, box.y - pad);
         var w2 = Math.min(rotated.cols - x, box.width + pad * 2);
         var h2 = Math.min(rotated.rows - y, box.height + pad * 2);
@@ -449,7 +448,11 @@
               var slotRect = slot.getBoundingClientRect();
               var ratioW = slotRect.width / img.naturalWidth;
               var ratioH = slotRect.height / img.naturalHeight;
-              var base = Math.max(ratioW, ratioH);
+              // Zoom thêm ~7% so với mức "vừa khít khung" (cover) để che nốt
+              // viền mờ còn sót lại khi thuật toán cắt tự động chưa tuyệt đối
+              // sát mép — người dùng vẫn có thể bấm "−" để thu nhỏ lại nếu muốn
+              // thấy trọn thẻ.
+              var base = Math.max(ratioW, ratioH) * 1.07;
               img.style.width = img.naturalWidth + "px";
               img.style.height = img.naturalHeight + "px";
               tf.scale = base; tf.rotate = 0; tf.x = 0; tf.y = 0;
@@ -535,7 +538,7 @@
         var slotRect = slot.getBoundingClientRect();
         var ratioW = slotRect.width / img.naturalWidth;
         var ratioH = slotRect.height / img.naturalHeight;
-        tf.scale = Math.max(ratioW, ratioH); tf.rotate = 0; tf.x = 0; tf.y = 0; rotRange.value = 0;
+        tf.scale = Math.max(ratioW, ratioH) * 1.07; tf.rotate = 0; tf.x = 0; tf.y = 0; rotRange.value = 0;
         applyTransform();
       });
 
