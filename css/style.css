@@ -1361,7 +1361,7 @@
     color: var(--green);
     border: 1px solid var(--green-border);
   }
-  .main-content { flex: 1; min-width: 0; }
+  .main-content { flex: 1; min-width: 0; overflow-x: hidden; }
   .page { display: none; }
   .page.active { display: block; }
 
@@ -1970,6 +1970,11 @@
       #page-sinhhieu #shSheetsQuick:hover{background:#e6eae4;}
       #page-sinhhieu #shSheetsQuick:focus{outline:1px solid var(--sh-accent);}
 
+      #page-sinhhieu #shSheets{
+        overflow-x:auto;
+        -webkit-overflow-scrolling:touch;
+        padding-bottom:4px;
+      }
       #page-sinhhieu .sh-sheet{
         background:#fff;
         margin:0 auto 30px auto;
