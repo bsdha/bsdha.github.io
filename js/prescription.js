@@ -1969,13 +1969,29 @@
       const signW = contentWidth * 0.45;
       setF('normal', 10);
       if (blankDateSign) {
-        // Để trống ngày khám: in nhãn "Ngày ..... tháng ..... năm ........." để bác sĩ tự ghi tay
-        const dateLabel = 'Ngày       tháng       năm';
-        const dlW = pdf.getTextWidth(dateLabel + '  ');
-        const dateBlankW = Math.max(14, signW - dlW);
-        const dateStartX = signX + (signW - (dlW + dateBlankW)) / 2;
-        textAt(dateLabel, dateStartX, y);
-        dottedBlank(dateStartX + dlW, y, dateBlankW, 10);
+        // Để trống ngày khám: in "Ngày ..... tháng ..... năm ........." với 3 đoạn chấm xen giữa
+        const seg1 = 'Ngày';
+        const seg2 = 'tháng';
+        const seg3 = 'năm';
+        const gap = 2.2; // mm khoảng cách giữa chữ và đoạn chấm liền sau
+        const w1 = pdf.getTextWidth(seg1);
+        const w2 = pdf.getTextWidth(seg2);
+        const w3 = pdf.getTextWidth(seg3);
+        // Chia đều phần còn lại (sau khi trừ chữ + khoảng gap) cho 3 đoạn chấm,
+        // đoạn chấm cuối (sau "năm") dài hơn một chút để đủ chỗ ghi năm 4 chữ số.
+        const textW = w1 + w2 + w3;
+        const totalGaps = gap * 3;
+        const dotsTotalW = Math.max(18, signW - textW - totalGaps);
+        const dot1W = dotsTotalW * 0.28;
+        const dot2W = dotsTotalW * 0.28;
+        const dot3W = dotsTotalW - dot1W - dot2W;
+        let dx = signX + (signW - (textW + totalGaps + dotsTotalW)) / 2;
+        textAt(seg1, dx, y); dx += w1 + gap;
+        dottedBlank(dx, y, dot1W, 10); dx += dot1W + gap;
+        textAt(seg2, dx, y); dx += w2 + gap;
+        dottedBlank(dx, y, dot2W, 10); dx += dot2W + gap;
+        textAt(seg3, dx, y); dx += w3 + gap;
+        dottedBlank(dx, y, dot3W, 10);
       } else {
         let t = dateWords;
         let tw = pdf.getTextWidth(t);
