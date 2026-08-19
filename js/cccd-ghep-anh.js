@@ -85,57 +85,6 @@
     tryNext();
   })();
 
-  /* ---------------------------------------------------------------- */
-  /* 0b. Nạp Tesseract.js để nhận diện chữ, xác định đúng chiều ảnh    */
-  /*     (0/90/180/270°) rồi tự xoay lại cho đúng thay vì xoay ngược. */
-  /* ---------------------------------------------------------------- */
-  var ocrReady = false;
-  var ocrFailed = false;
-
-  (function loadTesseract() {
-    if (window.Tesseract) { ocrReady = true; return; }
-    var s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-    s.async = true;
-    s.onload = function () {
-      if (window.Tesseract) { ocrReady = true; }
-      else { ocrFailed = true; }
-    };
-    s.onerror = function () { ocrFailed = true; };
-    document.head.appendChild(s);
-  })();
-
-  // Nhận diện chữ trên ảnh để biết cần xoay thêm bao nhiêu độ (0/90/180/270)
-  // cho đúng chiều đọc, rồi xoay vật lý ảnh (xoay canvas) theo đúng hướng đó.
-  // Nếu Tesseract chưa tải xong / lỗi / không đủ tin cậy -> giữ nguyên ảnh,
-  // người dùng vẫn có nút xoay tay như cũ.
-  function detectOrientationAndRotate(dataUrl, callback) {
-    if (!ocrReady || !window.Tesseract || !window.Tesseract.detect) { callback(dataUrl); return; }
-    window.Tesseract.detect(dataUrl).then(function (result) {
-      var data = result && result.data;
-      var deg = data && typeof data.orientation_degrees === "number" ? data.orientation_degrees : 0;
-      var conf = data && typeof data.orientation_confidence === "number" ? data.orientation_confidence : 0;
-      // Chỉ tin khi độ tin cậy đủ cao, và chỉ xoay theo bội số 90° (0/90/180/270)
-      var snapped = ((Math.round(deg / 90) * 90) % 360 + 360) % 360;
-      if (conf < 1 || snapped === 0) { callback(dataUrl); return; }
-
-      var img2 = new Image();
-      img2.onload = function () {
-        var w = img2.naturalWidth, h = img2.naturalHeight;
-        var swap = (snapped === 90 || snapped === 270);
-        var out = document.createElement("canvas");
-        out.width = swap ? h : w;
-        out.height = swap ? w : h;
-        var ctx2 = out.getContext("2d");
-        ctx2.translate(out.width / 2, out.height / 2);
-        ctx2.rotate((snapped * Math.PI) / 180);
-        ctx2.drawImage(img2, -w / 2, -h / 2);
-        callback(out.toDataURL("image/jpeg", 0.95));
-      };
-      img2.onerror = function () { callback(dataUrl); };
-      img2.src = dataUrl;
-    }).catch(function () { callback(dataUrl); });
-  }
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS (tiền tố "cd-" để không đụng CSS các module khác)          */
@@ -189,15 +138,14 @@
         '<span id="cdCvStatus" style="font-size:12px;color:var(--muted,#5a5a5a);margin-left:4px;"></span>' +
       '</div>' +
       '<p class="cd-help">Mỗi hàng dành cho 1 người: khung trái là <b>mặt trước</b>, khung phải là <b>mặt sau</b> CCCD. ' +
-      'Ảnh sẽ được tự động cắt bớt viền dư quanh mép, phóng to vừa khung, và nhận diện chữ để tự xoay đúng chiều đọc. ' +
-      'Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
+      'Ảnh sẽ được tự động cắt bớt viền dư quanh mép. Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
       'kéo chuột trong khung để dịch ảnh, nút +/− để phóng to/thu nhỏ. Khi in, chỉ trang A4 được in.</p>' +
       '<div class="cd-sheet" id="cdSheet"></div>' +
     '</div>';
 
   var sheet = root.querySelector("#cdSheet");
   cvStatusEl = root.querySelector("#cdCvStatus");
-  setCvStatus("Đang tải OpenCV.js + nhận diện chữ để tự động xoay thẳng ảnh…", null);
+  setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
 
   /* ---------------------------------------------------------------- */
   /* 3. Auto-trim viền dư quanh mép ảnh                                */
@@ -223,33 +171,34 @@
     var bg = [0, 0, 0];
     corners.forEach(function (c) { bg[0] += c[0] / 4; bg[1] += c[1] / 4; bg[2] += c[2] / 4; });
 
-    var THRESH = 26;
+    var THRESH = 42;
     function diff(x, y) {
       var c = px(x, y);
       return Math.abs(c[0] - bg[0]) + Math.abs(c[1] - bg[1]) + Math.abs(c[2] - bg[2]);
     }
     function rowHasContent(y) {
-      var hit = 0, step = Math.max(1, Math.floor(w / 300));
+      var hit = 0, step = Math.max(1, Math.floor(w / 200));
       for (var x = 0; x < w; x += step) { if (diff(x, y) > THRESH) hit++; }
-      return hit > (w / step) * 0.03;
+      return hit > (w / step) * 0.06;
     }
     function colHasContent(x) {
-      var hit = 0, step = Math.max(1, Math.floor(h / 300));
+      var hit = 0, step = Math.max(1, Math.floor(h / 200));
       for (var y = 0; y < h; y += step) { if (diff(x, y) > THRESH) hit++; }
-      return hit > (h / step) * 0.03;
+      return hit > (h / step) * 0.06;
     }
 
     var top = 0, bottom = h - 1, left = 0, right = w - 1;
-    while (top < h * 0.45 && !rowHasContent(top)) top++;
-    while (bottom > h * 0.55 && !rowHasContent(bottom)) bottom--;
-    while (left < w * 0.45 && !colHasContent(left)) left++;
-    while (right > w * 0.55 && !colHasContent(right)) right--;
+    while (top < h * 0.4 && !rowHasContent(top)) top++;
+    while (bottom > h * 0.6 && !rowHasContent(bottom)) bottom--;
+    while (left < w * 0.4 && !colHasContent(left)) left++;
+    while (right > w * 0.6 && !colHasContent(right)) right--;
 
-    if (right - left < w * 0.4 || bottom - top < h * 0.4) {
+    if (right - left < w * 0.5 || bottom - top < h * 0.5) {
       callback(img.src); return;
     }
-    // Không thêm đệm — cắt sát mép nội dung để không sót viền nền thừa.
-    // (finish() sẽ zoom thêm một chút để bù phần rìa mờ/khử nhiễu còn sót).
+    var pad = Math.round(Math.min(w, h) * 0.01);
+    left = Math.max(0, left - pad); top = Math.max(0, top - pad);
+    right = Math.min(w - 1, right + pad); bottom = Math.min(h - 1, bottom + pad);
 
     var cw = right - left, ch = bottom - top;
     var out = document.createElement("canvas");
@@ -293,7 +242,7 @@
       for (var i = 0; i < contours.size(); i++) {
         var cnt = contours.get(i);
         var area = cv.contourArea(cnt);
-        if (area < imgArea * 0.08) { continue; }
+        if (area < imgArea * 0.15) { continue; }
 
         // Thử xấp xỉ thành tứ giác (4 góc thẻ) -> cho phép nắn phối cảnh chuẩn
         var peri = cv.arcLength(cnt, true);
@@ -382,7 +331,7 @@
 
       if (bestIdx2 !== -1) {
         var box = cv.boundingRect(contours2.get(bestIdx2));
-        var pad = -Math.round(Math.min(box.width, box.height) * 0.01);
+        var pad = Math.round(Math.min(box.width, box.height) * 0.015);
         var x = Math.max(0, box.x - pad), y = Math.max(0, box.y - pad);
         var w2 = Math.min(rotated.cols - x, box.width + pad * 2);
         var h2 = Math.min(rotated.rows - y, box.height + pad * 2);
@@ -448,11 +397,7 @@
               var slotRect = slot.getBoundingClientRect();
               var ratioW = slotRect.width / img.naturalWidth;
               var ratioH = slotRect.height / img.naturalHeight;
-              // Zoom thêm ~7% so với mức "vừa khít khung" (cover) để che nốt
-              // viền mờ còn sót lại khi thuật toán cắt tự động chưa tuyệt đối
-              // sát mép — người dùng vẫn có thể bấm "−" để thu nhỏ lại nếu muốn
-              // thấy trọn thẻ.
-              var base = Math.max(ratioW, ratioH) * 1.07;
+              var base = Math.max(ratioW, ratioH);
               img.style.width = img.naturalWidth + "px";
               img.style.height = img.naturalHeight + "px";
               tf.scale = base; tf.rotate = 0; tf.x = 0; tf.y = 0;
@@ -465,13 +410,8 @@
           // Ưu tiên OpenCV.js (tự xoay thẳng + cắt sát viền). Nếu chưa sẵn sàng
           // hoặc không tìm được viền thẻ đáng tin -> rơi về autoTrim (cắt viền cơ bản).
           autoDeskewCrop(tmp, function (cvResult) {
-            function afterCrop(src) {
-              // Sau khi đã cắt viền/xoay thẳng, nhận diện chữ để biết đúng
-              // chiều đọc (0/90/180/270°) rồi tự xoay lại, tránh xoay ngược.
-              detectOrientationAndRotate(src, finish);
-            }
-            if (cvResult) { afterCrop(cvResult); }
-            else { autoTrim(tmp, afterCrop); }
+            if (cvResult) { finish(cvResult); }
+            else { autoTrim(tmp, finish); }
           });
         };
         tmp.src = e.target.result;
@@ -538,7 +478,7 @@
         var slotRect = slot.getBoundingClientRect();
         var ratioW = slotRect.width / img.naturalWidth;
         var ratioH = slotRect.height / img.naturalHeight;
-        tf.scale = Math.max(ratioW, ratioH) * 1.07; tf.rotate = 0; tf.x = 0; tf.y = 0; rotRange.value = 0;
+        tf.scale = Math.max(ratioW, ratioH); tf.rotate = 0; tf.x = 0; tf.y = 0; rotRange.value = 0;
         applyTransform();
       });
 
