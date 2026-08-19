@@ -29,55 +29,20 @@
   var CARD_H_MM = 54;
 
   /* ---------------------------------------------------------------- */
-  /* 0. Nạp OpenCV.js + Tesseract.js không đồng bộ, có % tiến trình,   */
-  /*    khóa (mờ) thao tác cho tới khi tải xong hoặc thất bại          */
+  /* 0. Nạp OpenCV.js không đồng bộ (không chặn giao diện)             */
   /* ---------------------------------------------------------------- */
-  var cvReady = false, cvFailed = false, cvPercent = 0;
-  var ocrReady = false, ocrFailed = false, ocrPercent = 0;
-  var ocrWorker = null;
-  var loadingBannerEl = null, loadingTextEl = null, loadingFillEl = null, loadingOverlayEl = null;
+  var cvReady = false;
+  var cvFailed = false;
+  var cvStatusEl = null; // gán sau khi dựng toolbar
 
-  function setLoadingUiRefs(banner, text, fill, overlay) {
-    loadingBannerEl = banner; loadingTextEl = text; loadingFillEl = fill; loadingOverlayEl = overlay;
-  }
-
-  function updateLoadingUi() {
-    var bothDone = (cvReady || cvFailed) && (ocrReady || ocrFailed);
-    var pct = Math.round((cvPercent + ocrPercent) / 2);
-    if (loadingFillEl) loadingFillEl.style.width = pct + "%";
-
-    if (!bothDone) {
-      if (loadingTextEl) loadingTextEl.textContent = "Đang tải công cụ hỗ trợ, vui lòng chờ trước khi sử dụng! (" + pct + "%)";
-      if (loadingBannerEl) { loadingBannerEl.style.display = "flex"; loadingBannerEl.className = "cd-loading-banner"; }
-      setToolbarDisabled(true);
-      return;
-    }
-
-    // Đã xong (thành công hoặc thất bại 1 phần) -> mở khóa thao tác
-    setToolbarDisabled(false);
-    if (cvReady && ocrReady) {
-      if (loadingTextEl) loadingTextEl.textContent = "Đã tải xong công cụ hỗ trợ, bạn có thể sử dụng!";
-      if (loadingBannerEl) loadingBannerEl.className = "cd-loading-banner cd-loading-ok";
-    } else {
-      if (loadingTextEl) loadingTextEl.textContent = "Đã sẵn sàng — một phần công cụ hỗ trợ không tải được, dùng chế độ cơ bản.";
-      if (loadingBannerEl) loadingBannerEl.className = "cd-loading-banner cd-loading-warn";
-    }
-    // Tự ẩn banner sau vài giây cho gọn giao diện
-    setTimeout(function () {
-      if (loadingBannerEl) loadingBannerEl.style.display = "none";
-    }, 3500);
-  }
-
-  function setToolbarDisabled(disabled) {
-    if (loadingOverlayEl) loadingOverlayEl.style.display = disabled ? "block" : "none";
-    ["cdAddRow", "cdPrint", "cdClear"].forEach(function (id) {
-      var el = root.querySelector("#" + id);
-      if (el) el.disabled = disabled;
-    });
+  function setCvStatus(text, ok) {
+    if (!cvStatusEl) return;
+    cvStatusEl.textContent = text;
+    cvStatusEl.style.color = ok === true ? "var(--green,#1f9c8f)" : (ok === false ? "var(--red,#d8433f)" : "var(--muted,#5a5a5a)");
   }
 
   (function loadOpenCV() {
-    if (window.cv && window.cv.Mat) { cvReady = true; cvPercent = 100; updateLoadingUi(); return; }
+    if (window.cv && window.cv.Mat) { cvReady = true; return; }
 
     // Ưu tiên jsDelivr: CDN thương mại, có cache + CORS header đầy đủ, ổn
     // định hơn nhiều so với docs.opencv.org (server tài liệu OpenCV, hay bị
@@ -91,24 +56,23 @@
 
     function tryNext() {
       if (idx >= SOURCES.length) {
-        cvFailed = true; cvPercent = 100; updateLoadingUi();
+        cvFailed = true;
+        setCvStatus("Không tải được OpenCV.js (mạng chặn?) — dùng chế độ cắt viền cơ bản", false);
         return;
       }
       var src = SOURCES[idx++];
-      cvPercent = 15; updateLoadingUi();
+      setCvStatus("Đang tải OpenCV.js (" + idx + "/" + SOURCES.length + ")…", null);
       var s = document.createElement("script");
       s.src = src;
       s.async = true;
       s.onload = function () {
-        cvPercent = 55; updateLoadingUi();
         function waitReady(tries) {
-          if (window.cv && window.cv.Mat) { cvReady = true; cvPercent = 100; updateLoadingUi(); return; }
+          if (window.cv && window.cv.Mat) { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); return; }
           if (tries <= 0) { s.remove(); tryNext(); return; } // load xong nhưng không init được -> thử nguồn kế
-          cvPercent = Math.min(95, 55 + Math.round((50 - tries) / 50 * 40)); updateLoadingUi();
           setTimeout(function () { waitReady(tries - 1); }, 200);
         }
         if (window.cv) {
-          window.cv["onRuntimeInitialized"] = function () { cvReady = true; cvPercent = 100; updateLoadingUi(); };
+          window.cv["onRuntimeInitialized"] = function () { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); };
           waitReady(50); // ~10s chờ WASM init trước khi bỏ cuộc
         } else {
           tryNext();
@@ -121,106 +85,19 @@
     tryNext();
   })();
 
-  /* ---------------------------------------------------------------- */
-  /* 0b. Nạp Tesseract.js để NHẬN DIỆN CHIỀU CHỮ (OSD) và tự xoay đúng */
-  /* ---------------------------------------------------------------- */
-  (function loadTesseract() {
-    function startWorker() {
-      try {
-        window.Tesseract.createWorker("osd", 1, {
-          logger: function (m) {
-            if (m && typeof m.progress === "number") {
-              // Các bước tải model/ngôn ngữ chiếm phần lớn thời gian chờ
-              ocrPercent = Math.max(ocrPercent, 40 + Math.round(m.progress * 55));
-              updateLoadingUi();
-            }
-          }
-        }).then(function (worker) {
-          ocrWorker = worker; ocrReady = true; ocrPercent = 100; updateLoadingUi();
-        }).catch(function () {
-          ocrFailed = true; ocrPercent = 100; updateLoadingUi();
-        });
-      } catch (e) {
-        ocrFailed = true; ocrPercent = 100; updateLoadingUi();
-      }
-    }
-
-    if (window.Tesseract) { ocrPercent = 35; updateLoadingUi(); startWorker(); return; }
-    ocrPercent = 5; updateLoadingUi();
-    var s = document.createElement("script");
-    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
-    s.async = true;
-    s.onload = function () {
-      if (window.Tesseract) { ocrPercent = 35; updateLoadingUi(); startWorker(); }
-      else { ocrFailed = true; ocrPercent = 100; updateLoadingUi(); }
-    };
-    s.onerror = function () { ocrFailed = true; ocrPercent = 100; updateLoadingUi(); };
-    document.head.appendChild(s);
-  })();
-
-  // Xoay 1 dataURL đi bội số của 90 độ (0/90/180/270), trả về dataURL mới qua callback
-  function rotateDataUrlBy90(dataUrl, degrees, callback) {
-    var deg = ((Math.round(degrees / 90) * 90) % 360 + 360) % 360;
-    if (deg === 0) { callback(dataUrl); return; }
-    var im = new Image();
-    im.onload = function () {
-      var swap = (deg === 90 || deg === 270);
-      var cw = swap ? im.naturalHeight : im.naturalWidth;
-      var ch = swap ? im.naturalWidth : im.naturalHeight;
-      var c = document.createElement("canvas");
-      c.width = cw; c.height = ch;
-      var ctx = c.getContext("2d");
-      ctx.translate(cw / 2, ch / 2);
-      ctx.rotate(deg * Math.PI / 180);
-      ctx.drawImage(im, -im.naturalWidth / 2, -im.naturalHeight / 2);
-      callback(c.toDataURL("image/jpeg", 0.95));
-    };
-    im.onerror = function () { callback(dataUrl); };
-    im.src = dataUrl;
-  }
-
-  // Đọc thử chữ trên ảnh (OSD) để biết ảnh đang bị xoay 0/90/180/270 độ so
-  // với chiều đọc đúng, rồi tự xoay lại cho đúng. Nếu Tesseract chưa sẵn
-  // sàng / lỗi mạng / không đủ tin cậy -> giữ nguyên ảnh, không đoán bừa.
-  function autoFixTextOrientation(dataUrl, callback) {
-    if (!ocrReady || !ocrWorker) { callback(dataUrl); return; }
-    var im = new Image();
-    im.onload = function () {
-      ocrWorker.detect(im).then(function (result) {
-        var d = result && result.data;
-        var deg = d ? d.orientation_degrees : 0;
-        var conf = d ? d.orientation_confidence : 0;
-        // Chỉ xoay khi đủ tin cậy, tránh xoay nhầm ảnh vốn đã đúng chiều
-        if (!deg || conf < 1.5) { callback(dataUrl); return; }
-        // Tesseract báo góc cần xoay ảnh THEO CHIỀU KIM ĐỒNG HỒ để về đúng chiều đọc
-        rotateDataUrlBy90(dataUrl, deg, callback);
-      }).catch(function () { callback(dataUrl); });
-    };
-    im.onerror = function () { callback(dataUrl); };
-    im.src = dataUrl;
-  }
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS (tiền tố "cd-" để không đụng CSS các module khác)          */
   /* ---------------------------------------------------------------- */
   var style = document.createElement("style");
   style.textContent = [
-    "#cdWrap{position:relative;max-width:900px;margin:0 auto;padding:16px;font-family:inherit;color:var(--text,#111);}",
+    "#cdWrap{max-width:900px;margin:0 auto;padding:16px;font-family:inherit;color:var(--text,#111);}",
     "#cdWrap h1{font-size:20px;margin:0 0 4px;}",
     "#cdWrap .cd-sub{color:var(--muted,#5a5a5a);font-size:13px;margin:0 0 14px;}",
     ".cd-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px;background:var(--surface-2,#f2f2f2);border:1px solid var(--border,#e2e2e2);border-radius:10px;margin-bottom:12px;}",
     ".cd-toolbar button{cursor:pointer;border:1px solid var(--border,#ccc);background:var(--surface,#fff);color:var(--text,#111);border-radius:8px;padding:9px 13px;font-size:13.5px;font-weight:600;}",
     ".cd-toolbar button.primary{background:var(--blue,#1c6fd1);color:#fff;border-color:var(--blue,#1c6fd1);}",
     ".cd-toolbar button:hover{filter:brightness(0.97);}",
-    ".cd-toolbar button:disabled{opacity:.45;cursor:not-allowed;filter:none;}",
-    ".cd-loading-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;font-weight:600;padding:9px 12px;border-radius:8px;margin-bottom:12px;background:var(--blue-light,#e8f1fc);border:1px solid var(--blue-border,#b7d3f2);color:var(--text,#111);}",
-    ".cd-loading-banner.cd-loading-ok{background:#e6f7f2;border-color:#a9e3d1;color:#127a5c;}",
-    ".cd-loading-banner.cd-loading-warn{background:#fff6e5;border-color:#f0d79a;color:#8a5b00;}",
-    ".cd-loading-track{flex:1 1 140px;min-width:120px;height:8px;border-radius:5px;background:rgba(0,0,0,.08);overflow:hidden;}",
-    ".cd-loading-fill{height:100%;width:0%;background:var(--blue,#1c6fd1);border-radius:5px;transition:width .25s ease;}",
-    ".cd-loading-banner.cd-loading-ok .cd-loading-fill{background:#1f9c8f;}",
-    ".cd-loading-banner.cd-loading-warn .cd-loading-fill{background:#c98a00;}",
-    ".cd-loading-overlay{display:none;position:absolute;inset:0;background:rgba(255,255,255,.6);z-index:40;cursor:not-allowed;}",
     ".cd-help{font-size:12.5px;color:var(--muted,#5a5a5a);margin:0 0 14px;line-height:1.55;background:var(--blue-light,#e8f1fc);border:1px solid var(--blue-border,#b7d3f2);padding:9px 12px;border-radius:8px;}",
     ".cd-sheet{background:#fff;box-shadow:0 0 8px rgba(0,0,0,.18);width:210mm;min-height:297mm;margin:0 auto;padding:10mm;box-sizing:border-box;border:1px solid var(--border,#e2e2e2);}",
     ".cd-row{display:flex;gap:6mm;align-items:flex-start;padding:3mm 0;border-bottom:1px dashed #999;position:relative;}",
@@ -254,30 +131,21 @@
     '<div id="cdWrap">' +
       '<h1>Ghép ảnh CCCD để in</h1>' +
       '<p class="cd-sub">Ghép nhiều ảnh CCCD (mặt trước/sau) vào 1 trang A4 rồi in, cắt hàng ngang để kẹp hồ sơ — không cần chỉnh tay trong Word.</p>' +
-      '<div class="cd-loading-banner" id="cdLoadingBanner">' +
-        '<span id="cdLoadingText">Đang tải công cụ hỗ trợ, vui lòng chờ trước khi sử dụng!</span>' +
-        '<div class="cd-loading-track"><div class="cd-loading-fill" id="cdLoadingFill"></div></div>' +
-      '</div>' +
       '<div class="cd-toolbar">' +
         '<button type="button" id="cdAddRow">+ Thêm người (hàng mới)</button>' +
         '<button type="button" id="cdPrint" class="primary">🖨 In</button>' +
         '<button type="button" id="cdClear">Xóa hết, làm lại</button>' +
+        '<span id="cdCvStatus" style="font-size:12px;color:var(--muted,#5a5a5a);margin-left:4px;"></span>' +
       '</div>' +
       '<p class="cd-help">Mỗi hàng dành cho 1 người: khung trái là <b>mặt trước</b>, khung phải là <b>mặt sau</b> CCCD. ' +
       'Ảnh sẽ được tự động cắt bớt viền dư quanh mép. Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
       'kéo chuột trong khung để dịch ảnh, nút +/− để phóng to/thu nhỏ. Khi in, chỉ trang A4 được in.</p>' +
       '<div class="cd-sheet" id="cdSheet"></div>' +
-      '<div class="cd-loading-overlay" id="cdLoadingOverlay"></div>' +
     '</div>';
 
   var sheet = root.querySelector("#cdSheet");
-  setLoadingUiRefs(
-    root.querySelector("#cdLoadingBanner"),
-    root.querySelector("#cdLoadingText"),
-    root.querySelector("#cdLoadingFill"),
-    root.querySelector("#cdLoadingOverlay")
-  );
-  updateLoadingUi();
+  cvStatusEl = root.querySelector("#cdCvStatus");
+  setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
 
   /* ---------------------------------------------------------------- */
   /* 3. Auto-trim viền dư quanh mép ảnh                                */
@@ -541,11 +409,9 @@
           }
           // Ưu tiên OpenCV.js (tự xoay thẳng + cắt sát viền). Nếu chưa sẵn sàng
           // hoặc không tìm được viền thẻ đáng tin -> rơi về autoTrim (cắt viền cơ bản).
-          // Sau đó luôn chạy thêm bước đọc-thử-chữ (OSD) để tự xoay đúng chiều đọc
-          // (phòng trường hợp ảnh bị úp ngược/nằm ngang mà viền thẻ vẫn "thẳng").
           autoDeskewCrop(tmp, function (cvResult) {
-            if (cvResult) { autoFixTextOrientation(cvResult, finish); }
-            else { autoTrim(tmp, function (trimResult) { autoFixTextOrientation(trimResult, finish); }); }
+            if (cvResult) { finish(cvResult); }
+            else { autoTrim(tmp, finish); }
           });
         };
         tmp.src = e.target.result;
