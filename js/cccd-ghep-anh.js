@@ -85,6 +85,57 @@
     tryNext();
   })();
 
+  /* ---------------------------------------------------------------- */
+  /* 0b. Nạp Tesseract.js để nhận diện chữ, xác định đúng chiều ảnh    */
+  /*     (0/90/180/270°) rồi tự xoay lại cho đúng thay vì xoay ngược. */
+  /* ---------------------------------------------------------------- */
+  var ocrReady = false;
+  var ocrFailed = false;
+
+  (function loadTesseract() {
+    if (window.Tesseract) { ocrReady = true; return; }
+    var s = document.createElement("script");
+    s.src = "https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";
+    s.async = true;
+    s.onload = function () {
+      if (window.Tesseract) { ocrReady = true; }
+      else { ocrFailed = true; }
+    };
+    s.onerror = function () { ocrFailed = true; };
+    document.head.appendChild(s);
+  })();
+
+  // Nhận diện chữ trên ảnh để biết cần xoay thêm bao nhiêu độ (0/90/180/270)
+  // cho đúng chiều đọc, rồi xoay vật lý ảnh (xoay canvas) theo đúng hướng đó.
+  // Nếu Tesseract chưa tải xong / lỗi / không đủ tin cậy -> giữ nguyên ảnh,
+  // người dùng vẫn có nút xoay tay như cũ.
+  function detectOrientationAndRotate(dataUrl, callback) {
+    if (!ocrReady || !window.Tesseract || !window.Tesseract.detect) { callback(dataUrl); return; }
+    window.Tesseract.detect(dataUrl).then(function (result) {
+      var data = result && result.data;
+      var deg = data && typeof data.orientation_degrees === "number" ? data.orientation_degrees : 0;
+      var conf = data && typeof data.orientation_confidence === "number" ? data.orientation_confidence : 0;
+      // Chỉ tin khi độ tin cậy đủ cao, và chỉ xoay theo bội số 90° (0/90/180/270)
+      var snapped = ((Math.round(deg / 90) * 90) % 360 + 360) % 360;
+      if (conf < 1 || snapped === 0) { callback(dataUrl); return; }
+
+      var img2 = new Image();
+      img2.onload = function () {
+        var w = img2.naturalWidth, h = img2.naturalHeight;
+        var swap = (snapped === 90 || snapped === 270);
+        var out = document.createElement("canvas");
+        out.width = swap ? h : w;
+        out.height = swap ? w : h;
+        var ctx2 = out.getContext("2d");
+        ctx2.translate(out.width / 2, out.height / 2);
+        ctx2.rotate((snapped * Math.PI) / 180);
+        ctx2.drawImage(img2, -w / 2, -h / 2);
+        callback(out.toDataURL("image/jpeg", 0.95));
+      };
+      img2.onerror = function () { callback(dataUrl); };
+      img2.src = dataUrl;
+    }).catch(function () { callback(dataUrl); });
+  }
 
   /* ---------------------------------------------------------------- */
   /* 1. CSS (tiền tố "cd-" để không đụng CSS các module khác)          */
@@ -138,14 +189,15 @@
         '<span id="cdCvStatus" style="font-size:12px;color:var(--muted,#5a5a5a);margin-left:4px;"></span>' +
       '</div>' +
       '<p class="cd-help">Mỗi hàng dành cho 1 người: khung trái là <b>mặt trước</b>, khung phải là <b>mặt sau</b> CCCD. ' +
-      'Ảnh sẽ được tự động cắt bớt viền dư quanh mép. Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
+      'Ảnh sẽ được tự động cắt bớt viền dư quanh mép, phóng to vừa khung, và nhận diện chữ để tự xoay đúng chiều đọc. ' +
+      'Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
       'kéo chuột trong khung để dịch ảnh, nút +/− để phóng to/thu nhỏ. Khi in, chỉ trang A4 được in.</p>' +
       '<div class="cd-sheet" id="cdSheet"></div>' +
     '</div>';
 
   var sheet = root.querySelector("#cdSheet");
   cvStatusEl = root.querySelector("#cdCvStatus");
-  setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
+  setCvStatus("Đang tải OpenCV.js + nhận diện chữ để tự động xoay thẳng ảnh…", null);
 
   /* ---------------------------------------------------------------- */
   /* 3. Auto-trim viền dư quanh mép ảnh                                */
@@ -410,8 +462,13 @@
           // Ưu tiên OpenCV.js (tự xoay thẳng + cắt sát viền). Nếu chưa sẵn sàng
           // hoặc không tìm được viền thẻ đáng tin -> rơi về autoTrim (cắt viền cơ bản).
           autoDeskewCrop(tmp, function (cvResult) {
-            if (cvResult) { finish(cvResult); }
-            else { autoTrim(tmp, finish); }
+            function afterCrop(src) {
+              // Sau khi đã cắt viền/xoay thẳng, nhận diện chữ để biết đúng
+              // chiều đọc (0/90/180/270°) rồi tự xoay lại, tránh xoay ngược.
+              detectOrientationAndRotate(src, finish);
+            }
+            if (cvResult) { afterCrop(cvResult); }
+            else { autoTrim(tmp, afterCrop); }
           });
         };
         tmp.src = e.target.result;
