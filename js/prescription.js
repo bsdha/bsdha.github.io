@@ -1786,11 +1786,13 @@
       function dottedBlank(x, yy, w, size) {
         if (w <= 0) return;
         setF('normal', size);
-        const unit = '. ';
-        const unitW = pdf.getTextWidth(unit);
-        if (unitW <= 0) return;
-        const count = Math.max(1, Math.floor(w / unitW));
-        textAt(unit.repeat(count), x, yy);
+        // Đặt từng dấu chấm cách đều theo khoảng cách cố định (mm), không phụ thuộc
+        // khoảng trắng mặc định của font, để chấm dày và đều như trong Word.
+        const pitch = 1.1; // mm giữa 2 dấu chấm liên tiếp
+        const count = Math.max(1, Math.floor(w / pitch) + 1);
+        for (let i = 0; i < count; i++) {
+          textAt('.', x + i * pitch, yy);
+        }
       }
 
       // Header: logo + 2 dòng tên cơ quan (vị trí & kích thước lấy từ khung xem trước có thể kéo-thả)
