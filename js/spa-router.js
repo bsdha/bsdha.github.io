@@ -37,7 +37,7 @@
   // --- Khoá "chỉ dành cho nội bộ" cho 3 trang: Phiếu chuyển tuyến, Giấy nghỉ
   // việc BHXH, Giấy ra viện. Yêu cầu nhập mật khẩu cố định 1 lần mỗi phiên trình duyệt (sessionStorage — tự
   // yêu cầu lại khi tắt hẳn trình duyệt rồi mở lại, không hỏi lại khi chỉ chuyển tab/trang).
-  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh', 'giayravien', 'cccd'];
+  const GUARDED_PAGES = ['chuyentuyen', 'nghiviecbhxh', 'giayravien'];
   const INTERNAL_PASSWORD = 'cs2';
   const UNLOCK_FLAG = 'bsdha_internal_unlocked';
   let lockModalEl = null;
