@@ -1812,6 +1812,27 @@
 
       // I. Thông tin bệnh nhân
       sectionHeader('I. THÔNG TIN BỆNH NHÂN:');
+      if (isHandwritten) {
+        // Toa in tay: để trống toàn bộ (chỉ in nhãn + đường kẻ) cho bác sĩ tự ghi
+        pdf.setDrawColor(60, 60, 60);
+        pdf.setLineWidth(0.2);
+        function blankField(label, x, w) {
+          setF('bold', 10.5);
+          textAt(label, x, y);
+          const lx = x + pdf.getTextWidth(label);
+          pdf.line(lx, y + 0.8, x + w, y + 0.8);
+        }
+        blankField('Họ và tên: ', marginX, contentWidth);
+        y += 7.5;
+        const halfW = contentWidth / 2;
+        blankField('Năm sinh: ', marginX, halfW - 6);
+        blankField('Giới tính: ', marginX + halfW, halfW);
+        y += 7.5;
+        blankField('Địa chỉ: ', marginX, contentWidth);
+        y += 7.5;
+        blankField('Chẩn đoán: ', marginX, contentWidth);
+        y += 7.5;
+      } else {
       setF('bold', 10.5);
       const line1Label = 'Họ và tên: ';
       textAt(line1Label, marginX, y);
@@ -1866,36 +1887,40 @@
         y += 5;
         for (let i = 1; i < lines.length; i++) { ensureSpace(5); textAt(lines[i], marginX, y); y += 5; }
       }
+      }
 
       // II. Thông tin đơn thuốc
       y += 2;
       if (isHandwritten) {
-        sectionHeader('II. ĐƠN THUỐC (BÁC SĨ GHI TAY):');
+        sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
         const numLines = Math.max(3, Math.min(12, parseInt($('rxHandwrittenLines').value, 10) || 6));
+        const prefixLabel = 'Uống trước/sau khi ăn: ';
         const segLabels = ['Sáng', 'Trưa', 'Chiều', 'Tối'];
-        const segW = contentWidth / 4;
+        setF('normal', 9);
+        const prefixW = pdf.getTextWidth(prefixLabel) + 2;
+        const segAreaW = contentWidth - prefixW;
+        const segW = segAreaW / 4;
         for (let i = 1; i <= numLines; i++) {
-          ensureSpace(12);
+          ensureSpace(16.5);
           // Dòng 1: số thứ tự + đường kẻ trống để ghi tên thuốc
           setF('bold', 10.5);
           const numStr = `${i}.`;
           textAt(numStr, marginX, y);
           const numW = pdf.getTextWidth(numStr) + 2;
-          pdf.setDrawColor(130, 130, 130);
+          pdf.setDrawColor(60, 60, 60);
           pdf.setLineWidth(0.2);
           pdf.line(marginX + numW, y + 0.8, marginX + contentWidth, y + 0.8);
-          y += 6.5;
-          // Dòng 2: nhãn Sáng/Trưa/Chiều/Tối + đường kẻ ngắn để điền số lượng
+          y += 7.5;
+          // Dòng 2: "Uống trước/sau khi ăn" + nhãn Sáng/Trưa/Chiều/Tối + đường kẻ ngắn để điền số lượng
           setF('normal', 9);
-          pdf.setTextColor(110, 110, 110);
+          textAt(prefixLabel, marginX, y);
           segLabels.forEach((lbl, idx) => {
-            const lx = marginX + idx * segW;
+            const lx = marginX + prefixW + idx * segW;
             textAt(lbl, lx, y);
             const lblW = pdf.getTextWidth(lbl) + 2;
             pdf.line(lx + lblW, y + 0.6, lx + segW - 4, y + 0.6);
           });
-          pdf.setTextColor(17, 17, 17);
-          y += 5.5;
+          y += 9;
         }
       } else {
         sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
