@@ -2030,12 +2030,13 @@
       textAt(t, signX + (signW - tw) / 2, y);
       y += 22;
       setF('bold', 10.5);
-      if (blankDateSign) {
-        // Để trống phần ký tên: chỉ để đường chấm để bác sĩ tự ký & ghi tên
-        dottedBlank(signX, y, signW, 10.5);
-      } else {
+      // Chỉ để trống phần "ngày ký" khi bật tuỳ chọn; riêng tên bác sĩ vẫn giữ nguyên
+      // nếu người dùng đã chọn/nhập bác sĩ ở mục cấu hình bên dưới — không xoá theo tuỳ chọn này nữa.
+      if (doctor) {
         tw = pdf.getTextWidth(doctor);
         textAt(doctor, signX + (signW - tw) / 2, y);
+      } else {
+        dottedBlank(signX, y, signW, 10.5);
       }
 
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
