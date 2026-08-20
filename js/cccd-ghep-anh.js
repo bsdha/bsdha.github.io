@@ -53,6 +53,7 @@
     ".cd-row:last-child{border-bottom:none;}",
     ".cd-row-actions{position:absolute;right:-9mm;top:3mm;display:flex;flex-direction:column;gap:4px;}",
     ".cd-row-actions button{width:22px;height:22px;font-size:12px;line-height:1;border-radius:50%;border:1px solid var(--border,#ccc);background:#fff;cursor:pointer;}",
+    ".cd-slot-wrap{display:flex;flex-direction:column;gap:2px;flex-shrink:0;}",
     ".cd-slot{width:" + CARD_W_MM + "mm;height:" + CARD_H_MM + "mm;border:2px dashed #aaa;border-radius:3mm;position:relative;overflow:hidden;background:#fafafa;flex-shrink:0;}",
     ".cd-slot.has-img{border-style:solid;border-color:#bbb;}",
     ".cd-slot .cd-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:#888;padding:4mm;cursor:pointer;}",
@@ -60,13 +61,15 @@
     ".cd-slot input[type=file]{display:none;}",
     ".cd-slot-controls{position:absolute;left:0;right:0;bottom:0;display:flex;gap:2px;background:rgba(255,255,255,.9);padding:2px;flex-wrap:wrap;font-size:10px;}",
     ".cd-slot-controls button{border:1px solid #ccc;background:#fff;border-radius:3px;padding:1px 4px;cursor:pointer;font-size:10px;}",
-    ".cd-slot-controls input[type=range]{width:44px;vertical-align:middle;}",
+    ".cd-slot-controls input[type=range]{width:100px;vertical-align:middle;}",
+    ".cd-slot-outer-controls{display:flex;gap:3px;flex-wrap:wrap;}",
+    ".cd-slot-outer-controls button{border:1px solid #ccc;background:#fff;border-radius:3px;padding:2px 7px;cursor:pointer;font-size:11px;}",
     ".cd-slot-label{position:absolute;top:2px;left:2px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;padding:1px 4px;border-radius:3px;}",
     "@media print{",
     "  body *{visibility:hidden;}",
     "  #cdSheet, #cdSheet *{visibility:visible;}",
     "  #cdSheet{position:absolute;left:0;top:0;box-shadow:none;border:none;margin:0;width:210mm;min-height:297mm;}",
-    "  .cd-slot-controls, .cd-row-actions, .cd-slot .cd-placeholder, .cd-slot-label{display:none !important;}",
+    "  .cd-slot-controls, .cd-slot-outer-controls, .cd-row-actions, .cd-slot .cd-placeholder, .cd-slot-label{display:none !important;}",
     "  .cd-slot{border-style:dashed;border-color:#999;}",
     "  @page{size:A4;margin:0;}",
     "}"
@@ -300,8 +303,12 @@
   /* 4. 1 khung ảnh (slot)                                            */
   /* ---------------------------------------------------------------- */
   function createSlot(labelText) {
+    var wrap = document.createElement("div");
+    wrap.className = "cd-slot-wrap";
+
     var slot = document.createElement("div");
     slot.className = "cd-slot";
+    wrap.appendChild(slot);
 
     var label = document.createElement("div");
     label.className = "cd-slot-label";
@@ -390,6 +397,7 @@
     window.addEventListener("mouseup", function () { dragging = false; });
 
     var controlsEl;
+    var outerControlsEl;
     function ensureControls() {
       if (controlsEl) return;
       controlsEl = document.createElement("div");
@@ -407,6 +415,13 @@
         tf.rotate = base90 + parseFloat(rotRange.value);
         applyTransform();
       });
+
+      controlsEl.appendChild(rot90);
+      controlsEl.appendChild(rotRange);
+      slot.appendChild(controlsEl);
+
+      outerControlsEl = document.createElement("div");
+      outerControlsEl.className = "cd-slot-outer-controls";
 
       var zoomOut = document.createElement("button");
       zoomOut.type = "button"; zoomOut.textContent = "−"; zoomOut.title = "Thu nhỏ";
@@ -434,18 +449,17 @@
         slot.classList.remove("has-img");
         fileInput.value = "";
         controlsEl.remove(); controlsEl = null;
+        outerControlsEl.remove(); outerControlsEl = null;
       });
 
-      controlsEl.appendChild(rot90);
-      controlsEl.appendChild(rotRange);
-      controlsEl.appendChild(zoomOut);
-      controlsEl.appendChild(zoomIn);
-      controlsEl.appendChild(resetBtn);
-      controlsEl.appendChild(delBtn);
-      slot.appendChild(controlsEl);
+      outerControlsEl.appendChild(zoomOut);
+      outerControlsEl.appendChild(zoomIn);
+      outerControlsEl.appendChild(resetBtn);
+      outerControlsEl.appendChild(delBtn);
+      wrap.appendChild(outerControlsEl);
     }
 
-    return slot;
+    return wrap;
   }
 
   /* ---------------------------------------------------------------- */
@@ -481,8 +495,8 @@
   root.querySelector("#cdClear").addEventListener("click", function () {
     if (!confirm("Xóa toàn bộ ảnh đã thêm?")) return;
     sheet.innerHTML = "";
-    for (var i = 0; i < 5; i++) sheet.appendChild(createRow());
+    for (var i = 0; i < 4; i++) sheet.appendChild(createRow());
   });
 
-  for (var i = 0; i < 5; i++) sheet.appendChild(createRow());
+  for (var i = 0; i < 4; i++) sheet.appendChild(createRow());
 })();
