@@ -68,10 +68,10 @@
     "@media print{",
     "  body *{visibility:hidden;}",
     "  #cdSheet, #cdSheet *{visibility:visible;}",
-    "  #cdSheet{position:absolute;left:0;top:0;box-shadow:none;border:none;margin:0;width:210mm;min-height:297mm;}",
+    "  #cdSheet{position:absolute;left:0;top:0;box-shadow:none;border:none;margin:0;padding:0;width:190mm;min-height:0;}",
     "  .cd-slot-controls, .cd-slot-outer-controls, .cd-row-actions, .cd-slot .cd-placeholder, .cd-slot-label{display:none !important;}",
     "  .cd-slot{border-style:dashed;border-color:#999;}",
-    "  @page{size:A4;margin:0;}",
+    "  @page{size:A4;margin:10mm;}",
     "}"
   ].join("\n");
   document.head.appendChild(style);
