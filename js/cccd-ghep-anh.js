@@ -49,7 +49,7 @@
     ".cd-toolbar button:hover{filter:brightness(0.97);}",
     ".cd-help{font-size:12.5px;color:var(--muted,#5a5a5a);margin:0 0 14px;line-height:1.55;background:var(--blue-light,#e8f1fc);border:1px solid var(--blue-border,#b7d3f2);padding:9px 12px;border-radius:8px;}",
     ".cd-sheet{background:#fff;box-shadow:0 0 8px rgba(0,0,0,.18);width:210mm;min-height:297mm;margin:0 auto;padding:10mm;box-sizing:border-box;border:1px solid var(--border,#e2e2e2);}",
-    ".cd-row{display:flex;gap:6mm;align-items:flex-start;padding:3mm 0;border-bottom:1px dashed #999;position:relative;}",
+    ".cd-row{display:flex;gap:6mm;align-items:flex-start;padding:3mm 0;border-bottom:1px dashed #999;position:relative;page-break-inside:avoid;break-inside:avoid;}",
     ".cd-row:last-child{border-bottom:none;}",
     ".cd-row-actions{position:absolute;right:-9mm;top:3mm;display:flex;flex-direction:column;gap:4px;}",
     ".cd-row-actions button{width:22px;height:22px;font-size:12px;line-height:1;border-radius:50%;border:1px solid var(--border,#ccc);background:#fff;cursor:pointer;}",
