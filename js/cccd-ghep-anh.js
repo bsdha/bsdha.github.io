@@ -41,49 +41,8 @@
     cvStatusEl.style.color = ok === true ? "var(--green,#1f9c8f)" : (ok === false ? "var(--red,#d8433f)" : "var(--muted,#5a5a5a)");
   }
 
-  (function loadOpenCV() {
-    if (window.cv && window.cv.Mat) { cvReady = true; return; }
-
-    // Ưu tiên jsDelivr: CDN thương mại, có cache + CORS header đầy đủ, ổn
-    // định hơn nhiều so với docs.opencv.org (server tài liệu OpenCV, hay bị
-    // timeout/chặn ở mạng cơ quan vì không có CORS đáng tin). docs.opencv.org
-    // chỉ giữ lại làm phương án dự phòng cuối cùng.
-    var SOURCES = [
-      "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js",
-      "https://docs.opencv.org/4.x/opencv.js"
-    ];
-    var idx = 0;
-
-    function tryNext() {
-      if (idx >= SOURCES.length) {
-        cvFailed = true;
-        setCvStatus("Không tải được OpenCV.js (mạng chặn?) — dùng chế độ cắt viền cơ bản", false);
-        return;
-      }
-      var src = SOURCES[idx++];
-      setCvStatus("Đang tải OpenCV.js (" + idx + "/" + SOURCES.length + ")…", null);
-      var s = document.createElement("script");
-      s.src = src;
-      s.async = true;
-      s.onload = function () {
-        function waitReady(tries) {
-          if (window.cv && window.cv.Mat) { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); return; }
-          if (tries <= 0) { s.remove(); tryNext(); return; } // load xong nhưng không init được -> thử nguồn kế
-          setTimeout(function () { waitReady(tries - 1); }, 200);
-        }
-        if (window.cv) {
-          window.cv["onRuntimeInitialized"] = function () { cvReady = true; setCvStatus("OpenCV.js sẵn sàng — tự động xoay thẳng ✓", true); };
-          waitReady(50); // ~10s chờ WASM init trước khi bỏ cuộc
-        } else {
-          tryNext();
-        }
-      };
-      s.onerror = function () { s.remove(); tryNext(); };
-      document.head.appendChild(s);
-    }
-
-    tryNext();
-  })();
+  // Đã bỏ tính năng nạp OpenCV.js — không còn dùng auto-deskew/auto-crop nữa
+  // (xem ghi chú ở phần loadFile), nên không cần tải thư viện này nữa.
 
 
   /* ---------------------------------------------------------------- */
@@ -135,11 +94,10 @@
         '<button type="button" id="cdAddRow">+ Thêm người (hàng mới)</button>' +
         '<button type="button" id="cdPrint" class="primary">🖨 In</button>' +
         '<button type="button" id="cdClear">Xóa hết, làm lại</button>' +
-        '<span id="cdCvStatus" style="font-size:12px;color:var(--muted,#5a5a5a);margin-left:4px;"></span>' +
       '</div>' +
       '<p class="cd-help">Mỗi hàng dành cho 1 người: khung trái là <b>mặt trước</b>, khung phải là <b>mặt sau</b> CCCD. ' +
-      'Ảnh sẽ được tự động cắt bớt viền dư quanh mép. Nếu ảnh vẫn nghiêng, dùng thanh trượt để chỉnh ngay ngắn, ' +
-      'kéo chuột trong khung để dịch ảnh, nút +/− để phóng to/thu nhỏ. Khi in, chỉ trang A4 được in.</p>' +
+      'Ảnh giữ nguyên, không tự động cắt. Dùng thanh trượt để chỉnh ngay ngắn, xoay 90°, ' +
+      'kéo chuột trong khung để dịch ảnh, nút +/− để phóng to/thu nhỏ cho vừa khung. Khi in, chỉ trang A4 được in.</p>' +
       '<div class="cd-sheet" id="cdSheet"></div>' +
     '</div>';
 
@@ -407,12 +365,10 @@
             slot.classList.add("has-img");
             ensureControls();
           }
-          // Ưu tiên OpenCV.js (tự xoay thẳng + cắt sát viền). Nếu chưa sẵn sàng
-          // hoặc không tìm được viền thẻ đáng tin -> rơi về autoTrim (cắt viền cơ bản).
-          autoDeskewCrop(tmp, function (cvResult) {
-            if (cvResult) { finish(cvResult); }
-            else { autoTrim(tmp, finish); }
-          });
+          // Đã bỏ auto-crop/deskew (autoTrim + OpenCV) vì cắt mất nội dung / làm
+          // méo ảnh trên một số ảnh. Dùng thẳng ảnh gốc, người dùng tự chỉnh
+          // xoay/phóng to/kéo cho vừa khung.
+          finish(tmp.src);
         };
         tmp.src = e.target.result;
       };
