@@ -59,12 +59,10 @@
     ".cd-slot .cd-placeholder{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;font-size:11px;color:#888;padding:4mm;cursor:pointer;}",
     ".cd-slot img{position:absolute;top:50%;left:50%;transform-origin:center center;user-select:none;-webkit-user-drag:none;pointer-events:none;max-width:none;}",
     ".cd-slot input[type=file]{display:none;}",
-    ".cd-slot-controls{position:absolute;left:0;right:0;bottom:0;display:flex;gap:2px;background:rgba(255,255,255,.9);padding:2px;flex-wrap:wrap;font-size:10px;}",
-    ".cd-slot-controls button{border:1px solid #ccc;background:#fff;border-radius:3px;padding:1px 4px;cursor:pointer;font-size:10px;}",
-    ".cd-slot-controls input[type=range]{width:100px;vertical-align:middle;}",
-    ".cd-slot-outer-controls{display:flex;gap:3px;flex-wrap:wrap;}",
-    ".cd-slot-outer-controls button{border:1px solid #ccc;background:#fff;border-radius:3px;padding:2px 7px;cursor:pointer;font-size:11px;}",
-    ".cd-slot-label{position:absolute;top:2px;left:2px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;padding:1px 4px;border-radius:3px;}",
+    ".cd-slot-outer-controls{display:flex;align-items:center;gap:4px;flex-wrap:wrap;}",
+    ".cd-slot-outer-controls button{border:1px solid #ccc;background:#fff;border-radius:3px;padding:2px 7px;cursor:pointer;font-size:11px;flex-shrink:0;}",
+    ".cd-slot-outer-controls .cd-rot-range{flex:1 1 auto;min-width:80px;width:auto;vertical-align:middle;}",
+    ".cd-slot-label{position:absolute;top:2px;left:2px;font-size:9px;background:rgba(0,0,0,.55);color:#fff;padding:1px 4px;border-radius:3px;z-index:2;}",
     "@media print{",
     "  body *{visibility:hidden;}",
     "  #cdSheet, #cdSheet *{visibility:visible;}",
@@ -343,7 +341,7 @@
           function finish(finalSrc) {
             if (!img) {
               img = document.createElement("img");
-              slot.insertBefore(img, slot.querySelector(".cd-slot-controls") || null);
+              slot.appendChild(img);
             }
             img.src = finalSrc;
             img.onload = function () {
@@ -384,7 +382,7 @@
 
     var dragging = false, startX, startY, startTx, startTy;
     slot.addEventListener("mousedown", function (e) {
-      if (!img || e.target.closest(".cd-slot-controls")) return;
+      if (!img) return;
       dragging = true; startX = e.clientX; startY = e.clientY; startTx = tf.x; startTy = tf.y;
       e.preventDefault();
     });
@@ -396,12 +394,12 @@
     });
     window.addEventListener("mouseup", function () { dragging = false; });
 
-    var controlsEl;
     var outerControlsEl;
     function ensureControls() {
-      if (controlsEl) return;
-      controlsEl = document.createElement("div");
-      controlsEl.className = "cd-slot-controls";
+      if (outerControlsEl) return;
+
+      outerControlsEl = document.createElement("div");
+      outerControlsEl.className = "cd-slot-outer-controls";
 
       var rot90 = document.createElement("button");
       rot90.type = "button"; rot90.title = "Xoay 90°"; rot90.textContent = "⟳90°";
@@ -410,18 +408,15 @@
       var rotRange = document.createElement("input");
       rotRange.type = "range"; rotRange.min = -15; rotRange.max = 15; rotRange.step = 0.2; rotRange.value = 0;
       rotRange.title = "Chỉnh ngay ngắn (xoay nhẹ)";
+      rotRange.className = "cd-rot-range";
       rotRange.addEventListener("input", function () {
         var base90 = Math.round(tf.rotate / 90) * 90;
         tf.rotate = base90 + parseFloat(rotRange.value);
         applyTransform();
       });
 
-      controlsEl.appendChild(rot90);
-      controlsEl.appendChild(rotRange);
-      slot.appendChild(controlsEl);
-
-      outerControlsEl = document.createElement("div");
-      outerControlsEl.className = "cd-slot-outer-controls";
+      outerControlsEl.appendChild(rot90);
+      outerControlsEl.appendChild(rotRange);
 
       var zoomOut = document.createElement("button");
       zoomOut.type = "button"; zoomOut.textContent = "−"; zoomOut.title = "Thu nhỏ";
@@ -448,7 +443,6 @@
         placeholder.style.display = "flex";
         slot.classList.remove("has-img");
         fileInput.value = "";
-        controlsEl.remove(); controlsEl = null;
         outerControlsEl.remove(); outerControlsEl = null;
       });
 
