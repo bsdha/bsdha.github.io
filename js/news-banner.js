@@ -13,13 +13,18 @@
   const ICONS = {
     icd_search: "🔎", sinhhieu_generate: "📋", donthuoc_save: "💊",
     egfr_calc: "🧪", insulin_calc: "💉", ldl_calc: "🩸",
-    pdf2word_convert: "📄", pdftools_use: "🛠️",
+    pdf2word_convert: "📄", pdftools_use: "🛠️", ddi_check: "⚠️",
+    nghiviec_print: "📝", giayravien_print: "🏥", chuyentuyen_print: "🚑",
   };
   const LABELS = {
     icd_search: "lượt tra ICD-10", sinhhieu_generate: "phiếu sinh hiệu",
     donthuoc_save: "lượt kê đơn thuốc", egfr_calc: "lượt tính eGFR",
     insulin_calc: "lượt tính Insulin", ldl_calc: "lượt tính LDL-C",
     pdf2word_convert: "lượt chuyển đổi tài liệu", pdftools_use: "lượt dùng Công cụ PDF",
+    ddi_check: "lượt tra tương tác thuốc",
+    nghiviec_print: "lượt in Giấy nghỉ việc BHXH",
+    giayravien_print: "lượt in Giấy ra viện",
+    chuyentuyen_print: "lượt in Phiếu chuyển tuyến",
   };
 
   // Nội dung dự phòng khi API lỗi/CORS/rớt mạng — banner không bao giờ trống
