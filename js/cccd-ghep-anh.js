@@ -31,16 +31,6 @@
   /* ---------------------------------------------------------------- */
   /* 0. Nạp OpenCV.js không đồng bộ (không chặn giao diện)             */
   /* ---------------------------------------------------------------- */
-  var cvReady = false;
-  var cvFailed = false;
-  var cvStatusEl = null; // gán sau khi dựng toolbar
-
-  function setCvStatus(text, ok) {
-    if (!cvStatusEl) return;
-    cvStatusEl.textContent = text;
-    cvStatusEl.style.color = ok === true ? "var(--green,#1f9c8f)" : (ok === false ? "var(--red,#d8433f)" : "var(--muted,#5a5a5a)");
-  }
-
   // Đã bỏ tính năng nạp OpenCV.js — không còn dùng auto-deskew/auto-crop nữa
   // (xem ghi chú ở phần loadFile), nên không cần tải thư viện này nữa.
 
@@ -89,21 +79,19 @@
   root.innerHTML =
     '<div id="cdWrap">' +
       '<h1>Ghép ảnh CCCD để in</h1>' +
-      '<p class="cd-sub">Ghép nhiều ảnh CCCD (mặt trước/sau) vào 1 trang A4 rồi in, cắt hàng ngang để kẹp hồ sơ — không cần chỉnh tay trong Word.</p>' +
+      '<p class="cd-sub">Ghép nhiều ảnh CCCD (mặt trước/sau) vào 1 trang A4 rồi in, cắt hàng ngang để kẹp hồ sơ.</p>' +
       '<div class="cd-toolbar">' +
         '<button type="button" id="cdAddRow">+ Thêm người (hàng mới)</button>' +
+        '<button type="button" id="cdClear">Xóa hết</button>' +
         '<button type="button" id="cdPrint" class="primary">🖨 In</button>' +
-        '<button type="button" id="cdClear">Xóa hết, làm lại</button>' +
       '</div>' +
-      '<p class="cd-help">Mỗi hàng dành cho 1 người: khung trái là <b>mặt trước</b>, khung phải là <b>mặt sau</b> CCCD. ' +
+      '<p class="cd-help">Mỗi hàng dành cho 1 người: nên chọn khung trái là <b>mặt sau</b>, khung phải là <b>mặt trước</b> CCCD. ' +
       'Ảnh giữ nguyên, không tự động cắt. Dùng thanh trượt để chỉnh ngay ngắn, xoay 90°, ' +
       'kéo chuột trong khung để dịch ảnh, nút +/− để phóng to/thu nhỏ cho vừa khung. Khi in, chỉ trang A4 được in.</p>' +
       '<div class="cd-sheet" id="cdSheet"></div>' +
     '</div>';
 
   var sheet = root.querySelector("#cdSheet");
-  cvStatusEl = root.querySelector("#cdCvStatus");
-  setCvStatus("Đang tải OpenCV.js để tự động xoay thẳng ảnh…", null);
 
   /* ---------------------------------------------------------------- */
   /* 3. Auto-trim viền dư quanh mép ảnh                                */
@@ -467,8 +455,8 @@
     var row = document.createElement("div");
     row.className = "cd-row";
 
-    row.appendChild(createSlot("Mặt trước"));
     row.appendChild(createSlot("Mặt sau"));
+    row.appendChild(createSlot("Mặt trước"));
 
     var actions = document.createElement("div");
     actions.className = "cd-row-actions";
