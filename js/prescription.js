@@ -1336,6 +1336,7 @@
   (function initAiPasteBox() {
     const box = $('rxAiPasteBox');
     const statusEl = $('rxAiStatus');
+    const clearBtn = $('rxAiClearBtn');
     if (!box) return;
 
     const AI_EXTRACT_URL = 'https://bsdha-usage-tracker.dhabolero.workers.dev/ai-extract-patient';
@@ -1410,6 +1411,28 @@
       if (d.nhipTho) { setVal('rxVitalResp', d.nhipTho); filled++; }
       if (d.canNang) { setVal('rxVitalWeight', d.canNang); filled++; }
       return filled;
+    }
+
+    // Các trường mà ô dán AI có thể điền vào — dùng chung để xoá nhanh khi AI điền sai.
+    const AI_FILLABLE_FIELD_IDS = [
+      'rxPatientName', 'rxPatientDob', 'rxPatientSex', 'rxAddress', 'rxDiagnosis',
+      'rxVitalPulse', 'rxVitalBpSys', 'rxVitalBpDia', 'rxVitalTemp', 'rxVitalResp', 'rxVitalWeight',
+    ];
+
+    function clearAiFilledFields() {
+      AI_FILLABLE_FIELD_IDS.forEach((id) => {
+        const el = $(id);
+        if (!el) return;
+        el.value = '';
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      });
+      box.textContent = '';
+      setStatus('Đã xoá thông tin bệnh nhân — dán lại ảnh/văn bản hoặc nhập tay.', '');
+    }
+
+    if (clearBtn) {
+      clearBtn.addEventListener('click', clearAiFilledFields);
     }
 
     async function handleImageFile(file) {
