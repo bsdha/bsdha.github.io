@@ -1459,9 +1459,12 @@
       if (file && file.type && file.type.indexOf('image/') === 0) handleImageFile(file);
     });
 
-    // Ngăn gõ text trực tiếp vào ô (chỉ dùng để paste/kéo-thả ảnh)
+    // Ngăn gõ text trực tiếp vào ô (chỉ dùng để paste/kéo-thả ảnh), nhưng vẫn cho
+    // phép các tổ hợp phím có Ctrl/Cmd (Ctrl+V, Ctrl+C, Ctrl+A...) đi qua bình thường,
+    // nếu không trình duyệt sẽ không kích hoạt được hành động dán (paste) qua Ctrl+V.
     box.addEventListener('keydown', (e) => {
-      if (e.key !== 'Tab') e.preventDefault();
+      if (e.key === 'Tab' || e.ctrlKey || e.metaKey) return;
+      e.preventDefault();
     });
   })();
 
