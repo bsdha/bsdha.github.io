@@ -26,6 +26,7 @@
     }
   }
   fillNow();
+  calc(); // function declaration được hoist nên gọi được ngay ở đây
 
   // Enter ở 1 ô -> nhảy qua ô kế tiếp, bôi đen sẵn nội dung để gõ đè
   function goNext(nextEl) {
@@ -54,6 +55,7 @@
     } else {
       startInput.setSelectionRange(3, 5);
     }
+    calc(); // tính thời gian thực, gõ tới đâu ra kết quả tới đó
   }
 
   function timeSelectSeg(seg) {
@@ -61,6 +63,8 @@
     timeBuf = '';
     timeRender();
   }
+
+  timeSyncFromValue(); // đồng bộ giờ mặc định (giờ hiện tại) đã điền sẵn ở fillNow()
 
   startInput.addEventListener('focus', () => {
     timeSyncFromValue();
@@ -75,7 +79,7 @@
   startInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      calc();
+      if (timeSeg === 0) { timeSelectSeg(1); } else { goNext(rateInput); }
       return;
     }
     if (e.key === 'Tab') {
@@ -151,6 +155,8 @@
   rateInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); calc(); }
   });
+  volumeInput.addEventListener('input', calc);
+  rateInput.addEventListener('input', calc);
 
   factorToggle.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-factor]');
@@ -158,6 +164,7 @@
     factorToggle.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
     btn.classList.add('active');
     dropFactor = parseFloat(btn.dataset.factor);
+    calc();
   });
 
   function showErr(show) {
