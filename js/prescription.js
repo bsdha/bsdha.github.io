@@ -1697,7 +1697,12 @@
       if (e.key !== 'Enter') return;
       e.preventDefault();
       if (idx < order.length - 1) {
-        focusAndSelect($(order[idx + 1]));
+        const nextEl = $(order[idx + 1]);
+        focusAndSelect(nextEl);
+        // Nhảy tới ô "Giới tính" (select): tự động xổ dropdown ra luôn cho tiện chọn
+        if (nextEl && nextEl.tagName === 'SELECT' && typeof nextEl.showPicker === 'function') {
+          try { nextEl.showPicker(); } catch (err) { /* trình duyệt không hỗ trợ, bỏ qua */ }
+        }
       } else {
         focusAndSelect(brandInput, true);
         const panelHead = document.querySelector('#rxDrugPanel .rx-panel-head');
@@ -1889,11 +1894,13 @@
       setF('normal', 10.5);
       textAt(age !== null ? String(age) : '', cx, y);
       cx += pdf.getTextWidth(age !== null ? String(age) : '') + 6;
-      setF('bold', 10.5);
-      textAt('Giới tính: ', cx, y);
-      cx += pdf.getTextWidth('Giới tính: ');
-      setF('normal', 10.5);
-      textAt(sex, cx, y);
+      if (sex) {
+        setF('bold', 10.5);
+        textAt('Giới tính: ', cx, y);
+        cx += pdf.getTextWidth('Giới tính: ');
+        setF('normal', 10.5);
+        textAt(sex, cx, y);
+      }
       y += 5.5;
 
       if (address) {
