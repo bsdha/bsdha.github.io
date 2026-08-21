@@ -87,6 +87,7 @@
     <a href="/tuongtacthuoc" class="nav-item" data-page="tuongtac" data-path="/tuongtacthuoc"><span class="ic">💊</span> Tra cứu tương tác thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Chuyển đổi tài liệu</a>
     <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
+    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Giờ truyền dịch &amp; BMI</a>
 
     <div class="nav-group-divider"></div>
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
@@ -106,6 +107,7 @@
     <a href="/tuongtacthuoc" class="nav-item" data-page="tuongtac" data-path="/tuongtacthuoc"><span class="ic">💊</span> Tương tác thuốc</a>
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Đổi tài liệu</a>
     <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
+    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Truyền dịch &amp; BMI</a>
 
     <div class="nav-group-divider"></div>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
@@ -228,6 +230,13 @@
           <div class="ic">🛠️</div>
           <h2>Công cụ PDF</h2>
           <p>Ghép nhiều PDF, tách trang, xoay trang, xóa trang, nén dung lượng, OCR bản scan thành PDF có thể chọn/copy chữ.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen">
+          <div class="ic">💧</div>
+          <h2>Giờ truyền dịch &amp; BMI</h2>
+          <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ, và tính chỉ số BMI theo cân nặng, chiều cao.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
       </div>
@@ -656,6 +665,87 @@
             Áp dụng <b>CKD-EPI Creatinine 2021</b> (race-free):<br>
             eGFR = 142 × min(Scr/κ, 1)<sup>α</sup> × max(Scr/κ, 1)<sup>-1.200</sup> × 0.9938<sup>Tuổi</sup> × (1.012 nếu Nữ)<br>
             κ = 0.7 (Nữ) / 0.9 (Nam); α = -0.241 (Nữ) / -0.302 (Nam); Scr tính bằng mg/dL.
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div class="page" id="page-dichtruyen">
+    <main>
+      <div class="panel-wrap">
+        <div class="card">
+          <h1>💧 Tính giờ kết thúc truyền dịch</h1>
+          <p class="sub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
+
+          <div class="row">
+            <div class="field">
+              <label>Bắt đầu truyền lúc</label>
+              <input type="time" id="dtStart">
+            </div>
+            <div class="field">
+              <label>Thể tích chai dịch (mL)</label>
+              <input type="number" id="dtVolume" placeholder="VD: 500" min="1" step="1" inputmode="numeric">
+            </div>
+          </div>
+
+          <div class="row" style="grid-template-columns: 1fr;">
+            <div class="field">
+              <label>Tốc độ truyền (giọt/phút)</label>
+              <input type="number" id="dtRate" placeholder="VD: 50" min="1" step="1" inputmode="numeric">
+            </div>
+          </div>
+
+          <div class="dt-label-sm">Hệ số giọt (dây truyền)</div>
+          <div class="toggle-group" id="dtFactorToggle">
+            <button type="button" data-factor="15">15 gtt/mL</button>
+            <button type="button" data-factor="20" class="active">20 gtt/mL (chuẩn)</button>
+            <button type="button" data-factor="60">60 gtt/mL (vi giọt)</button>
+          </div>
+
+          <div class="err" id="dtErr">Vui lòng nhập đầy đủ và hợp lệ: thể tích và tốc độ truyền phải lớn hơn 0.</div>
+
+          <button class="calc-btn" id="dtCalcBtn">Tính giờ kết thúc</button>
+
+          <div class="result" id="dtResult">
+            <div><span class="value" id="dtDuration">--</span><span class="unit">thời gian truyền</span></div>
+            <span class="stage" id="dtEndTag">--</span>
+            <p class="desc" id="dtEndDesc"></p>
+          </div>
+
+          <div class="formula-note">
+            Thời gian truyền (phút) = Thể tích (mL) × Hệ số giọt (gtt/mL) ÷ Tốc độ (giọt/phút).<br>
+            Ví dụ: chai 500mL, tốc độ 50 giọt/phút, hệ số 20 gtt/mL ⇒ 500×20÷50 = 200 phút = 3 giờ 20 phút.
+          </div>
+        </div>
+
+        <div class="card dt-bmi-card">
+          <h1>⚖️ Tính chỉ số khối cơ thể (BMI)</h1>
+          <p class="sub">Nhập cân nặng và chiều cao để tính BMI và phân loại theo thang khuyến cáo cho người trưởng thành châu Á.</p>
+
+          <div class="row">
+            <div class="field">
+              <label>Cân nặng (kg)</label>
+              <input type="number" id="bmiWeight" placeholder="VD: 60" min="1" step="0.1" inputmode="decimal">
+            </div>
+            <div class="field">
+              <label>Chiều cao (cm)</label>
+              <input type="number" id="bmiHeight" placeholder="VD: 165" min="1" step="0.1" inputmode="decimal">
+            </div>
+          </div>
+
+          <div class="err" id="bmiErr">Vui lòng nhập đầy đủ và hợp lệ: cân nặng và chiều cao phải lớn hơn 0.</div>
+
+          <button class="calc-btn" id="bmiCalcBtn">Tính BMI</button>
+
+          <div class="result" id="bmiResult">
+            <div><span class="value" id="bmiValue">--</span><span class="unit">kg/m²</span></div>
+            <span class="stage" id="bmiTag">--</span>
+          </div>
+
+          <div class="formula-note">
+            BMI = Cân nặng (kg) ÷ [Chiều cao (m)]².<br>
+            Phân loại (WHO, khuyến cáo riêng cho người châu Á): &lt;18.5 Thiếu cân · 18.5–22.9 Bình thường · 23–24.9 Thừa cân · 25–29.9 Béo phì độ I · ≥30 Béo phì độ II.
           </div>
         </div>
       </div>
@@ -1521,6 +1611,8 @@
 <script defer src="js/ldl-calc.js"></script>
 
 <script defer src="js/egfr-calc.js"></script>
+
+<script defer src="js/drip-bmi-calc.js"></script>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
