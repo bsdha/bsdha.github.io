@@ -585,22 +585,45 @@
       return s.charAt(0).toUpperCase() + s.slice(1);
     }
 
-    d.tomTatLamSang = capFirst(grab(text, /Tóm tắt dấu hiệu lâm sàng\s*:\s*([^\n]+)/i));
-    // Tóm tắt CLS: CHỈ lấy kết quả cận lâm sàng thật sự có trong file gốc
-    // (siêu âm, CTM, XN...); KHÔNG được lấy nhầm nội dung của dòng "Chẩn
-    // đoán" phía dưới — 2 trường này luôn nằm ở 2 DÒNG RIÊNG biệt sau khi
-    // rtfToLines() tách dòng, nên regex chỉ dò trong đúng dòng của nó
-    // (dừng lại ở \n) là đủ an toàn, không vô tình nuốt cả dòng chẩn đoán.
-    d.tomTatCLS = capFirst(grab(text, /Tóm tắt kết quả xét nghiệm[^:]*:\s*([^\n]+)/i));
-    d.chanDoan = capFirst(grab(text, /Chẩn đoán\s*:\s*([^\n]+)/i));
-    // Lưu ý: dùng [ \t]* (KHÔNG phải \s*) ngay sau dấu ":" — vì \s* khớp cả
-    // ký tự xuống dòng, nên nếu trường này để trống trong file gốc (dấu ":"
-    // là cuối dòng, không có gì phía sau), \s* sẽ "tràn" qua dòng kế tiếp và
-    // bắt nhầm nội dung của trường hoàn toàn khác (vd trường tiếp theo trong
-    // phiếu) làm giá trị của trường này. Cùng lỗi áp dụng cho "nguoiHoTong".
-    d.phuongPhapThuThuat = capFirst(grab(text, /Phương pháp, thủ thuật đã thực hiện[^:]*:[ \t]*([^\n]+)/i));
-    d.kyThuatThuoc = capFirst(grab(text, /(?:Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:?\s*([^\n]+)/i));
-    d.tinhTrang = grab(text, /Tình trạng người bệnh lúc chuyển[^:]*:\s*([^\n]+)/i);
+    // Một số phiếu nguồn có 2 khối nội dung (vd 2 lần "Chẩn đoán:") trùng
+    // toạ độ Y (shptop) nên bị rtfToLines() gộp chung làm 1 dòng -> field
+    // bị "nhân đôi" khi grab(): vừa dính thêm nhãn lặp ở giữa chuỗi kết
+    // quả, vừa lặp nguyên văn nội dung 2 lần liên tiếp. Hàm này dọn cả 2
+    // trường hợp trước khi hiển thị lên phiếu.
+    function dedupeField(s) {
+      s = (s || "").trim();
+      if (!s) return "";
+      // 1) Nhãn cùng tên (vd "- Chẩn đoán:") xuất hiện lặp lại giữa chuỗi
+      //    -> cắt bỏ từ vị trí nhãn lặp trở đi, chỉ giữ phần đầu.
+      var m = s.match(/^([\s\S]*?)\s*[-–]?\s*(?:Chẩn đoán|Tóm tắt dấu hiệu lâm sàng|Tóm tắt kết quả xét nghiệm[^:]*|Phương pháp, thủ thuật đã thực hiện[^:]*|Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:\s*[\s\S]+$/i);
+      if (m && m[1]) s = m[1].trim();
+      // 2) Toàn bộ nội dung bị lặp y hệt 2 lần liên tiếp (không kèm nhãn)
+      //    -> chỉ giữ lại nửa đầu.
+      var half = Math.floor(s.length / 2);
+      if (half > 15) {
+        var a = s.slice(0, half).trim();
+        var b = s.slice(s.length - a.length).trim();
+        if (a.toLowerCase() === b.toLowerCase()) s = a;
+      }
+      return s;
+    }
+
+    // QUAN TRỌNG: dùng [ \t]* (KHÔNG phải \s*) ngay sau dấu ":" cho MỌI field
+    // bên dưới — vì \s* khớp cả ký tự xuống dòng thật (\n): nếu field nào đó
+    // để TRỐNG trong file gốc (dấu ":" là cuối dòng, không có nội dung sau
+    // nó), \s* sẽ "tràn" qua dòng kế tiếp và nuốt nhầm toàn bộ nội dung của
+    // trường hoàn toàn khác phía dưới làm giá trị của trường này -> vừa sai
+    // dữ liệu, vừa khiến nội dung đó bị HIỂN THỊ LẶP LẠI 2 LẦN trên phiếu (1
+    // lần ở field bị nuốt nhầm, 1 lần ở đúng field của nó). Đây chính xác là
+    // lỗi từng xảy ra với "Tóm tắt kết quả xét nghiệm..." nuốt nhầm cả dòng
+    // "Chẩn đoán" phía dưới khi nó để trống. Cùng lỗi áp dụng cho
+    // "nguoiHoTong".
+    d.tomTatLamSang = capFirst(dedupeField(grab(text, /Tóm tắt dấu hiệu lâm sàng\s*:[ \t]*([^\n]+)/i)));
+    d.tomTatCLS = capFirst(dedupeField(grab(text, /Tóm tắt kết quả xét nghiệm[^:]*:[ \t]*([^\n]+)/i)));
+    d.chanDoan = capFirst(dedupeField(grab(text, /Chẩn đoán\s*:[ \t]*([^\n]+)/i)));
+    d.phuongPhapThuThuat = capFirst(dedupeField(grab(text, /Phương pháp, thủ thuật đã thực hiện[^:]*:[ \t]*([^\n]+)/i)));
+    d.kyThuatThuoc = capFirst(dedupeField(grab(text, /(?:Kỹ thuật, thuốc điều trị chính đã (?:sử dụng|dùng))\s*:?[ \t]*([^\n]+)/i)));
+    d.tinhTrang = grab(text, /Tình trạng người bệnh lúc chuyển[^:]*:[ \t]*([^\n]+)/i);
 
     // Quan trọng: KHÔNG được dò chữ "X" trên toàn văn bản (text) vì ô "X" luôn
     // xuất hiện đâu đó trong file nguồn bất kể đánh dấu ở dòng nào, dẫn tới
