@@ -1774,12 +1774,33 @@
   pointer-events: none;
   opacity: 0.85;
 }
-.rx-ai-paste-status {
+.rx-ai-paste-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 6px;
+}
+.rx-ai-paste-status {
   font-size: 12.5px;
   min-height: 16px;
   font-weight: 600;
+  flex: 1;
 }
+.rx-ai-clear-btn {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--red-dark, #b91c1c);
+  background: #fff;
+  color: var(--red-dark, #b91c1c);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.rx-ai-clear-btn:hover { background: var(--red-dark, #b91c1c); color: #fff; }
 .rx-ai-paste-status.rx-ai-status-loading { color: var(--amber-dark); }
 .rx-ai-paste-status.rx-ai-status-ok { color: var(--green); }
 .rx-ai-paste-status.rx-ai-status-err { color: var(--red-dark); }
