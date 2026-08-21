@@ -1392,22 +1392,24 @@
     }
 
     function fillPatientForm(d) {
-      if (!d || typeof d !== 'object') return;
-      if (d.hoTen) setVal('rxPatientName', String(d.hoTen).toUpperCase());
+      if (!d || typeof d !== 'object') return 0;
+      let filled = 0;
+      if (d.hoTen) { setVal('rxPatientName', String(d.hoTen).toUpperCase()); filled++; }
       const dob = normalizeDob(d.ngaySinh);
-      if (dob) setVal('rxPatientDob', dob);
+      if (dob) { setVal('rxPatientDob', dob); filled++; }
       if (d.gioiTinh) {
         const sexVal = /nam/i.test(d.gioiTinh) && !/nữ/i.test(d.gioiTinh) ? 'Nam' : (/nữ|nu/i.test(d.gioiTinh) ? 'Nữ' : '');
-        if (sexVal) setVal('rxPatientSex', sexVal);
+        if (sexVal) { setVal('rxPatientSex', sexVal); filled++; }
       }
-      if (d.diaChi) setVal('rxAddress', d.diaChi);
-      if (d.chanDoan) setVal('rxDiagnosis', d.chanDoan);
-      if (d.mach) setVal('rxVitalPulse', d.mach);
-      if (d.huyetApTren) setVal('rxVitalBpSys', d.huyetApTren);
-      if (d.huyetApDuoi) setVal('rxVitalBpDia', d.huyetApDuoi);
-      if (d.nhietDo) setVal('rxVitalTemp', d.nhietDo);
-      if (d.nhipTho) setVal('rxVitalResp', d.nhipTho);
-      if (d.canNang) setVal('rxVitalWeight', d.canNang);
+      if (d.diaChi) { setVal('rxAddress', d.diaChi); filled++; }
+      if (d.chanDoan) { setVal('rxDiagnosis', d.chanDoan); filled++; }
+      if (d.mach) { setVal('rxVitalPulse', d.mach); filled++; }
+      if (d.huyetApTren) { setVal('rxVitalBpSys', d.huyetApTren); filled++; }
+      if (d.huyetApDuoi) { setVal('rxVitalBpDia', d.huyetApDuoi); filled++; }
+      if (d.nhietDo) { setVal('rxVitalTemp', d.nhietDo); filled++; }
+      if (d.nhipTho) { setVal('rxVitalResp', d.nhipTho); filled++; }
+      if (d.canNang) { setVal('rxVitalWeight', d.canNang); filled++; }
+      return filled;
     }
 
     async function handleImageFile(file) {
@@ -1424,8 +1426,12 @@
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const data = await res.json();
-        fillPatientForm(data);
-        setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
+        const filledCount = fillPatientForm(data);
+        if (filledCount > 0) {
+          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
+        } else {
+          setStatus('AI không đọc được thông tin nào từ ảnh này. Vui lòng thử ảnh rõ hơn hoặc nhập tay.', 'err');
+        }
       } catch (err) {
         console.error('AI extract error:', err);
         setStatus('Không đọc được ảnh. Vui lòng thử lại hoặc nhập tay.', 'err');
