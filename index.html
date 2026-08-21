@@ -673,26 +673,26 @@
 
   <div class="page" id="page-dichtruyen">
     <main>
-      <div class="panel-wrap">
+      <div class="panel-wrap dt-two-col">
         <div class="card">
           <h1>💧 Tính giờ kết thúc truyền dịch</h1>
           <p class="sub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
 
           <div class="row">
             <div class="field">
-              <label>Bắt đầu truyền lúc</label>
-              <input type="time" id="dtStart">
+              <label>Bắt đầu truyền lúc (24h)</label>
+              <input type="text" id="dtStart" placeholder="VD: 08:50" inputmode="numeric" maxlength="5" autocomplete="off">
             </div>
             <div class="field">
               <label>Thể tích chai dịch (mL)</label>
-              <input type="number" id="dtVolume" placeholder="VD: 500" min="1" step="1" inputmode="numeric">
+              <input type="number" id="dtVolume" value="500" min="1" step="1" inputmode="numeric">
             </div>
           </div>
 
           <div class="row" style="grid-template-columns: 1fr;">
             <div class="field">
               <label>Tốc độ truyền (giọt/phút)</label>
-              <input type="number" id="dtRate" placeholder="VD: 50" min="1" step="1" inputmode="numeric">
+              <input type="number" id="dtRate" value="40" min="1" step="1" inputmode="numeric">
             </div>
           </div>
 
@@ -708,14 +708,8 @@
           <button class="calc-btn" id="dtCalcBtn">Tính giờ kết thúc</button>
 
           <div class="result" id="dtResult">
-            <div><span class="value" id="dtDuration">--</span><span class="unit">thời gian truyền</span></div>
-            <span class="stage" id="dtEndTag">--</span>
-            <p class="desc" id="dtEndDesc"></p>
-          </div>
-
-          <div class="formula-note">
-            Thời gian truyền (phút) = Thể tích (mL) × Hệ số giọt (gtt/mL) ÷ Tốc độ (giọt/phút).<br>
-            Ví dụ: chai 500mL, tốc độ 50 giọt/phút, hệ số 20 gtt/mL ⇒ 500×20÷50 = 200 phút = 3 giờ 20 phút.
+            <div class="dt-result-line"><span class="dt-result-label">Thời gian truyền: </span><span class="value" id="dtDuration">--</span></div>
+            <div class="dt-result-line"><span class="dt-result-label">Kết thúc lúc: </span><span class="value dt-end-red" id="dtEndTag">--</span></div>
           </div>
         </div>
 
