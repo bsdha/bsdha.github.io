@@ -24,6 +24,18 @@
   }
   fillNow();
 
+  // Gõ số liên tục dạng HHMM -> tự hiển thị "HH:MM", ký tự thứ 3-4 luôn là phút
+  startInput.addEventListener('input', () => {
+    let digits = startInput.value.replace(/\D/g, '').slice(0, 4);
+    let formatted = digits;
+    if (digits.length >= 3) {
+      formatted = digits.slice(0, 2) + ':' + digits.slice(2);
+    } else if (digits.length >= 1) {
+      formatted = digits;
+    }
+    startInput.value = formatted;
+  });
+
   // Enter ở 1 ô -> nhảy qua ô kế tiếp, bôi đen sẵn nội dung để gõ đè
   function goNext(nextEl) {
     if (!nextEl) return;
