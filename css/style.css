@@ -1734,6 +1734,65 @@
 /* ================= KÊ ĐƠN THUỐC ================= */
 .rx-wrap { max-width: 980px; margin: 0 auto; padding: 16px 16px 40px; display: flex; flex-direction: column; gap: 10px; }
 .rx-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; font-size: 13px; }
+
+/* ---------- Ô dán ảnh AI trích xuất thông tin bệnh nhân ---------- */
+.rx-ai-paste-wrap { margin: 8px 0 14px; }
+.rx-ai-paste-box {
+  position: relative;
+  min-height: 46px;
+  max-height: 140px;
+  overflow-y: auto;
+  border: 1.5px dashed var(--blue-border);
+  background: var(--blue-light);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: text;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  outline: none;
+}
+.rx-ai-paste-box:empty::before {
+  content: attr(data-placeholder);
+  color: var(--muted);
+  pointer-events: none;
+}
+.rx-ai-paste-box:focus {
+  border-color: var(--blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(28,111,209,0.12);
+}
+.rx-ai-paste-box.rx-ai-dragover {
+  border-color: var(--blue);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(28,111,209,0.18);
+}
+.rx-ai-paste-box img { max-width: 100%; max-height: 90px; border-radius: 8px; display: block; }
+.rx-ai-paste-box.rx-ai-loading {
+  border-color: var(--amber);
+  background: var(--amber-light);
+  pointer-events: none;
+  opacity: 0.85;
+}
+.rx-ai-paste-status {
+  margin-top: 6px;
+  font-size: 12.5px;
+  min-height: 16px;
+  font-weight: 600;
+}
+.rx-ai-paste-status.rx-ai-status-loading { color: var(--amber-dark); }
+.rx-ai-paste-status.rx-ai-status-ok { color: var(--green); }
+.rx-ai-paste-status.rx-ai-status-err { color: var(--red-dark); }
+.rx-ai-paste-status.rx-ai-status-loading::before { content: "⏳ "; }
+.rx-ai-paste-status.rx-ai-status-ok::before { content: "✅ "; }
+.rx-ai-paste-status.rx-ai-status-err::before { content: "⚠️ "; }
+.rx-ai-field-flash {
+  animation: rxAiFieldFlash 1.4s ease;
+}
+@keyframes rxAiFieldFlash {
+  0% { background: #d7ecff; }
+  100% { background: transparent; }
+}
 .rx-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 4px; }
 .rx-panel-head h1 { margin: 0; font-size: 16.5px; font-weight: 800; color: #dc2626; }
 .rx-h2 { margin: 0 0 8px; font-size: 14.5px; font-weight: 800; color: #dc2626; }
