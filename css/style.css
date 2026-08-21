@@ -1737,16 +1737,26 @@
 
 /* ---------- Ô dán ảnh AI trích xuất thông tin bệnh nhân ---------- */
 .rx-ai-paste-wrap { margin: 8px 0 14px; }
+.rx-ai-paste-row {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
 .rx-ai-paste-box {
   position: relative;
-  min-height: 46px;
-  max-height: 140px;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 40px;
+  max-height: 70px;
   overflow-y: auto;
+  display: flex;
+  align-items: center;
   border: 1.5px dashed var(--blue-border);
   background: var(--blue-light);
-  border-radius: 12px;
-  padding: 12px 14px;
+  border-radius: 10px;
+  padding: 9px 14px;
   font-size: 13px;
+  line-height: 1.35;
   color: var(--text);
   cursor: text;
   transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
@@ -1756,6 +1766,9 @@
   content: attr(data-placeholder);
   color: var(--muted);
   pointer-events: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .rx-ai-paste-box:focus {
   border-color: var(--blue);
@@ -1767,46 +1780,52 @@
   background: #fff;
   box-shadow: 0 0 0 3px rgba(28,111,209,0.18);
 }
-.rx-ai-paste-box img { max-width: 100%; max-height: 90px; border-radius: 8px; display: block; }
+.rx-ai-paste-box img { max-width: 100%; max-height: 52px; border-radius: 6px; display: block; }
 .rx-ai-paste-box.rx-ai-loading {
   border-color: var(--amber);
   background: var(--amber-light);
   pointer-events: none;
   opacity: 0.85;
 }
-.rx-ai-paste-status-row {
-  display: flex;
+.rx-ai-clear-btn {
+  flex-shrink: 0;
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 6px;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color .15s ease, color .15s ease, background .15s ease;
+}
+.rx-ai-clear-btn .rx-ai-clear-icon { font-size: 13px; line-height: 1; }
+.rx-ai-clear-btn:hover {
+  border-color: var(--red-dark, #b91c1c);
+  color: var(--red-dark, #b91c1c);
+  background: var(--red-light);
 }
 .rx-ai-paste-status {
   font-size: 12.5px;
   min-height: 16px;
   font-weight: 600;
-  flex: 1;
+  margin-top: 6px;
 }
-.rx-ai-clear-btn {
-  flex-shrink: 0;
-  font-size: 12px;
-  font-weight: 600;
-  padding: 5px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--red-dark, #b91c1c);
-  background: #fff;
-  color: var(--red-dark, #b91c1c);
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .15s ease, color .15s ease;
-}
-.rx-ai-clear-btn:hover { background: var(--red-dark, #b91c1c); color: #fff; }
 .rx-ai-paste-status.rx-ai-status-loading { color: var(--amber-dark); }
 .rx-ai-paste-status.rx-ai-status-ok { color: var(--green); }
 .rx-ai-paste-status.rx-ai-status-err { color: var(--red-dark); }
 .rx-ai-paste-status.rx-ai-status-loading::before { content: "⏳ "; }
 .rx-ai-paste-status.rx-ai-status-ok::before { content: "✅ "; }
 .rx-ai-paste-status.rx-ai-status-err::before { content: "⚠️ "; }
+
+@media (max-width: 560px) {
+  .rx-ai-clear-btn .rx-ai-clear-label { display: none; }
+  .rx-ai-clear-btn { padding: 0 10px; }
+}
 .rx-ai-field-flash {
   animation: rxAiFieldFlash 1.4s ease;
 }
