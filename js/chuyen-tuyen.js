@@ -694,7 +694,7 @@
     document.getElementById("ctFileRow").style.display = "flex";
     document.getElementById("ctFileName").textContent = "📄 " + fname;
     var soDuoc = Object.keys(d).filter(function (k) { return d[k]; }).length;
-    setStatus("Đã nhận diện " + soDuoc + "/" + FIELD_DEFS.length + " trường. Kiểm tra & sửa lại nếu cần ở mục ②.", "ok");
+    setStatus("Đã nhận diện " + soDuoc + "/" + FIELD_DEFS.length + " trường. Kiểm tra & sửa lại nếu cần ở mục ⚙️ Cấu hình.", "ok");
   }
 
   function setStatus(msg, cls) {
