@@ -812,6 +812,12 @@
     currentSuggestList = activeDrugList().filter((d) => normalize(d.brand).includes(q) || normalize(d.generic).includes(q)).slice(0, 30);
     activeSuggestIndex = -1;
     if (currentSuggestList.length === 0) {
+      // Chế độ "Ngoài Bệnh viện" cho phép gõ tự do thuốc không có trong danh mục,
+      // nên không hiển thị thông báo "không tìm thấy" (không phù hợp với việc gõ tự do).
+      if (rxPrescribeMode === 'outside') {
+        suggestBox.classList.remove('show');
+        return;
+      }
       suggestBox.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy thuốc phù hợp trong danh sách đã nạp.</div>';
     } else {
       suggestBox.innerHTML = currentSuggestList.map((d, i) =>
