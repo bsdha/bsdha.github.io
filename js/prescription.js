@@ -1435,6 +1435,31 @@
       clearBtn.addEventListener('click', clearAiFilledFields);
     }
 
+    // Các model AI miễn phí đôi khi quá tải/rate-limit nên có thể lỗi ngẫu nhiên dù
+    // ảnh/văn bản hoàn toàn hợp lệ -> tự động thử lại ngầm 1 lần trước khi báo lỗi
+    // cho người dùng, để giảm cảm giác "lúc được lúc không".
+    async function callExtractApi(body, { retries = 1 } = {}) {
+      let lastErr = null;
+      for (let attempt = 0; attempt <= retries; attempt++) {
+        try {
+          const res = await fetch(AI_EXTRACT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return await res.json();
+        } catch (err) {
+          lastErr = err;
+          if (attempt < retries) {
+            setStatus('Máy chủ AI đang bận, đang thử lại...', 'loading');
+            await new Promise((r) => setTimeout(r, 800));
+          }
+        }
+      }
+      throw lastErr;
+    }
+
     async function handleImageFile(file) {
       if (!file) return;
       box.classList.add('rx-ai-loading');
@@ -1442,13 +1467,7 @@
       setStatus('Đang phân tích ảnh, vui lòng chờ...', 'loading');
       try {
         const base64 = await fileToBase64(file);
-        const res = await fetch(AI_EXTRACT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ image: base64, mimeType: file.type || 'image/png' })
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+        const data = await callExtractApi({ image: base64, mimeType: file.type || 'image/png' });
         const filledCount = fillPatientForm(data);
         if (filledCount > 0) {
           setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
@@ -1457,7 +1476,7 @@
         }
       } catch (err) {
         console.error('AI extract error:', err);
-        setStatus('Không đọc được ảnh. Thử dán TEXT copy từ HIS thay vì ảnh sẽ chính xác hơn, hoặc nhập tay.', 'err');
+        setStatus('Không đọc được ảnh (máy chủ AI đang bận). Vui lòng dán lại, thử dán TEXT copy từ HIS, hoặc nhập tay.', 'err');
       } finally {
         box.classList.remove('rx-ai-loading');
         box.textContent = '';
@@ -1471,13 +1490,7 @@
       box.textContent = '';
       setStatus('Đang phân tích văn bản, vui lòng chờ...', 'loading');
       try {
-        const res = await fetch(AI_EXTRACT_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: trimmed })
-        });
-        if (!res.ok) throw new Error('HTTP ' + res.status);
-        const data = await res.json();
+        const data = await callExtractApi({ text: trimmed });
         const filledCount = fillPatientForm(data);
         if (filledCount > 0) {
           setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
@@ -1486,7 +1499,7 @@
         }
       } catch (err) {
         console.error('AI extract error:', err);
-        setStatus('Không xử lý được văn bản. Vui lòng thử lại hoặc nhập tay.', 'err');
+        setStatus('Không xử lý được văn bản (máy chủ AI đang bận). Vui lòng dán lại hoặc nhập tay.', 'err');
       } finally {
         box.classList.remove('rx-ai-loading');
         box.textContent = '';
