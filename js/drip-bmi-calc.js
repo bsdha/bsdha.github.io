@@ -8,14 +8,14 @@
   const resultEl = document.getElementById('dtResult');
   const durationEl = document.getElementById('dtDuration');
   const endTagEl = document.getElementById('dtEndTag');
-  const endDescEl = document.getElementById('dtEndDesc');
 
   if (!calcBtn) return; // Trang chưa được render (an toàn khi script tải trước)
 
   let dropFactor = 20;
 
-  // Điền sẵn giờ hiện tại để tiện dùng ngay
   function pad2(n) { return String(n).padStart(2, '0'); }
+
+  // Điền sẵn giờ hiện tại (24h) để tiện dùng ngay
   function fillNow() {
     if (startInput && !startInput.value) {
       const now = new Date();
@@ -23,6 +23,23 @@
     }
   }
   fillNow();
+
+  // Enter ở 1 ô -> nhảy qua ô kế tiếp, bôi đen sẵn nội dung để gõ đè
+  function goNext(nextEl) {
+    if (!nextEl) return;
+    nextEl.focus();
+    if (typeof nextEl.select === 'function') nextEl.select();
+  }
+
+  startInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); goNext(rateInput); }
+  });
+  volumeInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); goNext(rateInput); }
+  });
+  rateInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); calc(); }
+  });
 
   factorToggle.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-factor]');
@@ -35,6 +52,15 @@
   function showErr(show) {
     errEl.classList.toggle('show', show);
     resultEl.classList.toggle('show', !show);
+  }
+
+  function parseStart(str) {
+    const m = /^([0-9]{1,2}):([0-9]{2})$/.exec((str || '').trim());
+    if (!m) return null;
+    const h = parseInt(m[1], 10);
+    const mi = parseInt(m[2], 10);
+    if (h < 0 || h > 23 || mi < 0 || mi > 59) return null;
+    return { h, mi };
   }
 
   function calc() {
@@ -50,33 +76,22 @@
     const totalMinutes = (volume * dropFactor) / rate;
     const hh = Math.floor(totalMinutes / 60);
     const mm = Math.round(totalMinutes % 60);
-    // Xử lý làm tròn phút gây tràn thành 60
     let dHH = hh, dMM = mm;
     if (dMM === 60) { dMM = 0; dHH += 1; }
 
     durationEl.textContent = (dHH > 0 ? dHH + ' giờ ' : '') + dMM + ' phút';
 
-    // Tính giờ kết thúc dựa trên giờ bắt đầu (nếu có), mặc định là giờ hiện tại
-    let startDate;
-    if (startInput.value) {
-      const [sh, sm] = startInput.value.split(':').map(Number);
-      startDate = new Date();
-      startDate.setHours(sh, sm, 0, 0);
-    } else {
-      startDate = new Date();
-    }
+    const parsedStart = parseStart(startInput.value);
+    let startDate = new Date();
+    if (parsedStart) startDate.setHours(parsedStart.h, parsedStart.mi, 0, 0);
+
     const endDate = new Date(startDate.getTime() + totalMinutes * 60000);
     const nextDay = endDate.getDate() !== startDate.getDate() || endDate.getMonth() !== startDate.getMonth();
 
-    endTagEl.textContent = 'Kết thúc lúc ' + pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes()) + (nextDay ? ' (hôm sau)' : '');
-    endDescEl.textContent = 'Bắt đầu ' + pad2(startDate.getHours()) + ':' + pad2(startDate.getMinutes()) +
-      ' · Thể tích ' + volume + ' mL · Tốc độ ' + rate + ' giọt/phút · Hệ số ' + dropFactor + ' gtt/mL.';
+    endTagEl.textContent = pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes()) + (nextDay ? ' (hôm sau)' : '');
   }
 
   calcBtn.addEventListener('click', calc);
-  [volumeInput, rateInput].forEach((el) => {
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') calc(); });
-  });
 
   // ---- BMI ----
   const wInput = document.getElementById('bmiWeight');
@@ -86,6 +101,13 @@
   const bmiResult = document.getElementById('bmiResult');
   const bmiValueEl = document.getElementById('bmiValue');
   const bmiTagEl = document.getElementById('bmiTag');
+
+  wInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); goNext(hInput); }
+  });
+  hInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); calcBmi(); }
+  });
 
   function bmiShowErr(show) {
     bmiErr.classList.toggle('show', show);
@@ -118,7 +140,4 @@
   }
 
   bmiBtn.addEventListener('click', calcBmi);
-  [wInput, hInput].forEach((el) => {
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') calcBmi(); });
-  });
 })();
