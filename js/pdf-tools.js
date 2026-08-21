@@ -80,17 +80,25 @@
 
   // ---- Tách PDF thành ảnh từng trang NGAY TRÊN TRÌNH DUYỆT (pdf.js), không tốn credit
   // CloudConvert — chỉ dùng cho luồng "OCR sang Word" (Google Vision/Azure OCR ảnh). ----
+  // LƯU Ý: dùng pdf.js bản 3.11.174 (bản UMD ổn định cuối cùng trước khi thư viện chuyển
+  // hẳn sang ES Module ở bản 4.x). Một số bản 4.x khi nhúng bằng thẻ <script> thường (không
+  // phải type="module") không gán được biến toàn cục window.pdfjsLib, gây lỗi
+  // "Không tải được thư viện đọc PDF" dù mạng vẫn bình thường. Bản 3.11.174 tương thích tốt.
   let pdfJsLoadPromise = null;
-  // 2 nguồn CDN dự phòng — nếu nguồn 1 lỗi/timeout (mạng, chặn CDN...) tự thử nguồn 2
+  // 3 nguồn CDN dự phòng — nếu nguồn 1 lỗi/timeout (mạng, chặn CDN...) tự thử nguồn kế tiếp
   // trước khi báo lỗi hẳn cho người dùng.
   const PDFJS_SOURCES = [
     {
-      lib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.js',
-      worker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.js',
+      lib: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',
+      worker: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js',
     },
     {
-      lib: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.js',
-      worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.js',
+      lib: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+      worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
+    },
+    {
+      lib: 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
+      worker: 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
     },
   ];
   function loadScriptOnce(src) {
@@ -110,6 +118,12 @@
       for (const src of PDFJS_SOURCES) {
         try {
           await loadScriptOnce(src.lib);
+          // Vài CDN có độ trễ nhỏ giữa lúc script "load" xong và lúc window.pdfjsLib thực sự
+          // sẵn sàng — kiểm tra và đợi thêm một nhịp nếu cần, tránh báo lỗi giả.
+          if (!window.pdfjsLib) {
+            await new Promise((r) => setTimeout(r, 50));
+          }
+          if (!window.pdfjsLib) throw new Error('pdfjsLib global không tồn tại sau khi tải: ' + src.lib);
           window.pdfjsLib.GlobalWorkerOptions.workerSrc = src.worker;
           return window.pdfjsLib;
         } catch (e) {
