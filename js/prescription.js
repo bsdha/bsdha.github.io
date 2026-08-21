@@ -1430,11 +1430,40 @@
         if (filledCount > 0) {
           setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
         } else {
-          setStatus('AI không đọc được thông tin nào từ ảnh này. Vui lòng thử ảnh rõ hơn hoặc nhập tay.', 'err');
+          setStatus('AI không đọc được thông tin nào từ ảnh này. Thử dán TEXT copy từ HIS thay vì ảnh sẽ chính xác hơn, hoặc nhập tay.', 'err');
         }
       } catch (err) {
         console.error('AI extract error:', err);
-        setStatus('Không đọc được ảnh. Vui lòng thử lại hoặc nhập tay.', 'err');
+        setStatus('Không đọc được ảnh. Thử dán TEXT copy từ HIS thay vì ảnh sẽ chính xác hơn, hoặc nhập tay.', 'err');
+      } finally {
+        box.classList.remove('rx-ai-loading');
+        box.textContent = '';
+      }
+    }
+
+    async function handleTextPaste(text) {
+      const trimmed = (text || '').trim();
+      if (!trimmed) return;
+      box.classList.add('rx-ai-loading');
+      box.textContent = '';
+      setStatus('Đang phân tích văn bản, vui lòng chờ...', 'loading');
+      try {
+        const res = await fetch(AI_EXTRACT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: trimmed })
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        const filledCount = fillPatientForm(data);
+        if (filledCount > 0) {
+          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
+        } else {
+          setStatus('AI không nhận diện được thông tin nào từ văn bản này. Vui lòng thử lại hoặc nhập tay.', 'err');
+        }
+      } catch (err) {
+        console.error('AI extract error:', err);
+        setStatus('Không xử lý được văn bản. Vui lòng thử lại hoặc nhập tay.', 'err');
       } finally {
         box.classList.remove('rx-ai-loading');
         box.textContent = '';
@@ -1450,9 +1479,17 @@
           break;
         }
       }
-      if (!imageFile) return; // không có ảnh -> không chặn hành vi paste mặc định (nhưng box này không dùng để gõ text)
-      e.preventDefault();
-      handleImageFile(imageFile);
+      if (imageFile) {
+        e.preventDefault();
+        handleImageFile(imageFile);
+        return;
+      }
+      // Không có ảnh trong clipboard -> thử lấy TEXT đã copy (từ phần mềm HIS, Excel, v.v.)
+      const pastedText = e.clipboardData && e.clipboardData.getData('text/plain');
+      if (pastedText && pastedText.trim()) {
+        e.preventDefault();
+        handleTextPaste(pastedText);
+      }
     });
 
     // Cho phép kéo-thả ảnh vào ô luôn, tiện hơn paste trên một số trình duyệt/máy
