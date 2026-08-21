@@ -15,26 +15,17 @@
 
   function pad2(n) { return String(n).padStart(2, '0'); }
 
-  // Điền sẵn giờ hiện tại (24h) để tiện dùng ngay
+  // Điền sẵn giờ hiện tại (24h) và tốc độ mặc định để tiện dùng ngay
   function fillNow() {
     if (startInput && !startInput.value) {
       const now = new Date();
       startInput.value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
     }
+    if (rateInput && !rateInput.value) {
+      rateInput.value = '40';
+    }
   }
   fillNow();
-
-  // Gõ số liên tục dạng HHMM -> tự hiển thị "HH:MM", ký tự thứ 3-4 luôn là phút
-  startInput.addEventListener('input', () => {
-    let digits = startInput.value.replace(/\D/g, '').slice(0, 4);
-    let formatted = digits;
-    if (digits.length >= 3) {
-      formatted = digits.slice(0, 2) + ':' + digits.slice(2);
-    } else if (digits.length >= 1) {
-      formatted = digits;
-    }
-    startInput.value = formatted;
-  });
 
   // Enter ở 1 ô -> nhảy qua ô kế tiếp, bôi đen sẵn nội dung để gõ đè
   function goNext(nextEl) {
@@ -43,9 +34,117 @@
     if (typeof nextEl.select === 'function') nextEl.select();
   }
 
-  startInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); goNext(rateInput); }
+  // ---- Ô "Bắt đầu truyền lúc" dạng mặt nạ HH:MM ----
+  // Luôn hiển thị đủ 4 số + 2 chấm, bôi xanh (chọn) đúng phần giờ/phút đang gõ,
+  // gõ xong 2 số giờ tự nhảy qua phần phút, giới hạn giờ 00-23, phút 00-59.
+  let timeSeg = 0;      // 0 = giờ, 1 = phút
+  let timeBuf = '';     // các chữ số đã gõ trong phân đoạn hiện tại (chưa chốt)
+  let timeHH = '00';
+  let timeMM = '00';
+
+  function timeSyncFromValue() {
+    const m = /^([0-9]{2}):([0-9]{2})$/.exec(startInput.value || '');
+    if (m) { timeHH = m[1]; timeMM = m[2]; } else { timeHH = '00'; timeMM = '00'; }
+  }
+
+  function timeRender() {
+    startInput.value = timeHH + ':' + timeMM;
+    if (timeSeg === 0) {
+      startInput.setSelectionRange(0, 2);
+    } else {
+      startInput.setSelectionRange(3, 5);
+    }
+  }
+
+  function timeSelectSeg(seg) {
+    timeSeg = seg;
+    timeBuf = '';
+    timeRender();
+  }
+
+  startInput.addEventListener('focus', () => {
+    timeSyncFromValue();
+    timeSelectSeg(0);
   });
+
+  startInput.addEventListener('click', () => {
+    // Luôn chọn lại theo phân đoạn hiện tại thay vì để con trỏ rời rạc
+    timeRender();
+  });
+
+  startInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      calc();
+      return;
+    }
+    if (e.key === 'Tab') {
+      if (timeSeg === 0) { e.preventDefault(); timeSelectSeg(1); }
+      return;
+    }
+    if (e.key === 'Backspace') {
+      e.preventDefault();
+      timeBuf = '';
+      if (timeSeg === 0) { timeHH = '00'; } else { timeMM = '00'; }
+      timeRender();
+      return;
+    }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); timeSelectSeg(0); return; }
+    if (e.key === 'ArrowRight') { e.preventDefault(); timeSelectSeg(1); return; }
+
+    if (!/^[0-9]$/.test(e.key)) { e.preventDefault(); return; }
+    e.preventDefault();
+
+    const maxVal = timeSeg === 0 ? 23 : 59;
+    timeBuf += e.key;
+
+    if (timeBuf.length === 1) {
+      const d = parseInt(timeBuf, 10);
+      // Nếu số đầu tiên đã vượt quá mức có thể ghép thêm số thứ 2 hợp lệ
+      // (vd giờ gõ "5" -> hiểu luôn là 05 và nhảy qua phút)
+      const maxFirstDigit = timeSeg === 0 ? 2 : 5;
+      if (d > maxFirstDigit) {
+        const val = pad2(d);
+        if (timeSeg === 0) { timeHH = val; timeSelectSeg(1); }
+        else { timeMM = val; timeBuf = ''; timeRender(); }
+        return;
+      }
+      // Hiện tạm số vừa gõ, số còn lại giữ 0 và vẫn bôi xanh cả ô chờ số kế tiếp
+      if (timeSeg === 0) { timeHH = pad2(d); } else { timeMM = pad2(d); }
+      timeRender();
+      return;
+    }
+
+    // Đã đủ 2 số cho phân đoạn
+    let val = parseInt(timeBuf, 10);
+    if (val > maxVal) val = maxVal;
+    const formatted = pad2(val);
+    if (timeSeg === 0) {
+      timeHH = formatted;
+      timeSelectSeg(1);
+    } else {
+      timeMM = formatted;
+      timeBuf = '';
+      timeRender();
+    }
+  });
+
+  // Chặn dán nội dung không hợp lệ đè lên mặt nạ
+  startInput.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = (e.clipboardData || window.clipboardData).getData('text');
+    const digits = text.replace(/\D/g, '').slice(0, 4);
+    if (digits.length === 4) {
+      let h = parseInt(digits.slice(0, 2), 10);
+      let mi = parseInt(digits.slice(2, 4), 10);
+      if (h > 23) h = 23;
+      if (mi > 59) mi = 59;
+      timeHH = pad2(h);
+      timeMM = pad2(mi);
+      timeSelectSeg(1);
+    }
+  });
+
   volumeInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); goNext(rateInput); }
   });
