@@ -19,8 +19,8 @@
   const PDF_OPS_URL = WORKER_BASE + '/pdf-ops';
   const OCR_WORD_URL = WORKER_BASE + '/ocr-word';
   // Nếu HTML có checkbox <input type="checkbox" id="ptOcrToWord"> trong panel OCR, tick vào đó
-  // sẽ gọi thẳng route /ocr-word (Google Vision -> Azure Read -> CloudConvert, xem worker.js) để
-  // xuất trực tiếp ra .docx với độ chính xác cao hơn nhiều so với "OCR rồi convert" thông thường.
+  // sẽ gọi thẳng route /ocr-word (OCR.space -> CloudConvert, xem worker.js) để xuất trực tiếp ra
+  // .docx với độ chính xác cao hơn nhiều so với "OCR rồi convert" thông thường.
   // Nếu không có checkbox này trong HTML thì bỏ qua, hành vi OCR giữ nguyên như cũ (ra PDF có thể tìm kiếm).
 
   // CloudConvert free tier: 25 conversion phút miễn phí / ngày (khác cơ chế giới hạn dung lượng
@@ -30,6 +30,18 @@
   const tabsEl = document.getElementById('ptTabs');
   const statusEl = document.getElementById('ptStatus');
   if (!tabsEl || !statusEl) return;
+
+  // Khối radio "kiểu dựng lại bố cục" (#ptOcrLayoutRow) chỉ hiện khi tick checkbox "Xuất thẳng
+  // ra Word" (#ptOcrToWord) — vì lựa chọn layout chỉ có ý nghĩa với nhánh /ocr-word.
+  const ocrToWordElInit = document.getElementById('ptOcrToWord');
+  const ocrLayoutRowEl = document.getElementById('ptOcrLayoutRow');
+  if (ocrToWordElInit && ocrLayoutRowEl) {
+    const syncLayoutRowVisibility = () => {
+      ocrLayoutRowEl.style.display = ocrToWordElInit.checked ? '' : 'none';
+    };
+    ocrToWordElInit.addEventListener('change', syncLayoutRowVisibility);
+    syncLayoutRowVisibility();
+  }
 
   const state = {
     combine: [],
@@ -480,6 +492,11 @@
           renderedPages.forEach((p) => form.append('images', p.blob, p.filename));
           form.append('locale', toCloudConvertLocale(document.getElementById('ptOcrLocale').value));
           form.append('baseName', items[0].file.name.replace(/\.[^.]+$/i, ''));
+          // "layout": người dùng chọn qua radio #ptOcrLayoutRow — "semantic" (văn bản thường, dễ
+          // sửa/copy) hoặc "positional" (chép đúng vị trí từng dòng, giống bố cục gốc hơn nhưng
+          // khó sửa). Nếu không tìm thấy radio (HTML chưa có) thì mặc định "semantic" như cũ.
+          const checkedLayoutEl = document.querySelector('input[name="ptOcrLayout"]:checked');
+          form.append('layout', checkedLayoutEl ? checkedLayoutEl.value : 'semantic');
         } else {
           form.append('op', op);
           if (op === 'combine') {
@@ -516,9 +533,17 @@
         }
         const url = URL.createObjectURL(blob);
         if (typeof logUsage === 'function') logUsage('pdftools_use');
+        // Nếu người dùng chọn "positional" nhưng Worker không đủ toạ độ (vd. rơi xuống fallback
+        // CloudConvert không có overlay) -> đã tự âm thầm chuyển về "semantic" phía Worker, báo
+        // lại ở đây để người dùng không thắc mắc sao chọn 1 kiểu mà ra kiểu khác.
+        const layoutFellBack = useOcrToWord && resp.headers.get('X-Layout-Fallback') === '1';
+        const fallbackNote = layoutFellBack
+          ? '<br><span style="font-size:12.5px;color:var(--muted);">⚠️ Không đủ dữ liệu toạ độ để giữ đúng bố cục gốc, đã tự chuyển sang kiểu "văn bản thường".</span>'
+          : '';
         setStatus(
           `✅ "${useOcrToWord ? 'OCR sang Word' : OP_LABEL[op]}" thành công.` +
-          `<br><a class="pt-download-btn" href="${url}" download="${outName}">⬇ Tải file ${kindLabel} kết quả</a>`,
+          `<br><a class="pt-download-btn" href="${url}" download="${outName}">⬇ Tải file ${kindLabel} kết quả</a>` +
+          fallbackNote,
           'success'
         );
       } catch (err) {
