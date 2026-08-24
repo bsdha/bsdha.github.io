@@ -49,7 +49,7 @@
   if (yearInput) {
     yearInput.addEventListener('input', computeAgeFromYear);
     yearInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') egfrCalcBtnEl.click();
+      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('egfrSex').focus(); }
     });
   }
 
@@ -120,9 +120,12 @@
   });
 
   scrInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('egfrCalcBtn').click();
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('egfrCalcBtn').click(); }
   });
   document.getElementById('egfrAge').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') document.getElementById('egfrCalcBtn').click();
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('egfrSex').focus(); }
+  });
+  document.getElementById('egfrSex').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); scrInput.focus(); }
   });
 })();
