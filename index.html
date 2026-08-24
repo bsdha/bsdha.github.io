@@ -625,10 +625,26 @@
           <h1>Tính eGFR (công thức CKD-EPI 2021)</h1>
           <p class="sub">Ước tính mức lọc cầu thận theo Creatinin huyết thanh, không dùng yếu tố chủng tộc (race-free), theo khuyến cáo mới nhất.</p>
 
+          <div class="rx-mode-row" id="egfrAgeModeRow">
+            <label class="rx-mode-opt">
+              <input type="radio" name="egfrAgeMode" id="egfrModeAge" value="age" checked>
+              <span>Nhập tuổi</span>
+            </label>
+            <label class="rx-mode-opt">
+              <input type="radio" name="egfrAgeMode" id="egfrModeYear" value="year">
+              <span>Nhập năm sinh</span>
+            </label>
+          </div>
+
           <div class="row">
-            <div class="field">
+            <div class="field" id="egfrAgeField">
               <label>Tuổi (năm)</label>
               <input type="number" id="egfrAge" placeholder="VD: 55" min="18" max="120" inputmode="numeric">
+            </div>
+            <div class="field" id="egfrYearField" style="display:none;">
+              <label>Năm sinh</label>
+              <input type="number" id="egfrYear" placeholder="VD: 1970" inputmode="numeric">
+              <span id="egfrYearAgeHint" style="display:block; margin-top:4px; font-size:12px; color:var(--muted);"></span>
             </div>
             <div class="field">
               <label>Giới tính</label>
