@@ -288,6 +288,34 @@
         📧 bsdha.btu@gmail.com &nbsp;|&nbsp; 📞 0868.91.97.90<br>
         📍 Bệnh viện Đa khoa Bình Dương Cơ Sở 2 — Ấp 13, Xã Bắc Tân Uyên, TP. Hồ Chí Minh
       </footer>
+      <script>
+      (function () {
+        // Giữ chuột/chạm 3 giây lên vùng footer để mở trang thống kê Umami (không cần đăng nhập)
+        var STATS_URL = 'https://cloud.umami.is/share/boQBBLFr1MlfSRlg';
+        var HOLD_MS = 3000;
+        var footer = document.getElementById('siteFooter');
+        var timer = null;
+
+        function start() {
+          clear();
+          timer = setTimeout(function () {
+            window.open(STATS_URL, '_blank', 'noopener');
+          }, HOLD_MS);
+        }
+        function clear() {
+          if (timer) { clearTimeout(timer); timer = null; }
+        }
+
+        if (footer) {
+          footer.addEventListener('mousedown', start);
+          footer.addEventListener('mouseup', clear);
+          footer.addEventListener('mouseleave', clear);
+          footer.addEventListener('touchstart', start, { passive: true });
+          footer.addEventListener('touchend', clear);
+          footer.addEventListener('touchcancel', clear);
+        }
+      })();
+      </script>
     </div>
   </div>
 
