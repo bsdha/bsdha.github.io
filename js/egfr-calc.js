@@ -46,10 +46,18 @@
     modeYearRadio.addEventListener('change', () => { if (modeYearRadio.checked) setAgeMode('year'); });
   }
 
+  function openSexDropdown() {
+    const sexSelect = document.getElementById('egfrSex');
+    sexSelect.focus();
+    if (typeof sexSelect.showPicker === 'function') {
+      try { sexSelect.showPicker(); } catch (err) { /* ignore unsupported */ }
+    }
+  }
+
   if (yearInput) {
     yearInput.addEventListener('input', computeAgeFromYear);
     yearInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); document.getElementById('egfrSex').focus(); }
+      if (e.key === 'Enter') { e.preventDefault(); openSexDropdown(); }
     });
   }
 
@@ -123,7 +131,7 @@
     if (e.key === 'Enter') { e.preventDefault(); document.getElementById('egfrCalcBtn').click(); }
   });
   document.getElementById('egfrAge').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('egfrSex').focus(); }
+    if (e.key === 'Enter') { e.preventDefault(); openSexDropdown(); }
   });
   document.getElementById('egfrSex').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); scrInput.focus(); }
