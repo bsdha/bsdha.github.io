@@ -120,7 +120,7 @@
   }
 
   calcBtn.addEventListener('click', calc);
-  [tcInput, hdlInput, tgInput].forEach((el) => {
-    el.addEventListener('keydown', (e) => { if (e.key === 'Enter') calc(); });
-  });
+  tcInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); hdlInput.focus(); } });
+  hdlInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); tgInput.focus(); } });
+  tgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); calc(); } });
 })();

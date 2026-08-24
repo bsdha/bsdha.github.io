@@ -4,6 +4,55 @@
   const scrInput = document.getElementById('egfrScr');
   let unit = 'umol';
 
+  const ageField = document.getElementById('egfrAgeField');
+  const yearField = document.getElementById('egfrYearField');
+  const ageInput = document.getElementById('egfrAge');
+  const yearInput = document.getElementById('egfrYear');
+  const yearAgeHint = document.getElementById('egfrYearAgeHint');
+  const modeAgeRadio = document.getElementById('egfrModeAge');
+  const modeYearRadio = document.getElementById('egfrModeYear');
+  const egfrCalcBtnEl = document.getElementById('egfrCalcBtn');
+
+  function currentYear() {
+    return new Date().getFullYear();
+  }
+
+  function computeAgeFromYear() {
+    const y = parseInt(yearInput.value, 10);
+    const nowY = currentYear();
+    if (Number.isFinite(y) && y > 1900 && y <= nowY) {
+      const age = nowY - y;
+      ageInput.value = age;
+      yearAgeHint.textContent = `Tuổi tương ứng: ${age}`;
+    } else {
+      ageInput.value = '';
+      yearAgeHint.textContent = '';
+    }
+  }
+
+  function setAgeMode(mode) {
+    if (mode === 'year') {
+      ageField.style.display = 'none';
+      yearField.style.display = '';
+      computeAgeFromYear();
+    } else {
+      yearField.style.display = 'none';
+      ageField.style.display = '';
+    }
+  }
+
+  if (modeAgeRadio && modeYearRadio) {
+    modeAgeRadio.addEventListener('change', () => { if (modeAgeRadio.checked) setAgeMode('age'); });
+    modeYearRadio.addEventListener('change', () => { if (modeYearRadio.checked) setAgeMode('year'); });
+  }
+
+  if (yearInput) {
+    yearInput.addEventListener('input', computeAgeFromYear);
+    yearInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') egfrCalcBtnEl.click();
+    });
+  }
+
   unitToggle.addEventListener('click', (e) => {
     const btn = e.target.closest('button');
     if (!btn) return;
