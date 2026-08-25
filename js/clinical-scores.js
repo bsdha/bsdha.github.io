@@ -148,4 +148,49 @@
   });
   updateMorse();
 
+  // ---------- Enter để nhảy sang ô kế tiếp (giống Tab) ----------
+  // Gom tất cả input/select/textarea trong panel đang mở theo đúng thứ tự trên trang;
+  // với nhóm radio chỉ lấy 1 điểm dừng duy nhất (ô đang được chọn, hoặc ô đầu tiên nếu
+  // chưa chọn gì) để hành vi giống hệt việc bấm phím Tab của trình duyệt.
+  function csBuildTabStops(panel) {
+    var seenGroups = {};
+    var stops = [];
+    panel.querySelectorAll('input, select, textarea').forEach(function (el) {
+      if (el.disabled) return;
+      if (el.type === 'radio') {
+        if (seenGroups[el.name]) return;
+        seenGroups[el.name] = true;
+        var checked = panel.querySelector('input[name="' + el.name + '"]:checked');
+        stops.push(checked || el);
+      } else {
+        stops.push(el);
+      }
+    });
+    return stops;
+  }
+
+  page.addEventListener('keydown', function (e) {
+    if (e.key !== 'Enter') return;
+    var el = e.target;
+    if (!el.matches('input, select, textarea')) return;
+    var panel = el.closest('.cs-tool');
+    if (!panel) return;
+
+    var stops = csBuildTabStops(panel);
+    var matchEl = el;
+    if (el.type === 'radio') {
+      matchEl = panel.querySelector('input[name="' + el.name + '"]:checked') || el;
+    }
+    var idx = stops.indexOf(matchEl);
+    if (idx === -1) return;
+
+    e.preventDefault();
+    var next = stops[(idx + 1) % stops.length];
+    if (!next) return;
+    next.focus();
+    if (typeof next.select === 'function' && next.type !== 'radio' && next.type !== 'checkbox') {
+      next.select();
+    }
+  });
+
 })();
