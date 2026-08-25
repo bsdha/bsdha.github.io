@@ -2,35 +2,106 @@
   "months": {
     "2026-08": {
       "rows": {
-        "": {
+        "3": {
           "label": "Phòng khám Nội 1",
           "days": {
-            "": 12
+            "25": 7
           }
         },
         "4": {
           "label": "Phòng khám Nội 2",
           "days": {
+            "25": 55,
             "": 8
+          }
+        },
+        "5": {
+          "label": "Phòng Khám Nội 3",
+          "days": {
+            "25": 0
+          }
+        },
+        "6": {
+          "label": "Phòng khám Ngoại tổng hợp",
+          "days": {
+            "25": 9
+          }
+        },
+        "7": {
+          "label": "Phòng khám khoa Sản",
+          "days": {
+            "25": 4
+          }
+        },
+        "8": {
+          "label": "Khám Nhi",
+          "days": {
+            "25": 6
+          }
+        },
+        "9": {
+          "label": "Khám Mắt",
+          "days": {
+            "25": 5
+          }
+        },
+        "10": {
+          "label": "PK CS2_RHM",
+          "days": {
+            "25": 0
+          }
+        },
+        "11": {
+          "label": "Khám Tai Mũi Họng",
+          "days": {
+            "25": 0
+          }
+        },
+        "12": {
+          "label": "Phòng khám YHCT",
+          "days": {
+            "25": 11
           }
         },
         "13": {
           "label": "Cấp Cứu",
           "days": {
+            "25": 2,
             "": 5
           }
         },
         "14": {
           "label": "Không BHYT (chuyên khoa + dịch vụ)",
           "days": {
+            "25": 7,
             "": 20
+          }
+        },
+        "15": {
+          "label": "Khám sức khoẻ lái xe",
+          "days": {
+            "25": 0
+          }
+        },
+        "16": {
+          "label": "Phòng tiêm ngừa",
+          "days": {
+            "25": 0
+          }
+        },
+        "": {
+          "label": "Phòng khám Nội 1",
+          "days": {
+            "": 12
           }
         }
       },
       "totalByDay": {
+        "25": 106,
         "": 45
       },
       "lastSyncByDay": {
+        "25": "2026-08-25T07:46:18.387Z",
         "": "2026-08-25T06:42:28.121Z"
       }
     }
