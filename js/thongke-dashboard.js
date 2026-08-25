@@ -33,10 +33,25 @@
     style.id = STYLE_ID;
     style.textContent = `
       .tk-wrap{max-width:1100px;margin:0 auto;padding:10px 6px 44px;font-family:inherit;font-size:15px;}
-      .tk-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;
+      .tk-banner{position:relative;overflow:hidden;border-radius:16px;padding:20px 24px;margin-bottom:16px;
+        background:linear-gradient(120deg,#071c3a,#0b3d91 38%,#0b5fa5 68%,#12b3c9);
+        box-shadow:0 0 0 1px rgba(120,220,255,.25) inset,0 8px 26px rgba(11,61,145,.35),0 0 34px rgba(18,179,201,.25);}
+      .tk-banner::after{content:'';position:absolute;inset:0;pointer-events:none;
+        background:radial-gradient(600px 140px at 12% -20%,rgba(120,220,255,.35),transparent 60%);}
+      .tk-banner-org{position:relative;color:#eaf6ff;font-size:14.5px;font-weight:800;letter-spacing:.05em;
+        text-transform:uppercase;text-shadow:0 0 10px rgba(140,225,255,.65),0 0 22px rgba(60,180,255,.4);}
+      .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
+        text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
+      .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
         border-bottom:2px solid #0e2233;padding-bottom:16px;margin-bottom:18px;}
-      .tk-head h2{margin:0;font-size:26px;font-weight:800;color:#0e2233;}
-      .tk-head .tk-sub{font-size:14.5px;color:#5c7284;margin-top:5px;}
+      .tk-head .tk-sub{font-size:14.5px;color:#5c7284;}
+      .tk-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+      .tk-speak-btn{font-size:13.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:none;
+        background:linear-gradient(120deg,#0b5fa5,#12b3c9);color:#fff;cursor:pointer;
+        display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(18,179,201,.45);white-space:nowrap;}
+      .tk-speak-btn:hover{filter:brightness(1.08);}
+      .tk-speak-btn.tk-speaking{background:linear-gradient(120deg,#17a34a,#22d3ee);
+        box-shadow:0 0 16px rgba(23,163,74,.55);}
       .tk-live{font-size:13px;font-weight:700;padding:7px 12px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
@@ -45,30 +60,36 @@
       .tk-filterbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
         background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:14px 16px;margin-bottom:22px;}
       .tk-filter-group{display:flex;flex-direction:column;gap:5px;}
-      .tk-filter-group label{font-family:'Courier New',monospace;font-size:11px;text-transform:uppercase;
-        letter-spacing:.06em;color:#5c7284;font-weight:700;}
-      .tk-filter-group input, .tk-filter-group select{font-family:'Courier New',monospace;font-size:14.5px;
+      .tk-filter-group label{font-family:inherit;font-size:13px;color:#5c7284;font-weight:600;}
+      .tk-filter-group input, .tk-filter-group select{font-family:inherit;font-size:14.5px;
         padding:8px 10px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0e2233;
         cursor:pointer;min-width:150px;}
       .tk-filter-group input:focus, .tk-filter-group select:focus{outline:2px solid #0b5fa5;outline-offset:1px;}
       .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
-      .tk-panel h3{font-size:15px;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:.06em;
-        margin:0 0 16px;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
+      .tk-panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;}
+      .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
       .tk-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
-      .tk-table-wrap{overflow-x:auto;max-height:520px;overflow-y:auto;}
-      .tk-table{width:100%;border-collapse:collapse;font-size:15px;}
-      .tk-table thead th{font-family:'Courier New',monospace;font-size:12.5px;text-transform:uppercase;color:#5c7284;
-        text-align:right;padding:10px 12px;border-bottom:2px solid #0e2233;position:sticky;top:0;background:#fff;font-weight:700;}
+      .tk-day-nav{display:flex;align-items:center;gap:6px;}
+      .tk-day-btn{width:30px;height:30px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0b5fa5;
+        font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+      .tk-day-btn:hover{background:#eef4fa;}
+      .tk-day-nav input[type=date]{font-family:inherit;font-size:14px;padding:6px 8px;border-radius:7px;
+        border:1px solid #c9d6de;background:#fff;color:#0e2233;cursor:pointer;}
+      .tk-table-wrap{overflow-x:auto;}
+      .tk-table{width:auto;max-width:100%;border-collapse:collapse;font-size:15px;}
+      .tk-table thead th{font-family:inherit;font-size:13.5px;color:#5c7284;
+        text-align:right;padding:9px 16px;border-bottom:2px solid #0e2233;background:#fff;font-weight:700;}
       .tk-table thead th:first-child{text-align:left;}
-      .tk-table tbody td{padding:10px 12px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
+      .tk-table tbody td{padding:9px 16px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
       .tk-table tbody td:first-child{text-align:left;font-family:inherit;font-weight:600;}
       .tk-table tbody tr:hover{background:rgba(11,95,165,0.05);}
-      .tk-table tfoot td{padding:12px;text-align:right;font-family:'Courier New',monospace;font-weight:700;
-        border-top:2px solid #0e2233;background:rgba(11,95,165,0.04);}
-      .tk-table tfoot td:first-child{text-align:left;}
-      .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:'Courier New',monospace;}
+      .tk-table tbody tr.tk-total-row td{padding:10px 16px;font-family:inherit;font-weight:700;
+        border-bottom:2px solid #0e2233;background:rgba(11,95,165,0.04);}
+      .tk-table tbody tr.tk-total-row td:first-child{text-align:left;}
+      .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:inherit;}
       @media (max-width:720px){
-        .tk-head h2{font-size:22px;}
+        .tk-banner{padding:16px 18px;}
+        .tk-banner-title{font-size:18px;}
         .tk-filterbar{gap:10px;padding:12px;}
         .tk-filter-group input, .tk-filter-group select{min-width:130px;}
       }
@@ -79,15 +100,18 @@
   function skeletonHtml() {
     return `
       <div class="tk-wrap">
+        <div class="tk-banner">
+          <div class="tk-banner-org">Bệnh viện đa khoa Bình Dương - Cơ sở 2</div>
+          <div class="tk-banner-title" id="tkReportTitle">Báo cáo số liệu KCB ngày --/--/----</div>
+        </div>
         <div class="tk-head">
-          <div><h2>Thống kê tiếp nhận</h2><div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div></div>
-          <span class="tk-live"><span class="tk-live-dot"></span>Tự động cập nhật</span>
+          <div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div>
+          <div class="tk-head-actions">
+            <button type="button" class="tk-speak-btn" id="tkSpeakBtn">🔊 Đọc báo cáo số liệu</button>
+            <span class="tk-live"><span class="tk-live-dot"></span>Tự động cập nhật</span>
+          </div>
         </div>
         <div class="tk-filterbar">
-          <div class="tk-filter-group">
-            <label for="tkDayPicker">Xem ngày</label>
-            <input type="date" id="tkDayPicker">
-          </div>
           <div class="tk-filter-group">
             <label for="tkPeriodType">Xem theo</label>
             <select id="tkPeriodType">
@@ -102,7 +126,14 @@
           </div>
         </div>
         <div class="tk-panel">
-          <h3>Chi tiết theo phòng khám</h3>
+          <div class="tk-panel-head">
+            <h3>Chi tiết theo phòng khám</h3>
+            <div class="tk-day-nav">
+              <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
+              <input type="date" id="tkDayPicker">
+              <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
+            </div>
+          </div>
           <div class="tk-table-wrap" id="tkTableWrap"><div class="tk-empty">Đang tải…</div></div>
         </div>
       </div>
@@ -110,6 +141,7 @@
   }
 
   let fullData = null;
+  let lastReport = null; // { dayLabel, dd, mm, yyyy, dayTotalSum, rows:[{label, dayVal}] } — dùng cho nút "Đọc báo cáo số liệu"
 
   // ---------- Tiện ích ngày tháng ----------
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -184,6 +216,8 @@
     }
 
     const dayPicker = container.querySelector('#tkDayPicker');
+    const dayPrevBtn = container.querySelector('#tkDayPrev');
+    const dayNextBtn = container.querySelector('#tkDayNext');
     const periodTypeSel = container.querySelector('#tkPeriodType');
     const periodValueSel = container.querySelector('#tkPeriodValue');
 
@@ -193,6 +227,28 @@
     if (!dayPicker.dataset.bound) {
       dayPicker.dataset.bound = '1';
       dayPicker.addEventListener('change', () => renderAll(container));
+    }
+
+    function shiftDay(delta) {
+      if (!dayPicker.value) return;
+      const d = new Date(dayPicker.value + 'T00:00:00');
+      d.setDate(d.getDate() + delta);
+      dayPicker.value = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      renderAll(container);
+    }
+    if (dayPrevBtn && !dayPrevBtn.dataset.bound) {
+      dayPrevBtn.dataset.bound = '1';
+      dayPrevBtn.addEventListener('click', () => shiftDay(-1));
+    }
+    if (dayNextBtn && !dayNextBtn.dataset.bound) {
+      dayNextBtn.dataset.bound = '1';
+      dayNextBtn.addEventListener('click', () => shiftDay(1));
+    }
+
+    const speakBtn = container.querySelector('#tkSpeakBtn');
+    if (speakBtn && !speakBtn.dataset.bound) {
+      speakBtn.dataset.bound = '1';
+      speakBtn.addEventListener('click', () => toggleSpeakReport(speakBtn));
     }
 
     if (!periodTypeSel.dataset.bound) {
@@ -276,6 +332,11 @@
     renderTable(container, dayPicker.value, periodType, periodValue, availableMonths);
   }
 
+  function renderReportTitle(container, dd, dm, dy) {
+    const el = container.querySelector('#tkReportTitle');
+    if (el) el.textContent = `Báo cáo số liệu KCB ngày ${dd}/${dm}/${dy}`;
+  }
+
   function renderLastSync(container) {
     // Đồng bộ gần nhất trên toàn bộ dữ liệu (không giới hạn theo bộ lọc hiện tại).
     let lastTime = null;
@@ -307,6 +368,8 @@
     const dayMonth = fullData.months[dayMonthKey];
     const dayRows = (dayMonth && dayMonth.rows) || {};
 
+    renderReportTitle(container, dd, dm, dy);
+
     // --- Xác định các tháng thuộc kỳ được chọn ---
     let periodMonthKeys = [];
     if (periodType === 'month') {
@@ -329,6 +392,7 @@
 
     if (rowNums.length === 0) {
       wrap.innerHTML = '<div class="tk-empty">Chưa có dữ liệu cho lựa chọn này.</div>';
+      lastReport = { dd, dm, dy, dayTotalSum: 0, rows: [] };
       return;
     }
 
@@ -349,6 +413,7 @@
     let dayTotalSum = 0;
     let periodTotalSum = 0;
     let tbody = '';
+    const reportRows = [];
     rowNums.forEach((rn) => {
       const label =
         (dayRows[rn] && dayRows[rn].label) ||
@@ -369,14 +434,58 @@
 
       dayTotalSum += dayVal;
       periodTotalSum += periodVal;
+      reportRows.push({ label, dayVal });
 
       tbody += `<tr><td>${label}</td><td>${dayVal}</td><td>${periodVal}</td></tr>`;
     });
 
     const thead = `<tr><th>Phòng khám</th><th>${dayLabel}</th><th>${periodLabel}</th></tr>`;
-    const tfoot = `<tr><td>Tổng</td><td>${dayTotalSum}</td><td>${periodTotalSum}</td></tr>`;
+    const totalRow = `<tr class="tk-total-row"><td>Tổng</td><td>${dayTotalSum}</td><td>${periodTotalSum}</td></tr>`;
 
-    wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${tbody}</tbody><tfoot>${tfoot}</tfoot></table>`;
+    wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${totalRow}${tbody}</tbody></table>`;
+
+    lastReport = { dd, dm, dy, dayTotalSum, rows: reportRows };
+  }
+
+  // ---------- Đọc báo cáo số liệu (Text-to-Speech) ----------
+  function buildReportSpeech() {
+    if (!lastReport) return 'Chưa có dữ liệu để đọc.';
+    const { dd, dm, dy, dayTotalSum, rows } = lastReport;
+    let text = `Báo cáo số liệu khám chữa bệnh, Bệnh viện đa khoa Bình Dương, cơ sở 2, ngày ${parseInt(dd, 10)} tháng ${parseInt(dm, 10)} năm ${dy}. `;
+    if (!rows || rows.length === 0 || dayTotalSum === 0) {
+      text += 'Hôm nay chưa có lượt khám nào được ghi nhận.';
+      return text;
+    }
+    text += `Tổng số lượt khám trong ngày là ${dayTotalSum} lượt. `;
+    rows
+      .filter((r) => r.dayVal > 0)
+      .forEach((r) => { text += `${r.label}: ${r.dayVal} lượt. `; });
+    return text;
+  }
+
+  function toggleSpeakReport(btn) {
+    if (!('speechSynthesis' in window)) {
+      alert('Trình duyệt này không hỗ trợ đọc bằng giọng nói.');
+      return;
+    }
+    if (window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      btn.classList.remove('tk-speaking');
+      btn.textContent = '🔊 Đọc báo cáo số liệu';
+      return;
+    }
+    const text = buildReportSpeech();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = 'vi-VN';
+    utter.rate = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const viVoice = voices.find((v) => v.lang === 'vi-VN') || voices.find((v) => v.lang && v.lang.startsWith('vi'));
+    if (viVoice) utter.voice = viVoice;
+    utter.onstart = () => { btn.classList.add('tk-speaking'); btn.textContent = '⏹ Dừng đọc'; };
+    utter.onend = () => { btn.classList.remove('tk-speaking'); btn.textContent = '🔊 Đọc báo cáo số liệu'; };
+    utter.onerror = () => { btn.classList.remove('tk-speaking'); btn.textContent = '🔊 Đọc báo cáo số liệu'; };
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utter);
   }
 
   // ---------- Tự động làm mới (polling) ----------
@@ -428,6 +537,8 @@
     const observer = new MutationObserver(() => {
       if (pageEl.classList.contains('active') && isUnlocked()) {
         initDashboard(document.getElementById('thongkeContent'));
+      } else if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
       }
     });
     observer.observe(pageEl, { attributes: true, attributeFilter: ['class'] });
