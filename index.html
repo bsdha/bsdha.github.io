@@ -89,6 +89,7 @@
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Chuyển đổi tài liệu</a>
     <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
     <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Giờ truyền dịch &amp; BMI</a>
+    <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
 
     <div class="nav-group-divider"></div>
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
@@ -109,6 +110,7 @@
     <a href="/pdf2word" class="nav-item" data-page="pdf2word" data-path="/pdf2word"><span class="ic">📄</span> Đổi tài liệu</a>
     <a href="/pdftools" class="nav-item" data-page="pdftools" data-path="/pdftools"><span class="ic">🛠️</span> Công cụ PDF</a>
     <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Truyền dịch &amp; BMI</a>
+    <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
 
     <div class="nav-group-divider"></div>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
@@ -238,6 +240,13 @@
           <div class="ic">💧</div>
           <h2>Giờ truyền dịch &amp; BMI</h2>
           <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ, và tính chỉ số BMI theo cân nặng, chiều cao.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
+          <div class="ic">📊</div>
+          <h2>Thang điểm lâm sàng</h2>
+          <p>Tính nhanh NEWS2, thang điểm đau VAS, nguy cơ loét tỳ đè Braden và nguy cơ té ngã Morse.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
       </div>
@@ -790,6 +799,263 @@
       </div>
     </main>
   </div>
+
+  <div class="page" id="page-clinicalscores">
+    <main>
+      <div class="panel-wrap cs-wrap">
+        <div class="card">
+          <h1>📊 Thang điểm lâm sàng</h1>
+          <p class="sub">NEWS2 · VAS · Braden · Morse — 4 thang điểm dùng nhanh khi thăm khám và theo dõi người bệnh. Kết quả tính tự động khi nhập.</p>
+          <div class="toggle-group cs-tabs" id="csTabs">
+            <button type="button" class="active" data-tool="news2">NEWS2</button>
+            <button type="button" data-tool="vas">VAS</button>
+            <button type="button" data-tool="braden">Braden</button>
+            <button type="button" data-tool="morse">Morse</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ NEWS2 ============ -->
+      <div class="panel-wrap cs-two-col cs-tool active" data-tool-panel="news2">
+        <div class="card">
+          <h1>NEWS2 — National Early Warning Score 2</h1>
+          <p class="sub">Nhập dấu hiệu sinh tồn. Điểm tính theo thang NEWS2 chuẩn (RCP).</p>
+
+          <div class="row">
+            <div class="field">
+              <label for="csRr">Nhịp thở / phút</label>
+              <input type="number" id="csRr" inputmode="numeric" placeholder="VD: 16">
+            </div>
+            <div class="field">
+              <label for="csSpo2">SpO₂ (%)</label>
+              <input type="number" id="csSpo2" inputmode="numeric" placeholder="VD: 97">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label for="csSbp">HA tâm thu (mmHg)</label>
+              <input type="number" id="csSbp" inputmode="numeric" placeholder="VD: 120">
+            </div>
+            <div class="field">
+              <label for="csPulse">Mạch / phút</label>
+              <input type="number" id="csPulse" inputmode="numeric" placeholder="VD: 78">
+            </div>
+          </div>
+          <div class="row" style="grid-template-columns: 1fr;">
+            <div class="field">
+              <label for="csTemp">Nhiệt độ (°C)</label>
+              <input type="number" step="0.1" id="csTemp" inputmode="decimal" placeholder="VD: 37.0">
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Thang SpO₂</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csSpo2Scale" value="1" checked><span>Scale 1 — thông thường</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csSpo2Scale" value="2"><span>Scale 2 — đích 88–92% (COPD)</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Oxy bổ sung</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csO2" value="no" checked><span>Không (khí phòng)</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csO2" value="yes"><span>Có thở oxy</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Ý thức (AVPU)</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csAvpu" value="alert" checked><span>Alert — tỉnh</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csAvpu" value="cvpu"><span>V/P/U — lú lẫn, đáp ứng đau, không đáp ứng</span></label>
+            </div>
+          </div>
+
+          <div class="formula-note">NEWS2 là công cụ cảnh báo sớm, không thay thế đánh giá lâm sàng. Scale 2 chỉ dùng khi có chỉ định phù hợp theo quy định cơ sở. Một chỉ số đơn lẻ = 3 điểm cần theo dõi sát dù tổng điểm thấp.</div>
+        </div>
+
+        <div class="card">
+          <h1>Kết quả NEWS2</h1>
+          <div class="result show">
+            <div><span class="value" id="csNews2Value">0</span><span class="unit">/ 20</span></div>
+            <span class="stage" id="csNews2Badge">Thấp</span>
+            <p class="desc" id="csNews2Note">Theo dõi và đánh giá lại theo diễn biến lâm sàng.</p>
+          </div>
+          <div class="cs-subgrid">
+            <div><span class="k">RR</span><span class="v" id="csSubRr">0</span></div>
+            <div><span class="k">SpO₂</span><span class="v" id="csSubSpo2">0</span></div>
+            <div><span class="k">O₂</span><span class="v" id="csSubO2">0</span></div>
+            <div><span class="k">HA tâm thu</span><span class="v" id="csSubSbp">0</span></div>
+            <div><span class="k">Mạch</span><span class="v" id="csSubPulse">0</span></div>
+            <div><span class="k">Nhiệt độ</span><span class="v" id="csSubTemp">0</span></div>
+            <div><span class="k">Ý thức</span><span class="v" id="csSubAvpu">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ VAS ============ -->
+      <div class="panel-wrap cs-two-col cs-tool" data-tool-panel="vas" style="display:none;">
+        <div class="card">
+          <h1>VAS — Thang điểm đau</h1>
+          <p class="sub">Thang điểm đau 0–10, người bệnh tự đánh giá mức độ đau.</p>
+          <input type="range" id="csVasSlider" min="0" max="10" step="1" value="0" style="width:100%; accent-color:var(--blue); margin:18px 0 6px;">
+          <div class="cs-scale-labels">
+            <span>0<br>Không đau</span>
+            <span>5<br>Vừa</span>
+            <span>10<br>Đau dữ dội nhất</span>
+          </div>
+          <div class="formula-note">VAS nguyên bản dùng đường thẳng 10cm; giao diện này dùng thang số NRS 0–10 tương đương về mục đích sàng lọc. Nếu hồ sơ yêu cầu đúng VAS 10cm, nên dùng thước VAS chuẩn.</div>
+        </div>
+        <div class="card">
+          <h1>Mức độ đau</h1>
+          <div class="result show">
+            <div><span class="value" id="csVasValue">0</span><span class="unit">/ 10</span></div>
+            <span class="stage" id="csVasBadge">Không đau</span>
+            <p class="desc">Đánh giá lại theo diễn biến và sau can thiệp giảm đau.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ BRADEN ============ -->
+      <div class="panel-wrap cs-two-col cs-tool" data-tool-panel="braden" style="display:none;">
+        <div class="card">
+          <h1>Braden Scale — Nguy cơ loét tỳ đè</h1>
+          <p class="sub">6 thành phần — tổng điểm 6–23. Điểm càng thấp, nguy cơ càng cao.</p>
+
+          <div class="field">
+            <label>Cảm giác</label>
+            <div class="cs-options">
+              <label class="cs-radio-row"><input type="radio" name="csBSensory" value="4" checked><span>Không hạn chế</span><span class="score">4</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBSensory" value="3"><span>Hạn chế nhẹ</span><span class="score">3</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBSensory" value="2"><span>Hạn chế rõ</span><span class="score">2</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBSensory" value="1"><span>Mất hoàn toàn</span><span class="score">1</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Độ ẩm</label>
+            <div class="cs-options">
+              <label class="cs-radio-row"><input type="radio" name="csBMoisture" value="4" checked><span>Hiếm khi ẩm</span><span class="score">4</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBMoisture" value="3"><span>Thỉnh thoảng ẩm</span><span class="score">3</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBMoisture" value="2"><span>Thường xuyên ẩm</span><span class="score">2</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBMoisture" value="1"><span>Luôn luôn ẩm</span><span class="score">1</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Hoạt động</label>
+            <div class="cs-options">
+              <label class="cs-radio-row"><input type="radio" name="csBActivity" value="4" checked><span>Đi lại thường xuyên</span><span class="score">4</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBActivity" value="3"><span>Đi lại thỉnh thoảng</span><span class="score">3</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBActivity" value="2"><span>Ngồi ghế</span><span class="score">2</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBActivity" value="1"><span>Nằm liệt giường</span><span class="score">1</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Vận động</label>
+            <div class="cs-options">
+              <label class="cs-radio-row"><input type="radio" name="csBMobility" value="4" checked><span>Không hạn chế</span><span class="score">4</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBMobility" value="3"><span>Hạn chế nhẹ</span><span class="score">3</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBMobility" value="2"><span>Hạn chế rõ</span><span class="score">2</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBMobility" value="1"><span>Bất động hoàn toàn</span><span class="score">1</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Dinh dưỡng</label>
+            <div class="cs-options">
+              <label class="cs-radio-row"><input type="radio" name="csBNutrition" value="4" checked><span>Tốt</span><span class="score">4</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBNutrition" value="3"><span>Đầy đủ</span><span class="score">3</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBNutrition" value="2"><span>Có thể chưa đủ</span><span class="score">2</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBNutrition" value="1"><span>Rất kém</span><span class="score">1</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>Ma sát &amp; trượt</label>
+            <div class="cs-options cs-row3">
+              <label class="cs-radio-row"><input type="radio" name="csBFriction" value="3" checked><span>Không có vấn đề</span><span class="score">3</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBFriction" value="2"><span>Có vấn đề tiềm ẩn</span><span class="score">2</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csBFriction" value="1"><span>Có vấn đề rõ rệt</span><span class="score">1</span></label>
+            </div>
+          </div>
+
+          <div class="formula-note">Ngưỡng tham khảo: ≤9 rất cao · 10–12 cao · 13–14 trung bình · 15–18 nhẹ · ≥19 không có nguy cơ rõ rệt. Có thể khác tùy chính sách bệnh viện.</div>
+        </div>
+
+        <div class="card">
+          <h1>Kết quả Braden</h1>
+          <div class="result show">
+            <div><span class="value" id="csBradenValue">23</span><span class="unit">/ 23</span></div>
+            <span class="stage" id="csBradenBadge">Không có nguy cơ rõ rệt</span>
+            <p class="desc" id="csBradenNote">Điểm thấp hơn tương ứng nguy cơ loét tỳ đè cao hơn.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ MORSE ============ -->
+      <div class="panel-wrap cs-two-col cs-tool" data-tool-panel="morse" style="display:none;">
+        <div class="card">
+          <h1>Morse Fall Scale — Nguy cơ té ngã</h1>
+          <p class="sub">Tổng điểm 0–125. Điểm càng cao, nguy cơ té ngã càng lớn.</p>
+
+          <div class="field">
+            <label>1. Tiền sử té ngã trong 3 tháng</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csMHistory" value="0" checked><span>Không</span><span class="score">0</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMHistory" value="25"><span>Có</span><span class="score">25</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>2. Có chẩn đoán thứ phát</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csMSecondary" value="0" checked><span>Không</span><span class="score">0</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMSecondary" value="15"><span>Có</span><span class="score">15</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>3. Hỗ trợ đi lại</label>
+            <div class="cs-options cs-row3">
+              <label class="cs-radio-row"><input type="radio" name="csMAid" value="0" checked><span>Không / nằm nghỉ / xe lăn</span><span class="score">0</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMAid" value="15"><span>Nạng / gậy / khung tập đi</span><span class="score">15</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMAid" value="30"><span>Bám vào đồ đạc</span><span class="score">30</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>4. Có đường truyền IV / heparin lock</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csMIv" value="0" checked><span>Không</span><span class="score">0</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMIv" value="20"><span>Có</span><span class="score">20</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>5. Dáng đi / di chuyển</label>
+            <div class="cs-options cs-row3">
+              <label class="cs-radio-row"><input type="radio" name="csMGait" value="0" checked><span>Bình thường / nằm bất động</span><span class="score">0</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMGait" value="10"><span>Yếu</span><span class="score">10</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMGait" value="20"><span>Suy giảm rõ rệt</span><span class="score">20</span></label>
+            </div>
+          </div>
+          <div class="field">
+            <label>6. Trạng thái nhận thức</label>
+            <div class="cs-options cs-row2">
+              <label class="cs-radio-row"><input type="radio" name="csMMental" value="0" checked><span>Đúng khả năng bản thân</span><span class="score">0</span></label>
+              <label class="cs-radio-row"><input type="radio" name="csMMental" value="15"><span>Đánh giá quá cao / quên hạn chế</span><span class="score">15</span></label>
+            </div>
+          </div>
+
+          <div class="formula-note">Ngưỡng tham khảo: 0–24 thấp · 25–50 trung bình · ≥51 cao. Có thể khác tùy chính sách bệnh viện.</div>
+        </div>
+
+        <div class="card">
+          <h1>Kết quả Morse</h1>
+          <div class="result show">
+            <div><span class="value" id="csMorseValue">0</span><span class="unit">/ 125</span></div>
+            <span class="stage" id="csMorseBadge">Thấp</span>
+            <p class="desc" id="csMorseNote">Đánh giá lại sau mỗi thay đổi tình trạng hoặc theo quy định khoa phòng.</p>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script defer src="js/clinical-scores.js"></script>
 
   <div class="page" id="page-tuongtac">
     <div class="wrap">
