@@ -20,42 +20,46 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
-      .tk-wrap{max-width:1100px;margin:0 auto;padding:8px 4px 40px;font-family:inherit;}
+      .tk-wrap{max-width:1100px;margin:0 auto;padding:10px 6px 44px;font-family:inherit;font-size:15px;}
       .tk-head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;
-        border-bottom:2px solid #0e2233;padding-bottom:14px;margin-bottom:22px;}
-      .tk-head h2{margin:0;font-size:24px;font-weight:800;color:#0e2233;}
-      .tk-head .tk-sub{font-size:13px;color:#5c7284;margin-top:4px;}
-      .tk-controls{display:flex;gap:8px;align-items:center;}
-      .tk-controls select{font-family:'Courier New',monospace;font-size:13px;padding:7px 10px;border-radius:6px;
+        border-bottom:2px solid #0e2233;padding-bottom:16px;margin-bottom:24px;}
+      .tk-head h2{margin:0;font-size:26px;font-weight:800;color:#0e2233;}
+      .tk-head .tk-sub{font-size:14.5px;color:#5c7284;margin-top:5px;}
+      .tk-controls{display:flex;gap:10px;align-items:center;}
+      .tk-controls select{font-family:'Courier New',monospace;font-size:15px;padding:9px 12px;border-radius:7px;
         border:1px solid #c9d6de;background:#fff;color:#0e2233;cursor:pointer;}
-      .tk-refresh{font-size:13px;font-weight:600;padding:7px 12px;border-radius:6px;border:1px solid #0b5fa5;
+      .tk-refresh{font-size:14.5px;font-weight:700;padding:9px 14px;border-radius:7px;border:1px solid #0b5fa5;
         background:#fff;color:#0b5fa5;cursor:pointer;}
       .tk-refresh:hover{background:#0b5fa5;color:#fff;}
-      .tk-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;}
-      .tk-vital{background:#fff;border:1px solid #c9d6de;border-radius:10px;padding:14px 16px;position:relative;overflow:hidden;}
+      .tk-vitals{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+      .tk-vital{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:16px 18px;position:relative;overflow:hidden;}
       .tk-vital::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;background:#0b5fa5;}
       .tk-vital.pulse::before{background:#d34b4b;}
-      .tk-vital .l{font-family:'Courier New',monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#5c7284;}
-      .tk-vital .v{font-family:'Courier New',monospace;font-size:26px;font-weight:700;margin-top:4px;color:#0e2233;}
-      .tk-vital .v span{font-size:12px;font-weight:400;color:#7c8fa0;}
-      .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:18px;margin-bottom:20px;}
-      .tk-panel h3{font-size:13px;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:.08em;
-        margin:0 0 14px;color:#0e2233;display:flex;align-items:center;gap:8px;}
-      .tk-panel h3::before{content:'';width:7px;height:7px;background:#0b5fa5;border-radius:50%;display:inline-block;}
-      .tk-canvas-wrap{max-height:320px;}
+      .tk-vital .l{font-family:'Courier New',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#5c7284;font-weight:700;}
+      .tk-vital .v{font-family:'Courier New',monospace;font-size:30px;font-weight:700;margin-top:6px;color:#0e2233;}
+      .tk-vital .v span{font-size:14px;font-weight:400;color:#7c8fa0;}
+      .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
+      .tk-panel h3{font-size:15px;font-family:'Courier New',monospace;text-transform:uppercase;letter-spacing:.06em;
+        margin:0 0 16px;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
+      .tk-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
+      .tk-canvas-wrap{position:relative;height:320px;width:100%;}
       .tk-table-wrap{overflow-x:auto;max-height:440px;overflow-y:auto;}
-      .tk-table{width:100%;border-collapse:collapse;font-size:12.5px;}
-      .tk-table thead th{font-family:'Courier New',monospace;font-size:10px;text-transform:uppercase;color:#5c7284;
-        text-align:right;padding:7px 9px;border-bottom:2px solid #0e2233;position:sticky;top:0;background:#fff;}
+      .tk-table{width:100%;border-collapse:collapse;font-size:14.5px;}
+      .tk-table thead th{font-family:'Courier New',monospace;font-size:12px;text-transform:uppercase;color:#5c7284;
+        text-align:right;padding:9px 11px;border-bottom:2px solid #0e2233;position:sticky;top:0;background:#fff;font-weight:700;}
       .tk-table thead th:first-child{text-align:left;}
-      .tk-table tbody td{padding:7px 9px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
+      .tk-table tbody td{padding:9px 11px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
       .tk-table tbody td:first-child{text-align:left;font-family:inherit;font-weight:600;}
       .tk-table tbody tr:hover{background:rgba(11,95,165,0.05);}
-      .tk-table tfoot td{padding:9px;text-align:right;font-family:'Courier New',monospace;font-weight:700;
+      .tk-table tfoot td{padding:11px;text-align:right;font-family:'Courier New',monospace;font-weight:700;
         border-top:2px solid #0e2233;background:rgba(11,95,165,0.04);}
       .tk-table tfoot td:first-child{text-align:left;}
-      .tk-empty{color:#7c8fa0;font-size:13px;padding:28px;text-align:center;font-family:'Courier New',monospace;}
-      @media (max-width:720px){ .tk-vitals{grid-template-columns:repeat(2,1fr);} }
+      .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:'Courier New',monospace;}
+      @media (max-width:720px){
+        .tk-vitals{grid-template-columns:repeat(2,1fr);}
+        .tk-canvas-wrap{height:260px;}
+        .tk-head h2{font-size:22px;}
+      }
     `;
     document.head.appendChild(style);
   }
@@ -123,11 +127,20 @@
     renderMonth(container, months[0]);
   }
 
+  // Chỉ chấp nhận khóa ngày là số nguyên hợp lệ (1-31); loại bỏ khóa rác
+  // như "" phát sinh từ những lần đồng bộ cũ bị lỗi ngày.
+  function isValidDayKey(k) {
+    return /^\d{1,2}$/.test(k) && Number(k) >= 1 && Number(k) <= 31;
+  }
+
   function renderMonth(container, monthKey) {
     const month = fullData.months[monthKey];
     if (!month) return;
 
-    const days = Object.keys(month.totalByDay || {}).map(Number).sort((a, b) => a - b);
+    const days = Object.keys(month.totalByDay || {})
+      .filter(isValidDayKey)
+      .map(Number)
+      .sort((a, b) => a - b);
     const totals = days.map((d) => month.totalByDay[String(d)] || 0);
 
     let lastSyncDay = null, lastSyncTime = null;
@@ -190,17 +203,32 @@
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: false } },
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: { bodyFont: { size: 13 }, titleFont: { size: 13 } },
+        },
         scales: {
-          y: { beginAtZero: true, grid: { color: 'rgba(11,95,165,0.08)' } },
-          x: { grid: { display: false } },
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(11,95,165,0.08)' },
+            ticks: { font: { size: 12.5 } },
+          },
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 12.5 } },
+          },
         },
       },
     });
   }
 
   function renderTable(container, days, rows) {
-    const rowNums = Object.keys(rows).sort((a, b) => Number(a) - Number(b));
+    // Chỉ giữ các dòng có khóa là số hợp lệ (loại khóa rác "" từng bị ghi
+    // nhầm do lỗi ngày ở lần đồng bộ cũ — nguyên nhân gây dòng trùng lặp).
+    const rowNums = Object.keys(rows)
+      .filter((rn) => /^\d+$/.test(rn))
+      .sort((a, b) => Number(a) - Number(b));
     const wrap = container.querySelector('#tkTableWrap');
     if (rowNums.length === 0) {
       wrap.innerHTML = '<div class="tk-empty">Chưa có dữ liệu chi tiết.</div>';
