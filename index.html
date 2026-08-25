@@ -821,7 +821,28 @@
 
       <!-- ============ NEWS2 ============ -->
       <div class="panel-wrap cs-two-col cs-tool active" data-tool-panel="news2">
-        <div class="card">
+        <div class="card cs-result-card">
+          <h1>Kết quả NEWS2</h1>
+          <div class="monitor">
+            <div class="monitor-label">Kết quả NEWS2</div>
+            <div class="result show">
+              <div><span class="value" id="csNews2Value">0</span><span class="unit">/ 20</span></div>
+              <span class="stage" id="csNews2Badge">Thấp</span>
+              <p class="desc" id="csNews2Note">Theo dõi và đánh giá lại theo diễn biến lâm sàng.</p>
+            </div>
+            <div class="cs-subgrid">
+              <div><span class="k">RR</span><span class="v" id="csSubRr">0</span></div>
+              <div><span class="k">SpO₂</span><span class="v" id="csSubSpo2">0</span></div>
+              <div><span class="k">O₂</span><span class="v" id="csSubO2">0</span></div>
+              <div><span class="k">HA tâm thu</span><span class="v" id="csSubSbp">0</span></div>
+              <div><span class="k">Mạch</span><span class="v" id="csSubPulse">0</span></div>
+              <div><span class="k">Nhiệt độ</span><span class="v" id="csSubTemp">0</span></div>
+              <div><span class="k">Ý thức</span><span class="v" id="csSubAvpu">0</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card cs-form-card">
           <h1>NEWS2 — National Early Warning Score 2</h1>
           <p class="sub">Nhập dấu hiệu sinh tồn. Điểm tính theo thang NEWS2 chuẩn (RCP).</p>
 
@@ -876,27 +897,6 @@
 
           <div class="formula-note">NEWS2 là công cụ cảnh báo sớm, không thay thế đánh giá lâm sàng. Scale 2 chỉ dùng khi có chỉ định phù hợp theo quy định cơ sở. Một chỉ số đơn lẻ = 3 điểm cần theo dõi sát dù tổng điểm thấp.</div>
         </div>
-
-        <div class="card">
-          <h1>Kết quả NEWS2</h1>
-          <div class="monitor">
-            <div class="monitor-label">Kết quả NEWS2</div>
-            <div class="result show">
-              <div><span class="value" id="csNews2Value">0</span><span class="unit">/ 20</span></div>
-              <span class="stage" id="csNews2Badge">Thấp</span>
-              <p class="desc" id="csNews2Note">Theo dõi và đánh giá lại theo diễn biến lâm sàng.</p>
-            </div>
-            <div class="cs-subgrid">
-              <div><span class="k">RR</span><span class="v" id="csSubRr">0</span></div>
-              <div><span class="k">SpO₂</span><span class="v" id="csSubSpo2">0</span></div>
-              <div><span class="k">O₂</span><span class="v" id="csSubO2">0</span></div>
-              <div><span class="k">HA tâm thu</span><span class="v" id="csSubSbp">0</span></div>
-              <div><span class="k">Mạch</span><span class="v" id="csSubPulse">0</span></div>
-              <div><span class="k">Nhiệt độ</span><span class="v" id="csSubTemp">0</span></div>
-              <div><span class="k">Ý thức</span><span class="v" id="csSubAvpu">0</span></div>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ============ VAS ============ -->
@@ -927,7 +927,19 @@
 
       <!-- ============ BRADEN ============ -->
       <div class="panel-wrap cs-two-col cs-tool" data-tool-panel="braden" style="display:none;">
-        <div class="card">
+        <div class="card cs-result-card">
+          <h1>Kết quả Braden</h1>
+          <div class="monitor">
+            <div class="monitor-label">Kết quả Braden</div>
+            <div class="result show">
+              <div><span class="value" id="csBradenValue">23</span><span class="unit">/ 23</span></div>
+              <span class="stage" id="csBradenBadge">Không có nguy cơ rõ rệt</span>
+              <p class="desc" id="csBradenNote">Điểm thấp hơn tương ứng nguy cơ loét tỳ đè cao hơn.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card cs-form-card">
           <h1>Braden Scale — Nguy cơ loét tỳ đè</h1>
           <p class="sub">6 thành phần — tổng điểm 6–23. Điểm càng thấp, nguy cơ càng cao.</p>
 
@@ -987,23 +999,23 @@
 
           <div class="formula-note">Ngưỡng tham khảo: ≤9 rất cao · 10–12 cao · 13–14 trung bình · 15–18 nhẹ · ≥19 không có nguy cơ rõ rệt. Có thể khác tùy chính sách bệnh viện.</div>
         </div>
-
-        <div class="card">
-          <h1>Kết quả Braden</h1>
-          <div class="monitor">
-            <div class="monitor-label">Kết quả Braden</div>
-            <div class="result show">
-              <div><span class="value" id="csBradenValue">23</span><span class="unit">/ 23</span></div>
-              <span class="stage" id="csBradenBadge">Không có nguy cơ rõ rệt</span>
-              <p class="desc" id="csBradenNote">Điểm thấp hơn tương ứng nguy cơ loét tỳ đè cao hơn.</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       <!-- ============ MORSE ============ -->
       <div class="panel-wrap cs-two-col cs-tool" data-tool-panel="morse" style="display:none;">
-        <div class="card">
+        <div class="card cs-result-card">
+          <h1>Kết quả Morse</h1>
+          <div class="monitor">
+            <div class="monitor-label">Kết quả Morse</div>
+            <div class="result show">
+              <div><span class="value" id="csMorseValue">0</span><span class="unit">/ 125</span></div>
+              <span class="stage" id="csMorseBadge">Thấp</span>
+              <p class="desc" id="csMorseNote">Đánh giá lại sau mỗi thay đổi tình trạng hoặc theo quy định khoa phòng.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="card cs-form-card">
           <h1>Morse Fall Scale — Nguy cơ té ngã</h1>
           <p class="sub">Tổng điểm 0–125. Điểm càng cao, nguy cơ té ngã càng lớn.</p>
 
@@ -1053,18 +1065,6 @@
           </div>
 
           <div class="formula-note">Ngưỡng tham khảo: 0–24 thấp · 25–50 trung bình · ≥51 cao. Có thể khác tùy chính sách bệnh viện.</div>
-        </div>
-
-        <div class="card">
-          <h1>Kết quả Morse</h1>
-          <div class="monitor">
-            <div class="monitor-label">Kết quả Morse</div>
-            <div class="result show">
-              <div><span class="value" id="csMorseValue">0</span><span class="unit">/ 125</span></div>
-              <span class="stage" id="csMorseBadge">Thấp</span>
-              <p class="desc" id="csMorseNote">Đánh giá lại sau mỗi thay đổi tình trạng hoặc theo quy định khoa phòng.</p>
-            </div>
-          </div>
         </div>
       </div>
 
