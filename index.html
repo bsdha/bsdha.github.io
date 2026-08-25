@@ -804,9 +804,13 @@
     <main>
       <div class="panel-wrap cs-wrap">
         <div class="card">
+          <div class="cs-eyebrow">Công cụ điều dưỡng · bên giường bệnh</div>
           <h1>📊 Thang điểm lâm sàng</h1>
           <p class="sub">NEWS2 · VAS · Braden · Morse — 4 thang điểm dùng nhanh khi thăm khám và theo dõi người bệnh. Kết quả tính tự động khi nhập.</p>
-          <div class="toggle-group cs-tabs" id="csTabs">
+          <svg class="cs-pulse-line" viewBox="0 0 600 26" preserveAspectRatio="none" aria-hidden="true">
+            <path d="M0 13 L180 13 L200 4 L215 22 L232 13 L420 13 L438 6 L452 20 L468 13 L600 13" />
+          </svg>
+          <div class="toggle-group cs-tabs" id="csTabs" style="margin-top:18px;">
             <button type="button" class="active" data-tool="news2">NEWS2</button>
             <button type="button" data-tool="vas">VAS</button>
             <button type="button" data-tool="braden">Braden</button>
@@ -875,19 +879,22 @@
 
         <div class="card">
           <h1>Kết quả NEWS2</h1>
-          <div class="result show">
-            <div><span class="value" id="csNews2Value">0</span><span class="unit">/ 20</span></div>
-            <span class="stage" id="csNews2Badge">Thấp</span>
-            <p class="desc" id="csNews2Note">Theo dõi và đánh giá lại theo diễn biến lâm sàng.</p>
-          </div>
-          <div class="cs-subgrid">
-            <div><span class="k">RR</span><span class="v" id="csSubRr">0</span></div>
-            <div><span class="k">SpO₂</span><span class="v" id="csSubSpo2">0</span></div>
-            <div><span class="k">O₂</span><span class="v" id="csSubO2">0</span></div>
-            <div><span class="k">HA tâm thu</span><span class="v" id="csSubSbp">0</span></div>
-            <div><span class="k">Mạch</span><span class="v" id="csSubPulse">0</span></div>
-            <div><span class="k">Nhiệt độ</span><span class="v" id="csSubTemp">0</span></div>
-            <div><span class="k">Ý thức</span><span class="v" id="csSubAvpu">0</span></div>
+          <div class="monitor">
+            <div class="monitor-label">Kết quả NEWS2</div>
+            <div class="result show">
+              <div><span class="value" id="csNews2Value">0</span><span class="unit">/ 20</span></div>
+              <span class="stage" id="csNews2Badge">Thấp</span>
+              <p class="desc" id="csNews2Note">Theo dõi và đánh giá lại theo diễn biến lâm sàng.</p>
+            </div>
+            <div class="cs-subgrid">
+              <div><span class="k">RR</span><span class="v" id="csSubRr">0</span></div>
+              <div><span class="k">SpO₂</span><span class="v" id="csSubSpo2">0</span></div>
+              <div><span class="k">O₂</span><span class="v" id="csSubO2">0</span></div>
+              <div><span class="k">HA tâm thu</span><span class="v" id="csSubSbp">0</span></div>
+              <div><span class="k">Mạch</span><span class="v" id="csSubPulse">0</span></div>
+              <div><span class="k">Nhiệt độ</span><span class="v" id="csSubTemp">0</span></div>
+              <div><span class="k">Ý thức</span><span class="v" id="csSubAvpu">0</span></div>
+            </div>
           </div>
         </div>
       </div>
@@ -907,10 +914,13 @@
         </div>
         <div class="card">
           <h1>Mức độ đau</h1>
-          <div class="result show">
-            <div><span class="value" id="csVasValue">0</span><span class="unit">/ 10</span></div>
-            <span class="stage" id="csVasBadge">Không đau</span>
-            <p class="desc">Đánh giá lại theo diễn biến và sau can thiệp giảm đau.</p>
+          <div class="monitor">
+            <div class="monitor-label">Mức độ đau</div>
+            <div class="result show">
+              <div><span class="value" id="csVasValue">0</span><span class="unit">/ 10</span></div>
+              <span class="stage" id="csVasBadge">Không đau</span>
+              <p class="desc">Đánh giá lại theo diễn biến và sau can thiệp giảm đau.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -980,10 +990,13 @@
 
         <div class="card">
           <h1>Kết quả Braden</h1>
-          <div class="result show">
-            <div><span class="value" id="csBradenValue">23</span><span class="unit">/ 23</span></div>
-            <span class="stage" id="csBradenBadge">Không có nguy cơ rõ rệt</span>
-            <p class="desc" id="csBradenNote">Điểm thấp hơn tương ứng nguy cơ loét tỳ đè cao hơn.</p>
+          <div class="monitor">
+            <div class="monitor-label">Kết quả Braden</div>
+            <div class="result show">
+              <div><span class="value" id="csBradenValue">23</span><span class="unit">/ 23</span></div>
+              <span class="stage" id="csBradenBadge">Không có nguy cơ rõ rệt</span>
+              <p class="desc" id="csBradenNote">Điểm thấp hơn tương ứng nguy cơ loét tỳ đè cao hơn.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -1044,10 +1057,13 @@
 
         <div class="card">
           <h1>Kết quả Morse</h1>
-          <div class="result show">
-            <div><span class="value" id="csMorseValue">0</span><span class="unit">/ 125</span></div>
-            <span class="stage" id="csMorseBadge">Thấp</span>
-            <p class="desc" id="csMorseNote">Đánh giá lại sau mỗi thay đổi tình trạng hoặc theo quy định khoa phòng.</p>
+          <div class="monitor">
+            <div class="monitor-label">Kết quả Morse</div>
+            <div class="result show">
+              <div><span class="value" id="csMorseValue">0</span><span class="unit">/ 125</span></div>
+              <span class="stage" id="csMorseBadge">Thấp</span>
+              <p class="desc" id="csMorseNote">Đánh giá lại sau mỗi thay đổi tình trạng hoặc theo quy định khoa phòng.</p>
+            </div>
           </div>
         </div>
       </div>
