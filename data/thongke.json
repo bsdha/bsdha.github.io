@@ -2,36 +2,36 @@
   "months": {
     "2026-08": {
       "rows": {
-        "3": {
+        "": {
           "label": "Phòng khám Nội 1",
           "days": {
-            "25": 12
+            "": 12
           }
         },
         "4": {
           "label": "Phòng khám Nội 2",
           "days": {
-            "25": 8
+            "": 8
           }
         },
         "13": {
           "label": "Cấp Cứu",
           "days": {
-            "25": 5
+            "": 5
           }
         },
         "14": {
           "label": "Không BHYT (chuyên khoa + dịch vụ)",
           "days": {
-            "25": 20
+            "": 20
           }
         }
       },
       "totalByDay": {
-        "25": 45
+        "": 45
       },
       "lastSyncByDay": {
-        "25": "2026-08-25T06:42:28.121Z"
+        "": "2026-08-25T06:42:28.121Z"
       }
     }
   }
