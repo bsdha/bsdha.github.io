@@ -901,18 +901,7 @@
 
       <!-- ============ VAS ============ -->
       <div class="panel-wrap cs-two-col cs-tool" data-tool-panel="vas" style="display:none;">
-        <div class="card">
-          <h1>VAS — Thang điểm đau</h1>
-          <p class="sub">Thang điểm đau 0–10, người bệnh tự đánh giá mức độ đau.</p>
-          <input type="range" id="csVasSlider" min="0" max="10" step="1" value="0" style="width:100%; accent-color:var(--blue); margin:18px 0 6px;">
-          <div class="cs-scale-labels">
-            <span>0<br>Không đau</span>
-            <span>5<br>Vừa</span>
-            <span>10<br>Đau dữ dội nhất</span>
-          </div>
-          <div class="formula-note">VAS nguyên bản dùng đường thẳng 10cm; giao diện này dùng thang số NRS 0–10 tương đương về mục đích sàng lọc. Nếu hồ sơ yêu cầu đúng VAS 10cm, nên dùng thước VAS chuẩn.</div>
-        </div>
-        <div class="card">
+        <div class="card cs-result-card">
           <h1>Mức độ đau</h1>
           <div class="monitor">
             <div class="monitor-label">Mức độ đau</div>
@@ -922,6 +911,17 @@
               <p class="desc">Đánh giá lại theo diễn biến và sau can thiệp giảm đau.</p>
             </div>
           </div>
+        </div>
+        <div class="card cs-form-card">
+          <h1>VAS — Thang điểm đau</h1>
+          <p class="sub">Thang điểm đau 0–10, người bệnh tự đánh giá mức độ đau.</p>
+          <input type="range" id="csVasSlider" min="0" max="10" step="1" value="0" style="width:100%; accent-color:var(--blue); margin:18px 0 6px;">
+          <div class="cs-scale-labels">
+            <span>0<br>Không đau</span>
+            <span>5<br>Vừa</span>
+            <span>10<br>Đau dữ dội nhất</span>
+          </div>
+          <div class="formula-note">VAS nguyên bản dùng đường thẳng 10cm; giao diện này dùng thang số NRS 0–10 tương đương về mục đích sàng lọc. Nếu hồ sơ yêu cầu đúng VAS 10cm, nên dùng thước VAS chuẩn.</div>
         </div>
       </div>
 
