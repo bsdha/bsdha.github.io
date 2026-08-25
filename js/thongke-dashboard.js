@@ -1,13 +1,15 @@
 /**
  * Trang "Thống kê tiếp nhận" — tích hợp vào SPA (bsdha.github.io).
- * Đọc dữ liệu từ data/thongke.json (do Cloudflare Worker ghi mỗi lần userscript
- * trên HIS đồng bộ). Hiển thị bảng chi tiết theo phòng khám với 2 cột số liệu:
+ * Đọc dữ liệu trực tiếp từ Cloudflare Worker (KV) — Worker này cũng là nơi
+ * userscript trên HIS gửi (POST) dữ liệu đến. Không còn đọc từ GitHub
+ * (API GitHub Contents chỉ lưu lịch sử tối đa 1 năm). Hiển thị bảng chi
+ * tiết theo phòng khám với 2 cột số liệu:
  *   - Cột theo NGÀY cụ thể (chọn được, mặc định = hôm nay)
  *   - Cột theo KỲ (Tháng / Quý / Năm — chọn được, mặc định = Tháng hiện tại)
  * Dùng chung cơ chế khoá mật khẩu "cs2" với các trang nội bộ khác (window.BSDHA_LOCK).
  */
 (function () {
-  const DATA_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/main/data/thongke.json';
+  const DATA_URL = 'https://his-sync-worker.dhabolero.workers.dev/';
 
   const ROW_LABELS_FALLBACK = {
     3: 'Phòng khám Nội 1', 4: 'Phòng khám Nội 2', 5: 'Phòng Khám Nội 3',
