@@ -18,7 +18,7 @@
 
   function setStage(el, level, text) {
     el.className = 'stage' + (level ? ' cs-' + level : '');
-    el.textContent = text;
+    el.textContent = text; // dấu chấm màu được vẽ bằng CSS ::before, không cần chèn thẻ con
   }
   function num(id) {
     var v = parseFloat(document.getElementById(id).value);
