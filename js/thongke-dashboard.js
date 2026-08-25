@@ -7,9 +7,17 @@
  *   - Cột theo NGÀY cụ thể (chọn được, mặc định = hôm nay)
  *   - Cột theo KỲ (Tháng / Quý / Năm — chọn được, mặc định = Tháng hiện tại)
  * Dùng chung cơ chế khoá mật khẩu "cs2" với các trang nội bộ khác (window.BSDHA_LOCK).
+ *
+ * TỰ ĐỘNG CẬP NHẬT: Worker/KV không hỗ trợ đẩy dữ liệu (không có WebSocket/SSE),
+ * nên không thể có "thời gian thực" tuyệt đối — trang tự động hỏi lại Worker
+ * (poll) mỗi AUTO_REFRESH_MS mili-giây để lấy số liệu mới nhất, KHÔNG cần
+ * người dùng bấm nút. Tạm dừng khi tab đang ẩn (đỡ tốn request), tự chạy lại
+ * ngay khi quay lại tab.
  */
 (function () {
   const DATA_URL = 'https://his-sync-worker.dhabolero.workers.dev/';
+  const AUTO_REFRESH_MS = 30 * 1000; // 30 giây/lần — gần thời gian thực
+  let autoRefreshTimer = null;
 
   const ROW_LABELS_FALLBACK = {
     3: 'Phòng khám Nội 1', 4: 'Phòng khám Nội 2', 5: 'Phòng Khám Nội 3',
@@ -29,9 +37,11 @@
         border-bottom:2px solid #0e2233;padding-bottom:16px;margin-bottom:18px;}
       .tk-head h2{margin:0;font-size:26px;font-weight:800;color:#0e2233;}
       .tk-head .tk-sub{font-size:14.5px;color:#5c7284;margin-top:5px;}
-      .tk-refresh{font-size:14.5px;font-weight:700;padding:9px 14px;border-radius:7px;border:1px solid #0b5fa5;
-        background:#fff;color:#0b5fa5;cursor:pointer;white-space:nowrap;}
-      .tk-refresh:hover{background:#0b5fa5;color:#fff;}
+      .tk-live{font-size:13px;font-weight:700;padding:7px 12px;border-radius:7px;border:1px solid #17a34a;
+        background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
+      .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
+        animation:tkPulse 1.6s ease-in-out infinite;}
+      @keyframes tkPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
       .tk-filterbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
         background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:14px 16px;margin-bottom:22px;}
       .tk-filter-group{display:flex;flex-direction:column;gap:5px;}
@@ -71,7 +81,7 @@
       <div class="tk-wrap">
         <div class="tk-head">
           <div><h2>Thống kê tiếp nhận</h2><div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div></div>
-          <button class="tk-refresh" id="tkRefreshBtn">↻ Làm mới</button>
+          <span class="tk-live"><span class="tk-live-dot"></span>Tự động cập nhật</span>
         </div>
         <div class="tk-filterbar">
           <div class="tk-filter-group">
@@ -369,12 +379,42 @@
     wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${tbody}</tbody><tfoot>${tfoot}</tfoot></table>`;
   }
 
+  // ---------- Tự động làm mới (polling) ----------
+  function startAutoRefresh(container) {
+    stopAutoRefresh();
+    autoRefreshTimer = setInterval(() => {
+      // Chỉ poll khi tab đang hiển thị và trang thống kê vẫn đang active,
+      // tránh gọi Worker vô ích khi người dùng đã rời trang/ẩn tab.
+      const pageEl = document.getElementById('page-thongke');
+      if (document.hidden || !pageEl || !pageEl.classList.contains('active')) return;
+      loadData(container);
+    }, AUTO_REFRESH_MS);
+  }
+
+  function stopAutoRefresh() {
+    if (autoRefreshTimer) {
+      clearInterval(autoRefreshTimer);
+      autoRefreshTimer = null;
+    }
+  }
+
+  // Quay lại tab sau khi ẩn -> làm mới ngay lập tức thay vì chờ tới chu kỳ tiếp theo
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+      const pageEl = document.getElementById('page-thongke');
+      const contentEl = document.getElementById('thongkeContent');
+      if (pageEl && pageEl.classList.contains('active') && contentEl && contentEl.dataset.tkInit === '1') {
+        loadData(contentEl);
+      }
+    }
+  });
+
   function initDashboard(container) {
-    if (container.dataset.tkInit === '1') { loadData(container); return; }
+    if (container.dataset.tkInit === '1') { loadData(container); startAutoRefresh(container); return; }
     container.dataset.tkInit = '1';
     container.innerHTML = skeletonHtml();
-    container.querySelector('#tkRefreshBtn').onclick = () => loadData(container);
     loadData(container);
+    startAutoRefresh(container);
   }
 
   function isUnlocked() {
