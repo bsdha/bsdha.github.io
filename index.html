@@ -93,6 +93,7 @@
 
     <div class="nav-group-divider"></div>
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
+    <a href="/thongke" class="nav-item" data-page="thongke" data-path="/thongke"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
@@ -113,6 +114,7 @@
     <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
 
     <div class="nav-group-divider"></div>
+    <a href="/thongke" class="nav-item" data-page="thongke" data-path="/thongke"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
@@ -125,40 +127,6 @@
 
   <div class="page active" id="page-home">
     <div class="home-wrap">
-      <div class="kcb-widget" id="kcbWidget">
-        <div class="kcb-widget-head">
-          <span class="kcb-widget-dot" title="Số liệu KCB"></span>
-          <span class="kcb-widget-text" id="kcbWidgetText">Đang tải số liệu…</span>
-          <button type="button" class="kcb-widget-toggle" id="kcbWidgetToggle" title="Xem chi tiết theo phòng khám">
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10h18M3 6h18M3 14h12M3 18h8"/></svg>
-            <span>Chi tiết</span>
-          </button>
-        </div>
-      </div>
-
-      <div class="kcb-modal-overlay" id="kcbModalOverlay">
-        <div class="kcb-modal-box" role="dialog" aria-modal="true" aria-labelledby="kcbModalTitle">
-          <div class="kcb-modal-head">
-            <span id="kcbModalTitle">📊 Số liệu khám chữa bệnh</span>
-            <button type="button" class="kcb-modal-close" id="kcbModalClose" title="Đóng">✕</button>
-          </div>
-          <div class="kcb-modal-tabs">
-            <button type="button" class="kcb-detail-tab active" data-mode="day">Hôm nay</button>
-            <button type="button" class="kcb-detail-tab" data-mode="month">Tổng tháng</button>
-          </div>
-          <div class="kcb-date-nav" id="kcbDateNav">
-            <button type="button" class="kcb-date-arrow" id="kcbDatePrev" title="Xem ngày trước">‹</button>
-            <input type="date" class="kcb-date-input" id="kcbDateInput" title="Chọn ngày cần xem">
-            <button type="button" class="kcb-date-arrow" id="kcbDateNext" title="Xem ngày sau">›</button>
-          </div>
-          <div class="kcb-modal-body">
-            <table class="kcb-detail-table">
-              <tbody id="kcbDetailRows"></tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
       <header>
         <div class="logo">🩺</div>
         <h1>BSDHA - Bộ công cụ Y khoa</h1>
@@ -256,6 +224,13 @@
         <span>Nội bộ BVĐK Bình Dương CS2</span>
       </div>
       <div class="hgrid">
+        <a href="/thongke" class="hcard" data-page="thongke" data-path="/thongke">
+          <div class="ic">📈</div>
+          <h2>Thống kê tiếp nhận</h2>
+          <p>Biểu đồ &amp; bảng chi tiết số lượt khám theo ngày, theo từng phòng khám — đồng bộ tự động từ HIS.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
         <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu">
           <div class="ic">📋</div>
           <h2>Tạo phiếu sinh hiệu</h2>
@@ -1909,6 +1884,17 @@
     }
   </style>
 
+  <div class="page" id="page-thongke">
+    <!-- Nội dung được render động bởi js/thongke-dashboard.js vào #thongkeContent -->
+    <div id="thongkeContent">
+      <div style="max-width:640px; margin:60px auto; text-align:center; padding:24px; font-family:inherit;">
+        <div style="font-size:48px; margin-bottom:12px;">📈</div>
+        <h2 style="margin:0 0 8px;">Thống kê tiếp nhận</h2>
+        <p style="color:#666; font-size:15px;">Đang tải số liệu…</p>
+      </div>
+    </div>
+  </div>
+
   <div class="page" id="page-chuyentuyen">
     <!-- Khung nội dung cho tính năng "Phiếu chuyển tuyến".
          File js/chuyen-tuyen.js (khi được tạo và upload) nên render giao diện thật
@@ -1996,7 +1982,8 @@
 <script defer src="js/spa-router.js"></script>
 
 <script defer src="js/news-banner.js?v=2"></script>
-<script defer src="js/kcb-widget.js?v=2"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script defer src="js/thongke-dashboard.js?v=1"></script>
 
 <script defer src="js/pdf-to-word.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
