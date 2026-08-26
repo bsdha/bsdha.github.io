@@ -18,6 +18,7 @@
   const DATA_URL = 'https://his-sync-worker.dhabolero.workers.dev/';
   const AUTO_REFRESH_MS = 30 * 1000; // 30 giây/lần — gần thời gian thực
   let autoRefreshTimer = null;
+  let resizeListenerBound = false;
 
   const ROW_LABELS_FALLBACK = {
     3: 'Phòng khám Nội 1', 4: 'Phòng khám Nội 2', 5: 'Phòng Khám Nội 3',
@@ -25,6 +26,16 @@
     9: 'Khám Mắt', 10: 'PK CS2_RHM', 11: 'Khám Tai Mũi Họng', 12: 'Phòng khám YHCT',
     13: 'Cấp Cứu', 14: 'Không BHYT (chuyên khoa + dịch vụ)',
     15: 'Khám sức khoẻ lái xe', 16: 'Phòng tiêm ngừa',
+  };
+
+  // Đổi tên hiển thị cho một số nhãn (áp dụng dù nhãn lấy từ dữ liệu hay từ fallback).
+  const DISPLAY_LABEL_OVERRIDES = {
+    'Không BHYT (chuyên khoa + dịch vụ)': 'Dịch vụ',
+  };
+
+  // Đổi cách đọc (chỉ áp dụng khi đọc bằng giọng nói, không đổi nhãn hiển thị).
+  const SPEECH_LABEL_OVERRIDES = {
+    'Phòng khám YHCT': 'Phòng khám y học cổ truyền',
   };
 
   const STYLE_ID = 'thongke-dashboard-style';
@@ -55,8 +66,10 @@
       .tk-live{font-size:13px;font-weight:700;padding:7px 12px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
-        animation:tkPulse 1.6s ease-in-out infinite;}
-      @keyframes tkPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+        position:relative;}
+      .tk-live-dot::before{content:'';position:absolute;inset:-3px;border-radius:50%;
+        background:#17a34a;opacity:.65;animation:tkPing 1.7s cubic-bezier(0,0,.2,1) infinite;}
+      @keyframes tkPing{0%{transform:scale(1);opacity:.65;}75%,100%{transform:scale(3);opacity:0;}}
       .tk-filterbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
         background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:14px 16px;margin-bottom:22px;}
       .tk-filter-group{display:flex;flex-direction:column;gap:5px;}
@@ -66,10 +79,11 @@
         cursor:pointer;min-width:150px;}
       .tk-filter-group input:focus, .tk-filter-group select:focus{outline:2px solid #0b5fa5;outline-offset:1px;}
       .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
-      .tk-panel-head{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;}
+      .tk-panel-head{margin-bottom:6px;}
       .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
       .tk-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
-      .tk-day-nav{display:flex;align-items:center;gap:6px;}
+      .tk-day-nav-row{position:relative;min-height:38px;margin-bottom:12px;}
+      .tk-day-nav{position:absolute;top:0;right:0;display:flex;align-items:center;gap:6px;}
       .tk-day-btn{width:30px;height:30px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0b5fa5;
         font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
       .tk-day-btn:hover{background:#eef4fa;}
@@ -128,7 +142,9 @@
         <div class="tk-panel">
           <div class="tk-panel-head">
             <h3>Chi tiết theo phòng khám</h3>
-            <div class="tk-day-nav">
+          </div>
+          <div class="tk-day-nav-row" id="tkDayNavRow">
+            <div class="tk-day-nav" id="tkDayNav">
               <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
               <input type="date" id="tkDayPicker">
               <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
@@ -251,6 +267,11 @@
       speakBtn.addEventListener('click', () => toggleSpeakReport(speakBtn));
     }
 
+    if (!resizeListenerBound) {
+      resizeListenerBound = true;
+      window.addEventListener('resize', () => positionDayNav(container));
+    }
+
     if (!periodTypeSel.dataset.bound) {
       periodTypeSel.dataset.bound = '1';
       periodTypeSel.addEventListener('change', () => {
@@ -337,6 +358,24 @@
     if (el) el.textContent = `Báo cáo số liệu KCB ngày ${dd}/${dm}/${dy}`;
   }
 
+  function positionDayNav(container) {
+    const row = container.querySelector('#tkDayNavRow');
+    const nav = container.querySelector('#tkDayNav');
+    const table = container.querySelector('#tkTableWrap table');
+    if (!row || !nav || !table) return;
+    const ths = table.querySelectorAll('thead th');
+    if (ths.length < 3) return;
+    const rowRect = row.getBoundingClientRect();
+    const c2 = ths[1].getBoundingClientRect();
+    const c3 = ths[2].getBoundingClientRect();
+    const mid = ((c2.left + c2.right) / 2 + (c3.left + c3.right) / 2) / 2;
+    const navWidth = nav.getBoundingClientRect().width;
+    let left = mid - rowRect.left - navWidth / 2;
+    left = Math.max(0, Math.min(left, rowRect.width - navWidth));
+    nav.style.right = 'auto';
+    nav.style.left = left + 'px';
+  }
+
   function renderLastSync(container) {
     // Đồng bộ gần nhất trên toàn bộ dữ liệu (không giới hạn theo bộ lọc hiện tại).
     let lastTime = null;
@@ -419,6 +458,7 @@
         (dayRows[rn] && dayRows[rn].label) ||
         (periodMonthKeys.map((mk) => fullData.months[mk] && fullData.months[mk].rows[rn]).find(Boolean) || {}).label ||
         ROW_LABELS_FALLBACK[rn] || ('Dòng ' + rn);
+      const displayLabel = DISPLAY_LABEL_OVERRIDES[label] || label;
 
       const dayVal = (dayRows[rn] && dayRows[rn].days && dayRows[rn].days[dayKey]) || 0;
 
@@ -434,9 +474,9 @@
 
       dayTotalSum += dayVal;
       periodTotalSum += periodVal;
-      reportRows.push({ label, dayVal });
+      reportRows.push({ label: displayLabel, dayVal });
 
-      tbody += `<tr><td>${label}</td><td>${dayVal}</td><td>${periodVal}</td></tr>`;
+      tbody += `<tr><td>${displayLabel}</td><td>${dayVal}</td><td>${periodVal}</td></tr>`;
     });
 
     const thead = `<tr><th>Phòng khám</th><th>${dayLabel}</th><th>${periodLabel}</th></tr>`;
@@ -445,6 +485,7 @@
     wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${totalRow}${tbody}</tbody></table>`;
 
     lastReport = { dd, dm, dy, dayTotalSum, rows: reportRows };
+    requestAnimationFrame(() => positionDayNav(container));
   }
 
   // ---------- Đọc báo cáo số liệu (Text-to-Speech) ----------
@@ -459,7 +500,10 @@
     text += `Tổng số lượt khám trong ngày là ${dayTotalSum} lượt. `;
     rows
       .filter((r) => r.dayVal > 0)
-      .forEach((r) => { text += `${r.label}: ${r.dayVal} lượt. `; });
+      .forEach((r) => {
+        const spoken = SPEECH_LABEL_OVERRIDES[r.label] || r.label;
+        text += `${spoken}: ${r.dayVal} lượt. `;
+      });
     return text;
   }
 
