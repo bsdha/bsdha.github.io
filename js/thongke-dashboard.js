@@ -85,10 +85,11 @@
       .tk-filter-group input:focus, .tk-filter-group select:focus{outline:2px solid #0b5fa5;outline-offset:1px;}
       .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
       .tk-detail-panel{width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;}
-      .tk-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
-      .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
+      .tk-panel-head{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+        gap:10px 16px;margin-bottom:16px;}
+      .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;white-space:nowrap;}
       .tk-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
-      .tk-day-nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:16px;}
+      .tk-day-nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;flex-wrap:wrap;}
       .tk-day-btn{width:30px;height:30px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0b5fa5;
         font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
       .tk-day-btn:hover{background:#eef4fa;}
@@ -175,12 +176,12 @@
         <div class="tk-panel tk-detail-panel">
           <div class="tk-panel-head">
             <h3>Chi tiết theo phòng khám</h3>
-          </div>
-          <div class="tk-day-nav" id="tkDayNav">
-            <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
-            <input type="date" id="tkDayPicker">
-            <button type="button" class="tk-today-btn" id="tkDayToday" title="Về hôm nay">Hôm nay</button>
-            <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
+            <div class="tk-day-nav" id="tkDayNav">
+              <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
+              <input type="date" id="tkDayPicker">
+              <button type="button" class="tk-today-btn" id="tkDayToday" title="Về hôm nay">Hôm nay</button>
+              <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
+            </div>
           </div>
           <div class="tk-table-wrap" id="tkTableWrap"><div class="tk-empty">Đang tải…</div></div>
         </div>
@@ -587,12 +588,13 @@
       const monthVal = sumRowOverMonths(rn, monthOfDayMonths);
       const quarterVal = sumRowOverMonths(rn, quarterOfDayMonths);
       const yearVal = sumRowOverMonths(rn, yearOfDayMonths);
+      const periodVal = sumRowOverMonths(rn, periodMonthKeys);
 
       dayTotalSum += dayVal;
       monthTotalSumAll += monthVal;
       quarterTotalSumAll += quarterVal;
       yearTotalSumAll += yearVal;
-      reportRows.push({ label: displayLabel, dayVal });
+      reportRows.push({ label: displayLabel, dayVal, periodVal });
 
       tbody += `<tr><td>${displayLabel}</td><td>${dayVal}</td><td>${monthVal}</td><td>${quarterVal}</td><td>${yearVal}</td></tr>`;
     });
@@ -697,8 +699,20 @@
     // Biểu đồ đường bám theo kỳ đang chọn ở bộ lọc (Tháng/Quý/Năm), không chỉ tháng của ngày đang xem.
     const dayTotals = buildPeriodLineData(periodType, periodValue, periodMonthKeys);
 
-    lastChartData = { bar: rows, line: dayTotals };
+    lastChartData = { bar: rows, barPeriodLabel: buildPeriodLabel(periodType, periodValue), line: dayTotals };
     renderActiveChart(container);
+  }
+
+  function buildPeriodLabel(periodType, periodValue) {
+    if (periodType === 'month') {
+      const [py, pmo] = periodValue.split('-');
+      return `Tháng ${parseInt(pmo, 10)}/${py}`;
+    }
+    if (periodType === 'quarter') {
+      const [py, pq] = periodValue.split('-Q');
+      return `Quý ${pq}/${py}`;
+    }
+    return `Năm ${periodValue}`;
   }
 
   function renderActiveChart(container) {
@@ -719,29 +733,31 @@
       return;
     }
     area.innerHTML = activeChartType === 'bar'
-      ? buildBarChartSvg(lastChartData.bar)
+      ? buildBarChartSvg(lastChartData.bar, lastChartData.barPeriodLabel)
       : buildLineChartSvg(lastChartData.line);
   }
 
-  function buildBarChartSvg(rows) {
+  function buildBarChartSvg(rows, periodLabel) {
     const w = 720, h = 280, padL = 42, padR = 16, padT = 22, padB = 82;
-    const maxVal = Math.max(1, ...rows.map((r) => r.dayVal));
+    const maxVal = Math.max(1, ...rows.map((r) => r.periodVal));
     const bw = (w - padL - padR) / rows.length;
     let bars = '';
     rows.forEach((r, i) => {
-      const barH = (r.dayVal / maxVal) * (h - padT - padB);
+      const barH = (r.periodVal / maxVal) * (h - padT - padB);
       const x = padL + i * bw + bw * 0.18;
       const barWidth = bw * 0.64;
       const y = h - padB - barH;
       const cx = x + barWidth / 2;
       bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(barH, 0).toFixed(1)}" rx="4" fill="url(#tkBarGrad)"></rect>`;
-      if (r.dayVal > 0) bars += `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#0e2233" font-weight="700">${r.dayVal}</text>`;
+      if (r.periodVal > 0) bars += `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#0e2233" font-weight="700">${r.periodVal}</text>`;
       bars += `<text x="${cx.toFixed(1)}" y="${(h - padB + 14).toFixed(1)}" font-size="10" fill="#5c7284" text-anchor="end" transform="rotate(-42 ${cx.toFixed(1)} ${(h - padB + 14).toFixed(1)})">${escapeXml(shortenLabel(r.label))}</text>`;
     });
+    const titleText = periodLabel ? `Theo phòng khám — ${escapeXml(periodLabel)}` : '';
     return `<svg class="tk-chart-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="tkBarGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#12b3c9"/><stop offset="100%" stop-color="#0b5fa5"/>
       </linearGradient></defs>
+      ${titleText ? `<text x="${padL}" y="14" font-size="12" fill="#5c7284" font-weight="700">${titleText}</text>` : ''}
       <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#c9d6de" stroke-width="1"/>
       ${bars}
     </svg>`;
