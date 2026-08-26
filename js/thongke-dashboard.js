@@ -54,8 +54,10 @@
         text-transform:uppercase;text-shadow:0 0 10px rgba(140,225,255,.65),0 0 22px rgba(60,180,255,.4);}
       .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
         text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
-      .tk-head-sticky{background:#fff;z-index:30;position:sticky;position:-webkit-sticky;top:0;}
+      .tk-head-sticky{background:#fff;z-index:30;position:sticky;position:-webkit-sticky;top:0;padding-bottom:2px;}
       .tk-head-sticky.tk-head-stuck{box-shadow:0 8px 18px -8px rgba(14,34,51,.28);padding-top:8px;}
+      .tk-head-sticky .tk-banner{margin-bottom:12px;}
+      .tk-head-sticky.tk-head-stuck .tk-banner{margin-bottom:10px;}
       .tk-head-spacer{height:0;display:none;}
       .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;
         padding-bottom:10px;}
@@ -147,12 +149,12 @@
   function skeletonHtml() {
     return `
       <div class="tk-wrap">
-        <div class="tk-banner">
-          <div class="tk-banner-org">Bệnh viện đa khoa Bình Dương - Cơ sở 2</div>
-          <div class="tk-banner-title" id="tkReportTitle">Báo cáo số liệu KCB ngày --/--/----</div>
-        </div>
         <div id="tkHeadSentinel"></div>
         <div class="tk-head-sticky" id="tkHeadSticky">
+          <div class="tk-banner">
+            <div class="tk-banner-org">Bệnh viện đa khoa Bình Dương - Cơ sở 2</div>
+            <div class="tk-banner-title" id="tkReportTitle">Báo cáo số liệu KCB ngày --/--/----</div>
+          </div>
           <div class="tk-head">
             <div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div>
             <div class="tk-head-filters">
