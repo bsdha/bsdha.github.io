@@ -69,6 +69,7 @@
         background:linear-gradient(120deg,#0b5fa5,#12b3c9);color:#fff;cursor:pointer;
         display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(18,179,201,.45);white-space:nowrap;}
       .tk-speak-btn:hover{filter:brightness(1.08);}
+      .tk-speak-btn:disabled{opacity:.75;cursor:progress;}
       .tk-speak-btn.tk-speaking{background:linear-gradient(120deg,#17a34a,#22d3ee);
         box-shadow:0 0 16px rgba(23,163,74,.55);}
       .tk-export-btn{font-family:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px;
@@ -1094,29 +1095,100 @@
     return text;
   }
 
-  function toggleSpeakReport(btn) {
+  // ---------- Đọc báo cáo bằng giọng FPT.AI-VITs (Hà Tiểu Mai - nữ miền Nam) ----------
+  // CẢNH BÁO BẢO MẬT: đây là site tĩnh không có server riêng, nên API key dưới
+  // đây SẼ hiển thị công khai trong mã nguồn JS (ai bấm "View source" cũng thấy
+  // được) và có thể bị người khác lấy dùng ké, hao credit của bạn. Nếu muốn an
+  // toàn hơn, nên đặt key qua 1 proxy (ví dụ Cloudflare Worker miễn phí) thay vì
+  // gọi thẳng như thế này.
+  const FPT_TTS_API_URL = 'https://mkp-api.fptcloud.com/v1/audio/speech';
+  const FPT_TTS_API_KEY = 'sk-7231VYx1y39eoAR0EAeRM21O4SoVBk5fEQGpmJSyTzU=';
+  const FPT_TTS_MODEL = 'FPT.AI-VITs';
+  const FPT_TTS_VOICE = 'hatieumai'; // Hà Tiểu Mai - giọng nữ miền Nam
+  let tkSpeakAudio = null;
+  let tkSpeakLoading = false;
+
+  function resetSpeakBtn(btn) {
+    btn.disabled = false;
+    btn.classList.remove('tk-speaking');
+    btn.textContent = '🔊 Đọc báo cáo số liệu';
+  }
+
+  function stopSpeaking(btn) {
+    if (tkSpeakAudio) {
+      tkSpeakAudio.pause();
+      tkSpeakAudio.currentTime = 0;
+      tkSpeakAudio = null;
+    }
+    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    if (btn) resetSpeakBtn(btn);
+  }
+
+  // Dự phòng: dùng giọng đọc có sẵn của trình duyệt khi gọi API FPT lỗi
+  // (mất mạng, hết credit, bị chặn CORS...) để nút vẫn luôn hoạt động được.
+  function speakWithBrowserVoice(text, btn) {
     if (!('speechSynthesis' in window)) {
-      alert('Trình duyệt này không hỗ trợ đọc bằng giọng nói.');
+      alert('Không thể tạo giọng đọc qua API (kiểm tra lại credit/kết nối), và trình duyệt này cũng không hỗ trợ giọng đọc dự phòng.');
+      resetSpeakBtn(btn);
       return;
     }
-    if (window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      btn.classList.remove('tk-speaking');
-      btn.textContent = '🔊 Đọc báo cáo số liệu';
-      return;
-    }
-    const text = buildReportSpeech();
     const utter = new SpeechSynthesisUtterance(text);
     utter.lang = 'vi-VN';
     utter.rate = 1;
     const voices = window.speechSynthesis.getVoices();
     const viVoice = voices.find((v) => v.lang === 'vi-VN') || voices.find((v) => v.lang && v.lang.startsWith('vi'));
     if (viVoice) utter.voice = viVoice;
-    utter.onstart = () => { btn.classList.add('tk-speaking'); btn.textContent = '⏹ Dừng đọc'; };
-    utter.onend = () => { btn.classList.remove('tk-speaking'); btn.textContent = '🔊 Đọc báo cáo số liệu'; };
-    utter.onerror = () => { btn.classList.remove('tk-speaking'); btn.textContent = '🔊 Đọc báo cáo số liệu'; };
+    utter.onstart = () => { btn.disabled = false; btn.classList.add('tk-speaking'); btn.textContent = '⏹ Dừng đọc'; };
+    utter.onend = () => resetSpeakBtn(btn);
+    utter.onerror = () => resetSpeakBtn(btn);
     window.speechSynthesis.cancel();
     window.speechSynthesis.speak(utter);
+  }
+
+  async function toggleSpeakReport(btn) {
+    const audioPlaying = tkSpeakAudio && !tkSpeakAudio.paused;
+    const synthSpeaking = 'speechSynthesis' in window && window.speechSynthesis.speaking;
+    if (audioPlaying || synthSpeaking) {
+      stopSpeaking(btn);
+      return;
+    }
+    if (tkSpeakLoading) return; // đang gọi API dở, tránh bấm trùng
+
+    const text = buildReportSpeech();
+    tkSpeakLoading = true;
+    btn.disabled = true;
+    btn.classList.add('tk-speaking');
+    btn.textContent = '⏳ Đang tạo giọng đọc…';
+
+    try {
+      const res = await fetch(FPT_TTS_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${FPT_TTS_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: FPT_TTS_MODEL,
+          input: text,
+          response_format: 'mp3',
+          voice: FPT_TTS_VOICE,
+          speed: 1,
+        }),
+      });
+      if (!res.ok) throw new Error('FPT TTS API trả lỗi HTTP ' + res.status);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      tkSpeakLoading = false;
+      tkSpeakAudio = new Audio(url);
+      tkSpeakAudio.onplay = () => { btn.disabled = false; btn.classList.add('tk-speaking'); btn.textContent = '⏹ Dừng đọc'; };
+      tkSpeakAudio.onended = () => { resetSpeakBtn(btn); URL.revokeObjectURL(url); tkSpeakAudio = null; };
+      tkSpeakAudio.onerror = () => { resetSpeakBtn(btn); URL.revokeObjectURL(url); tkSpeakAudio = null; };
+      await tkSpeakAudio.play();
+    } catch (err) {
+      tkSpeakLoading = false;
+      console.warn('FPT TTS lỗi, chuyển sang giọng máy trình duyệt:', err);
+      speakWithBrowserVoice(text, btn);
+    }
   }
 
   // ---------- Tự động làm mới (polling) ----------
@@ -1168,8 +1240,8 @@
     const observer = new MutationObserver(() => {
       if (pageEl.classList.contains('active') && isUnlocked()) {
         initDashboard(document.getElementById('thongkeContent'));
-      } else if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
+      } else {
+        stopSpeaking(null);
       }
     });
     observer.observe(pageEl, { attributes: true, attributeFilter: ['class'] });
