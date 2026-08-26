@@ -54,11 +54,11 @@
         text-transform:uppercase;text-shadow:0 0 10px rgba(140,225,255,.65),0 0 22px rgba(60,180,255,.4);}
       .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
         text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
-      .tk-head-sticky{background:#fff;z-index:30;position:sticky;position:-webkit-sticky;top:0;padding-bottom:2px;}
-      .tk-head-sticky.tk-head-stuck{box-shadow:0 8px 18px -8px rgba(14,34,51,.28);padding-top:8px;}
+      .tk-head-sticky{background:#fff;z-index:30;padding-bottom:2px;}
+      .tk-head-sticky.tk-head-stuck{position:fixed;box-shadow:0 8px 18px -8px rgba(14,34,51,.28);padding-top:8px;}
       .tk-head-sticky .tk-banner{margin-bottom:12px;}
       .tk-head-sticky.tk-head-stuck .tk-banner{margin-bottom:10px;}
-      .tk-head-spacer{height:0;display:none;}
+      .tk-head-spacer{height:0;}
       .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;
         padding-bottom:10px;}
       .tk-head .tk-sub{font-size:13.5px;color:#5c7284;white-space:nowrap;}
@@ -348,7 +348,12 @@
       resizeListenerBound = true;
       document.addEventListener('scroll', () => checkHeaderStick(container), true);
       window.addEventListener('scroll', () => checkHeaderStick(container));
-      window.addEventListener('resize', () => checkHeaderStick(container));
+      window.addEventListener('resize', () => {
+        // Đổi kích thước cửa sổ (xoay màn hình, thu/phóng trình duyệt...) có thể
+        // làm thay đổi bề rộng thật của .tk-wrap -> đo lại nếu đang ở trạng thái dính.
+        if (tkHeaderStuck) updateStuckGeometry(container);
+        checkHeaderStick(container);
+      });
     }
 
     const chartToggle = container.querySelector('#tkChartToggle');
@@ -465,23 +470,50 @@
   }
 
   function checkHeaderStick(container) {
-    // Dùng position:sticky (trình duyệt tự quản lý vị trí trái/phải theo layout
-    // gốc), ta chỉ cần cập nhật "top" (vì chiều cao topbar có thể đổi) và bật/tắt
-    // class để thêm bóng đổ khi đã dính lên đầu. Không còn tự tính left/width
-    // bằng getBoundingClientRect như trước — đó là nguyên nhân khiến dòng
-    // "Đồng bộ gần nhất" bị lệch sang trái khi cuộn tới cuối trang (hiệu ứng
-    // bounce/overscroll của trình duyệt làm phép đo tạm thời sai lệch).
+    // Dùng position:fixed điều khiển bằng JS (bắt buộc trong cấu trúc SPA này vì
+    // position:sticky bị một phần tử cha nào đó chặn mất ngữ cảnh, khiến vùng
+    // "khoá" trôi mất hẳn thay vì dính lại — đã kiểm chứng thực tế).
+    // Để tránh lỗi lệch trái từng gặp trước đây: left/width của vùng khoá CHỈ
+    // được đo lại tại đúng thời điểm chuyển sang trạng thái "dính" (hoặc khi cửa
+    // sổ đổi kích thước), KHÔNG đo lại liên tục theo từng khung hình cuộn nữa —
+    // đó chính là nguyên nhân gây trôi/lệch trước đây.
     const sentinel = container.querySelector('#tkHeadSentinel');
     const header = container.querySelector('#tkHeadSticky');
-    if (!sentinel || !header) return;
+    const spacer = container.querySelector('#tkHeadSpacer');
+    const wrap = container.querySelector('.tk-wrap');
+    if (!sentinel || !header || !spacer || !wrap) return;
     const topOffset = getStickyTopOffset();
-    header.style.top = topOffset + 'px';
     const sentinelTop = sentinel.getBoundingClientRect().top;
     const shouldStick = sentinelTop <= topOffset;
-    if (shouldStick !== tkHeaderStuck) {
-      tkHeaderStuck = shouldStick;
-      header.classList.toggle('tk-head-stuck', shouldStick);
+
+    if (shouldStick) {
+      if (!tkHeaderStuck) {
+        tkHeaderStuck = true;
+        spacer.style.height = header.offsetHeight + 'px';
+        header.classList.add('tk-head-stuck');
+        updateStuckGeometry(container);
+      }
+      header.style.top = topOffset + 'px';
+    } else if (tkHeaderStuck) {
+      tkHeaderStuck = false;
+      header.classList.remove('tk-head-stuck');
+      header.style.top = '';
+      header.style.left = '';
+      header.style.width = '';
+      spacer.style.height = '0';
     }
+  }
+
+  // Đo lại left/width của vùng khoá dựa trên vị trí thật của .tk-wrap. Chỉ được
+  // gọi khi vừa chuyển sang trạng thái dính, hoặc khi resize — không gọi trong
+  // lúc đang cuộn, để tránh mọi khả năng bị lệch do đo đạc giữa chừng.
+  function updateStuckGeometry(container) {
+    const header = container.querySelector('#tkHeadSticky');
+    const wrap = container.querySelector('.tk-wrap');
+    if (!header || !wrap) return;
+    const wrapRect = wrap.getBoundingClientRect();
+    header.style.left = wrapRect.left + 'px';
+    header.style.width = wrapRect.width + 'px';
   }
 
   function renderLastSync(container) {
