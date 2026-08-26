@@ -54,10 +54,9 @@
         text-transform:uppercase;text-shadow:0 0 10px rgba(140,225,255,.65),0 0 22px rgba(60,180,255,.4);}
       .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
         text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
-      .tk-head-sticky{background:#fff;z-index:30;}
-      .tk-head-sticky.tk-head-stuck{position:fixed;box-shadow:0 8px 18px -8px rgba(14,34,51,.28);
-        padding-top:8px;}
-      .tk-head-spacer{height:0;}
+      .tk-head-sticky{background:#fff;z-index:30;position:sticky;position:-webkit-sticky;top:0;}
+      .tk-head-sticky.tk-head-stuck{box-shadow:0 8px 18px -8px rgba(14,34,51,.28);padding-top:8px;}
+      .tk-head-spacer{height:0;display:none;}
       .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;
         padding-bottom:10px;}
       .tk-head .tk-sub{font-size:13.5px;color:#5c7284;white-space:nowrap;}
@@ -70,6 +69,11 @@
       .tk-speak-btn:hover{filter:brightness(1.08);}
       .tk-speak-btn.tk-speaking{background:linear-gradient(120deg,#17a34a,#22d3ee);
         box-shadow:0 0 16px rgba(23,163,74,.55);}
+      .tk-export-btn{font-family:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px;
+        border:none;background:linear-gradient(120deg,#0f7b3d,#1fae63);color:#fff;cursor:pointer;height:33px;
+        display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(23,163,74,.4);white-space:nowrap;}
+      .tk-export-btn:hover{filter:brightness(1.08);}
+      .tk-export-btn:disabled{opacity:.65;cursor:progress;filter:none;}
       .tk-live{font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
@@ -104,7 +108,7 @@
       .tk-table thead th{font-family:inherit;font-size:13.5px;color:#5c7284;
         text-align:right;padding:9px 14px;border-bottom:2px solid #0e2233;background:#fff;font-weight:700;white-space:nowrap;}
       .tk-table thead th:first-child{text-align:left;}
-      .tk-table tbody td{padding:9px 14px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
+      .tk-table tbody td{padding:9px 14px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:inherit;}
       .tk-table tbody td:first-child{text-align:left;font-family:inherit;font-weight:600;}
       .tk-table tbody tr:hover{background:rgba(11,95,165,0.05);}
       .tk-table tbody tr.tk-total-row td{padding:10px 14px;font-family:inherit;font-weight:700;
@@ -163,6 +167,10 @@
               <div class="tk-filter-group">
                 <label for="tkPeriodValue" id="tkPeriodValueLabel">Chọn tháng</label>
                 <select id="tkPeriodValue"></select>
+              </div>
+              <div class="tk-filter-group">
+                <label>&nbsp;</label>
+                <button type="button" class="tk-export-btn" id="tkExportBtn" title="Xuất số liệu đang xem ra file Excel">📊 Xuất File Excel</button>
               </div>
             </div>
             <div class="tk-head-actions">
@@ -328,6 +336,12 @@
       speakBtn.addEventListener('click', () => toggleSpeakReport(speakBtn));
     }
 
+    const exportBtn = container.querySelector('#tkExportBtn');
+    if (exportBtn && !exportBtn.dataset.bound) {
+      exportBtn.dataset.bound = '1';
+      exportBtn.addEventListener('click', () => exportToExcel(exportBtn));
+    }
+
     if (!resizeListenerBound) {
       resizeListenerBound = true;
       document.addEventListener('scroll', () => checkHeaderStick(container), true);
@@ -449,32 +463,22 @@
   }
 
   function checkHeaderStick(container) {
+    // Dùng position:sticky (trình duyệt tự quản lý vị trí trái/phải theo layout
+    // gốc), ta chỉ cần cập nhật "top" (vì chiều cao topbar có thể đổi) và bật/tắt
+    // class để thêm bóng đổ khi đã dính lên đầu. Không còn tự tính left/width
+    // bằng getBoundingClientRect như trước — đó là nguyên nhân khiến dòng
+    // "Đồng bộ gần nhất" bị lệch sang trái khi cuộn tới cuối trang (hiệu ứng
+    // bounce/overscroll của trình duyệt làm phép đo tạm thời sai lệch).
     const sentinel = container.querySelector('#tkHeadSentinel');
     const header = container.querySelector('#tkHeadSticky');
-    const spacer = container.querySelector('#tkHeadSpacer');
-    const wrap = container.querySelector('.tk-wrap');
-    if (!sentinel || !header || !spacer || !wrap) return;
+    if (!sentinel || !header) return;
     const topOffset = getStickyTopOffset();
+    header.style.top = topOffset + 'px';
     const sentinelTop = sentinel.getBoundingClientRect().top;
     const shouldStick = sentinelTop <= topOffset;
-
-    if (shouldStick) {
-      const wrapRect = wrap.getBoundingClientRect();
-      if (!tkHeaderStuck) {
-        tkHeaderStuck = true;
-        spacer.style.height = header.offsetHeight + 'px';
-        header.classList.add('tk-head-stuck');
-      }
-      header.style.top = topOffset + 'px';
-      header.style.left = wrapRect.left + 'px';
-      header.style.width = wrapRect.width + 'px';
-    } else if (tkHeaderStuck) {
-      tkHeaderStuck = false;
-      header.classList.remove('tk-head-stuck');
-      header.style.top = '';
-      header.style.left = '';
-      header.style.width = '';
-      spacer.style.height = '0';
+    if (shouldStick !== tkHeaderStuck) {
+      tkHeaderStuck = shouldStick;
+      header.classList.toggle('tk-head-stuck', shouldStick);
     }
   }
 
@@ -546,6 +550,8 @@
       lastReport = {
         dd, dm, dy, dayTotalSum: 0, periodTotalSum: 0, dayMonthKey, dayKey, rows: [],
         periodType, periodValue, periodMonthKeys,
+        dayLabel: `Ngày ${dd}/${dm}/${dy}`, monthOfDayLabel: '', quarterOfDayLabel: '', yearOfDayLabel: '',
+        monthTotalSumAll: 0, quarterTotalSumAll: 0, yearTotalSumAll: 0,
       };
       renderInsights(container);
       return;
@@ -594,7 +600,7 @@
       monthTotalSumAll += monthVal;
       quarterTotalSumAll += quarterVal;
       yearTotalSumAll += yearVal;
-      reportRows.push({ label: displayLabel, dayVal, periodVal });
+      reportRows.push({ label: displayLabel, dayVal, monthVal, quarterVal, yearVal, periodVal });
 
       tbody += `<tr><td>${displayLabel}</td><td>${dayVal}</td><td>${monthVal}</td><td>${quarterVal}</td><td>${yearVal}</td></tr>`;
     });
@@ -611,6 +617,8 @@
     lastReport = {
       dd, dm, dy, dayTotalSum, periodTotalSum, dayMonthKey, dayKey, rows: reportRows,
       periodType, periodValue, periodMonthKeys,
+      dayLabel, monthOfDayLabel, quarterOfDayLabel, yearOfDayLabel,
+      monthTotalSumAll, quarterTotalSumAll, yearTotalSumAll,
     };
     renderInsights(container);
   }
@@ -793,6 +801,201 @@
       ${dots}
       ${xlabels}
     </svg>`;
+  }
+
+  // ---------- Xuất File Excel ----------
+  const EXCELJS_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js';
+  let exceljsLoadPromise = null;
+
+  function loadExcelJs() {
+    if (window.ExcelJS) return Promise.resolve();
+    if (exceljsLoadPromise) return exceljsLoadPromise;
+    exceljsLoadPromise = new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = EXCELJS_CDN;
+      s.onload = () => resolve();
+      s.onerror = () => { exceljsLoadPromise = null; reject(new Error('Không tải được thư viện xuất Excel.')); };
+      document.head.appendChild(s);
+    });
+    return exceljsLoadPromise;
+  }
+
+  // Màu & kiểu dùng chung cho các sheet, đồng bộ với bảng màu của trang.
+  const XL_NAVY = 'FF0E2233';
+  const XL_BLUE = 'FF0B5FA5';
+  const XL_BLUE_LIGHT = 'FFEAF2FA';
+  const XL_TOTAL_BG = 'FFDCEBF7';
+  const XL_BORDER = 'FFC9D6DE';
+  const XL_WHITE = 'FFFFFFFF';
+
+  function xlThinBorder() {
+    const side = { style: 'thin', color: { argb: XL_BORDER } };
+    return { top: side, left: side, bottom: side, right: side };
+  }
+
+  function xlStyleTitle(cell, text, size) {
+    cell.value = text;
+    cell.font = { name: 'Calibri', bold: true, size: size || 15, color: { argb: XL_WHITE } };
+    cell.alignment = { vertical: 'middle', horizontal: 'center' };
+    cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_BLUE } };
+  }
+
+  function xlStyleHeaderRow(row) {
+    row.eachCell((cell) => {
+      cell.font = { name: 'Calibri', bold: true, size: 11, color: { argb: XL_WHITE } };
+      cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_NAVY } };
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+      cell.border = xlThinBorder();
+    });
+    row.height = 22;
+  }
+
+  function xlStyleDataRow(row, opts) {
+    opts = opts || {};
+    row.eachCell((cell, colNumber) => {
+      cell.border = xlThinBorder();
+      cell.alignment = { vertical: 'middle', horizontal: colNumber === 1 ? 'left' : 'right' };
+      if (colNumber > 1 && typeof cell.value === 'number') cell.numFmt = '#,##0';
+      if (opts.stripe) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_BLUE_LIGHT } };
+      if (opts.bold) { cell.font = { bold: true }; cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: XL_TOTAL_BG } }; }
+    });
+  }
+
+  function buildDetailSheet(wb, report) {
+    const ws = wb.addWorksheet('Chi tiết theo phòng khám', { views: [{ state: 'frozen', ySplit: 4 }] });
+    ws.columns = [
+      { width: 34 }, { width: 16 }, { width: 16 }, { width: 16 }, { width: 16 },
+    ];
+    ws.mergeCells('A1:E1');
+    xlStyleTitle(ws.getCell('A1'), 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2', 13);
+    ws.getRow(1).height = 24;
+    ws.mergeCells('A2:E2');
+    xlStyleTitle(ws.getCell('A2'), `BÁO CÁO SỐ LIỆU KHÁM CHỮA BỆNH — NGÀY ${report.dd}/${report.dm}/${report.dy}`, 15);
+    ws.getRow(2).height = 26;
+    ws.mergeCells('A3:E3');
+    const noteCell = ws.getCell('A3');
+    noteCell.value = document.querySelector('#tkLastSync') ? document.querySelector('#tkLastSync').textContent : '';
+    noteCell.font = { italic: true, size: 10, color: { argb: 'FF5C7284' } };
+    noteCell.alignment = { horizontal: 'center' };
+    ws.getRow(3).height = 16;
+
+    const headerRow = ws.addRow(['Phòng khám', report.dayLabel, report.monthOfDayLabel, report.quarterOfDayLabel, report.yearOfDayLabel]);
+    xlStyleHeaderRow(headerRow);
+
+    const totalRow = ws.addRow(['Tổng cộng', report.dayTotalSum, report.monthTotalSumAll, report.quarterTotalSumAll, report.yearTotalSumAll]);
+    xlStyleDataRow(totalRow, { bold: true });
+
+    report.rows.forEach((r, i) => {
+      const row = ws.addRow([r.label, r.dayVal, r.monthVal, r.quarterVal, r.yearVal]);
+      xlStyleDataRow(row, { stripe: i % 2 === 1 });
+    });
+
+    ws.autoFilter = { from: 'A4', to: 'E4' };
+    return ws;
+  }
+
+  function buildPeriodSheet(wb, report) {
+    const periodLabel = buildPeriodLabel(report.periodType, report.periodValue);
+    const ws = wb.addWorksheet('Theo kỳ đã chọn', { views: [{ state: 'frozen', ySplit: 4 }] });
+    ws.columns = [{ width: 34 }, { width: 16 }, { width: 14 }];
+    ws.mergeCells('A1:C1');
+    xlStyleTitle(ws.getCell('A1'), 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2', 13);
+    ws.getRow(1).height = 24;
+    ws.mergeCells('A2:C2');
+    xlStyleTitle(ws.getCell('A2'), `SỐ LƯỢT KHÁM THEO PHÒNG KHÁM — ${periodLabel.toUpperCase()}`, 15);
+    ws.getRow(2).height = 26;
+    ws.mergeCells('A3:C3');
+    const noteCell = ws.getCell('A3');
+    noteCell.value = `Tổng cộng: ${report.periodTotalSum.toLocaleString('vi-VN')} lượt`;
+    noteCell.font = { italic: true, size: 10, color: { argb: 'FF5C7284' } };
+    noteCell.alignment = { horizontal: 'center' };
+    ws.getRow(3).height = 16;
+
+    const headerRow = ws.addRow(['Phòng khám', 'Số lượt', 'Tỉ lệ']);
+    xlStyleHeaderRow(headerRow);
+
+    const sortedRows = report.rows.slice().sort((a, b) => b.periodVal - a.periodVal);
+    const total = report.periodTotalSum || 1;
+    sortedRows.forEach((r, i) => {
+      const row = ws.addRow([r.label, r.periodVal, r.periodVal / total]);
+      xlStyleDataRow(row, { stripe: i % 2 === 1 });
+      row.getCell(3).numFmt = '0.0%';
+    });
+    const totalRow = ws.addRow(['Tổng cộng', report.periodTotalSum, 1]);
+    xlStyleDataRow(totalRow, { bold: true });
+    totalRow.getCell(3).numFmt = '0.0%';
+
+    ws.autoFilter = { from: 'A4', to: `C${4 + sortedRows.length}` };
+    return ws;
+  }
+
+  function buildTrendSheet(wb, report, lineData) {
+    const periodLabel = buildPeriodLabel(report.periodType, report.periodValue);
+    const isMonthView = report.periodType === 'month';
+    const xHeader = isMonthView ? 'Ngày' : 'Tháng';
+    const ws = wb.addWorksheet('Xu hướng theo kỳ', { views: [{ state: 'frozen', ySplit: 4 }] });
+    ws.columns = [{ width: 16 }, { width: 16 }];
+    ws.mergeCells('A1:B1');
+    xlStyleTitle(ws.getCell('A1'), 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2', 13);
+    ws.getRow(1).height = 24;
+    ws.mergeCells('A2:B2');
+    xlStyleTitle(ws.getCell('A2'), `XU HƯỚNG LƯỢT KHÁM — ${periodLabel.toUpperCase()}`, 15);
+    ws.getRow(2).height = 26;
+    ws.mergeCells('A3:B3');
+    const total = lineData.reduce((s, d) => s + (d.total || 0), 0);
+    const noteCell = ws.getCell('A3');
+    noteCell.value = `Tổng cộng: ${total.toLocaleString('vi-VN')} lượt`;
+    noteCell.font = { italic: true, size: 10, color: { argb: 'FF5C7284' } };
+    noteCell.alignment = { horizontal: 'center' };
+    ws.getRow(3).height = 16;
+
+    const headerRow = ws.addRow([xHeader, 'Số lượt']);
+    xlStyleHeaderRow(headerRow);
+    lineData.forEach((d, i) => {
+      const row = ws.addRow([isMonthView ? `Ngày ${d.day}` : d.day, d.total]);
+      xlStyleDataRow(row, { stripe: i % 2 === 1 });
+    });
+    const totalRow = ws.addRow(['Tổng cộng', total]);
+    xlStyleDataRow(totalRow, { bold: true });
+
+    ws.autoFilter = { from: 'A4', to: `B${4 + lineData.length}` };
+    return ws;
+  }
+
+  async function exportToExcel(btn) {
+    if (!lastReport) return;
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang tạo file…';
+    try {
+      await loadExcelJs();
+      const wb = new window.ExcelJS.Workbook();
+      wb.creator = 'BSDHA - Bệnh viện đa khoa Bình Dương, Cơ sở 2';
+      wb.created = new Date();
+
+      buildDetailSheet(wb, lastReport);
+      if (lastReport.rows.length > 0) buildPeriodSheet(wb, lastReport);
+      if (lastChartData && lastChartData.line && lastChartData.line.length > 0) {
+        buildTrendSheet(wb, lastReport, lastChartData.line);
+      }
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const fname = `ThongKe-KCB-BVDKBDCS2-${lastReport.dd}-${lastReport.dm}-${lastReport.dy}.xlsx`;
+      a.href = url;
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    } catch (e) {
+      alert('Không thể xuất file Excel: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
   }
 
   // ---------- Đọc báo cáo số liệu (Text-to-Speech) ----------
