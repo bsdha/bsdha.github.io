@@ -45,6 +45,7 @@
     style.textContent = `
       .tk-wrap{max-width:1100px;margin:0 auto;padding:10px 6px 44px;font-family:inherit;font-size:15px;}
       .tk-banner{position:relative;overflow:hidden;border-radius:16px;padding:20px 24px;margin-bottom:16px;
+        text-align:center;
         background:linear-gradient(120deg,#071c3a,#0b3d91 38%,#0b5fa5 68%,#12b3c9);
         box-shadow:0 0 0 1px rgba(120,220,255,.25) inset,0 8px 26px rgba(11,61,145,.35),0 0 34px rgba(18,179,201,.25);}
       .tk-banner::after{content:'';position:absolute;inset:0;pointer-events:none;
@@ -79,11 +80,11 @@
         cursor:pointer;min-width:150px;}
       .tk-filter-group input:focus, .tk-filter-group select:focus{outline:2px solid #0b5fa5;outline-offset:1px;}
       .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
-      .tk-panel-head{margin-bottom:6px;}
+      .tk-panel-head{position:relative;display:flex;align-items:center;justify-content:space-between;
+        min-height:34px;margin-bottom:16px;}
       .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
       .tk-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
-      .tk-day-nav-row{position:relative;min-height:38px;margin-bottom:12px;}
-      .tk-day-nav{position:absolute;top:0;right:0;display:flex;align-items:center;gap:6px;}
+      .tk-day-nav{position:absolute;top:50%;right:0;transform:translateY(-50%);display:flex;align-items:center;gap:6px;}
       .tk-day-btn{width:30px;height:30px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0b5fa5;
         font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
       .tk-day-btn:hover{background:#eef4fa;}
@@ -101,6 +102,22 @@
         border-bottom:2px solid #0e2233;background:rgba(11,95,165,0.04);}
       .tk-table tbody tr.tk-total-row td:first-child{text-align:left;}
       .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:inherit;}
+      .tk-insights-panel{padding-top:22px;}
+      .tk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px;}
+      .tk-kpi-card{background:#f5f9fb;border:1px solid #e1e8ee;border-radius:10px;padding:13px 15px;}
+      .tk-kpi-label{font-size:12.5px;color:#5c7284;font-weight:600;}
+      .tk-kpi-value{font-size:22px;font-weight:800;color:#0e2233;margin-top:4px;}
+      .tk-kpi-value.tk-up{color:#17a34a;}
+      .tk-kpi-value.tk-down{color:#dc2626;}
+      .tk-chart-toggle{display:flex;gap:12px;justify-content:center;margin-bottom:16px;}
+      .tk-chart-tab{width:44px;height:44px;border-radius:50%;border:1px solid #c9d6de;background:#fff;
+        font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        color:#5c7284;transition:transform .15s ease;}
+      .tk-chart-tab:hover{transform:translateY(-1px);}
+      .tk-chart-tab.active{background:linear-gradient(120deg,#0b5fa5,#12b3c9);color:#fff;border-color:transparent;
+        box-shadow:0 0 14px rgba(18,179,201,.5);}
+      .tk-chart-area{width:100%;min-height:200px;}
+      .tk-chart-svg{width:100%;height:auto;display:block;}
       @media (max-width:720px){
         .tk-banner{padding:16px 18px;}
         .tk-banner-title{font-size:18px;}
@@ -142,8 +159,6 @@
         <div class="tk-panel">
           <div class="tk-panel-head">
             <h3>Chi tiết theo phòng khám</h3>
-          </div>
-          <div class="tk-day-nav-row" id="tkDayNavRow">
             <div class="tk-day-nav" id="tkDayNav">
               <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
               <input type="date" id="tkDayPicker">
@@ -152,12 +167,22 @@
           </div>
           <div class="tk-table-wrap" id="tkTableWrap"><div class="tk-empty">Đang tải…</div></div>
         </div>
+        <div class="tk-panel tk-insights-panel">
+          <div class="tk-kpi-grid" id="tkKpiGrid"></div>
+          <div class="tk-chart-toggle" id="tkChartToggle">
+            <button type="button" class="tk-chart-tab active" data-chart="bar" title="Biểu đồ cột theo phòng khám">📊</button>
+            <button type="button" class="tk-chart-tab" data-chart="line" title="Xu hướng theo ngày trong tháng">📈</button>
+          </div>
+          <div class="tk-chart-area" id="tkChartArea"><div class="tk-empty">Đang tải…</div></div>
+        </div>
       </div>
     `;
   }
 
   let fullData = null;
   let lastReport = null; // { dayLabel, dd, mm, yyyy, dayTotalSum, rows:[{label, dayVal}] } — dùng cho nút "Đọc báo cáo số liệu"
+  let activeChartType = 'bar'; // 'bar' | 'line' — biểu đồ đang hiển thị trong khối insight
+  let lastChartData = null; // { bar:[{label,dayVal}], line:[{day,total}] }
 
   // ---------- Tiện ích ngày tháng ----------
   function pad2(n) { return String(n).padStart(2, '0'); }
@@ -171,6 +196,14 @@
   // như "" phát sinh từ những lần đồng bộ cũ bị lỗi ngày.
   function isValidDayKey(k) {
     return /^\d{1,2}$/.test(k) && Number(k) >= 1 && Number(k) <= 31;
+  }
+
+  function shortenLabel(label) {
+    return String(label).replace(/^Phòng khám /i, '').replace(/^Phòng Khám /, '').trim();
+  }
+
+  function escapeXml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
   function getAvailableMonths() {
@@ -272,6 +305,20 @@
       window.addEventListener('resize', () => positionDayNav(container));
     }
 
+    const chartToggle = container.querySelector('#tkChartToggle');
+    if (chartToggle && !chartToggle.dataset.bound) {
+      chartToggle.dataset.bound = '1';
+      chartToggle.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tk-chart-tab');
+        if (!btn) return;
+        const type = btn.getAttribute('data-chart');
+        if (!type || type === activeChartType) return;
+        activeChartType = type;
+        chartToggle.querySelectorAll('.tk-chart-tab').forEach((b) => b.classList.toggle('active', b === btn));
+        renderActiveChart(container);
+      });
+    }
+
     if (!periodTypeSel.dataset.bound) {
       periodTypeSel.dataset.bound = '1';
       periodTypeSel.addEventListener('change', () => {
@@ -359,7 +406,7 @@
   }
 
   function positionDayNav(container) {
-    const row = container.querySelector('#tkDayNavRow');
+    const row = container.querySelector('.tk-panel-head');
     const nav = container.querySelector('#tkDayNav');
     const table = container.querySelector('#tkTableWrap table');
     if (!row || !nav || !table) return;
@@ -431,7 +478,8 @@
 
     if (rowNums.length === 0) {
       wrap.innerHTML = '<div class="tk-empty">Chưa có dữ liệu cho lựa chọn này.</div>';
-      lastReport = { dd, dm, dy, dayTotalSum: 0, rows: [] };
+      lastReport = { dd, dm, dy, dayTotalSum: 0, periodTotalSum: 0, dayMonthKey, dayKey, rows: [] };
+      renderInsights(container);
       return;
     }
 
@@ -484,8 +532,119 @@
 
     wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${totalRow}${tbody}</tbody></table>`;
 
-    lastReport = { dd, dm, dy, dayTotalSum, rows: reportRows };
+    lastReport = { dd, dm, dy, dayTotalSum, periodTotalSum, dayMonthKey, dayKey, rows: reportRows };
     requestAnimationFrame(() => positionDayNav(container));
+    renderInsights(container);
+  }
+
+  // ---------- Khối phân tích: KPI + biểu đồ ----------
+  function renderInsights(container) {
+    if (!lastReport) return;
+    const { dayTotalSum, periodTotalSum, rows, dayMonthKey, dayKey } = lastReport;
+    const monthData = (fullData.months && fullData.months[dayMonthKey]) || {};
+    const totalByDay = monthData.totalByDay || {};
+
+    // So với hôm qua (chỉ so trong cùng tháng để đơn giản)
+    let diffHtml = '—';
+    let diffClass = '';
+    const dNum = Number(dayKey);
+    if (dNum > 1) {
+      const yestKey = String(dNum - 1);
+      if (isValidDayKey(yestKey) && Object.prototype.hasOwnProperty.call(totalByDay, yestKey)) {
+        const yestVal = totalByDay[yestKey] || 0;
+        const diff = dayTotalSum - yestVal;
+        const pct = yestVal > 0 ? Math.round((diff / yestVal) * 100) : (dayTotalSum > 0 ? 100 : 0);
+        diffClass = diff > 0 ? 'tk-up' : diff < 0 ? 'tk-down' : '';
+        diffHtml = `${diff > 0 ? '+' : ''}${diff} (${diff > 0 ? '+' : ''}${pct}%)`;
+      }
+    }
+
+    const top = rows.slice().sort((a, b) => b.dayVal - a.dayVal)[0];
+    const topHtml = top && top.dayVal > 0 ? `${escapeXml(shortenLabel(top.label))} (${top.dayVal})` : '—';
+
+    const kpiHtml = `
+      <div class="tk-kpi-card"><div class="tk-kpi-label">Tổng lượt hôm nay</div><div class="tk-kpi-value">${dayTotalSum}</div></div>
+      <div class="tk-kpi-card"><div class="tk-kpi-label">Tổng lượt theo kỳ đã chọn</div><div class="tk-kpi-value">${periodTotalSum}</div></div>
+      <div class="tk-kpi-card"><div class="tk-kpi-label">Phòng khám đông nhất hôm nay</div><div class="tk-kpi-value" style="font-size:16px;">${topHtml}</div></div>
+      <div class="tk-kpi-card"><div class="tk-kpi-label">So với hôm qua</div><div class="tk-kpi-value ${diffClass}">${diffHtml}</div></div>`;
+    const grid = container.querySelector('#tkKpiGrid');
+    if (grid) grid.innerHTML = kpiHtml;
+
+    const dayTotals = Object.keys(totalByDay)
+      .filter(isValidDayKey)
+      .map((k) => ({ day: Number(k), total: totalByDay[k] || 0 }))
+      .sort((a, b) => a.day - b.day);
+
+    lastChartData = { bar: rows, line: dayTotals };
+    renderActiveChart(container);
+  }
+
+  function renderActiveChart(container) {
+    const area = container.querySelector('#tkChartArea');
+    if (!area) return;
+    if (!lastChartData || (activeChartType === 'bar' ? lastChartData.bar.length === 0 : lastChartData.line.length === 0)) {
+      area.innerHTML = '<div class="tk-empty">Chưa có dữ liệu để vẽ biểu đồ.</div>';
+      return;
+    }
+    area.innerHTML = activeChartType === 'bar'
+      ? buildBarChartSvg(lastChartData.bar)
+      : buildLineChartSvg(lastChartData.line);
+  }
+
+  function buildBarChartSvg(rows) {
+    const w = 720, h = 320, padL = 42, padR = 16, padT = 22, padB = 82;
+    const maxVal = Math.max(1, ...rows.map((r) => r.dayVal));
+    const bw = (w - padL - padR) / rows.length;
+    let bars = '';
+    rows.forEach((r, i) => {
+      const barH = (r.dayVal / maxVal) * (h - padT - padB);
+      const x = padL + i * bw + bw * 0.18;
+      const barWidth = bw * 0.64;
+      const y = h - padB - barH;
+      const cx = x + barWidth / 2;
+      bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(barH, 0).toFixed(1)}" rx="4" fill="url(#tkBarGrad)"></rect>`;
+      if (r.dayVal > 0) bars += `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#0e2233" font-weight="700">${r.dayVal}</text>`;
+      bars += `<text x="${cx.toFixed(1)}" y="${(h - padB + 14).toFixed(1)}" font-size="10" fill="#5c7284" text-anchor="end" transform="rotate(-42 ${cx.toFixed(1)} ${(h - padB + 14).toFixed(1)})">${escapeXml(shortenLabel(r.label))}</text>`;
+    });
+    return `<svg class="tk-chart-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="tkBarGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#12b3c9"/><stop offset="100%" stop-color="#0b5fa5"/>
+      </linearGradient></defs>
+      <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#c9d6de" stroke-width="1"/>
+      ${bars}
+    </svg>`;
+  }
+
+  function buildLineChartSvg(dayTotals) {
+    const w = 720, h = 300, padL = 42, padR = 16, padT = 22, padB = 34;
+    const maxVal = Math.max(1, ...dayTotals.map((d) => d.total));
+    const stepX = (w - padL - padR) / Math.max(1, dayTotals.length - 1);
+    const points = dayTotals.map((d, i) => ({
+      x: padL + i * stepX,
+      y: h - padB - (d.total / maxVal) * (h - padT - padB),
+      d,
+    }));
+    const pathD = points.map((p, i) => (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ' ' + p.y.toFixed(1)).join(' ');
+    const areaD = `${pathD} L ${points[points.length - 1].x.toFixed(1)} ${h - padB} L ${points[0].x.toFixed(1)} ${h - padB} Z`;
+    let dots = '';
+    let xlabels = '';
+    const labelEvery = Math.max(1, Math.ceil(points.length / 10));
+    points.forEach((p, i) => {
+      dots += `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="3" fill="#0b5fa5"></circle>`;
+      if (i % labelEvery === 0 || i === points.length - 1) {
+        xlabels += `<text x="${p.x.toFixed(1)}" y="${h - padB + 16}" font-size="10" fill="#5c7284" text-anchor="middle">${p.d.day}</text>`;
+      }
+    });
+    return `<svg class="tk-chart-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="tkLineGrad" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="rgba(18,179,201,.35)"/><stop offset="100%" stop-color="rgba(18,179,201,0)"/>
+      </linearGradient></defs>
+      <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#c9d6de" stroke-width="1"/>
+      <path d="${areaD}" fill="url(#tkLineGrad)" stroke="none"></path>
+      <path d="${pathD}" fill="none" stroke="#0b5fa5" stroke-width="2.5"></path>
+      ${dots}
+      ${xlabels}
+    </svg>`;
   }
 
   // ---------- Đọc báo cáo số liệu (Text-to-Speech) ----------
