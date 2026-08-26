@@ -43,7 +43,7 @@
     const style = document.createElement('style');
     style.id = STYLE_ID;
     style.textContent = `
-      .tk-wrap{max-width:1100px;margin:0 auto;padding:10px 6px 44px;font-family:inherit;font-size:15px;}
+      .tk-wrap{max-width:1320px;margin:0 auto;padding:10px 6px 44px;font-family:inherit;font-size:15px;}
       .tk-banner{position:relative;overflow:hidden;border-radius:16px;padding:20px 24px;margin-bottom:16px;
         text-align:center;
         background:linear-gradient(120deg,#071c3a,#0b3d91 38%,#0b5fa5 68%,#12b3c9);
@@ -54,40 +54,41 @@
         text-transform:uppercase;text-shadow:0 0 10px rgba(140,225,255,.65),0 0 22px rgba(60,180,255,.4);}
       .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
         text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
-      .tk-head-sticky{position:sticky;top:0;z-index:30;background:#fff;padding-top:6px;
-        box-shadow:0 6px 14px -10px rgba(14,34,51,.0);}
-      .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px 22px;
-        padding-bottom:14px;}
-      .tk-head .tk-sub{font-size:14.5px;color:#5c7284;white-space:nowrap;}
-      .tk-head-filters{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;}
-      .tk-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
-      .tk-head-divider{border:none;border-top:2px solid #0e2233;margin:0 0 18px;}
-      .tk-speak-btn{font-size:13.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:none;
+      .tk-head-sticky{background:#fff;z-index:30;}
+      .tk-head-sticky.tk-head-stuck{position:fixed;box-shadow:0 8px 18px -8px rgba(14,34,51,.28);
+        padding-top:8px;}
+      .tk-head-spacer{height:0;}
+      .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;
+        padding-bottom:10px;}
+      .tk-head .tk-sub{font-size:13.5px;color:#5c7284;white-space:nowrap;}
+      .tk-head-filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+      .tk-head-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+      .tk-head-divider{border:none;border-top:2px solid #0e2233;margin:0 0 14px;}
+      .tk-speak-btn{font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px;border:none;
         background:linear-gradient(120deg,#0b5fa5,#12b3c9);color:#fff;cursor:pointer;
         display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(18,179,201,.45);white-space:nowrap;}
       .tk-speak-btn:hover{filter:brightness(1.08);}
       .tk-speak-btn.tk-speaking{background:linear-gradient(120deg,#17a34a,#22d3ee);
         box-shadow:0 0 16px rgba(23,163,74,.55);}
-      .tk-live{font-size:13px;font-weight:700;padding:7px 12px;border-radius:7px;border:1px solid #17a34a;
+      .tk-live{font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
         position:relative;}
       .tk-live-dot::before{content:'';position:absolute;inset:-3px;border-radius:50%;
         background:#17a34a;opacity:.65;animation:tkPing 1.7s cubic-bezier(0,0,.2,1) infinite;}
       @keyframes tkPing{0%{transform:scale(1);opacity:.65;}75%,100%{transform:scale(3);opacity:0;}}
-      .tk-filter-group{display:flex;flex-direction:column;gap:5px;}
-      .tk-filter-group label{font-family:inherit;font-size:13px;color:#5c7284;font-weight:600;}
-      .tk-filter-group input, .tk-filter-group select{font-family:inherit;font-size:14.5px;
-        padding:8px 10px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0e2233;
-        cursor:pointer;min-width:150px;}
+      .tk-filter-group{display:flex;flex-direction:column;gap:4px;}
+      .tk-filter-group label{font-family:inherit;font-size:12.5px;color:#5c7284;font-weight:600;}
+      .tk-filter-group input, .tk-filter-group select{font-family:inherit;font-size:14px;
+        padding:6px 9px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0e2233;
+        cursor:pointer;min-width:140px;}
       .tk-filter-group input:focus, .tk-filter-group select:focus{outline:2px solid #0b5fa5;outline-offset:1px;}
       .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
       .tk-detail-panel{width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;}
-      .tk-panel-head{position:relative;display:flex;align-items:center;justify-content:space-between;
-        min-height:34px;margin-bottom:16px;}
+      .tk-panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
       .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
       .tk-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
-      .tk-day-nav{position:absolute;top:50%;right:0;transform:translateY(-50%);display:flex;align-items:center;gap:6px;}
+      .tk-day-nav{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-bottom:16px;}
       .tk-day-btn{width:30px;height:30px;border-radius:7px;border:1px solid #c9d6de;background:#fff;color:#0b5fa5;
         font-size:16px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
       .tk-day-btn:hover{background:#eef4fa;}
@@ -100,12 +101,12 @@
       .tk-table-wrap{overflow-x:auto;}
       .tk-table{width:auto;max-width:100%;border-collapse:collapse;font-size:15px;}
       .tk-table thead th{font-family:inherit;font-size:13.5px;color:#5c7284;
-        text-align:right;padding:9px 16px;border-bottom:2px solid #0e2233;background:#fff;font-weight:700;}
+        text-align:right;padding:9px 14px;border-bottom:2px solid #0e2233;background:#fff;font-weight:700;white-space:nowrap;}
       .tk-table thead th:first-child{text-align:left;}
-      .tk-table tbody td{padding:9px 16px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
+      .tk-table tbody td{padding:9px 14px;text-align:right;border-bottom:1px solid #e3e9ed;font-family:'Courier New',monospace;}
       .tk-table tbody td:first-child{text-align:left;font-family:inherit;font-weight:600;}
       .tk-table tbody tr:hover{background:rgba(11,95,165,0.05);}
-      .tk-table tbody tr.tk-total-row td{padding:10px 16px;font-family:inherit;font-weight:700;
+      .tk-table tbody tr.tk-total-row td{padding:10px 14px;font-family:inherit;font-weight:700;
         border-bottom:2px solid #0e2233;background:rgba(11,95,165,0.04);}
       .tk-table tbody tr.tk-total-row td:first-child{text-align:left;}
       .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:inherit;}
@@ -126,13 +127,13 @@
       .tk-chart-tab:hover{transform:translateY(-1px);}
       .tk-chart-tab.active{background:linear-gradient(120deg,#0b5fa5,#12b3c9);color:#fff;border-color:transparent;
         box-shadow:0 0 14px rgba(18,179,201,.5);}
-      .tk-chart-area{width:100%;min-height:200px;}
+      .tk-chart-area{width:100%;min-height:180px;max-width:760px;margin:0 auto;}
       .tk-chart-svg{width:100%;height:auto;display:block;}
       @media (max-width:720px){
         .tk-banner{padding:16px 18px;}
         .tk-banner-title{font-size:18px;}
-        .tk-filterbar{gap:10px;padding:12px;}
-        .tk-filter-group input, .tk-filter-group select{min-width:130px;}
+        .tk-head-filters{gap:8px;}
+        .tk-filter-group input, .tk-filter-group select{min-width:120px;}
       }
     `;
     document.head.appendChild(style);
@@ -145,7 +146,8 @@
           <div class="tk-banner-org">Bệnh viện đa khoa Bình Dương - Cơ sở 2</div>
           <div class="tk-banner-title" id="tkReportTitle">Báo cáo số liệu KCB ngày --/--/----</div>
         </div>
-        <div class="tk-head-sticky">
+        <div id="tkHeadSentinel"></div>
+        <div class="tk-head-sticky" id="tkHeadSticky">
           <div class="tk-head">
             <div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div>
             <div class="tk-head-filters">
@@ -169,15 +171,16 @@
           </div>
           <hr class="tk-head-divider">
         </div>
+        <div class="tk-head-spacer" id="tkHeadSpacer"></div>
         <div class="tk-panel tk-detail-panel">
           <div class="tk-panel-head">
             <h3>Chi tiết theo phòng khám</h3>
-            <div class="tk-day-nav" id="tkDayNav">
-              <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
-              <input type="date" id="tkDayPicker">
-              <button type="button" class="tk-today-btn" id="tkDayToday" title="Về hôm nay">Hôm nay</button>
-              <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
-            </div>
+          </div>
+          <div class="tk-day-nav" id="tkDayNav">
+            <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
+            <input type="date" id="tkDayPicker">
+            <button type="button" class="tk-today-btn" id="tkDayToday" title="Về hôm nay">Hôm nay</button>
+            <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
           </div>
           <div class="tk-table-wrap" id="tkTableWrap"><div class="tk-empty">Đang tải…</div></div>
         </div>
@@ -326,7 +329,9 @@
 
     if (!resizeListenerBound) {
       resizeListenerBound = true;
-      window.addEventListener('resize', () => positionDayNav(container));
+      document.addEventListener('scroll', () => checkHeaderStick(container), true);
+      window.addEventListener('scroll', () => checkHeaderStick(container));
+      window.addEventListener('resize', () => checkHeaderStick(container));
     }
 
     const chartToggle = container.querySelector('#tkChartToggle');
@@ -422,6 +427,7 @@
 
     renderLastSync(container);
     renderTable(container, dayPicker.value, periodType, periodValue, availableMonths);
+    requestAnimationFrame(() => checkHeaderStick(container));
   }
 
   function renderReportTitle(container, dd, dm, dy) {
@@ -429,22 +435,46 @@
     if (el) el.textContent = `Báo cáo số liệu KCB ngày ${dd}/${dm}/${dy}`;
   }
 
-  function positionDayNav(container) {
-    const row = container.querySelector('.tk-panel-head');
-    const nav = container.querySelector('#tkDayNav');
-    const table = container.querySelector('#tkTableWrap table');
-    if (!row || !nav || !table) return;
-    const ths = table.querySelectorAll('thead th');
-    if (ths.length < 3) return;
-    const rowRect = row.getBoundingClientRect();
-    const c2 = ths[1].getBoundingClientRect();
-    const c3 = ths[2].getBoundingClientRect();
-    const mid = ((c2.left + c2.right) / 2 + (c3.left + c3.right) / 2) / 2;
-    const navWidth = nav.getBoundingClientRect().width;
-    let left = mid - rowRect.left - navWidth / 2;
-    left = Math.max(0, Math.min(left, rowRect.width - navWidth));
-    nav.style.right = 'auto';
-    nav.style.left = left + 'px';
+  // ---------- Khoá vùng bộ lọc/đầu trang khi cuộn (thay cho position:sticky, để không phụ
+  // thuộc vào ancestor cuộn nào của SPA) ----------
+  let tkHeaderStuck = false;
+
+  function getStickyTopOffset() {
+    const topbar = document.querySelector('.topbar');
+    if (topbar && getComputedStyle(topbar).display !== 'none') {
+      return topbar.getBoundingClientRect().height;
+    }
+    return 0;
+  }
+
+  function checkHeaderStick(container) {
+    const sentinel = container.querySelector('#tkHeadSentinel');
+    const header = container.querySelector('#tkHeadSticky');
+    const spacer = container.querySelector('#tkHeadSpacer');
+    const wrap = container.querySelector('.tk-wrap');
+    if (!sentinel || !header || !spacer || !wrap) return;
+    const topOffset = getStickyTopOffset();
+    const sentinelTop = sentinel.getBoundingClientRect().top;
+    const shouldStick = sentinelTop <= topOffset;
+
+    if (shouldStick) {
+      const wrapRect = wrap.getBoundingClientRect();
+      if (!tkHeaderStuck) {
+        tkHeaderStuck = true;
+        spacer.style.height = header.offsetHeight + 'px';
+        header.classList.add('tk-head-stuck');
+      }
+      header.style.top = topOffset + 'px';
+      header.style.left = wrapRect.left + 'px';
+      header.style.width = wrapRect.width + 'px';
+    } else if (tkHeaderStuck) {
+      tkHeaderStuck = false;
+      header.classList.remove('tk-head-stuck');
+      header.style.top = '';
+      header.style.left = '';
+      header.style.width = '';
+      spacer.style.height = '0';
+    }
   }
 
   function renderLastSync(container) {
@@ -480,7 +510,7 @@
 
     renderReportTitle(container, dd, dm, dy);
 
-    // --- Xác định các tháng thuộc kỳ được chọn ---
+    // --- Xác định các tháng thuộc kỳ được chọn ở bộ lọc (dùng cho biểu đồ + KPI "theo kỳ đã chọn") ---
     let periodMonthKeys = [];
     if (periodType === 'month') {
       periodMonthKeys = [periodValue];
@@ -490,10 +520,20 @@
       periodMonthKeys = monthsInYear(periodValue, availableMonths);
     }
 
-    // --- Gộp danh sách phòng khám xuất hiện ở ngày được chọn HOẶC trong kỳ được chọn ---
+    // --- Bảng chi tiết luôn hiển thị đủ 3 mốc thời gian gắn với NGÀY đang xem:
+    //     Tháng / Quý / Năm chứa ngày đó (độc lập với bộ lọc "Xem theo" ở trên,
+    //     bộ lọc đó chỉ còn dùng để chọn kỳ cho phần Biểu đồ bên dưới). ---
+    const dNumForQuarter = parseInt(dm, 10);
+    const quarterOfDayKey = `${dy}-Q${Math.ceil(dNumForQuarter / 3)}`;
+    const yearOfDayKey = dy;
+    const monthOfDayMonths = [dayMonthKey];
+    const quarterOfDayMonths = monthsInQuarter(quarterOfDayKey, availableMonths);
+    const yearOfDayMonths = monthsInYear(yearOfDayKey, availableMonths);
+
+    // --- Gộp danh sách phòng khám xuất hiện ở ngày/tháng/quý/năm đang xem HOẶC trong kỳ lọc ---
     const rowNumSet = new Set();
     Object.keys(dayRows).forEach((rn) => { if (/^\d+$/.test(rn)) rowNumSet.add(rn); });
-    periodMonthKeys.forEach((mk) => {
+    [...yearOfDayMonths, ...periodMonthKeys].forEach((mk) => {
       const m = fullData.months[mk];
       if (!m) return;
       Object.keys(m.rows || {}).forEach((rn) => { if (/^\d+$/.test(rn)) rowNumSet.add(rn); });
@@ -512,50 +552,57 @@
 
     // --- Nhãn cột ---
     const dayLabel = `Ngày ${dd}/${dm}/${dy}`;
-    let periodLabel;
-    if (periodType === 'month') {
-      const [py, pmo] = periodValue.split('-');
-      periodLabel = `Tháng ${parseInt(pmo, 10)}/${py}`;
-    } else if (periodType === 'quarter') {
-      const [py, pq] = periodValue.split('-Q');
-      periodLabel = `Quý ${pq}/${py}`;
-    } else {
-      periodLabel = `Năm ${periodValue}`;
+    const monthOfDayLabel = `Tháng ${parseInt(dm, 10)}/${dy}`;
+    const quarterOfDayLabel = `Quý ${Math.ceil(dNumForQuarter / 3)}/${dy}`;
+    const yearOfDayLabel = `Năm ${dy}`;
+
+    function sumRowOverMonths(rn, monthKeys) {
+      let total = 0;
+      monthKeys.forEach((mk) => {
+        const m = fullData.months[mk];
+        const row = m && m.rows && m.rows[rn];
+        if (!row) return;
+        Object.keys(row.days || {}).forEach((dk) => {
+          if (isValidDayKey(dk)) total += row.days[dk] || 0;
+        });
+      });
+      return total;
     }
 
     // --- Tính giá trị từng dòng ---
     let dayTotalSum = 0;
-    let periodTotalSum = 0;
+    let monthTotalSumAll = 0;
+    let quarterTotalSumAll = 0;
+    let yearTotalSumAll = 0;
     let tbody = '';
     const reportRows = [];
     rowNums.forEach((rn) => {
       const label =
         (dayRows[rn] && dayRows[rn].label) ||
-        (periodMonthKeys.map((mk) => fullData.months[mk] && fullData.months[mk].rows[rn]).find(Boolean) || {}).label ||
+        (yearOfDayMonths.map((mk) => fullData.months[mk] && fullData.months[mk].rows[rn]).find(Boolean) || {}).label ||
         ROW_LABELS_FALLBACK[rn] || ('Dòng ' + rn);
       const displayLabel = DISPLAY_LABEL_OVERRIDES[label] || label;
 
       const dayVal = (dayRows[rn] && dayRows[rn].days && dayRows[rn].days[dayKey]) || 0;
-
-      let periodVal = 0;
-      periodMonthKeys.forEach((mk) => {
-        const m = fullData.months[mk];
-        const row = m && m.rows && m.rows[rn];
-        if (!row) return;
-        Object.keys(row.days || {}).forEach((dk) => {
-          if (isValidDayKey(dk)) periodVal += row.days[dk] || 0;
-        });
-      });
+      const monthVal = sumRowOverMonths(rn, monthOfDayMonths);
+      const quarterVal = sumRowOverMonths(rn, quarterOfDayMonths);
+      const yearVal = sumRowOverMonths(rn, yearOfDayMonths);
 
       dayTotalSum += dayVal;
-      periodTotalSum += periodVal;
+      monthTotalSumAll += monthVal;
+      quarterTotalSumAll += quarterVal;
+      yearTotalSumAll += yearVal;
       reportRows.push({ label: displayLabel, dayVal });
 
-      tbody += `<tr><td>${displayLabel}</td><td>${dayVal}</td><td>${periodVal}</td></tr>`;
+      tbody += `<tr><td>${displayLabel}</td><td>${dayVal}</td><td>${monthVal}</td><td>${quarterVal}</td><td>${yearVal}</td></tr>`;
     });
 
-    const thead = `<tr><th>Phòng khám</th><th>${dayLabel}</th><th>${periodLabel}</th></tr>`;
-    const totalRow = `<tr class="tk-total-row"><td>Tổng</td><td>${dayTotalSum}</td><td>${periodTotalSum}</td></tr>`;
+    // Tổng theo kỳ đang chọn ở bộ lọc (dùng cho KPI + biểu đồ, có thể khác với năm/tháng của ngày đang xem)
+    let periodTotalSum = 0;
+    periodMonthKeys.forEach((mk) => { periodTotalSum += monthTotalSum(mk); });
+
+    const thead = `<tr><th>Phòng khám</th><th>${dayLabel}</th><th>${monthOfDayLabel}</th><th>${quarterOfDayLabel}</th><th>${yearOfDayLabel}</th></tr>`;
+    const totalRow = `<tr class="tk-total-row"><td>Tổng</td><td>${dayTotalSum}</td><td>${monthTotalSumAll}</td><td>${quarterTotalSumAll}</td><td>${yearTotalSumAll}</td></tr>`;
 
     wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${totalRow}${tbody}</tbody></table>`;
 
@@ -563,7 +610,6 @@
       dd, dm, dy, dayTotalSum, periodTotalSum, dayMonthKey, dayKey, rows: reportRows,
       periodType, periodValue, periodMonthKeys,
     };
-    requestAnimationFrame(() => positionDayNav(container));
     renderInsights(container);
   }
 
@@ -678,7 +724,7 @@
   }
 
   function buildBarChartSvg(rows) {
-    const w = 720, h = 320, padL = 42, padR = 16, padT = 22, padB = 82;
+    const w = 720, h = 280, padL = 42, padR = 16, padT = 22, padB = 82;
     const maxVal = Math.max(1, ...rows.map((r) => r.dayVal));
     const bw = (w - padL - padR) / rows.length;
     let bars = '';
@@ -702,7 +748,7 @@
   }
 
   function buildLineChartSvg(dayTotals) {
-    const w = 720, h = 300, padL = 42, padR = 16, padT = 22, padB = 34;
+    const w = 720, h = 260, padL = 42, padR = 16, padT = 22, padB = 34;
     const maxVal = Math.max(1, ...dayTotals.map((d) => d.total));
     const stepX = (w - padL - padR) / Math.max(1, dayTotals.length - 1);
     const points = dayTotals.map((d, i) => ({
