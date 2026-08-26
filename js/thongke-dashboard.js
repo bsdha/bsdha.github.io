@@ -121,6 +121,7 @@
       .tk-insights-panel h3{font-size:16px;font-family:inherit;margin:0 0 16px;color:#0e2233;
         display:flex;align-items:center;gap:8px;font-weight:700;}
       .tk-insights-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
+      .tk-chart-subtitle{font-size:13px;color:#5c7284;font-weight:700;text-align:center;margin:-6px 0 14px;min-height:16px;}
       .tk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
       .tk-kpi-card{background:#f5f9fb;border:1px solid #e1e8ee;border-radius:10px;padding:13px 15px;}
       .tk-kpi-label{font-size:12.5px;color:#5c7284;font-weight:600;}
@@ -197,6 +198,7 @@
         </div>
         <div class="tk-panel tk-insights-panel">
           <h3>Biểu đồ</h3>
+          <div class="tk-chart-subtitle" id="tkChartSubtitle"></div>
           <div class="tk-chart-toggle" id="tkChartToggle">
             <button type="button" class="tk-chart-tab active" data-view="kpi" title="Tổng quan số liệu (KPI)">🧮</button>
             <button type="button" class="tk-chart-tab" data-view="bar" title="Biểu đồ cột theo phòng khám">📊</button>
@@ -760,27 +762,34 @@
   function renderActiveChart(container) {
     const kpiGrid = container.querySelector('#tkKpiGrid');
     const area = container.querySelector('#tkChartArea');
+    const subtitle = container.querySelector('#tkChartSubtitle');
     if (!kpiGrid || !area) return;
 
     if (activeChartType === 'kpi') {
       kpiGrid.style.display = '';
       area.style.display = 'none';
+      if (subtitle) subtitle.textContent = '';
       return;
     }
 
     kpiGrid.style.display = 'none';
     area.style.display = '';
+    if (subtitle) {
+      subtitle.textContent = activeChartType === 'bar' && lastChartData && lastChartData.barPeriodLabel
+        ? `Theo phòng khám — ${lastChartData.barPeriodLabel}`
+        : '';
+    }
     if (!lastChartData || (activeChartType === 'bar' ? lastChartData.bar.length === 0 : lastChartData.line.length === 0)) {
       area.innerHTML = '<div class="tk-empty">Chưa có dữ liệu để vẽ biểu đồ.</div>';
       return;
     }
     area.innerHTML = activeChartType === 'bar'
-      ? buildBarChartSvg(lastChartData.bar, lastChartData.barPeriodLabel)
+      ? buildBarChartSvg(lastChartData.bar)
       : buildLineChartSvg(lastChartData.line);
   }
 
-  function buildBarChartSvg(rows, periodLabel) {
-    const w = 720, h = 280, padL = 42, padR = 16, padT = 22, padB = 82;
+  function buildBarChartSvg(rows) {
+    const w = 720, h = 268, padL = 42, padR = 16, padT = 10, padB = 82;
     const maxVal = Math.max(1, ...rows.map((r) => r.periodVal));
     const bw = (w - padL - padR) / rows.length;
     let bars = '';
@@ -794,12 +803,10 @@
       if (r.periodVal > 0) bars += `<text x="${cx.toFixed(1)}" y="${(y - 6).toFixed(1)}" font-size="11" text-anchor="middle" fill="#0e2233" font-weight="700">${r.periodVal}</text>`;
       bars += `<text x="${cx.toFixed(1)}" y="${(h - padB + 14).toFixed(1)}" font-size="10" fill="#5c7284" text-anchor="end" transform="rotate(-42 ${cx.toFixed(1)} ${(h - padB + 14).toFixed(1)})">${escapeXml(shortenLabel(r.label))}</text>`;
     });
-    const titleText = periodLabel ? `Theo phòng khám — ${escapeXml(periodLabel)}` : '';
     return `<svg class="tk-chart-svg" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">
       <defs><linearGradient id="tkBarGrad" x1="0" y1="0" x2="0" y2="1">
         <stop offset="0%" stop-color="#12b3c9"/><stop offset="100%" stop-color="#0b5fa5"/>
       </linearGradient></defs>
-      ${titleText ? `<text x="${padL}" y="14" font-size="12" fill="#5c7284" font-weight="700">${titleText}</text>` : ''}
       <line x1="${padL}" y1="${h - padB}" x2="${w - padR}" y2="${h - padB}" stroke="#c9d6de" stroke-width="1"/>
       ${bars}
     </svg>`;
