@@ -72,6 +72,7 @@
         background:#17a34a;opacity:.65;animation:tkPing 1.7s cubic-bezier(0,0,.2,1) infinite;}
       @keyframes tkPing{0%{transform:scale(1);opacity:.65;}75%,100%{transform:scale(3);opacity:0;}}
       .tk-filterbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
+        width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;
         background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:14px 16px;margin-bottom:22px;}
       .tk-filter-group{display:flex;flex-direction:column;gap:5px;}
       .tk-filter-group label{font-family:inherit;font-size:13px;color:#5c7284;font-weight:600;}
@@ -80,6 +81,7 @@
         cursor:pointer;min-width:150px;}
       .tk-filter-group input:focus, .tk-filter-group select:focus{outline:2px solid #0b5fa5;outline-offset:1px;}
       .tk-panel{background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:20px;margin-bottom:22px;}
+      .tk-detail-panel{width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;}
       .tk-panel-head{position:relative;display:flex;align-items:center;justify-content:space-between;
         min-height:34px;margin-bottom:16px;}
       .tk-panel h3{font-size:16px;font-family:inherit;margin:0;color:#0e2233;display:flex;align-items:center;gap:8px;font-weight:700;}
@@ -156,7 +158,7 @@
             <select id="tkPeriodValue"></select>
           </div>
         </div>
-        <div class="tk-panel">
+        <div class="tk-panel tk-detail-panel">
           <div class="tk-panel-head">
             <h3>Chi tiết theo phòng khám</h3>
             <div class="tk-day-nav" id="tkDayNav">
@@ -571,10 +573,13 @@
     const grid = container.querySelector('#tkKpiGrid');
     if (grid) grid.innerHTML = kpiHtml;
 
-    const dayTotals = Object.keys(totalByDay)
-      .filter(isValidDayKey)
-      .map((k) => ({ day: Number(k), total: totalByDay[k] || 0 }))
-      .sort((a, b) => a.day - b.day);
+    // Đủ tất cả các ngày trong tháng (kể cả ngày chưa có số liệu = 0) để trục X liền mạch, dễ nhìn.
+    const [dmY, dmM] = dayMonthKey.split('-');
+    const numDaysInMonth = new Date(Number(dmY), Number(dmM), 0).getDate();
+    const dayTotals = [];
+    for (let d = 1; d <= numDaysInMonth; d++) {
+      dayTotals.push({ day: d, total: totalByDay[String(d)] || 0 });
+    }
 
     lastChartData = { bar: rows, line: dayTotals };
     renderActiveChart(container);
