@@ -54,10 +54,14 @@
         text-transform:uppercase;text-shadow:0 0 10px rgba(140,225,255,.65),0 0 22px rgba(60,180,255,.4);}
       .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
         text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
-      .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;
-        border-bottom:2px solid #0e2233;padding-bottom:16px;margin-bottom:18px;}
-      .tk-head .tk-sub{font-size:14.5px;color:#5c7284;}
+      .tk-head-sticky{position:sticky;top:0;z-index:30;background:#fff;padding-top:6px;
+        box-shadow:0 6px 14px -10px rgba(14,34,51,.0);}
+      .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px 22px;
+        padding-bottom:14px;}
+      .tk-head .tk-sub{font-size:14.5px;color:#5c7284;white-space:nowrap;}
+      .tk-head-filters{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;}
       .tk-head-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+      .tk-head-divider{border:none;border-top:2px solid #0e2233;margin:0 0 18px;}
       .tk-speak-btn{font-size:13.5px;font-weight:700;padding:8px 14px;border-radius:8px;border:none;
         background:linear-gradient(120deg,#0b5fa5,#12b3c9);color:#fff;cursor:pointer;
         display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(18,179,201,.45);white-space:nowrap;}
@@ -71,9 +75,6 @@
       .tk-live-dot::before{content:'';position:absolute;inset:-3px;border-radius:50%;
         background:#17a34a;opacity:.65;animation:tkPing 1.7s cubic-bezier(0,0,.2,1) infinite;}
       @keyframes tkPing{0%{transform:scale(1);opacity:.65;}75%,100%{transform:scale(3);opacity:0;}}
-      .tk-filterbar{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;
-        width:fit-content;max-width:100%;margin-left:auto;margin-right:auto;
-        background:#fff;border:1px solid #c9d6de;border-radius:12px;padding:14px 16px;margin-bottom:22px;}
       .tk-filter-group{display:flex;flex-direction:column;gap:5px;}
       .tk-filter-group label{font-family:inherit;font-size:13px;color:#5c7284;font-weight:600;}
       .tk-filter-group input, .tk-filter-group select{font-family:inherit;font-size:14.5px;
@@ -92,6 +93,10 @@
       .tk-day-btn:hover{background:#eef4fa;}
       .tk-day-nav input[type=date]{font-family:inherit;font-size:14px;padding:6px 8px;border-radius:7px;
         border:1px solid #c9d6de;background:#fff;color:#0e2233;cursor:pointer;}
+      .tk-today-btn{height:30px;padding:0 12px;border-radius:7px;border:1px solid #c9d6de;background:#fff;
+        color:#0b5fa5;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;
+        justify-content:center;line-height:1;white-space:nowrap;font-family:inherit;}
+      .tk-today-btn:hover{background:#eef4fa;}
       .tk-table-wrap{overflow-x:auto;}
       .tk-table{width:auto;max-width:100%;border-collapse:collapse;font-size:15px;}
       .tk-table thead th{font-family:inherit;font-size:13.5px;color:#5c7284;
@@ -105,6 +110,9 @@
       .tk-table tbody tr.tk-total-row td:first-child{text-align:left;}
       .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:inherit;}
       .tk-insights-panel{padding-top:22px;}
+      .tk-insights-panel h3{font-size:16px;font-family:inherit;margin:0 0 16px;color:#0e2233;
+        display:flex;align-items:center;gap:8px;font-weight:700;}
+      .tk-insights-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
       .tk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
       .tk-kpi-card{background:#f5f9fb;border:1px solid #e1e8ee;border-radius:10px;padding:13px 15px;}
       .tk-kpi-label{font-size:12.5px;color:#5c7284;font-weight:600;}
@@ -137,26 +145,29 @@
           <div class="tk-banner-org">Bệnh viện đa khoa Bình Dương - Cơ sở 2</div>
           <div class="tk-banner-title" id="tkReportTitle">Báo cáo số liệu KCB ngày --/--/----</div>
         </div>
-        <div class="tk-head">
-          <div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div>
-          <div class="tk-head-actions">
-            <button type="button" class="tk-speak-btn" id="tkSpeakBtn">🔊 Đọc báo cáo số liệu</button>
-            <span class="tk-live"><span class="tk-live-dot"></span>Tự động cập nhật</span>
+        <div class="tk-head-sticky">
+          <div class="tk-head">
+            <div class="tk-sub" id="tkLastSync">Đang tải dữ liệu…</div>
+            <div class="tk-head-filters">
+              <div class="tk-filter-group">
+                <label for="tkPeriodType">Xem theo</label>
+                <select id="tkPeriodType">
+                  <option value="month">Tháng</option>
+                  <option value="quarter">Quý</option>
+                  <option value="year">Năm</option>
+                </select>
+              </div>
+              <div class="tk-filter-group">
+                <label for="tkPeriodValue" id="tkPeriodValueLabel">Chọn tháng</label>
+                <select id="tkPeriodValue"></select>
+              </div>
+            </div>
+            <div class="tk-head-actions">
+              <button type="button" class="tk-speak-btn" id="tkSpeakBtn">🔊 Đọc báo cáo số liệu</button>
+              <span class="tk-live"><span class="tk-live-dot"></span>Tự động cập nhật</span>
+            </div>
           </div>
-        </div>
-        <div class="tk-filterbar">
-          <div class="tk-filter-group">
-            <label for="tkPeriodType">Xem theo</label>
-            <select id="tkPeriodType">
-              <option value="month">Tháng</option>
-              <option value="quarter">Quý</option>
-              <option value="year">Năm</option>
-            </select>
-          </div>
-          <div class="tk-filter-group">
-            <label for="tkPeriodValue" id="tkPeriodValueLabel">Chọn tháng</label>
-            <select id="tkPeriodValue"></select>
-          </div>
+          <hr class="tk-head-divider">
         </div>
         <div class="tk-panel tk-detail-panel">
           <div class="tk-panel-head">
@@ -164,16 +175,18 @@
             <div class="tk-day-nav" id="tkDayNav">
               <button type="button" class="tk-day-btn" id="tkDayPrev" title="Ngày trước">‹</button>
               <input type="date" id="tkDayPicker">
+              <button type="button" class="tk-today-btn" id="tkDayToday" title="Về hôm nay">Hôm nay</button>
               <button type="button" class="tk-day-btn" id="tkDayNext" title="Ngày sau">›</button>
             </div>
           </div>
           <div class="tk-table-wrap" id="tkTableWrap"><div class="tk-empty">Đang tải…</div></div>
         </div>
         <div class="tk-panel tk-insights-panel">
+          <h3>Biểu đồ</h3>
           <div class="tk-chart-toggle" id="tkChartToggle">
             <button type="button" class="tk-chart-tab active" data-view="kpi" title="Tổng quan số liệu (KPI)">🧮</button>
             <button type="button" class="tk-chart-tab" data-view="bar" title="Biểu đồ cột theo phòng khám">📊</button>
-            <button type="button" class="tk-chart-tab" data-view="line" title="Xu hướng theo ngày trong tháng">📈</button>
+            <button type="button" class="tk-chart-tab" data-view="line" title="Xu hướng theo kỳ đã chọn (tháng/quý/năm)">📈</button>
           </div>
           <div class="tk-kpi-grid" id="tkKpiGrid"></div>
           <div class="tk-chart-area" id="tkChartArea" style="display:none;"><div class="tk-empty">Đang tải…</div></div>
@@ -270,6 +283,7 @@
     const dayPicker = container.querySelector('#tkDayPicker');
     const dayPrevBtn = container.querySelector('#tkDayPrev');
     const dayNextBtn = container.querySelector('#tkDayNext');
+    const dayTodayBtn = container.querySelector('#tkDayToday');
     const periodTypeSel = container.querySelector('#tkPeriodType');
     const periodValueSel = container.querySelector('#tkPeriodValue');
 
@@ -295,6 +309,13 @@
     if (dayNextBtn && !dayNextBtn.dataset.bound) {
       dayNextBtn.dataset.bound = '1';
       dayNextBtn.addEventListener('click', () => shiftDay(1));
+    }
+    if (dayTodayBtn && !dayTodayBtn.dataset.bound) {
+      dayTodayBtn.dataset.bound = '1';
+      dayTodayBtn.addEventListener('click', () => {
+        dayPicker.value = todayStr();
+        renderAll(container);
+      });
     }
 
     const speakBtn = container.querySelector('#tkSpeakBtn');
@@ -481,7 +502,10 @@
 
     if (rowNums.length === 0) {
       wrap.innerHTML = '<div class="tk-empty">Chưa có dữ liệu cho lựa chọn này.</div>';
-      lastReport = { dd, dm, dy, dayTotalSum: 0, periodTotalSum: 0, dayMonthKey, dayKey, rows: [] };
+      lastReport = {
+        dd, dm, dy, dayTotalSum: 0, periodTotalSum: 0, dayMonthKey, dayKey, rows: [],
+        periodType, periodValue, periodMonthKeys,
+      };
       renderInsights(container);
       return;
     }
@@ -535,15 +559,66 @@
 
     wrap.innerHTML = `<table class="tk-table"><thead>${thead}</thead><tbody>${totalRow}${tbody}</tbody></table>`;
 
-    lastReport = { dd, dm, dy, dayTotalSum, periodTotalSum, dayMonthKey, dayKey, rows: reportRows };
+    lastReport = {
+      dd, dm, dy, dayTotalSum, periodTotalSum, dayMonthKey, dayKey, rows: reportRows,
+      periodType, periodValue, periodMonthKeys,
+    };
     requestAnimationFrame(() => positionDayNav(container));
     renderInsights(container);
   }
 
   // ---------- Khối phân tích: KPI + biểu đồ ----------
+  function monthTotalSum(mk) {
+    const m = fullData.months && fullData.months[mk];
+    if (!m) return 0;
+    let sum = 0;
+    Object.entries(m.totalByDay || {}).forEach(([dk, v]) => { if (isValidDayKey(dk)) sum += v || 0; });
+    return sum;
+  }
+
+  const MONTH_SHORT = { '01': 'Th1', '02': 'Th2', '03': 'Th3', '04': 'Th4', '05': 'Th5', '06': 'Th6',
+    '07': 'Th7', '08': 'Th8', '09': 'Th9', '10': 'Th10', '11': 'Th11', '12': 'Th12' };
+
+  // Xây dữ liệu cho biểu đồ đường theo đúng kỳ đang chọn (Tháng/Quý/Năm):
+  //  - Tháng: trục X là các ngày trong tháng đó.
+  //  - Quý / Năm: trục X là các tháng thuộc kỳ đó (kể cả tháng chưa có dữ liệu = 0).
+  function buildPeriodLineData(periodType, periodValue, periodMonthKeys) {
+    if (periodType === 'month') {
+      const mk = (periodMonthKeys && periodMonthKeys[0]) || periodValue;
+      const monthData = (fullData.months && fullData.months[mk]) || {};
+      const totalByDay = monthData.totalByDay || {};
+      const [y, mo] = mk.split('-');
+      const numDays = new Date(Number(y), Number(mo), 0).getDate();
+      const out = [];
+      for (let d = 1; d <= numDays; d++) out.push({ day: d, total: totalByDay[String(d)] || 0 });
+      return out;
+    }
+    if (periodType === 'quarter') {
+      const [, qPart] = periodValue.split('-Q');
+      const q = Number(qPart);
+      const startMonth = (q - 1) * 3 + 1;
+      const y = periodValue.split('-Q')[0];
+      const out = [];
+      for (let i = 0; i < 3; i++) {
+        const mo = pad2(startMonth + i);
+        const mk = `${y}-${mo}`;
+        out.push({ day: MONTH_SHORT[mo] + '/' + y, total: monthTotalSum(mk) });
+      }
+      return out;
+    }
+    // year
+    const y = periodValue;
+    const out = [];
+    for (let mo = 1; mo <= 12; mo++) {
+      const mk = `${y}-${pad2(mo)}`;
+      out.push({ day: MONTH_SHORT[pad2(mo)], total: monthTotalSum(mk) });
+    }
+    return out;
+  }
+
   function renderInsights(container) {
     if (!lastReport) return;
-    const { dayTotalSum, periodTotalSum, rows, dayMonthKey, dayKey } = lastReport;
+    const { dayTotalSum, periodTotalSum, rows, dayMonthKey, dayKey, periodType, periodValue, periodMonthKeys } = lastReport;
     const monthData = (fullData.months && fullData.months[dayMonthKey]) || {};
     const totalByDay = monthData.totalByDay || {};
 
@@ -573,13 +648,8 @@
     const grid = container.querySelector('#tkKpiGrid');
     if (grid) grid.innerHTML = kpiHtml;
 
-    // Đủ tất cả các ngày trong tháng (kể cả ngày chưa có số liệu = 0) để trục X liền mạch, dễ nhìn.
-    const [dmY, dmM] = dayMonthKey.split('-');
-    const numDaysInMonth = new Date(Number(dmY), Number(dmM), 0).getDate();
-    const dayTotals = [];
-    for (let d = 1; d <= numDaysInMonth; d++) {
-      dayTotals.push({ day: d, total: totalByDay[String(d)] || 0 });
-    }
+    // Biểu đồ đường bám theo kỳ đang chọn ở bộ lọc (Tháng/Quý/Năm), không chỉ tháng của ngày đang xem.
+    const dayTotals = buildPeriodLineData(periodType, periodValue, periodMonthKeys);
 
     lastChartData = { bar: rows, line: dayTotals };
     renderActiveChart(container);
