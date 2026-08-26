@@ -122,6 +122,10 @@
         display:flex;align-items:center;gap:8px;font-weight:700;}
       .tk-insights-panel h3::before{content:'';width:8px;height:8px;background:#0b5fa5;border-radius:50%;display:inline-block;}
       .tk-chart-subtitle{font-size:13px;color:#5c7284;font-weight:700;text-align:center;margin:-6px 0 14px;min-height:16px;}
+      .tk-chart-options{text-align:center;margin-top:12px;}
+      .tk-checkbox-label{display:inline-flex;align-items:center;gap:7px;font-size:13.5px;color:#3a4b58;
+        font-weight:600;cursor:pointer;user-select:none;}
+      .tk-checkbox-label input[type=checkbox]{width:15px;height:15px;cursor:pointer;accent-color:#0b5fa5;}
       .tk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
       .tk-kpi-card{background:#f5f9fb;border:1px solid #e1e8ee;border-radius:10px;padding:13px 15px;}
       .tk-kpi-label{font-size:12.5px;color:#5c7284;font-weight:600;}
@@ -206,6 +210,12 @@
           </div>
           <div class="tk-kpi-grid" id="tkKpiGrid"></div>
           <div class="tk-chart-area" id="tkChartArea" style="display:none;"><div class="tk-empty">Đang tải…</div></div>
+          <div class="tk-chart-options" id="tkChartOptions" style="display:none;">
+            <label class="tk-checkbox-label" for="tkExcludeWeekends">
+              <input type="checkbox" id="tkExcludeWeekends" checked>
+              Không tính Thứ 7 &amp; CN
+            </label>
+          </div>
         </div>
       </div>
     `;
@@ -214,6 +224,7 @@
   let fullData = null;
   let lastReport = null; // { dayLabel, dd, mm, yyyy, dayTotalSum, rows:[{label, dayVal}] } — dùng cho nút "Đọc báo cáo số liệu"
   let activeChartType = 'kpi'; // 'kpi' | 'bar' | 'line' — chỉ hiện 1 kiểu view tại 1 thời điểm
+  let excludeWeekends = true; // Biểu đồ xu hướng: mặc định bỏ Thứ 7 & Chủ nhật
   let lastChartData = null; // { bar:[{label,dayVal}], line:[{day,total}] }
 
   // ---------- Tiện ích ngày tháng ----------
@@ -368,6 +379,16 @@
         if (!type || type === activeChartType) return;
         activeChartType = type;
         chartToggle.querySelectorAll('.tk-chart-tab').forEach((b) => b.classList.toggle('active', b === btn));
+        renderActiveChart(container);
+      });
+    }
+
+    const excludeWeekendsChk = container.querySelector('#tkExcludeWeekends');
+    if (excludeWeekendsChk && !excludeWeekendsChk.dataset.bound) {
+      excludeWeekendsChk.dataset.bound = '1';
+      excludeWeekendsChk.checked = excludeWeekends;
+      excludeWeekendsChk.addEventListener('change', () => {
+        excludeWeekends = excludeWeekendsChk.checked;
         renderActiveChart(container);
       });
     }
@@ -682,7 +703,10 @@
       const [y, mo] = mk.split('-');
       const numDays = new Date(Number(y), Number(mo), 0).getDate();
       const out = [];
-      for (let d = 1; d <= numDays; d++) out.push({ day: d, total: totalByDay[String(d)] || 0 });
+      for (let d = 1; d <= numDays; d++) {
+        const dow = new Date(Number(y), Number(mo) - 1, d).getDay(); // 0 = CN, 6 = Thứ 7
+        out.push({ day: d, total: totalByDay[String(d)] || 0, isWeekend: dow === 0 || dow === 6 });
+      }
       return out;
     }
     if (periodType === 'quarter') {
@@ -763,12 +787,14 @@
     const kpiGrid = container.querySelector('#tkKpiGrid');
     const area = container.querySelector('#tkChartArea');
     const subtitle = container.querySelector('#tkChartSubtitle');
+    const chartOptions = container.querySelector('#tkChartOptions');
     if (!kpiGrid || !area) return;
 
     if (activeChartType === 'kpi') {
       kpiGrid.style.display = '';
       area.style.display = 'none';
       if (subtitle) subtitle.textContent = '';
+      if (chartOptions) chartOptions.style.display = 'none';
       return;
     }
 
@@ -779,13 +805,23 @@
         ? `Theo phòng khám — ${lastChartData.barPeriodLabel}`
         : '';
     }
+    // Ô "Không tính Thứ 7 & CN" chỉ có ý nghĩa với biểu đồ xu hướng khi xem theo
+    // Tháng (trục X là từng ngày); Quý/Năm có trục X là các tháng nên ẩn đi.
+    if (chartOptions) {
+      const showOption = activeChartType === 'line' && lastReport && lastReport.periodType === 'month';
+      chartOptions.style.display = showOption ? '' : 'none';
+    }
     if (!lastChartData || (activeChartType === 'bar' ? lastChartData.bar.length === 0 : lastChartData.line.length === 0)) {
       area.innerHTML = '<div class="tk-empty">Chưa có dữ liệu để vẽ biểu đồ.</div>';
       return;
     }
+    let lineData = lastChartData.line;
+    if (activeChartType === 'line' && excludeWeekends && lastReport && lastReport.periodType === 'month') {
+      lineData = lineData.filter((d) => !d.isWeekend);
+    }
     area.innerHTML = activeChartType === 'bar'
       ? buildBarChartSvg(lastChartData.bar)
-      : buildLineChartSvg(lastChartData.line);
+      : buildLineChartSvg(lineData);
   }
 
   function buildBarChartSvg(rows) {
