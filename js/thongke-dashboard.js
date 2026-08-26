@@ -103,13 +103,13 @@
       .tk-table tbody tr.tk-total-row td:first-child{text-align:left;}
       .tk-empty{color:#7c8fa0;font-size:14.5px;padding:32px;text-align:center;font-family:inherit;}
       .tk-insights-panel{padding-top:22px;}
-      .tk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:22px;}
+      .tk-kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
       .tk-kpi-card{background:#f5f9fb;border:1px solid #e1e8ee;border-radius:10px;padding:13px 15px;}
       .tk-kpi-label{font-size:12.5px;color:#5c7284;font-weight:600;}
       .tk-kpi-value{font-size:22px;font-weight:800;color:#0e2233;margin-top:4px;}
       .tk-kpi-value.tk-up{color:#17a34a;}
       .tk-kpi-value.tk-down{color:#dc2626;}
-      .tk-chart-toggle{display:flex;gap:12px;justify-content:center;margin-bottom:16px;}
+      .tk-chart-toggle{display:flex;gap:12px;justify-content:center;margin-bottom:18px;}
       .tk-chart-tab{width:44px;height:44px;border-radius:50%;border:1px solid #c9d6de;background:#fff;
         font-size:19px;cursor:pointer;display:flex;align-items:center;justify-content:center;
         color:#5c7284;transition:transform .15s ease;}
@@ -168,12 +168,13 @@
           <div class="tk-table-wrap" id="tkTableWrap"><div class="tk-empty">Đang tải…</div></div>
         </div>
         <div class="tk-panel tk-insights-panel">
-          <div class="tk-kpi-grid" id="tkKpiGrid"></div>
           <div class="tk-chart-toggle" id="tkChartToggle">
-            <button type="button" class="tk-chart-tab active" data-chart="bar" title="Biểu đồ cột theo phòng khám">📊</button>
-            <button type="button" class="tk-chart-tab" data-chart="line" title="Xu hướng theo ngày trong tháng">📈</button>
+            <button type="button" class="tk-chart-tab active" data-view="kpi" title="Tổng quan số liệu (KPI)">🧮</button>
+            <button type="button" class="tk-chart-tab" data-view="bar" title="Biểu đồ cột theo phòng khám">📊</button>
+            <button type="button" class="tk-chart-tab" data-view="line" title="Xu hướng theo ngày trong tháng">📈</button>
           </div>
-          <div class="tk-chart-area" id="tkChartArea"><div class="tk-empty">Đang tải…</div></div>
+          <div class="tk-kpi-grid" id="tkKpiGrid"></div>
+          <div class="tk-chart-area" id="tkChartArea" style="display:none;"><div class="tk-empty">Đang tải…</div></div>
         </div>
       </div>
     `;
@@ -181,7 +182,7 @@
 
   let fullData = null;
   let lastReport = null; // { dayLabel, dd, mm, yyyy, dayTotalSum, rows:[{label, dayVal}] } — dùng cho nút "Đọc báo cáo số liệu"
-  let activeChartType = 'bar'; // 'bar' | 'line' — biểu đồ đang hiển thị trong khối insight
+  let activeChartType = 'kpi'; // 'kpi' | 'bar' | 'line' — chỉ hiện 1 kiểu view tại 1 thời điểm
   let lastChartData = null; // { bar:[{label,dayVal}], line:[{day,total}] }
 
   // ---------- Tiện ích ngày tháng ----------
@@ -311,7 +312,7 @@
       chartToggle.addEventListener('click', (e) => {
         const btn = e.target.closest('.tk-chart-tab');
         if (!btn) return;
-        const type = btn.getAttribute('data-chart');
+        const type = btn.getAttribute('data-view');
         if (!type || type === activeChartType) return;
         activeChartType = type;
         chartToggle.querySelectorAll('.tk-chart-tab').forEach((b) => b.classList.toggle('active', b === btn));
@@ -580,8 +581,18 @@
   }
 
   function renderActiveChart(container) {
+    const kpiGrid = container.querySelector('#tkKpiGrid');
     const area = container.querySelector('#tkChartArea');
-    if (!area) return;
+    if (!kpiGrid || !area) return;
+
+    if (activeChartType === 'kpi') {
+      kpiGrid.style.display = '';
+      area.style.display = 'none';
+      return;
+    }
+
+    kpiGrid.style.display = 'none';
+    area.style.display = '';
     if (!lastChartData || (activeChartType === 'bar' ? lastChartData.bar.length === 0 : lastChartData.line.length === 0)) {
       area.innerHTML = '<div class="tk-empty">Chưa có dữ liệu để vẽ biểu đồ.</div>';
       return;
