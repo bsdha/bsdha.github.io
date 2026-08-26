@@ -789,7 +789,7 @@
   }
 
   function buildBarChartSvg(rows) {
-    const w = 720, h = 268, padL = 42, padR = 16, padT = 10, padB = 82;
+    const w = 720, h = 268, padL = 42, padR = 16, padT = 26, padB = 82;
     const maxVal = Math.max(1, ...rows.map((r) => r.periodVal));
     const bw = (w - padL - padR) / rows.length;
     let bars = '';
