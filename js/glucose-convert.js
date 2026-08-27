@@ -79,6 +79,7 @@
       outputValue.textContent = fmt(mmol);
     }
     renderAlert(mgdl);
+    if (typeof logUsage === 'function') logUsage('glucose_convert');
   }
 
   function swap() {

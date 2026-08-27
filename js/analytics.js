@@ -18,4 +18,33 @@
     }, USAGE_DEBOUNCE_MS);
   }
 
+  // --- "Đang online" ---
+  // Mỗi trình duyệt tự sinh 1 sessionId (chỉ tồn tại trong tab hiện tại), rồi gọi
+  // /heartbeat định kỳ trong lúc trang còn mở. Worker ghi khóa KV với TTL 60 giây;
+  // đóng tab/mất mạng thì khóa tự hết hạn, không cần dọn dẹp. Xem /stats hoặc /online
+  // để xem số người đang mở trang.
+  (function heartbeat() {
+    try {
+      var sid = sessionStorage.getItem('bsdha_sid');
+      if (!sid) {
+        sid = 'sid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
+        sessionStorage.setItem('bsdha_sid', sid);
+      }
+      function ping() {
+        fetch(`${USAGE_WORKER_URL}/heartbeat?id=${encodeURIComponent(sid)}`, {
+          method: 'POST',
+          mode: 'cors',
+          keepalive: true,
+        }).catch(() => {});
+      }
+      ping(); // gửi ngay khi tải trang
+      setInterval(ping, 40000); // lặp lại mỗi 40 giây (TTL khóa là 60 giây, có dư thời gian)
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') ping();
+      });
+    } catch (e) {
+      // sessionStorage có thể bị chặn (chế độ ẩn danh nghiêm ngặt) -> bỏ qua, không ảnh hưởng trang
+    }
+  })();
+
   gtag('config', 'G-C4LNNNDG5Q');

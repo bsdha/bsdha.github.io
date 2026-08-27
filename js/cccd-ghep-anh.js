@@ -484,6 +484,7 @@
     sheet.appendChild(createRow());
   });
   root.querySelector("#cdPrint").addEventListener("click", function () {
+    if (typeof logUsage === "function") logUsage("cccd_print");
     window.print();
   });
   root.querySelector("#cdClear").addEventListener("click", function () {

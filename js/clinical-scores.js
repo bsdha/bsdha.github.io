@@ -87,6 +87,7 @@
       setStage(badge, '', 'Thấp');
       note.textContent = 'Theo dõi và đánh giá lại theo diễn biến lâm sàng.';
     }
+    if (typeof logUsage === 'function') logUsage('clinicalscores_news2');
   }
   ['csRr', 'csSpo2', 'csSbp', 'csPulse', 'csTemp'].forEach(function (id) {
     document.getElementById(id).addEventListener('input', updateNews2);
@@ -106,6 +107,7 @@
     else if (v <= 6) { setStage(badge, 'mid', 'Đau vừa'); }
     else if (v <= 8) { setStage(badge, 'high', 'Đau nặng'); }
     else { setStage(badge, 'crit', 'Đau dữ dội'); }
+    if (typeof logUsage === 'function') logUsage('clinicalscores_vas');
   }
   document.getElementById('csVasSlider').addEventListener('input', updateVas);
   updateVas();
@@ -122,6 +124,7 @@
     else if (total <= 18) { setStage(badge, 'mid', 'Nhẹ'); }
     else { setStage(badge, '', 'Không có nguy cơ rõ rệt'); }
     note.textContent = 'Điểm ' + total + '/23. Điểm thấp hơn tương ứng nguy cơ loét tỳ đè cao hơn.';
+    if (typeof logUsage === 'function') logUsage('clinicalscores_braden');
   }
   bradenNames.forEach(function (name) {
     page.querySelectorAll('input[name="' + name + '"]').forEach(function (el) {
@@ -140,6 +143,7 @@
     else if (total >= 25) { setStage(badge, 'mid', 'Trung bình'); }
     else { setStage(badge, '', 'Thấp'); }
     note.textContent = 'Điểm ' + total + '/125. Đánh giá lại sau mỗi thay đổi tình trạng hoặc theo quy định khoa phòng.';
+    if (typeof logUsage === 'function') logUsage('clinicalscores_morse');
   }
   morseNames.forEach(function (name) {
     page.querySelectorAll('input[name="' + name + '"]').forEach(function (el) {

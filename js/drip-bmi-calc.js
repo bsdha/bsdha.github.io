@@ -202,6 +202,8 @@
     const nextDay = endDate.getDate() !== startDate.getDate() || endDate.getMonth() !== startDate.getMonth();
 
     endTagEl.textContent = pad2(endDate.getHours()) + ':' + pad2(endDate.getMinutes()) + (nextDay ? ' (hôm sau)' : '');
+
+    if (typeof logUsage === 'function') logUsage('dichtruyen_calc');
   }
 
   calcBtn.addEventListener('click', calc);
@@ -250,6 +252,8 @@
     bmiTagEl.textContent = c.label;
     bmiTagEl.style.color = c.color;
     bmiTagEl.style.background = c.bg;
+
+    if (typeof logUsage === 'function') logUsage('bmi_calc');
   }
 
   bmiBtn.addEventListener('click', calcBmi);
