@@ -274,8 +274,9 @@
       </footer>
       <script>
       (function () {
-        // Giữ chuột/chạm 3 giây lên vùng footer để mở trang thống kê Umami (không cần đăng nhập)
-        var STATS_URL = 'https://cloud.umami.is/share/boQBBLFr1MlfSRlg';
+        // Giữ chuột/chạm 3 giây lên vùng footer để mở trang thống kê (Worker riêng, có
+        // "Đang online" + số lượt dùng từng công cụ) — trước đây mở trang Umami cũ.
+        var STATS_URL = 'https://bsdha-usage-tracker.dhabolero.workers.dev/stats?key=guitar72';
         var HOLD_MS = 3000;
         var footer = document.getElementById('siteFooter');
         var timer = null;
