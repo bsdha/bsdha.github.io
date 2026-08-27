@@ -20,9 +20,22 @@
 
   // --- "Đang online" ---
   // Mỗi trình duyệt tự sinh 1 sessionId (chỉ tồn tại trong tab hiện tại), rồi gọi
-  // /heartbeat định kỳ trong lúc trang còn mở. Worker ghi khóa KV với TTL 60 giây;
-  // đóng tab/mất mạng thì khóa tự hết hạn, không cần dọn dẹp. Xem /stats hoặc /online
-  // để xem số người đang mở trang.
+  // /heartbeat định kỳ trong lúc trang còn mở. Worker ghi khóa KV với TTL khớp
+  // với chu kỳ ping bên dưới (xem HEARTBEAT_INTERVAL_MS); đóng tab/mất mạng thì
+  // khóa tự hết hạn, không cần dọn dẹp. Xem /stats hoặc /online để xem số người
+  // đang mở trang.
+  //
+  // ĐÃ VÁ 27/08/2026: GIẢM TẦN SUẤT HEARTBEAT TỪ 40 GIÂY -> 5 PHÚT để giảm số
+  // lượt ghi KV (mỗi heartbeat tốn ~3 lượt put() phía worker: online:<id>,
+  // registerVisitor, updatePeakOnline) — đây là nguồn ghi KV liên tục, chạy
+  // suốt cả ngày với mọi tab đang mở trang, và là nguyên nhân chính khiến
+  // worker bsdha-usage-tracker dễ vượt hạn mức 1.000 put()/ngày của gói
+  // Cloudflare Workers Free. Đổi 40s -> 5 phút giảm số lượt heartbeat khoảng
+  // 7.5 lần. LƯU Ý: TTL khóa "online:<id>" trong worker (route /heartbeat)
+  // cũng đã được tăng tương ứng lên 330 giây (5.5 phút) để khớp với chu kỳ
+  // ping mới — nếu chỉ sửa ở đây mà không sửa TTL bên worker thì "đang online"
+  // sẽ hiển thị sai (khóa hết hạn giữa 2 lần ping).
+  var HEARTBEAT_INTERVAL_MS = 300000; // 5 phút
   (function heartbeat() {
     try {
       var sid = sessionStorage.getItem('bsdha_sid');
@@ -38,7 +51,7 @@
         }).catch(() => {});
       }
       ping(); // gửi ngay khi tải trang
-      setInterval(ping, 40000); // lặp lại mỗi 40 giây (TTL khóa là 60 giây, có dư thời gian)
+      setInterval(ping, HEARTBEAT_INTERVAL_MS); // lặp lại mỗi 5 phút (TTL khóa phía worker đã tăng khớp theo)
       document.addEventListener('visibilitychange', function () {
         if (document.visibilityState === 'visible') ping();
       });
