@@ -1,4 +1,4 @@
-  window.dataLayer = window.dataLayer || [];
+window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
 
@@ -35,26 +35,33 @@
   // cũng đã được tăng tương ứng lên 330 giây (5.5 phút) để khớp với chu kỳ
   // ping mới — nếu chỉ sửa ở đây mà không sửa TTL bên worker thì "đang online"
   // sẽ hiển thị sai (khóa hết hạn giữa 2 lần ping).
-  var HEARTBEAT_INTERVAL_MS = 300000; // 5 phút
-  (function heartbeat() {
+  // ĐÃ VÁ 29/08/2026: BỎ HẲN heartbeat LẶP LẠI theo setInterval.
+  // Lý do: dù đã giãn từ 40s -> 5 phút, việc gọi lặp lại theo THỜI GIAN MỞ TRANG vẫn
+  // khiến "mở trang càng lâu càng tốn quota put() của KV" — 1 tab mở 8 tiếng vẫn tốn
+  // ~96 lượt ghi. Vì tính năng "Đang online" chỉ mang tính tham khảo (không phải chức
+  // năng cốt lõi), đổi sang chỉ ping ĐÚNG 1 LẦN khi mở trang (KHÔNG lặp lại theo thời
+  // gian) — mở trang bao lâu cũng chỉ tốn tối đa 1-2 lượt ghi/tab/lần mở, hoàn toàn
+  // tách biệt "thời gian mở trang" khỏi "số lượt ghi KV". Đánh đổi: số "đang online"
+  // sẽ hết hạn sau ~60-330s dù tab vẫn đang mở (không còn phản ánh chính xác theo thời
+  // gian thực) — chấp nhận được vì đây chỉ là con số vui, không ảnh hưởng công cụ chính.
+  (function heartbeatOnce() {
     try {
       var sid = sessionStorage.getItem('bsdha_sid');
       if (!sid) {
         sid = 'sid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
         sessionStorage.setItem('bsdha_sid', sid);
       }
-      function ping() {
+      // Chỉ ping 1 LẦN cho mỗi phiên trình duyệt (sessionStorage) — không lặp lại,
+      // dù tab có mở 1 phút hay 8 tiếng thì cũng chỉ đúng 1 lượt gọi này.
+      var alreadyPinged = sessionStorage.getItem('bsdha_hb_sent');
+      if (!alreadyPinged) {
         fetch(`${USAGE_WORKER_URL}/heartbeat?id=${encodeURIComponent(sid)}`, {
           method: 'POST',
           mode: 'cors',
           keepalive: true,
         }).catch(() => {});
+        sessionStorage.setItem('bsdha_hb_sent', '1');
       }
-      ping(); // gửi ngay khi tải trang
-      setInterval(ping, HEARTBEAT_INTERVAL_MS); // lặp lại mỗi 5 phút (TTL khóa phía worker đã tăng khớp theo)
-      document.addEventListener('visibilitychange', function () {
-        if (document.visibilityState === 'visible') ping();
-      });
     } catch (e) {
       // sessionStorage có thể bị chặn (chế độ ẩn danh nghiêm ngặt) -> bỏ qua, không ảnh hưởng trang
     }
