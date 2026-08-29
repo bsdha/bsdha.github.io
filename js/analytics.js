@@ -35,33 +35,41 @@ window.dataLayer = window.dataLayer || [];
   // cũng đã được tăng tương ứng lên 330 giây (5.5 phút) để khớp với chu kỳ
   // ping mới — nếu chỉ sửa ở đây mà không sửa TTL bên worker thì "đang online"
   // sẽ hiển thị sai (khóa hết hạn giữa 2 lần ping).
-  // ĐÃ VÁ 29/08/2026: BỎ HẲN heartbeat LẶP LẠI theo setInterval.
-  // Lý do: dù đã giãn từ 40s -> 5 phút, việc gọi lặp lại theo THỜI GIAN MỞ TRANG vẫn
-  // khiến "mở trang càng lâu càng tốn quota put() của KV" — 1 tab mở 8 tiếng vẫn tốn
-  // ~96 lượt ghi. Vì tính năng "Đang online" chỉ mang tính tham khảo (không phải chức
-  // năng cốt lõi), đổi sang chỉ ping ĐÚNG 1 LẦN khi mở trang (KHÔNG lặp lại theo thời
-  // gian) — mở trang bao lâu cũng chỉ tốn tối đa 1-2 lượt ghi/tab/lần mở, hoàn toàn
-  // tách biệt "thời gian mở trang" khỏi "số lượt ghi KV". Đánh đổi: số "đang online"
-  // sẽ hết hạn sau ~60-330s dù tab vẫn đang mở (không còn phản ánh chính xác theo thời
-  // gian thực) — chấp nhận được vì đây chỉ là con số vui, không ảnh hưởng công cụ chính.
-  (function heartbeatOnce() {
+  // ĐÃ VÁ 29/08/2026 (2): THÊM LẠI heartbeat LẶP LẠI, nhưng với chu kỳ 15 PHÚT (thay vì
+  // 40 giây ở bản gốc, hay 5 phút ở bản vá 27/08). Lý do đổi lại: bản "chỉ ping 1 lần"
+  // (29/08 bản đầu) khiến "Đang online" gần như luôn hiển thị số rất thấp — vì khóa
+  // online:<id> có TTL chỉ 60 giây, không có gì làm mới nên 1 phút sau khi mở trang là
+  // "rớt khỏi danh sách" dù người dùng vẫn đang mở tab. Khôi phục lại việc ping lặp lại
+  // để "Đang online" phản ánh đúng người đang thực sự mở trang, nhưng giãn chu kỳ rất xa
+  // (15 phút) để vẫn tiết kiệm quota put() của Cloudflare KV.
+  // Tính toán an toàn (thực tế ~7-8 máy hiện tại, tối đa dự kiến ~20 máy):
+  //   20 tab × (8 giờ ca làm / 15 phút) ≈ 20 × 32 = 640 lượt ghi/ngày tối đa
+  //   -> còn dư ~360 lượt cho /log (dùng công cụ thật) + Worker đồng bộ HIS (chung tài
+  //   khoản Cloudflare, chung quota 1.000 put()/ngày).
+  // Phía Worker (route /heartbeat) có thêm 1 lớp bảo vệ độc lập: chỉ thực sự ghi
+  // online:<id> khi số phiên đang online hiện tại còn dưới ngưỡng an toàn (mặc định 400)
+  // -> dù số máy thực tế vượt dự kiến, hệ thống vẫn không bao giờ vỡ quota, chỉ là "Đang
+  // online" sẽ ngừng tăng thêm khi chạm ngưỡng.
+  var HEARTBEAT_INTERVAL_MS = 900000; // 15 phút
+  (function heartbeat() {
     try {
       var sid = sessionStorage.getItem('bsdha_sid');
       if (!sid) {
         sid = 'sid_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 10);
         sessionStorage.setItem('bsdha_sid', sid);
       }
-      // Chỉ ping 1 LẦN cho mỗi phiên trình duyệt (sessionStorage) — không lặp lại,
-      // dù tab có mở 1 phút hay 8 tiếng thì cũng chỉ đúng 1 lượt gọi này.
-      var alreadyPinged = sessionStorage.getItem('bsdha_hb_sent');
-      if (!alreadyPinged) {
+      function ping() {
         fetch(`${USAGE_WORKER_URL}/heartbeat?id=${encodeURIComponent(sid)}`, {
           method: 'POST',
           mode: 'cors',
           keepalive: true,
         }).catch(() => {});
-        sessionStorage.setItem('bsdha_hb_sent', '1');
       }
+      ping(); // gửi ngay khi tải trang
+      setInterval(ping, HEARTBEAT_INTERVAL_MS); // lặp lại mỗi 15 phút
+      document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'visible') ping();
+      });
     } catch (e) {
       // sessionStorage có thể bị chặn (chế độ ẩn danh nghiêm ngặt) -> bỏ qua, không ảnh hưởng trang
     }
