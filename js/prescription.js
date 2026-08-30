@@ -2079,7 +2079,7 @@
       sectionHeader('I. THÔNG TIN BỆNH NHÂN:');
       if (isHandwritten) {
         // Toa in tay: để trống toàn bộ (chỉ in nhãn + chấm chấm) cho bác sĩ tự ghi
-        y += 2.5; // dời "Họ và tên" cách xa tiêu đề mục I hơn một chút
+        y += 1.5; // dời "Họ và tên" cách xa tiêu đề mục I hơn một chút
         function blankField(label, x, w) {
           setF('bold', 10.5);
           textAt(label, x, y);
@@ -2087,15 +2087,15 @@
           dottedBlank(lx, y, x + w - lx, 10.5);
         }
         blankField('Họ và tên: ', marginX, contentWidth);
-        y += 7.5;
+        y += 6.8;
         const halfW = contentWidth / 2;
         blankField('Năm sinh: ', marginX, halfW - 6);
         blankField('Giới tính: ', marginX + halfW, halfW);
-        y += 7.5;
+        y += 6.8;
         blankField('Địa chỉ: ', marginX, contentWidth);
-        y += 7.5;
+        y += 6.8;
         blankField('Chẩn đoán: ', marginX, contentWidth);
-        y += 7.5;
+        y += 6.8;
       } else {
       setF('bold', 10.5);
       const line1Label = 'Họ và tên: ';
@@ -2162,31 +2162,33 @@
         const numLines = Math.max(3, Math.min(12, parseInt($('rxHandwrittenLines').value, 10) || 6));
         setF('normal', 9);
         for (let i = 1; i <= numLines; i++) {
-          ensureSpace(13);
+          ensureSpace(12);
           // Dòng 1: số thứ tự + đường chấm trống để ghi tên thuốc
           setF('bold', 10.5);
           const numStr = `${i}.`;
           textAt(numStr, marginX, y);
           const numW = pdf.getTextWidth(numStr) + 2;
           dottedBlank(marginX + numW, y, contentWidth - numW, 10.5);
-          y += 6.5;
+          y += 6;
           // Dòng 2: "Uống: .... Ngày.... lần, mỗi lần.... viên      Trước/sau khi ăn: ...."
           setF('normal', 9);
           let lx = marginX;
           const put = (txt) => { textAt(txt, lx, y); lx += pdf.getTextWidth(txt); };
           const blank = (w) => { dottedBlank(lx, y, w, 9); lx += w; };
 
-          put('Uống ');
-          blank(16);
-          put('    Ngày');
+          put('Uống');
+          lx += 18;
+          put('Ngày');
           blank(9);
           put(' lần, mỗi lần');
           blank(9);
           put(' viên');
-          put('        Trước/sau khi ăn ');
-          const remaining = marginX + contentWidth - lx;
-          blank(Math.max(remaining, 12));
-          y += 6.5;
+          const lastLabel = 'Trước/sau khi ăn';
+          const lastLabelW = pdf.getTextWidth(lastLabel);
+          const rightX = marginX + contentWidth - lastLabelW;
+          lx = Math.max(lx + 8, rightX);
+          put(lastLabel);
+          y += 6;
         }
       } else {
         sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
@@ -2220,7 +2222,11 @@
       }
 
       // Chữ ký
-      ensureSpace(34);
+      // Toa viết tay: cho phép dùng sát mép dưới hơn để dồn khối chữ ký về chung trang 1
+      // thay vì bị đẩy hẳn sang trang 2 khi chỉ thiếu vài mm.
+      const signBlockH = isHandwritten ? 30 : 34;
+      const signBottomLimit = isHandwritten ? pageHeight - 4 : pageHeight - marginBottom;
+      if (y + signBlockH > signBottomLimit) { pdf.addPage(); y = 12; }
       y += 6;
       const signX = marginX + contentWidth * 0.55;
       const signW = contentWidth * 0.45;
@@ -2259,7 +2265,7 @@
       let t = 'Bác sĩ khám bệnh';
       let tw = pdf.getTextWidth(t);
       textAt(t, signX + (signW - tw) / 2, y);
-      y += 22;
+      y += (isHandwritten ? 18 : 22);
       setF('bold', 10.5);
       // Chỉ để trống phần "ngày ký" khi bật tuỳ chọn; riêng tên bác sĩ vẫn giữ nguyên
       // nếu người dùng đã chọn/nhập bác sĩ ở mục cấu hình bên dưới — không xoá theo tuỳ chọn này nữa.
