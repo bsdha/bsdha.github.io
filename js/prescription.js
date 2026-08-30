@@ -446,15 +446,18 @@
   function renderDoctorSelect(selectValue) {
     const list = loadDoctorList();
     const def = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
+    const blankOpt = '<option value="">— Tự đóng dấu tên (để trống) —</option>';
     if (list.length === 0) {
-      doctorSelect.innerHTML = '<option value="">(chưa có bác sĩ nào, bấm + để thêm)</option>';
+      doctorSelect.innerHTML = blankOpt;
       doctorDefBtn.classList.remove('is-default');
       return;
     }
-    doctorSelect.innerHTML = list.map((name) =>
+    doctorSelect.innerHTML = blankOpt + list.map((name) =>
       `<option value="${escapeHtml(name)}">${escapeHtml(name)}${name === def ? ' ★ (mặc định)' : ''}</option>`
     ).join('');
-    const toSelect = selectValue && list.includes(selectValue) ? selectValue : (def && list.includes(def) ? def : list[0]);
+    const toSelect = selectValue !== undefined && (selectValue === '' || list.includes(selectValue))
+      ? selectValue
+      : (def && list.includes(def) ? def : list[0]);
     doctorSelect.value = toSelect;
     doctorDefBtn.classList.toggle('is-default', doctorSelect.value === def && !!def);
   }
@@ -2162,14 +2165,14 @@
         const numLines = Math.max(3, Math.min(12, parseInt($('rxHandwrittenLines').value, 10) || 6));
         setF('normal', 9);
         for (let i = 1; i <= numLines; i++) {
-          ensureSpace(12);
+          ensureSpace(15);
           // Dòng 1: số thứ tự + đường chấm trống để ghi tên thuốc
           setF('bold', 10.5);
           const numStr = `${i}.`;
           textAt(numStr, marginX, y);
           const numW = pdf.getTextWidth(numStr) + 2;
           dottedBlank(marginX + numW, y, contentWidth - numW, 10.5);
-          y += 6;
+          y += 7.5;
           // Dòng 2: "Uống: .... Ngày.... lần, mỗi lần.... viên      Trước/sau khi ăn: ...."
           setF('normal', 9);
           let lx = marginX;
@@ -2188,7 +2191,7 @@
           const rightX = marginX + contentWidth - lastLabelW;
           lx = Math.max(lx + 8, rightX);
           put(lastLabel);
-          y += 6;
+          y += 7.5;
         }
       } else {
         sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
