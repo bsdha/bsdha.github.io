@@ -2079,6 +2079,7 @@
       sectionHeader('I. THÔNG TIN BỆNH NHÂN:');
       if (isHandwritten) {
         // Toa in tay: để trống toàn bộ (chỉ in nhãn + chấm chấm) cho bác sĩ tự ghi
+        y += 2.5; // dời "Họ và tên" cách xa tiêu đề mục I hơn một chút
         function blankField(label, x, w) {
           setF('bold', 10.5);
           textAt(label, x, y);
@@ -2159,12 +2160,7 @@
       if (isHandwritten) {
         sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
         const numLines = Math.max(3, Math.min(12, parseInt($('rxHandwrittenLines').value, 10) || 6));
-        const prefixLabel = 'Uống trước/sau khi ăn: ';
-        const segLabels = ['Sáng', 'Trưa', 'Chiều', 'Tối'];
         setF('normal', 9);
-        const prefixW = pdf.getTextWidth(prefixLabel) + 2;
-        const segAreaW = contentWidth - prefixW;
-        const segW = segAreaW / 4;
         for (let i = 1; i <= numLines; i++) {
           ensureSpace(13);
           // Dòng 1: số thứ tự + đường chấm trống để ghi tên thuốc
@@ -2174,15 +2170,22 @@
           const numW = pdf.getTextWidth(numStr) + 2;
           dottedBlank(marginX + numW, y, contentWidth - numW, 10.5);
           y += 6.5;
-          // Dòng 2: "Uống trước/sau khi ăn" + nhãn Sáng/Trưa/Chiều/Tối + đường chấm ngắn để điền số lượng
+          // Dòng 2: "Uống: .... Ngày.... lần, mỗi lần.... viên      Trước/sau khi ăn: ...."
           setF('normal', 9);
-          textAt(prefixLabel, marginX, y);
-          segLabels.forEach((lbl, idx) => {
-            const lx = marginX + prefixW + idx * segW;
-            textAt(lbl, lx, y);
-            const lblW = pdf.getTextWidth(lbl) + 2;
-            dottedBlank(lx + lblW, y, segW - 4 - lblW, 9);
-          });
+          let lx = marginX;
+          const put = (txt) => { textAt(txt, lx, y); lx += pdf.getTextWidth(txt); };
+          const blank = (w) => { dottedBlank(lx, y, w, 9); lx += w; };
+
+          put('Uống ');
+          blank(16);
+          put('    Ngày');
+          blank(9);
+          put(' lần, mỗi lần');
+          blank(9);
+          put(' viên');
+          put('        Trước/sau khi ăn ');
+          const remaining = marginX + contentWidth - lx;
+          blank(Math.max(remaining, 12));
           y += 6.5;
         }
       } else {
