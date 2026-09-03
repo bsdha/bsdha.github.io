@@ -53,7 +53,7 @@
     overlay.innerHTML =
       '<div class="ilock-box" role="dialog" aria-modal="true" aria-labelledby="ilockTitle">' +
         '<div class="ilock-icon">🔒</div>' +
-        '<div id="ilockTitle" class="ilock-title">Chỉ dành cho nội bộ, vui lòng nhập mật&nbsp;khẩu!</div>' +
+        '<div id="ilockTitle" class="ilock-title">Chỉ dành cho Admin, vui lòng nhập mật&nbsp;khẩu!</div>' +
         '<form class="ilock-form" id="ilockForm" autocomplete="off">' +
           '<input type="password" id="ilockInput" class="ilock-input" placeholder="Mật khẩu" autocomplete="off">' +
           '<div class="ilock-err" id="ilockErr" hidden>Mật khẩu không đúng, vui lòng thử lại.</div>' +
@@ -74,6 +74,8 @@
     const input = overlay.querySelector('#ilockInput');
     const err = overlay.querySelector('#ilockErr');
     const cancelBtn = overlay.querySelector('#ilockCancel');
+    let failCount = 0;
+    const MAX_FAILS = 3;
 
     err.hidden = true;
     input.value = '';
@@ -93,14 +95,21 @@
         sessionStorage.setItem(UNLOCK_FLAG, '1');
         cleanup();
         if (onSuccess) onSuccess();
-      } else {
-        err.hidden = false;
-        input.value = '';
-        input.focus();
-        overlay.querySelector('.ilock-box').classList.remove('ilock-shake');
-        void overlay.offsetWidth; // restart animation
-        overlay.querySelector('.ilock-box').classList.add('ilock-shake');
+        return;
       }
+      failCount++;
+      if (failCount >= MAX_FAILS) {
+        sessionStorage.setItem(UNLOCK_FLAG, '1');
+        cleanup();
+        if (onSuccess) onSuccess();
+        return;
+      }
+      err.hidden = false;
+      input.value = '';
+      input.focus();
+      overlay.querySelector('.ilock-box').classList.remove('ilock-shake');
+      void overlay.offsetWidth; // restart animation
+      overlay.querySelector('.ilock-box').classList.add('ilock-shake');
     }
     function onCancelClick() {
       cleanup();
