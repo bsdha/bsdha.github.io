@@ -237,18 +237,20 @@
       if (qi && (qi.norm || qi.accent)) {
         const fullMatch = item.children.filter((c) => {
           const cNameAccent = (c.name || '').toLowerCase();
+          const cNameNorm = normalize(c.name);
           if (normalize(c.code).includes(qi.norm)) return true;
-          return textMatchesQuery(cNameAccent, qi);
+          return queryMatchesText(cNameAccent, cNameNorm, qi);
         });
         if (fullMatch.length > 0) {
           childrenToShow = fullMatch;
-        } else if (qi.words.length > 1) {
+        } else if ((qi.hasDiacritics ? qi.words.length : qi.normWords.length) > 1) {
           // Chế độ chính xác nâng cao (luôn bật): không có mã con nào khớp đủ tất cả các từ,
           // chỉ hiện mã con khớp ÍT NHẤT MỘT từ trong câu tìm kiếm (đúng ranh giới từ)
           // thay vì hiện toàn bộ mã con của nhóm.
           const anyWordMatch = item.children.filter((c) => {
             const cNameAccent = (c.name || '').toLowerCase();
-            return qi.words.some((w) => hasWordBoundaryMatch(cNameAccent, w));
+            const cNameNorm = normalize(c.name);
+            return queryMatchesAnyWord(cNameAccent, cNameNorm, qi);
           });
           childrenToShow = anyWordMatch.length > 0 ? anyWordMatch : item.children;
         }
@@ -285,17 +287,15 @@
   // "phong"). Ở cuối thì KHÔNG bắt buộc phải là hết từ — để cho phép khớp ngay khi người dùng
   // gõ dở/chưa đủ chữ (VD: gõ "tăng huyết á" vẫn khớp được với "tăng huyết áp" vì "á" là phần đầu
   // hợp lệ của "áp"), giống kiểu tìm kiếm gợi ý tự động (autocomplete) quen thuộc.
-  function hasWordBoundaryMatch(haystack, token) {
-    if (!token) return false;
-    const re = new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token), 'iu');
-    return re.test(haystack);
-  }
 
-  // Phân tích câu truy vấn. Luôn so khớp theo ĐÚNG bản có dấu người dùng gõ (không tự suy
-  // rộng sang các từ khác dấu, VD: gõ "ong" tuyệt đối không được khớp với "ống"/"ông"/"óng",
-  // gõ "rắn" tuyệt đối không được khớp với "rặn"/"răn"/"rán"/"rạn" — dù các từ này khi bỏ dấu
-  // đều trùng nhau nhưng là những từ khác nghĩa hoàn toàn). Chỉ riêng MÃ ICD (vốn không có dấu)
-  // vẫn so khớp theo bản chuẩn hoá bình thường.
+  // Phân tích câu truy vấn.
+  // - Nếu người dùng gõ CÓ dấu (VD: "tăng huyết áp"): so khớp đúng theo bản có dấu, không tự
+  //   suy rộng sang các từ khác dấu (gõ "ong" tuyệt đối không khớp "ống"/"ông"/"óng", gõ "rắn"
+  //   tuyệt đối không khớp "rặn"/"răn"/"rán"/"rạn" — dù bỏ dấu thì trùng nhau nhưng là từ khác nghĩa).
+  // - Nếu người dùng gõ KHÔNG dấu (VD: "tang huyet ap"): cho phép khớp theo bản đã chuẩn hoá
+  //   (bỏ dấu) của tên bệnh, để tra cứu được kể cả khi gõ không dấu (ví dụ trên điện thoại,
+  //   bàn phím không gõ được tiếng Việt có dấu...).
+  // Mã ICD (vốn không có dấu) luôn so khớp theo bản chuẩn hoá bình thường, không đổi.
   // Biên dịch sẵn 1 regex ranh giới từ cho 1 token (dùng lại `escapeRegex` đã có ở trên)
   function buildWordBoundaryRegex(token) {
     return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token), 'iu');
@@ -305,32 +305,57 @@
     const trimmed = (rawQuery || '').trim();
     const norm = normalize(trimmed);
     const accent = trimmed.toLowerCase();
+    // Câu tìm kiếm có dấu hay không: nếu bỏ dấu mà chuỗi không đổi (norm === accent) nghĩa là
+    // người dùng gõ không dấu ngay từ đầu -> bật chế độ so khớp không dấu cho tên bệnh.
+    const hasDiacritics = norm !== accent;
     const words = accent.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
+    const normWords = norm.split(/[^\p{L}\p{N}]+/u).filter((w) => w.length > 0);
     // Quan trọng cho hiệu năng: biên dịch regex CHỈ 1 LẦN cho mỗi câu tìm kiếm, rồi dùng lại
     // cho toàn bộ ~16.000 dòng dữ liệu, thay vì tạo `new RegExp(...)` lại cho từng dòng
     // (trước đây là nguyên nhân chính khiến gõ phím bị đơ/chậm).
     const fullRegex = accent ? buildWordBoundaryRegex(accent) : null;
     const wordRegexes = words.map(buildWordBoundaryRegex);
-    return { raw: trimmed, norm, accent, words, fullRegex, wordRegexes };
+    const normFullRegex = norm ? buildWordBoundaryRegex(norm) : null;
+    const normWordRegexes = normWords.map(buildWordBoundaryRegex);
+    return {
+      raw: trimmed, norm, accent, words, fullRegex, wordRegexes,
+      hasDiacritics, normWords, normFullRegex, normWordRegexes,
+    };
   }
 
-  function textMatchesQuery(textAccent, qi) {
+  // So khớp 1 chuỗi tên (đã có sẵn cả bản có dấu lẫn bản chuẩn hoá) với câu truy vấn.
+  // Từ khóa vẫn được tìm ở BẤT KỲ vị trí nào trong tên (đầu/giữa/cuối, đúng ranh giới từ),
+  // và khi trộn nhiều từ khóa thì vẫn yêu cầu tên chứa đủ tất cả các từ (không cần liền nhau).
+  function queryMatchesText(textAccent, textNorm, qi) {
     if (!qi.accent) return false;
-    // Luôn bắt buộc khớp theo đúng ranh giới từ (không tính là khớp nếu từ khóa chỉ nằm
-    // lọt thỏm bên trong một từ khác, ví dụ "ong" không được tính là khớp bên trong "phong"/"ống").
-    if (qi.fullRegex && qi.fullRegex.test(textAccent)) return true;
-    if (qi.words.length > 1) return qi.wordRegexes.every((re) => re.test(textAccent));
+    if (qi.hasDiacritics) {
+      if (qi.fullRegex && qi.fullRegex.test(textAccent)) return true;
+      if (qi.words.length > 1) return qi.wordRegexes.every((re) => re.test(textAccent));
+      return false;
+    }
+    // Gõ không dấu -> so khớp trên bản đã chuẩn hoá (bỏ dấu) của tên bệnh.
+    if (qi.normFullRegex && qi.normFullRegex.test(textNorm)) return true;
+    if (qi.normWords.length > 1) return qi.normWordRegexes.every((re) => re.test(textNorm));
     return false;
+  }
+
+  // Biến thể "khớp ít nhất 1 từ" (dùng cho fallback hiện mã con trong 1 nhóm).
+  function queryMatchesAnyWord(textAccent, textNorm, qi) {
+    if (qi.hasDiacritics) return qi.wordRegexes.some((re) => re.test(textAccent));
+    return qi.normWordRegexes.some((re) => re.test(textNorm));
   }
 
   function scoreMatch(row, qi) {
     const code = row.codeNorm;
-    const text = row.nameAccent;
-    const qStr = qi.accent;
     if (code === qi.norm) return 1000;
+    const text = qi.hasDiacritics ? row.nameAccent : row.nameNorm;
+    const qStr = qi.hasDiacritics ? qi.accent : qi.norm;
+    const fullRe = qi.hasDiacritics ? qi.fullRegex : qi.normFullRegex;
+    const wordRes = qi.hasDiacritics ? qi.wordRegexes : qi.normWordRegexes;
+    const wordCount = qi.hasDiacritics ? qi.words.length : qi.normWords.length;
     if (text === qStr) return 950;
     if (qi.norm && code.startsWith(qi.norm)) return 850;
-    if (qi.fullRegex && qi.fullRegex.test(text)) {
+    if (fullRe && fullRe.test(text)) {
       let s = 650;
       // Cụm từ nằm ngay đầu hoặc cuối tên bệnh (không bị "kẹp giữa") thì chính xác hơn
       if (text.startsWith(qStr)) s += 40;
@@ -342,8 +367,8 @@
     if (code.includes(qi.norm)) return 250;
     // Không khớp nguyên cụm từ, nhưng nếu tên bệnh chứa đủ TẤT CẢ các từ trong câu tìm kiếm
     // (không cần liền nhau / đúng thứ tự, nhưng vẫn phải đúng ranh giới từng từ) thì vẫn coi là liên quan
-    if (qi.words.length > 1) {
-      const allWordsPresent = qi.wordRegexes.every((re) => re.test(text));
+    if (wordCount > 1) {
+      const allWordsPresent = wordRes.every((re) => re.test(text));
       if (allWordsPresent) {
         return Math.max(150, 400 - text.length);
       }
@@ -369,7 +394,7 @@
       .filter((row) => {
         if (yhctOnly && row.item._type !== 'yhct') return false;
         if (row.codeNorm.includes(qi.norm)) return true;
-        if (textMatchesQuery(row.nameAccent, qi)) return true;
+        if (queryMatchesText(row.nameAccent, row.nameNorm, qi)) return true;
         return false;
       })
       .map((row) => ({ row, score: scoreMatch(row, qi) }))
