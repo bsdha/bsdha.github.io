@@ -312,10 +312,16 @@
         <div class="panel">
           <h1>Tra cứu ICD-10 (Tích hợp chế độ AI  theo TT06/2026/TT-BYT)</h1>
           <div class="sub"></div>
-          <div class="search-row">
-            <span class="icon">⌕</span>
-            <input id="searchInput" placeholder="Tìm mã ICD hoặc tên bệnh: A09, E11.9, tăng huyết áp..." autocomplete="off" spellcheck="false">
-            <button class="clear" id="clearBtn" title="Xoá">✕</button>
+          <div class="search-toolbar">
+            <div class="search-row">
+              <span class="icon">⌕</span>
+              <input id="searchInput" placeholder="Tìm mã ICD hoặc tên bệnh: A09, E11.9, tăng huyết áp..." autocomplete="off" spellcheck="false">
+              <button class="clear" id="clearBtn" title="Xoá">✕</button>
+            </div>
+            <div class="option-row option-row--accent">
+              <input type="checkbox" id="fullAccentToggle">
+              <label for="fullAccentToggle">Tìm kiếm có dấu đầy đủ</label>
+            </div>
           </div>
           <div class="option-grid">
             <div class="option-row">
