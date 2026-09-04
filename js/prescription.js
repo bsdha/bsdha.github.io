@@ -2346,14 +2346,27 @@
   const rxHistoryList = $('rxHistoryList');
   const rxHistorySearch = $('rxHistorySearch');
   const rxHistoryLoadMoreBtn = $('rxHistoryLoadMoreBtn');
-  const RX_HISTORY_PAGE_SIZE = 20;
+  const rxHistorySortHeaders = document.querySelectorAll('.rx-history-th-sort');
+  const RX_HISTORY_PAGE_SIZE = 30;
   let rxHistoryOffset = 0;
   let rxHistorySearchTimer = null;
+  // Cột đang sắp xếp: mặc định theo "Thời gian kê" (mới nhất trước) -> khi ở chế độ này,
+  // danh sách được nhóm theo NGÀY kê (giống sổ khám: hôm nay, hôm qua, các ngày trước...).
+  // Nếu người dùng bấm sắp xếp theo "Bệnh nhân"/"Bác sĩ kê", chuyển sang bảng phẳng (không nhóm
+  // theo ngày nữa vì lúc đó thứ tự không còn theo thời gian liên tục), cột Thời gian hiển thị
+  // đầy đủ cả ngày lẫn giờ cho từng dòng.
+  let rxHistorySort = { column: 'created_at', dir: 'desc' };
+  let rxHistoryLastGroupKey = null;
 
   function rxModeLabel(mode) {
     if (mode === 'outside') return 'Ngoài Bệnh viện';
     if (mode === 'handwritten') return 'Viết tay';
     return 'Trong Bệnh viện';
+  }
+  function rxModeClass(mode) {
+    if (mode === 'outside') return 'rx-mode-outside';
+    if (mode === 'handwritten') return 'rx-mode-handwritten';
+    return 'rx-mode-hospital';
   }
 
   function fmtHistoryTime(iso) {
@@ -2364,6 +2377,39 @@
     } catch (e) {
       return iso || '';
     }
+  }
+  function fmtHistoryTimeOnly(iso) {
+    try {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch (e) {
+      return '';
+    }
+  }
+  function fmtHistoryDateOnly(iso) {
+    try {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    } catch (e) {
+      return '';
+    }
+  }
+  const RX_WEEKDAYS = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+  function rxDateGroupKey(iso) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+  function rxDateGroupLabel(iso) {
+    const d = new Date(iso);
+    const now = new Date();
+    const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diffDays = Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
+    const dateStr = fmtHistoryDateOnly(iso);
+    if (diffDays === 0) return `📅 Hôm nay, ${dateStr}`;
+    if (diffDays === 1) return `📅 Hôm qua, ${dateStr}`;
+    return `📅 ${RX_WEEKDAYS[d.getDay()]}, ${dateStr}`;
   }
 
   function rxHistoryDosingLine(it) {
@@ -2377,16 +2423,39 @@
     return parts.join(' • ');
   }
 
+  function updateRxSortIndicators() {
+    rxHistorySortHeaders.forEach((th) => {
+      const col = th.getAttribute('data-sort');
+      const ic = th.querySelector('.rx-sort-ic');
+      const active = col === rxHistorySort.column;
+      th.classList.toggle('active', active);
+      if (ic) ic.textContent = active ? (rxHistorySort.dir === 'asc' ? '▲' : '▼') : '';
+    });
+  }
+
   function renderHistoryItems(rows, append) {
-    if (!append) rxHistoryList.innerHTML = '';
+    if (!append) {
+      rxHistoryList.innerHTML = '';
+      rxHistoryLastGroupKey = null;
+    }
     if (!rows || !rows.length) {
-      if (!append) rxHistoryList.innerHTML = '<div class="rx-history-empty">Chưa có đơn thuốc nào được lưu.</div>';
+      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="6">Chưa có đơn thuốc nào được lưu.</td></tr>';
       return;
     }
+    const grouped = rxHistorySort.column === 'created_at';
+    const frag = document.createDocumentFragment();
     rows.forEach((row) => {
+      if (grouped) {
+        const key = rxDateGroupKey(row.created_at);
+        if (key !== rxHistoryLastGroupKey) {
+          rxHistoryLastGroupKey = key;
+          const groupTr = document.createElement('tr');
+          groupTr.className = 'rx-history-date-group';
+          groupTr.innerHTML = `<td colspan="6">${escapeHtml(rxDateGroupLabel(row.created_at))}</td>`;
+          frag.appendChild(groupTr);
+        }
+      }
       const items = Array.isArray(row.items) ? row.items : [];
-      const wrap = document.createElement('div');
-      wrap.className = 'rx-history-item';
       const itemsHtml = items.map((it) => {
         const dosing = rxHistoryDosingLine(it);
         const usageLine = it.usage ? escapeHtml(it.usage) : '';
@@ -2395,26 +2464,47 @@
           : '';
         return `<li><b>${escapeHtml(it.brand || '')}</b>${it.generic ? ' (' + escapeHtml(it.generic) + ')' : ''}${it.form ? ' - ' + escapeHtml(it.form) : ''}${dosingHtml}</li>`;
       }).join('');
-      wrap.innerHTML = `
-        <div class="rx-history-item-head">
-          <div>
-            <div class="rx-history-patient">${escapeHtml(row.patient_name || '(không tên)')}</div>
-            <div class="rx-history-meta">${fmtHistoryTime(row.created_at)} • ${escapeHtml(rxModeLabel(row.mode))}${row.doctor_name ? ' • BS ' + escapeHtml(row.doctor_name) : ''}</div>
-            ${row.diagnosis ? `<div class="rx-history-diag">Chẩn đoán: ${escapeHtml(row.diagnosis)}</div>` : ''}
-          </div>
-          <button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button>
-        </div>
-        <ul class="rx-history-drugs" style="display:none;">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul>
+
+      const timeCellHtml = grouped
+        ? escapeHtml(fmtHistoryTimeOnly(row.created_at))
+        : `${escapeHtml(fmtHistoryTimeOnly(row.created_at))}<span class="rx-history-date-sub">${escapeHtml(fmtHistoryDateOnly(row.created_at))}</span>`;
+
+      const tr = document.createElement('tr');
+      tr.className = 'rx-history-row';
+      tr.innerHTML = `
+        <td class="rx-history-td-time">${timeCellHtml}</td>
+        <td class="rx-history-td-patient">${escapeHtml(row.patient_name || '(không tên)')}</td>
+        <td class="rx-history-td-diag">${row.diagnosis ? escapeHtml(row.diagnosis) : '<span class="rx-history-dash">—</span>'}</td>
+        <td class="rx-history-td-doctor">${row.doctor_name ? escapeHtml(row.doctor_name) : '<span class="rx-history-dash">—</span>'}</td>
+        <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
+        <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button></td>
       `;
-      const toggleBtn = wrap.querySelector('.rx-history-toggle-btn');
-      const drugsList = wrap.querySelector('.rx-history-drugs');
+
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'rx-history-detail-row';
+      detailTr.style.display = 'none';
+      detailTr.innerHTML = `<td colspan="6"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul></td>`;
+
+      const toggleBtn = tr.querySelector('.rx-history-toggle-btn');
       toggleBtn.addEventListener('click', () => {
-        const showing = drugsList.style.display !== 'none';
-        drugsList.style.display = showing ? 'none' : 'block';
+        const showing = detailTr.style.display !== 'none';
+        detailTr.style.display = showing ? 'none' : 'table-row';
+        tr.classList.toggle('expanded', !showing);
         toggleBtn.textContent = `${items.length} thuốc ${showing ? '▾' : '▴'}`;
       });
-      rxHistoryList.appendChild(wrap);
+
+      frag.appendChild(tr);
+      frag.appendChild(detailTr);
     });
+    rxHistoryList.appendChild(frag);
+  }
+
+  function rxHistoryOrderParam() {
+    const col = rxHistorySort.column;
+    const dir = rxHistorySort.dir;
+    if (col === 'created_at') return `created_at.${dir}`;
+    // Sắp xếp phụ theo thời gian mới nhất trước, để các bản ghi cùng tên có thứ tự ổn định.
+    return `${col}.${dir}.nullslast,created_at.desc`;
   }
 
   async function loadRxHistory(append) {
@@ -2422,7 +2512,7 @@
     if (!append) rxHistoryOffset = 0;
     const term = (rxHistorySearch.value || '').trim();
     const from = rxHistoryOffset;
-    let url = `${SUPABASE_URL}/rest/v1/prescriptions?select=*&order=created_at.desc&limit=${RX_HISTORY_PAGE_SIZE}&offset=${from}`;
+    let url = `${SUPABASE_URL}/rest/v1/prescriptions?select=*&order=${rxHistoryOrderParam()}&limit=${RX_HISTORY_PAGE_SIZE}&offset=${from}`;
     if (term) {
       const esc = term.replace(/[%,()]/g, '');
       url += `&or=(patient_name.ilike.*${encodeURIComponent(esc)}*,diagnosis.ilike.*${encodeURIComponent(esc)}*)`;
@@ -2438,7 +2528,7 @@
       rxHistoryLoadMoreBtn.style.display = rows.length < RX_HISTORY_PAGE_SIZE ? 'none' : '';
     } catch (e) {
       if (!append) {
-        rxHistoryList.innerHTML = '<div class="rx-history-empty">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</div>';
+        rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="6">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</td></tr>';
       }
       rxHistoryLoadMoreBtn.style.display = 'none';
     } finally {
@@ -2451,6 +2541,7 @@
     $('rxHistoryBtn').addEventListener('click', () => {
       rxHistoryOverlay.classList.add('show');
       rxHistoryLoadMoreBtn.style.display = '';
+      updateRxSortIndicators();
       loadRxHistory(false);
     });
   }
@@ -2465,4 +2556,16 @@
     });
   }
   if (rxHistoryLoadMoreBtn) rxHistoryLoadMoreBtn.addEventListener('click', () => loadRxHistory(true));
+  rxHistorySortHeaders.forEach((th) => {
+    th.addEventListener('click', () => {
+      const col = th.getAttribute('data-sort');
+      if (rxHistorySort.column === col) {
+        rxHistorySort.dir = rxHistorySort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        rxHistorySort = { column: col, dir: col === 'created_at' ? 'desc' : 'asc' };
+      }
+      updateRxSortIndicators();
+      loadRxHistory(false);
+    });
+  });
 })();
