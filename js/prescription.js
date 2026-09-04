@@ -2282,6 +2282,13 @@
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
       logUsage('donthuoc_save');
+      saveRxHistory({
+        patientName: name,
+        diagnosis: diag,
+        doctorName: doctor,
+        mode: rxPrescribeMode,
+        items: isHandwritten ? [] : rxRows,
+      });
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
@@ -2290,4 +2297,172 @@
       btn.textContent = originalLabel;
     }
   });
+
+  // ======================================================================
+  // PHẦN CUỐI: LỊCH SỬ "ĐƠN THUỐC ĐÃ KÊ" (công khai — ai kê ở đâu cũng thấy)
+  // Dùng chung bảng Supabase "prescriptions" (cùng project đang dùng cho
+  // đồng bộ logo/tên cơ quan ở trên). Cần tạo bảng này trong Supabase trước:
+  //
+  //   create table if not exists public.prescriptions (
+  //     id bigint generated always as identity primary key,
+  //     created_at timestamptz not null default now(),
+  //     patient_name text,
+  //     diagnosis text,
+  //     doctor_name text,
+  //     mode text,
+  //     items jsonb not null default '[]'::jsonb
+  //   );
+  //   alter table public.prescriptions enable row level security;
+  //   create policy "allow public insert" on public.prescriptions
+  //     for insert to anon with check (true);
+  //   create policy "allow public select" on public.prescriptions
+  //     for select to anon using (true);
+  //   create index if not exists idx_prescriptions_created_at
+  //     on public.prescriptions (created_at desc);
+  //
+  // Lưu ý: bảng này là CÔNG KHAI (ai cũng đọc/ghi được qua anon key, giống
+  // bảng "logo" đang dùng) nên chỉ lưu tên bệnh nhân + chẩn đoán + danh sách
+  // thuốc, KHÔNG lưu CCCD/địa chỉ chi tiết hay thông tin định danh nhạy cảm.
+  // ======================================================================
+  async function saveRxHistory({ patientName, diagnosis, doctorName, mode, items }) {
+    try {
+      await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
+        method: 'POST',
+        headers: { ...cloudHeaders(), Prefer: 'return=minimal' },
+        body: JSON.stringify({
+          patient_name: patientName || null,
+          diagnosis: diagnosis || null,
+          doctor_name: doctorName || null,
+          mode: mode || null,
+          items: items || [],
+        }),
+      });
+    } catch (e) {
+      // im lặng nếu lỗi mạng/chưa tạo bảng — không ảnh hưởng việc tải PDF
+    }
+  }
+
+  const rxHistoryOverlay = $('rxHistoryOverlay');
+  const rxHistoryList = $('rxHistoryList');
+  const rxHistorySearch = $('rxHistorySearch');
+  const rxHistoryLoadMoreBtn = $('rxHistoryLoadMoreBtn');
+  const RX_HISTORY_PAGE_SIZE = 20;
+  let rxHistoryOffset = 0;
+  let rxHistorySearchTimer = null;
+
+  function rxModeLabel(mode) {
+    if (mode === 'outside') return 'Ngoài Bệnh viện';
+    if (mode === 'handwritten') return 'Viết tay';
+    return 'Trong Bệnh viện';
+  }
+
+  function fmtHistoryTime(iso) {
+    try {
+      const d = new Date(iso);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    } catch (e) {
+      return iso || '';
+    }
+  }
+
+  function rxHistoryDosingLine(it) {
+    const parts = [];
+    if (it.days) parts.push(`${it.days} ngày`);
+    const s = it.morning || 0, t = it.noon || 0, c = it.afternoon || 0, to = it.evening || 0;
+    if (String(s) !== '0' || String(t) !== '0' || String(c) !== '0' || String(to) !== '0') {
+      parts.push(`S${s}-T${t}-C${c}-Tối${to}`);
+    }
+    if (it.qty) parts.push(`SL ${it.qty}`);
+    return parts.join(' • ');
+  }
+
+  function renderHistoryItems(rows, append) {
+    if (!append) rxHistoryList.innerHTML = '';
+    if (!rows || !rows.length) {
+      if (!append) rxHistoryList.innerHTML = '<div class="rx-history-empty">Chưa có đơn thuốc nào được lưu.</div>';
+      return;
+    }
+    rows.forEach((row) => {
+      const items = Array.isArray(row.items) ? row.items : [];
+      const wrap = document.createElement('div');
+      wrap.className = 'rx-history-item';
+      const itemsHtml = items.map((it) => {
+        const dosing = rxHistoryDosingLine(it);
+        const usageLine = it.usage ? escapeHtml(it.usage) : '';
+        const dosingHtml = (dosing || usageLine)
+          ? `<br><span class="rx-history-dosing">${escapeHtml(dosing)}${dosing && usageLine ? ' — ' : ''}${usageLine}</span>`
+          : '';
+        return `<li><b>${escapeHtml(it.brand || '')}</b>${it.generic ? ' (' + escapeHtml(it.generic) + ')' : ''}${it.form ? ' - ' + escapeHtml(it.form) : ''}${dosingHtml}</li>`;
+      }).join('');
+      wrap.innerHTML = `
+        <div class="rx-history-item-head">
+          <div>
+            <div class="rx-history-patient">${escapeHtml(row.patient_name || '(không tên)')}</div>
+            <div class="rx-history-meta">${fmtHistoryTime(row.created_at)} • ${escapeHtml(rxModeLabel(row.mode))}${row.doctor_name ? ' • BS ' + escapeHtml(row.doctor_name) : ''}</div>
+            ${row.diagnosis ? `<div class="rx-history-diag">Chẩn đoán: ${escapeHtml(row.diagnosis)}</div>` : ''}
+          </div>
+          <button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button>
+        </div>
+        <ul class="rx-history-drugs" style="display:none;">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul>
+      `;
+      const toggleBtn = wrap.querySelector('.rx-history-toggle-btn');
+      const drugsList = wrap.querySelector('.rx-history-drugs');
+      toggleBtn.addEventListener('click', () => {
+        const showing = drugsList.style.display !== 'none';
+        drugsList.style.display = showing ? 'none' : 'block';
+        toggleBtn.textContent = `${items.length} thuốc ${showing ? '▾' : '▴'}`;
+      });
+      rxHistoryList.appendChild(wrap);
+    });
+  }
+
+  async function loadRxHistory(append) {
+    if (!rxHistoryOverlay) return;
+    if (!append) rxHistoryOffset = 0;
+    const term = (rxHistorySearch.value || '').trim();
+    const from = rxHistoryOffset;
+    let url = `${SUPABASE_URL}/rest/v1/prescriptions?select=*&order=created_at.desc&limit=${RX_HISTORY_PAGE_SIZE}&offset=${from}`;
+    if (term) {
+      const esc = term.replace(/[%,()]/g, '');
+      url += `&or=(patient_name.ilike.*${encodeURIComponent(esc)}*,diagnosis.ilike.*${encodeURIComponent(esc)}*)`;
+    }
+    rxHistoryLoadMoreBtn.disabled = true;
+    rxHistoryLoadMoreBtn.textContent = 'Đang tải...';
+    try {
+      const resp = await fetch(url, { headers: cloudHeaders() });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const rows = await resp.json();
+      renderHistoryItems(rows, append);
+      rxHistoryOffset = from + rows.length;
+      rxHistoryLoadMoreBtn.style.display = rows.length < RX_HISTORY_PAGE_SIZE ? 'none' : '';
+    } catch (e) {
+      if (!append) {
+        rxHistoryList.innerHTML = '<div class="rx-history-empty">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</div>';
+      }
+      rxHistoryLoadMoreBtn.style.display = 'none';
+    } finally {
+      rxHistoryLoadMoreBtn.disabled = false;
+      rxHistoryLoadMoreBtn.textContent = 'Tải thêm';
+    }
+  }
+
+  if ($('rxHistoryBtn') && rxHistoryOverlay) {
+    $('rxHistoryBtn').addEventListener('click', () => {
+      rxHistoryOverlay.classList.add('show');
+      rxHistoryLoadMoreBtn.style.display = '';
+      loadRxHistory(false);
+    });
+  }
+  if ($('rxHistoryCloseX')) $('rxHistoryCloseX').addEventListener('click', () => rxHistoryOverlay.classList.remove('show'));
+  if (rxHistoryOverlay) {
+    rxHistoryOverlay.addEventListener('click', (e) => { if (e.target === rxHistoryOverlay) rxHistoryOverlay.classList.remove('show'); });
+  }
+  if (rxHistorySearch) {
+    rxHistorySearch.addEventListener('input', () => {
+      clearTimeout(rxHistorySearchTimer);
+      rxHistorySearchTimer = setTimeout(() => loadRxHistory(false), 400);
+    });
+  }
+  if (rxHistoryLoadMoreBtn) rxHistoryLoadMoreBtn.addEventListener('click', () => loadRxHistory(true));
 })();
