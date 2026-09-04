@@ -2320,6 +2320,15 @@
   //   create index if not exists idx_prescriptions_created_at
   //     on public.prescriptions (created_at desc);
   //
+  //   -- Bổ sung cho tính năng "Đã bán" (quầy thuốc tick, quản lý xem báo cáo):
+  //   alter table public.prescriptions
+  //     add column if not exists sold boolean not null default false,
+  //     add column if not exists sold_at timestamptz;
+  //   create policy "allow public update sold" on public.prescriptions
+  //     for update to anon using (true) with check (true);
+  //   create index if not exists idx_prescriptions_sold_day
+  //     on public.prescriptions (sold, created_at);
+  //
   // Lưu ý: bảng này là CÔNG KHAI (ai cũng đọc/ghi được qua anon key, giống
   // bảng "logo" đang dùng) nên chỉ lưu tên bệnh nhân + chẩn đoán + danh sách
   // thuốc, KHÔNG lưu CCCD/địa chỉ chi tiết hay thông tin định danh nhạy cảm.
@@ -2339,6 +2348,20 @@
       });
     } catch (e) {
       // im lặng nếu lỗi mạng/chưa tạo bảng — không ảnh hưởng việc tải PDF
+    }
+  }
+
+  // PATCH trạng thái "Đã bán" cho 1 đơn (id là bigint primary key trong bảng prescriptions)
+  async function setRxSold(id, sold) {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${id}`, {
+        method: 'PATCH',
+        headers: { ...cloudHeaders(), Prefer: 'return=minimal' },
+        body: JSON.stringify({ sold, sold_at: sold ? new Date().toISOString() : null }),
+      });
+      return resp.ok;
+    } catch (e) {
+      return false;
     }
   }
 
@@ -2439,7 +2462,7 @@
       rxHistoryLastGroupKey = null;
     }
     if (!rows || !rows.length) {
-      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="6">Chưa có đơn thuốc nào được lưu.</td></tr>';
+      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Chưa có đơn thuốc nào được lưu.</td></tr>';
       return;
     }
     const grouped = rxHistorySort.column === 'created_at';
@@ -2451,7 +2474,7 @@
           rxHistoryLastGroupKey = key;
           const groupTr = document.createElement('tr');
           groupTr.className = 'rx-history-date-group';
-          groupTr.innerHTML = `<td colspan="6">${escapeHtml(rxDateGroupLabel(row.created_at))}</td>`;
+          groupTr.innerHTML = `<td colspan="7">${escapeHtml(rxDateGroupLabel(row.created_at))}</td>`;
           frag.appendChild(groupTr);
         }
       }
@@ -2478,12 +2501,18 @@
         <td class="rx-history-td-doctor">${row.doctor_name ? escapeHtml(row.doctor_name) : '<span class="rx-history-dash">—</span>'}</td>
         <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
         <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button></td>
+        <td class="rx-history-td-sold">
+          <label class="rx-sold-check">
+            <input type="checkbox" class="rx-sold-checkbox" ${row.sold ? 'checked' : ''}>
+            <span>${row.sold ? 'Đã bán' : 'Chưa bán'}</span>
+          </label>
+        </td>
       `;
 
       const detailTr = document.createElement('tr');
       detailTr.className = 'rx-history-detail-row';
       detailTr.style.display = 'none';
-      detailTr.innerHTML = `<td colspan="6"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul></td>`;
+      detailTr.innerHTML = `<td colspan="7"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul></td>`;
 
       const toggleBtn = tr.querySelector('.rx-history-toggle-btn');
       toggleBtn.addEventListener('click', () => {
@@ -2491,6 +2520,23 @@
         detailTr.style.display = showing ? 'none' : 'table-row';
         tr.classList.toggle('expanded', !showing);
         toggleBtn.textContent = `${items.length} thuốc ${showing ? '▾' : '▴'}`;
+      });
+
+      const soldCheckbox = tr.querySelector('.rx-sold-checkbox');
+      const soldLabelSpan = tr.querySelector('.rx-sold-check span');
+      soldCheckbox.addEventListener('change', async () => {
+        const wantSold = soldCheckbox.checked;
+        soldCheckbox.disabled = true;
+        const ok = await setRxSold(row.id, wantSold);
+        soldCheckbox.disabled = false;
+        if (ok) {
+          row.sold = wantSold;
+          soldLabelSpan.textContent = wantSold ? 'Đã bán' : 'Chưa bán';
+          tr.classList.toggle('rx-history-row-sold', wantSold);
+        } else {
+          soldCheckbox.checked = !wantSold; // rollback nếu lỗi mạng
+          customAlert('Lỗi', 'Không cập nhật được trạng thái "Đã bán" (kiểm tra mạng, hoặc đã chạy SQL bổ sung cột "sold" chưa?)');
+        }
       });
 
       frag.appendChild(tr);
@@ -2528,7 +2574,7 @@
       rxHistoryLoadMoreBtn.style.display = rows.length < RX_HISTORY_PAGE_SIZE ? 'none' : '';
     } catch (e) {
       if (!append) {
-        rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="6">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</td></tr>';
+        rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</td></tr>';
       }
       rxHistoryLoadMoreBtn.style.display = 'none';
     } finally {
