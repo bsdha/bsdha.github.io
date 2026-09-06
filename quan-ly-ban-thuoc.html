@@ -63,6 +63,7 @@
 
   .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
   .modal-box { background: #fff; border-radius: 12px; padding: 18px; max-width: 380px; width: 100%; max-height: 88vh; overflow-y: auto; }
+  #receiptModal .modal-box { max-width: 560px; }
   .modal-box h3 { margin: 0 0 12px; font-size: 15px; }
   .seller-list { max-height: 220px; overflow-y: auto; margin-bottom: 10px; }
   .seller-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; cursor: pointer; }
@@ -178,9 +179,8 @@
 
   <!-- Modal phiếu thu -->
   <div class="modal-overlay hidden" id="receiptModal">
-    <div class="modal-box" id="printArea">
-      <h3>🧾 Phiếu thu tiền thuốc</h3>
-      <div id="receiptBody"></div>
+    <div class="modal-box">
+      <div id="printArea"><div id="receiptBody"></div></div>
       <button class="receipt-print-btn" id="receiptPrintBtn">🖨️ In phiếu thu</button>
       <button class="modal-cancel" id="receiptCloseBtn">Đóng</button>
     </div>
@@ -500,24 +500,86 @@
     sellerModal.classList.add('hidden');
     if (result.ok) {
       loadSellOrders();
-      if (p.type === 'group' && result.data.receipt) showReceipt(result.data.receipt, name);
+      if (p.type === 'group' && result.data.receipt) showReceipt(result.data.receipt, name, p.order);
     } else { p.checkboxEl.checked = false; alert('Không cập nhật được: ' + (result.data.error || 'lỗi mạng')); }
     pendingSell = null;
   }
 
-  // ---------- Phiếu thu ----------
+  // ---------- Số tiền ra chữ (tiếng Việt, kiểu phiếu thu kế toán) ----------
+  function soTienBangChuVN(num) {
+    num = Math.round(Number(num) || 0);
+    if (num === 0) return 'Không đồng';
+    const CHU_SO = ['không', 'một', 'hai', 'ba', 'bốn', 'năm', 'sáu', 'bảy', 'tám', 'chín'];
+    function docBa(so, coTram) {
+      let tram = Math.floor(so / 100), chuc = Math.floor((so % 100) / 10), donvi = so % 10;
+      let s = '';
+      if (coTram || tram > 0) s += CHU_SO[tram] + ' trăm ';
+      if (chuc === 0) { if (donvi > 0 && (coTram || tram > 0)) s += 'lẻ '; }
+      else if (chuc === 1) s += 'mười ';
+      else s += CHU_SO[chuc] + ' mươi ';
+      if (donvi === 1 && chuc > 1) s += 'mốt';
+      else if (donvi === 5 && chuc >= 1) s += 'lăm';
+      else if (donvi > 0) s += CHU_SO[donvi];
+      return s.trim();
+    }
+    const NHOM = ['', ' nghìn', ' triệu', ' tỷ'];
+    let so = Math.floor(num);
+    const nhomList = [];
+    while (so > 0) { nhomList.push(so % 1000); so = Math.floor(so / 1000); }
+    let result = '';
+    for (let i = nhomList.length - 1; i >= 0; i--) {
+      if (nhomList[i] === 0) continue;
+      result += docBa(nhomList[i], i < nhomList.length - 1) + NHOM[i] + ' ';
+    }
+    result = result.trim();
+    return result.charAt(0).toUpperCase() + result.slice(1) + ' đồng';
+  }
+
+  // ---------- Phiếu thu (mẫu chính thức, tự điền sẵn — in ra dùng ngay, không cần viết tay) ----------
   const receiptModal = document.getElementById('receiptModal');
-  function showReceipt(receipt, sellerName) {
-    const items = receipt.items || [];
+  let receiptSeq = 0;
+  function showReceipt(receipt, sellerName, order) {
     const total = receipt.total || 0;
     const now = new Date();
+    const soPT = 'PT-' + String((order && order.id) || ++receiptSeq).padStart(4, '0');
+    const org1 = 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2';
+    const org2 = 'NHÀ THUỐC';
     document.getElementById('receiptBody').innerHTML = `
-      <div class="muted">Ngày: ${now.toLocaleDateString('vi-VN')} ${now.toLocaleTimeString('vi-VN')}</div>
-      <div class="muted">Người bán: ${esc(sellerName || '')}</div>
-      <table style="margin-top:10px;"><thead><tr><th>Thuốc</th><th>SL</th><th>Đơn giá</th><th>T.tiền</th></tr></thead><tbody>
-        ${items.map((it) => `<tr><td>${esc(it.brand)}${!it.matched ? ' <span class="no-match-tag">(chưa có giá kho)</span>' : ''}</td><td>${esc(it.qty)}</td><td>${fmtVnd(it.unit_price)}</td><td>${fmtVnd(it.line_total)}</td></tr>`).join('')}
-      </tbody></table>
-      <div class="receipt-total">Tổng thu: ${fmtVnd(total)}</div>
+      <div style="font-family: 'Times New Roman', serif; font-size: 13px; color:#111; line-height:1.55;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+          <div>
+            <div style="font-weight:700;">${esc(org1)}</div>
+            <div>${esc(org2)}</div>
+          </div>
+          <div style="text-align:right; font-size:12px;">
+            <div>Quyển số: ..................</div>
+            <div>Số: <b>${esc(soPT)}</b></div>
+          </div>
+        </div>
+        <h3 style="text-align:center; margin:14px 0 2px; letter-spacing:1px;">PHIẾU THU TIỀN THUỐC</h3>
+        <div style="text-align:center; font-size:11.5px; color:#555; margin-bottom:14px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
+
+        <div style="margin-bottom:6px;">Nợ: .............................................</div>
+        <div style="margin-bottom:10px;">Có: .............................................</div>
+
+        <div style="margin-bottom:8px;">Họ và tên người nộp tiền: <b>${esc((order && order.patient_name) || '')}</b></div>
+        <div style="margin-bottom:8px;">Địa chỉ: ..........................................................................................</div>
+        <div style="margin-bottom:8px;">Lý do nộp: Tiền mua thuốc theo đơn${order && order.doctor_name ? ' (BS ' + esc(order.doctor_name) + ' kê)' : ''}</div>
+        <div style="margin-bottom:8px;">Số tiền: <b>${fmtVnd(total)}</b></div>
+        <div style="margin-bottom:8px;">Viết bằng chữ: <i>${esc(soTienBangChuVN(total))}</i></div>
+        <div style="margin-bottom:16px;">Kèm theo: .......... Chứng từ gốc kèm theo.</div>
+
+        <div style="text-align:right; font-size:11.5px; color:#555; margin-bottom:6px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
+        <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11.5px;">
+          <tr>
+            <td>Giám đốc</td><td>Kế toán trưởng</td><td>Thủ quỹ</td><td>Người nộp tiền</td><td>Người lập phiếu</td>
+          </tr>
+          <tr style="color:#777; font-size:10.5px;">
+            <td>(Ký, họ tên, đóng dấu)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td>
+          </tr>
+          <tr><td style="height:50px;"></td><td></td><td></td><td></td><td><b>${esc(sellerName || '')}</b></td></tr>
+        </table>
+      </div>
     `;
     receiptModal.classList.remove('hidden');
   }
