@@ -1,4 +1,4 @@
-  :root {
+:root {
     --blue: #1c6fd1;
     --blue-light: #e8f1fc;
     --blue-border: #b7d3f2;
@@ -2018,6 +2018,10 @@
 .rx-suggest-item.active b, .rx-suggest-item.active .g { color: #ffffff; }
 .rx-suggest-item b { color: var(--blue); }
 .rx-suggest-item .g { color: var(--muted); font-size: 11.5px; display: block; margin-top: 1px; }
+.rx-suggest-item.rx-suggest-oos { cursor: not-allowed; opacity: 0.6; position: relative; }
+.rx-suggest-item.rx-suggest-oos:hover, .rx-suggest-item.rx-suggest-oos.active { background: #fef2f2; }
+.rx-suggest-item.rx-suggest-oos.active b, .rx-suggest-item.rx-suggest-oos.active .g { color: inherit; }
+.rx-oos-tag { display: inline-block; margin-top: 3px; font-size: 10.5px; font-weight: 700; color: #dc2626; background: #fee2e2; border-radius: 5px; padding: 1px 6px; }
 .rx-suggest-empty { padding: 10px 12px; font-size: 12.5px; color: var(--muted); }
 
 .rx-btn {
@@ -2046,6 +2050,9 @@
 .rx-bp-wrap .rx-bp-slash { font-weight: 600; color: #000; }
 .rx-modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 16px; animation: rxModalFade .12s ease-out; }
 @keyframes rxModalFade { from { opacity: 0; } to { opacity: 1; } }
+.rx-modal-pw-input.shake-error, .rx-modal-box.rx-shake .rx-modal-pw-input { border-color: #dc2626; }
+.rx-shake { animation: rxShakeAnim .5s cubic-bezier(.36,.07,.19,.97) both; }
+@keyframes rxShakeAnim { 10%,90% { transform: translateX(-1px); } 20%,80% { transform: translateX(2px); } 30%,50%,70% { transform: translateX(-6px); } 40%,60% { transform: translateX(6px); } }
 .rx-modal-box { background: #fff; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); width: 100%; max-width: 380px; padding: 20px 22px; box-sizing: border-box; }
 .rx-modal-title { font-size: 16px; font-weight: 700; color: #0f172a; margin-bottom: 8px; }
 .rx-modal-message { font-size: 13.5px; color: #334155; margin-bottom: 14px; line-height: 1.5; }
