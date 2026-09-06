@@ -2188,6 +2188,8 @@
 .rx-mode-hospital { background: var(--blue-light); color: var(--blue); border-color: var(--blue-border); }
 .rx-mode-outside { background: var(--green-light); color: var(--green); border-color: var(--green-border); }
 .rx-mode-handwritten { background: var(--surface-2); color: var(--muted); border-color: var(--border); }
+.rx-mode-mixed { background: #fff3cd; color: #92700a; border-color: #f5dd9a; }
+.rx-field-locked { background: var(--surface-2, #f3f4f6); cursor: not-allowed; color: var(--muted); }
 .rx-history-date-group td {
   background: var(--surface-2); font-weight: 700; font-size: 12.5px; color: var(--text);
   padding: 7px 12px; border-bottom: 1px solid var(--border);
@@ -2199,13 +2201,13 @@
 }
 .rx-history-toggle-btn:hover { border-color: var(--blue); }
 .rx-history-th-sold, .rx-history-td-sold { white-space: nowrap; }
-.rx-sold-check {
-  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
-  font-size: 11.5px; color: var(--muted); user-select: none;
-}
-.rx-sold-check input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--green, #2e9e5b); cursor: pointer; }
-.rx-history-row-sold { background: color-mix(in srgb, var(--green, #2e9e5b) 8%, transparent); }
-.rx-history-row-sold .rx-sold-check span { color: var(--green, #2e9e5b); font-weight: 600; }
+.rx-sold-summary { font-size: 11.5px; font-weight: 700; padding: 3px 8px; border-radius: 999px; display: inline-block; }
+.rx-sold-summary-none { background: var(--surface-2); color: var(--muted); font-weight: 500; }
+.rx-sold-summary-partial { background: #fff3cd; color: #92700a; }
+.rx-sold-summary-full { background: color-mix(in srgb, var(--green, #1f9c8f) 15%, transparent); color: var(--green, #1f9c8f); }
+.rx-history-row-sold { background: color-mix(in srgb, var(--green, #1f9c8f) 6%, transparent); }
+.rx-history-sold-badge { color: var(--green, #1f9c8f); font-size: 11.5px; font-weight: 600; }
+.rx-history-unsold-badge { color: var(--muted); font-size: 11.5px; }
 .rx-history-detail-row td { background: var(--surface); padding: 4px 12px 12px; }
 .rx-history-drugs { list-style: none; margin: 0; padding: 8px 10px; border: 1px dashed var(--border); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
 .rx-history-drugs li { font-size: 12.5px; line-height: 1.5; }
