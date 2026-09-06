@@ -2155,11 +2155,21 @@
   padding: 4px 6px; line-height: 1;
 }
 .rx-history-close-x:hover { color: var(--text); }
-.rx-history-search-row { margin-bottom: 10px; flex: none; }
-.rx-history-search-row input {
-  width: 100%; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border);
+.rx-history-search-row { margin-bottom: 10px; flex: none; display: flex; gap: 8px; flex-wrap: wrap; }
+.rx-history-search-row input[type="text"] {
+  flex: 1; min-width: 160px; padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border);
   background: var(--surface-2); color: var(--text); font-size: 13.5px; font-family: inherit;
 }
+.rx-history-search-row input[type="date"] {
+  padding: 9px 12px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); font-size: 13.5px; font-family: inherit;
+}
+.rx-history-td-print { white-space: nowrap; }
+.rx-history-print-btn {
+  border: 1px solid var(--border); background: var(--surface-2); border-radius: 8px;
+  padding: 5px 10px; font-size: 12px; cursor: pointer; font-family: inherit;
+}
+.rx-history-print-btn:hover { border-color: var(--blue); }
 .rx-history-table-wrap {
   flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--border); border-radius: 10px;
 }
