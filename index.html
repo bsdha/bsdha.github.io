@@ -1421,6 +1421,8 @@
         </div>
         <div class="rx-history-search-row">
           <input type="text" id="rxHistorySearch" placeholder="Tìm theo tên bệnh nhân hoặc chẩn đoán...">
+          <input type="date" id="rxHistoryDateFilter" title="Lọc theo ngày kê">
+          <button type="button" class="rx-btn rx-btn-secondary" id="rxHistoryDateClearBtn" title="Bỏ lọc ngày">Bỏ lọc ngày</button>
         </div>
         <div class="rx-history-table-wrap">
           <table class="rx-history-table">
@@ -1433,6 +1435,7 @@
                 <th>Nơi kê</th>
                 <th>Thuốc</th>
                 <th class="rx-history-th-sold">Trạng thái bán</th>
+                <th>In lại</th>
               </tr>
             </thead>
             <tbody id="rxHistoryList"></tbody>

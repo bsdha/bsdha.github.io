@@ -131,8 +131,10 @@
       <!-- TAB: BÁN THUỐC (chỉ dược sĩ) -->
       <div id="tabSell" class="hidden">
         <div class="toolbar">
+          <input type="date" id="sellDateInput">
           <input type="text" id="searchInput" placeholder="Tìm theo tên bệnh nhân...">
           <button id="refreshSellBtn">Tìm</button>
+          <button class="btn-secondary" id="clearSellDateBtn">Xem tất cả (bỏ lọc ngày)</button>
           <span class="muted" id="statusMsgSell"></span>
         </div>
         <div class="card"><div id="sellOrdersWrap"><div class="loading">Đang tải...</div></div></div>
@@ -196,6 +198,7 @@
   const dateInput = document.getElementById('dateInput');
   const overviewDateInput = document.getElementById('overviewDateInput');
   const searchInput = document.getElementById('searchInput');
+  const sellDateInput = document.getElementById('sellDateInput');
   const roleBadge = document.getElementById('roleBadge');
   const tabsRow = document.getElementById('tabsRow');
   const TAB_ELS = {}; // tab key -> element
@@ -208,6 +211,7 @@
 
   function todayVnStr() { return new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10); }
   dateInput.value = todayVnStr();
+  sellDateInput.value = todayVnStr();
   overviewDateInput.value = todayVnStr();
 
   function fmtTime(iso) {
@@ -258,7 +262,7 @@
   }
   function showDash() {
     loginBox.classList.add('hidden'); dashBox.classList.remove('hidden');
-    roleBadge.textContent = currentRole === 'pharmacist' ? 'Dược sĩ (được sửa)' : 'Quản lý (chỉ xem)';
+    roleBadge.textContent = currentRole === 'admin' ? 'Admin (mở khoá được)' : currentRole === 'pharmacist' ? 'Dành cho Dược sĩ' : 'Quản lý (chỉ xem)';
     buildTabs();
     switchTab('stats');
   }
@@ -269,10 +273,11 @@
 
   function buildTabs() {
     tabsRow.innerHTML = '';
+    const canEdit = currentRole === 'pharmacist' || currentRole === 'admin';
     const tabs = [{ key: 'stats', label: '📊 Thống kê' }];
-    if (currentRole === 'pharmacist') tabs.push({ key: 'sell', label: '💊 Bán thuốc' });
+    if (canEdit) tabs.push({ key: 'sell', label: '💊 Bán thuốc' });
     tabs.push({ key: 'kho', label: '🏬 Kho thuốc' });
-    if (currentRole === 'pharmacist') tabs.push({ key: 'overview', label: '📋 Tổng quan' });
+    if (canEdit) tabs.push({ key: 'overview', label: '📋 Tổng quan' });
     tabs.forEach((t) => {
       const btn = document.createElement('button');
       btn.className = 'tab-btn'; btn.textContent = t.label; btn.dataset.key = t.key;
@@ -284,7 +289,7 @@
     TAB_ELS.kho = document.getElementById('tabKho');
     TAB_ELS.overview = document.getElementById('tabOverview');
     // Ẩn công cụ sửa kho nếu là quản lý (chỉ xem)
-    document.getElementById('khoToolbar').style.display = currentRole === 'pharmacist' ? '' : 'none';
+    document.getElementById('khoToolbar').style.display = canEdit ? '' : 'none';
   }
   function switchTab(key) {
     [...tabsRow.children].forEach((b) => b.classList.toggle('active', b.dataset.key === key));
@@ -334,29 +339,39 @@
 
   // ---------- TAB Bán thuốc ----------
   document.getElementById('refreshSellBtn').addEventListener('click', loadSellOrders);
+  document.getElementById('clearSellDateBtn').addEventListener('click', () => { sellDateInput.value = ''; loadSellOrders(); });
   searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadSellOrders(); });
+  sellDateInput.addEventListener('change', loadSellOrders);
 
   async function loadSellOrders() {
     const statusEl = document.getElementById('statusMsgSell');
     const wrap = document.getElementById('sellOrdersWrap');
     statusEl.textContent = 'Đang tải...'; wrap.innerHTML = '<div class="loading">Đang tải...</div>';
-    const { ok, status, data } = await callWorker('orders_for_sale', { search: searchInput.value });
+    const extra = { search: searchInput.value };
+    if (sellDateInput.value) extra.date = sellDateInput.value;
+    const { ok, status, data } = await callWorker('orders_for_sale', extra);
     if (status === 401 || status === 423) { handleAuthError(status, data); return; }
     if (!ok) { statusEl.textContent = 'Lỗi: ' + (data.error || 'không tải được'); return; }
     statusEl.textContent = '';
     renderSellOrders(data.orders || []);
   }
 
+  function showAdminNeededPopup(message) {
+    alert('🔒 ' + (message || 'Đã khoá, vui lòng liên hệ Admin 0868.91.97.90 để được hỗ trợ sửa.'));
+  }
+
   function renderSellOrders(orders) {
     const wrap = document.getElementById('sellOrdersWrap');
+    // Sắp xếp theo ngày kê gần nhất trước (Worker đã order created_at desc, giữ nguyên thứ tự này).
     const withItems = orders.filter((o) => Array.isArray(o.items) && o.items.length);
-    if (!withItems.length) { wrap.innerHTML = '<div class="empty">Không có đơn nào (Trong BV / Ngoài BV) gần đây.</div>'; return; }
+    if (!withItems.length) { wrap.innerHTML = '<div class="empty">Không có đơn nào (Trong BV / Ngoài BV) trong khoảng đã chọn.</div>'; return; }
     wrap.innerHTML = '';
     withItems.forEach((order) => {
       const items = order.items;
       const hospitalItems = items.map((it, idx) => ({ it, idx })).filter((x) => itemSource(order, x.it) === 'hospital');
       const outsideItems = items.map((it, idx) => ({ it, idx })).filter((x) => itemSource(order, x.it) === 'outside');
       const allHospitalSold = hospitalItems.length > 0 && hospitalItems.every((x) => x.it.sold);
+      const groupLocked = hospitalItems.some((x) => x.it.locked);
 
       const card = document.createElement('div');
       card.className = 'order-card';
@@ -364,25 +379,33 @@
 
       if (hospitalItems.length) {
         const groupWrap = document.createElement('div');
-        groupWrap.innerHTML = `<div class="sub-label">Thuốc trong bệnh viện (tự trừ kho)</div>`;
+        groupWrap.innerHTML = `<div class="sub-label">Thuốc trong bệnh viện (tự trừ kho)${groupLocked ? ' 🔒' : ''}</div>`;
         const groupRow = document.createElement('div');
         groupRow.className = 'group-row';
-        groupRow.innerHTML = `<input type="checkbox" ${allHospitalSold ? 'checked' : ''}><span class="group-label">Đã bán TẤT CẢ ${hospitalItems.length} thuốc trong BV của đơn này</span>`;
+        groupRow.innerHTML = `<input type="checkbox" ${allHospitalSold ? 'checked' : ''}><span class="group-label">Đã bán TẤT CẢ ${hospitalItems.length} thuốc trong BV của đơn này${groupLocked ? ' (đã khoá — cần Admin để sửa)' : ''}</span>`;
         const groupCheckbox = groupRow.querySelector('input');
         const itemsList = document.createElement('div');
         hospitalItems.forEach(({ it }) => {
           const r = document.createElement('div');
           r.className = 'item-row';
-          r.innerHTML = `<span style="width:18px;"></span><span class="item-info"><b>${esc(it.brand || '')}</b>${it.generic ? ' (' + esc(it.generic) + ')' : ''}${it.form ? ' - ' + esc(it.form) : ''} — SL: ${esc(it.qty ?? '')}</span><span class="${it.sold ? 'item-sold-tag' : 'item-unsold-tag'}">${it.sold ? '✅ ' + esc(it.sold_by || '') + (it.unit_price ? ' · ' + fmtVnd(it.unit_price * (it.qty || 0)) : '') : 'Chưa bán'}</span>`;
+          r.innerHTML = `<span style="width:18px;"></span><span class="item-info"><b>${esc(it.brand || '')}</b>${it.generic ? ' (' + esc(it.generic) + ')' : ''}${it.form ? ' - ' + esc(it.form) : ''} — SL: ${esc(it.qty ?? '')}</span><span class="${it.sold ? 'item-sold-tag' : 'item-unsold-tag'}">${it.sold ? '✅ ' + esc(it.sold_by || '') + (it.unit_price ? ' · ' + fmtVnd(it.unit_price * (it.qty || 0)) : '') + (it.locked ? ' 🔒' : '') : 'Chưa bán'}</span>`;
           itemsList.appendChild(r);
         });
         groupCheckbox.addEventListener('change', () => {
-          if (groupCheckbox.checked) openSellerModal({ type: 'group', orderId: order.id, checkboxEl: groupCheckbox, cardEl: card, order, itemsListEl: itemsList });
-          else {
+          if (groupCheckbox.checked) {
+            openSellerModal({ type: 'group', orderId: order.id, checkboxEl: groupCheckbox, cardEl: card, order, itemsListEl: itemsList });
+          } else {
+            if (groupLocked && currentRole !== 'admin') {
+              groupCheckbox.checked = true;
+              showAdminNeededPopup('Đơn này đã bán từ hôm trước (đã khoá sau 7h sáng). Vui lòng liên hệ Admin 0868.91.97.90 để được hỗ trợ sửa.');
+              return;
+            }
             groupCheckbox.disabled = true;
-            callWorker('toggle_hospital_group', { order_id: order.id, sold: false }).then(({ ok }) => {
+            callWorker('toggle_hospital_group', { order_id: order.id, sold: false }).then(({ ok, status, data }) => {
               groupCheckbox.disabled = false;
-              if (ok) loadSellOrders(); else { groupCheckbox.checked = true; alert('Không huỷ được, thử lại.'); }
+              if (ok) loadSellOrders();
+              else if (status === 423) { groupCheckbox.checked = true; showAdminNeededPopup(data.message); }
+              else { groupCheckbox.checked = true; alert('Không huỷ được, thử lại.'); }
             });
           }
         });
@@ -397,15 +420,23 @@
         outsideItems.forEach(({ it, idx }) => {
           const row = document.createElement('div');
           row.className = 'item-row';
-          row.innerHTML = `<input type="checkbox" ${it.sold ? 'checked' : ''}><span class="item-info"><b>${esc(it.brand || '')}</b>${it.generic ? ' (' + esc(it.generic) + ')' : ''} — SL: ${esc(it.qty ?? '')}</span><span class="${it.sold ? 'item-sold-tag' : 'item-unsold-tag'}">${it.sold ? '✅ ' + esc(it.sold_by || '') : 'Chưa bán'}</span>`;
+          row.innerHTML = `<input type="checkbox" ${it.sold ? 'checked' : ''}><span class="item-info"><b>${esc(it.brand || '')}</b>${it.generic ? ' (' + esc(it.generic) + ')' : ''} — SL: ${esc(it.qty ?? '')}</span><span class="${it.sold ? 'item-sold-tag' : 'item-unsold-tag'}">${it.sold ? '✅ ' + esc(it.sold_by || '') + (it.locked ? ' 🔒' : '') : 'Chưa bán'}</span>`;
           const checkbox = row.querySelector('input');
           checkbox.addEventListener('change', () => {
-            if (checkbox.checked) openSellerModal({ type: 'item', orderId: order.id, itemIndex: idx, checkboxEl: checkbox, rowEl: row });
-            else {
+            if (checkbox.checked) {
+              openSellerModal({ type: 'item', orderId: order.id, itemIndex: idx, checkboxEl: checkbox, rowEl: row });
+            } else {
+              if (it.locked && currentRole !== 'admin') {
+                checkbox.checked = true;
+                showAdminNeededPopup('Thuốc này đã bán từ hôm trước (đã khoá sau 7h sáng). Vui lòng liên hệ Admin 0868.91.97.90 để được hỗ trợ sửa.');
+                return;
+              }
               checkbox.disabled = true;
-              callWorker('toggle_item', { order_id: order.id, item_index: idx, sold: false }).then(({ ok }) => {
+              callWorker('toggle_item', { order_id: order.id, item_index: idx, sold: false }).then(({ ok, status, data }) => {
                 checkbox.disabled = false;
-                if (ok) loadSellOrders(); else { checkbox.checked = true; alert('Không huỷ được, thử lại.'); }
+                if (ok) loadSellOrders();
+                else if (status === 423) { checkbox.checked = true; showAdminNeededPopup(data.message); }
+                else { checkbox.checked = true; alert('Không huỷ được, thử lại.'); }
               });
             }
           });
@@ -506,7 +537,7 @@
   function renderKho() {
     const wrap = document.getElementById('khoTableWrap');
     if (!khoCache.length) { wrap.innerHTML = '<div class="empty">Kho trống — nhập dữ liệu từ file Excel ở trên.</div>'; return; }
-    const editable = currentRole === 'pharmacist';
+    const editable = currentRole === 'pharmacist' || currentRole === 'admin';
     wrap.innerHTML = `<table><thead><tr><th>Thuốc</th><th>ĐVT</th><th>Đơn giá</th><th>Tồn kho</th></tr></thead><tbody>
       ${khoCache.map((r) => `<tr data-id="${r.id}">
         <td><b>${esc(r.drug_name)}</b></td>
@@ -526,6 +557,47 @@
     }
   }
 
+  // Đọc file Excel "Báo cáo xuất nhập tồn" theo TIÊU ĐỀ CỘT (không cố định vị trí), vì các bản
+  // xuất khác nhau (từ phần mềm nhà thuốc) có thể lệch số cột/số dòng tiêu đề khác nhau.
+  function stripDiacriticsVN(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
+  }
+  function findHeaderCol(rowArr, keywords) {
+    if (!rowArr) return -1;
+    for (let c = 0; c < rowArr.length; c++) {
+      const val = stripDiacriticsVN(rowArr[c]);
+      if (keywords.some((k) => val.includes(k))) return c;
+    }
+    return -1;
+  }
+  function parseInventoryExcelRows(rows) {
+    let headerRow = -1, nameCol = -1;
+    for (let r = 0; r < Math.min(rows.length, 15); r++) {
+      const c = findHeaderCol(rows[r], ['ten thuoc', 'ten thuong mai']);
+      if (c !== -1) { headerRow = r; nameCol = c; break; }
+    }
+    if (headerRow === -1) throw new Error('Không tìm thấy dòng tiêu đề "Tên thuốc"/"Tên thương mại" trong file.');
+    const unitCol = findHeaderCol(rows[headerRow], ['dvt']);
+    const priceCol = findHeaderCol(rows[headerRow], ['don gia']);
+    const stockHeaderCol = findHeaderCol(rows[headerRow], ['ton cuoi']);
+    if (unitCol === -1 || priceCol === -1 || stockHeaderCol === -1) throw new Error('Thiếu cột ĐVT / Đơn giá / Tồn cuối trong file — kiểm tra lại file mẫu.');
+    // Dòng "SL"/"ST" (đơn vị con của nhóm "Tồn cuối") thường nằm 2 dòng dưới dòng tiêu đề chính.
+    const subRow = rows[headerRow + 2] || [];
+    let stockCol = stockHeaderCol;
+    for (let c = stockHeaderCol; c < subRow.length; c++) {
+      if (stripDiacriticsVN(subRow[c]) === 'sl') { stockCol = c; break; }
+    }
+    const dataStart = headerRow + 3;
+    const parsed = [];
+    for (let i = dataStart; i < rows.length; i++) {
+      const r = rows[i];
+      const name = (r[nameCol] || '').toString().trim();
+      if (!name) continue;
+      parsed.push({ drug_name: name, unit: (r[unitCol] || '').toString().trim(), unit_price: parseFloat(r[priceCol]) || 0, stock_qty: parseFloat(r[stockCol]) || 0 });
+    }
+    return parsed;
+  }
+
   document.getElementById('importExcelBtn').addEventListener('click', async () => {
     const fileInput = document.getElementById('excelFileInput');
     const statusEl = document.getElementById('statusMsgKho');
@@ -537,23 +609,15 @@
       const wb = XLSX.read(buf, { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      // Đúng cấu trúc file "Báo cáo xuất nhập tồn": 3 dòng tiêu đề đầu, dữ liệu từ dòng 4.
-      // Cột: [1]=Tên thuốc-hàm lượng, [3]=ĐVT, [5]=Đơn giá, [16]=Tồn cuối (SL).
-      const parsed = [];
-      for (let i = 3; i < rows.length; i++) {
-        const r = rows[i];
-        const name = (r[1] || '').toString().trim();
-        if (!name) continue;
-        parsed.push({ drug_name: name, unit: (r[3] || '').toString().trim(), unit_price: parseFloat(r[5]) || 0, stock_qty: parseFloat(r[16]) || 0 });
-      }
+      const parsed = parseInventoryExcelRows(rows);
       if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; return; }
-      statusEl.textContent = `Đang nhập ${parsed.length} thuốc...`;
+      statusEl.textContent = `Đang nhập ${parsed.length} thuốc (thuốc trùng tên sẽ tự cập nhật giá/tồn/ĐVT mới)...`;
       const CHUNK = 200;
       for (let i = 0; i < parsed.length; i += CHUNK) {
         const { ok, data } = await callWorker('inventory_upsert_bulk', { rows: parsed.slice(i, i + CHUNK) });
         if (!ok) { statusEl.textContent = 'Lỗi khi nhập: ' + (data.error || ''); return; }
       }
-      statusEl.textContent = `Đã nhập ${parsed.length} thuốc.`;
+      statusEl.textContent = `Đã nhập/cập nhật ${parsed.length} thuốc.`;
       fileInput.value = '';
       loadKho();
     } catch (e) { statusEl.textContent = 'Lỗi đọc file: ' + e.message; }
