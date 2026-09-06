@@ -59,6 +59,56 @@
   function customPrompt(title, placeholder, defaultValue) {
     return customModal({ title, showInput: true, inputValue: defaultValue, inputPlaceholder: placeholder, okText: 'Thêm', cancelText: 'Huỷ' });
   }
+  // ---------- Popup nhập mật khẩu nội bộ: nhập sai thì rung + báo lỗi ngay tại chỗ,
+  // KHÔNG đóng popup, cho nhập lại đến khi đúng; chỉ thoát khi bấm "Huỷ" (hoặc Esc). ----------
+  function customPasswordPrompt({ title, message, checkFn, okText, cancelText }) {
+    return new Promise((resolve) => {
+      const root = ensureModalRoot();
+      const overlay = document.createElement('div');
+      overlay.className = 'rx-modal-overlay';
+      overlay.innerHTML = `
+        <div class="rx-modal-box" role="dialog" aria-modal="true">
+          <div class="rx-modal-title">${escapeHtml(title || 'Nhập mật khẩu')}</div>
+          ${message ? `<div class="rx-modal-message">${escapeHtml(message)}</div>` : ''}
+          <input type="password" class="rx-modal-input rx-modal-pw-input" placeholder="Nhập mật khẩu" autocomplete="off">
+          <div class="rx-modal-pw-err" style="display:none;color:#dc2626;font-size:12.5px;margin:-10px 0 12px;"></div>
+          <div class="rx-modal-actions">
+            <button type="button" class="rx-modal-btn rx-modal-cancel">${escapeHtml(cancelText || 'Huỷ')}</button>
+            <button type="button" class="rx-modal-btn rx-modal-ok">${escapeHtml(okText || 'Đồng ý')}</button>
+          </div>
+        </div>`;
+      root.appendChild(overlay);
+      const box = overlay.querySelector('.rx-modal-box');
+      const input = overlay.querySelector('.rx-modal-pw-input');
+      const errEl = overlay.querySelector('.rx-modal-pw-err');
+      const okBtn = overlay.querySelector('.rx-modal-ok');
+      const cancelBtn = overlay.querySelector('.rx-modal-cancel');
+      setTimeout(() => input.focus(), 30);
+      function close(result) { overlay.remove(); resolve(result); }
+      function shakeWrong(msg) {
+        errEl.textContent = msg || 'Sai mật khẩu, vui lòng nhập lại.';
+        errEl.style.display = '';
+        input.value = '';
+        box.classList.remove('rx-shake');
+        void box.offsetWidth; // reflow để chạy lại animation
+        box.classList.add('rx-shake');
+        input.focus();
+      }
+      function trySubmit() {
+        const val = input.value;
+        if (!val) { shakeWrong('Vui lòng nhập mật khẩu.'); return; }
+        if (checkFn(val)) close(val);
+        else shakeWrong('Sai mật khẩu, vui lòng nhập lại.');
+      }
+      okBtn.addEventListener('click', trySubmit);
+      cancelBtn.addEventListener('click', () => close(null));
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); trySubmit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); close(null); }
+      });
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(null); });
+    });
+  }
   function customConfirm(title, message) {
     return customModal({ title, message, okText: 'Đồng ý', cancelText: 'Huỷ' });
   }
@@ -565,12 +615,21 @@
     const sb = getSbConfig();
     if (sb) {
       try {
-        const resp = await fetch(`${sb.url}/rest/v1/thuoc?select=ten_tm,ten_goc,dang_thuoc&order=ten_tm.asc`, {
+        const resp = await fetch(`${sb.url}/rest/v1/thuoc?select=ten_tm,ten_goc,dang_thuoc,stock_qty&order=ten_tm.asc`, {
           headers: { apikey: sb.key, Authorization: `Bearer ${sb.key}` },
         });
         if (resp.ok) {
           const rows = await resp.json();
-          drugList = rows.map((r) => ({ brand: r.ten_tm || '', generic: r.ten_goc || '', form: r.dang_thuoc || '' }));
+          // Thuốc hết hàng (tồn kho = 0) vẫn hiện trong danh sách gợi ý khi kê đơn (để bác sĩ biết
+          // là có thuốc này trong danh mục, tránh tưởng nhầm chưa từng nhập), nhưng có nhãn "(Hết hàng)"
+          // và KHÔNG cho chọn. Thuốc chưa từng nhập kho (stock_qty null/undefined, tức chưa nạp cột tồn
+          // kho) thì coi như còn hàng bình thường như trước — không đánh dấu hết hàng.
+          drugList = rows.map((r) => ({
+            brand: r.ten_tm || '',
+            generic: r.ten_goc || '',
+            form: r.dang_thuoc || '',
+            outOfStock: r.stock_qty !== null && r.stock_qty !== undefined && Number(r.stock_qty) <= 0,
+          }));
           return;
         }
       } catch (e) { /* rơi về local nếu lỗi mạng */ }
@@ -674,7 +733,7 @@
       suggestBox.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy thuốc phù hợp trong danh sách đã nạp.</div>';
     } else {
       suggestBox.innerHTML = currentSuggestList.map((d, i) =>
-        `<div class="rx-suggest-item" data-idx="${i}"><b>${escapeHtml(d.brand)}</b><span class="g">${escapeHtml(d.generic)}${d.form ? ' — ' + escapeHtml(d.form) : ''}</span></div>`
+        `<div class="rx-suggest-item${d.outOfStock ? ' rx-suggest-oos' : ''}" data-idx="${i}"><b>${escapeHtml(d.brand)}</b><span class="g">${escapeHtml(d.generic)}${d.form ? ' — ' + escapeHtml(d.form) : ''}</span>${d.outOfStock ? '<span class="rx-oos-tag">Hết hàng</span>' : ''}</div>`
       ).join('');
     }
     suggestBox.classList.add('show');
@@ -759,10 +818,12 @@
     formInput.classList.remove('rx-field-locked');
   }
 
-  let lockedWarnTimer = null;
-  function showLockedDrugWarning() {
+  let lockedWarnTimer = null, lockedWarnDefaultText = null;
+  function showLockedDrugWarning(message) {
     const el = $('rxLockedWarning');
     if (!el) return;
+    if (lockedWarnDefaultText === null) lockedWarnDefaultText = el.textContent;
+    el.textContent = message || lockedWarnDefaultText;
     el.classList.add('show');
     clearTimeout(lockedWarnTimer);
     lockedWarnTimer = setTimeout(() => el.classList.remove('show'), 3200);
@@ -816,7 +877,10 @@
 
   suggestBox.addEventListener('click', (e) => {
     const item = e.target.closest('.rx-suggest-item');
-    if (item && currentSuggestList[item.dataset.idx]) pickSuggest(currentSuggestList[item.dataset.idx]);
+    if (!item || !currentSuggestList[item.dataset.idx]) return;
+    const d = currentSuggestList[item.dataset.idx];
+    if (d.outOfStock) { showLockedDrugWarning('⚠ Thuốc này đang HẾT HÀNG trong kho, không thể chọn để kê. Vui lòng chọn thuốc khác.'); return; }
+    pickSuggest(d);
   });
 
   // ---------- Enter chuyển ô, tự tính SL, ô cuối Enter -> thêm dòng ----------
@@ -864,7 +928,9 @@
       e.preventDefault();
       if (id === 'rxFieldBrand' && suggestBox.classList.contains('show')) {
         if (activeSuggestIndex >= 0 && currentSuggestList[activeSuggestIndex]) {
-          pickSuggest(currentSuggestList[activeSuggestIndex]);
+          const d = currentSuggestList[activeSuggestIndex];
+          if (d.outOfStock) { showLockedDrugWarning('⚠ Thuốc này đang HẾT HÀNG trong kho, không thể chọn để kê. Vui lòng chọn thuốc khác.'); return; }
+          pickSuggest(d);
           return;
         }
         suggestBox.classList.remove('show');
@@ -2563,9 +2629,12 @@
   const RX_HISTORY_PASSWORD = 'cs2';
   async function unlockRxHistoryIfNeeded() {
     if (sessionStorage.getItem(LS_RX_HISTORY_UNLOCK) === '1') return true;
-    const pass = await customPrompt('Nội bộ', 'Nhập mật khẩu để xem "Đơn đã kê" (chỉ nội bộ được xem)', '');
-    if (pass === null) return false;
-    if (pass !== RX_HISTORY_PASSWORD) { customAlert('Sai mật khẩu', 'Mật khẩu không đúng — mục này chỉ dành cho nội bộ.'); return false; }
+    const pass = await customPasswordPrompt({
+      title: 'Nội bộ',
+      message: 'Nhập mật khẩu để xem "Đơn đã kê" (chỉ nội bộ được xem)',
+      checkFn: (val) => val === RX_HISTORY_PASSWORD,
+    });
+    if (pass === null) return false; // bấm Huỷ / Esc / bấm ra ngoài
     sessionStorage.setItem(LS_RX_HISTORY_UNLOCK, '1');
     return true;
   }
