@@ -2358,6 +2358,7 @@
       const orderMode = isHandwritten ? 'handwritten' : (rowSources.length > 1 ? 'mixed' : (rowSources[0] || rxPrescribeMode));
       saveRxHistory({
         patientName: name,
+        patientAddress: address,
         diagnosis: diag,
         doctorName: doctor,
         mode: orderMode,
@@ -2407,13 +2408,14 @@
   // bảng "logo" đang dùng) nên chỉ lưu tên bệnh nhân + chẩn đoán + danh sách
   // thuốc, KHÔNG lưu CCCD/địa chỉ chi tiết hay thông tin định danh nhạy cảm.
   // ======================================================================
-  async function saveRxHistory({ patientName, diagnosis, doctorName, mode, items }) {
+  async function saveRxHistory({ patientName, patientAddress, diagnosis, doctorName, mode, items }) {
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
         method: 'POST',
         headers: { ...cloudHeaders(), Prefer: 'return=minimal' },
         body: JSON.stringify({
           patient_name: patientName || null,
+          patient_address: patientAddress || null,
           diagnosis: diagnosis || null,
           doctor_name: doctorName || null,
           mode: mode || null,
@@ -2498,6 +2500,7 @@
         <h3>ĐƠN THUỐC (in lại từ lịch sử)</h3>
         <div class="info">
           <div><b>Bệnh nhân:</b> ${escapeHtml(row.patient_name || '(không tên)')}</div>
+          ${row.patient_address ? `<div><b>Địa chỉ:</b> ${escapeHtml(row.patient_address)}</div>` : ''}
           <div><b>Chẩn đoán:</b> ${escapeHtml(row.diagnosis || '—')}</div>
           <div><b>Bác sĩ kê:</b> ${escapeHtml(row.doctor_name || '—')}</div>
           <div><b>Nơi kê:</b> ${escapeHtml(rxModeLabel(row.mode))}</div>
