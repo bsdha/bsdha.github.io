@@ -800,6 +800,8 @@
       rxPrescribeMode = r.value;
       localStorage.setItem(LS_RX_MODE, rxPrescribeMode);
       applyModeUI();
+      brandLinked = false;
+      unlockBrandFields();
     });
   });
   applyModeUI();
@@ -889,16 +891,64 @@
     suggestBox.classList.remove('show');
     autoFillUsage(d.brand, d.generic);
     brandLinked = true;
+    // Thuốc trong bệnh viện = thuốc trong kho: khoá "Tên thương mại"/"Dạng thuốc" sau khi đã chọn,
+    // để không lệch với tên trong kho (ảnh hưởng việc trừ tồn kho tự động khi dược sĩ bán).
+    if (rxPrescribeMode !== 'outside') {
+      brandInput.readOnly = true;
+      formInput.readOnly = true;
+      brandInput.classList.add('rx-field-locked');
+      formInput.classList.add('rx-field-locked');
+    }
     $('rxFieldDays').focus();
     $('rxFieldDays').select();
   }
+
+  function unlockBrandFields() {
+    brandInput.readOnly = false;
+    formInput.readOnly = false;
+    brandInput.classList.remove('rx-field-locked');
+    formInput.classList.remove('rx-field-locked');
+  }
+
+  let lockedWarnTimer = null;
+  function showLockedDrugWarning() {
+    const el = $('rxLockedWarning');
+    if (!el) return;
+    el.classList.add('show');
+    clearTimeout(lockedWarnTimer);
+    lockedWarnTimer = setTimeout(() => el.classList.remove('show'), 3200);
+  }
+
+  function guardLockedField(e) {
+    const allowedKeys = ['Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'];
+    if (allowedKeys.includes(e.key)) return;
+    if ((e.ctrlKey || e.metaKey) && ['c', 'a', 'C', 'A'].includes(e.key)) return; // cho phép copy / chọn hết để copy
+    e.preventDefault();
+    showLockedDrugWarning();
+  }
+  brandInput.addEventListener('keydown', (e) => { if (brandInput.readOnly) guardLockedField(e); });
+  formInput.addEventListener('keydown', (e) => { if (formInput.readOnly) guardLockedField(e); });
+  brandInput.addEventListener('paste', (e) => { if (brandInput.readOnly) { e.preventDefault(); showLockedDrugWarning(); } });
+  formInput.addEventListener('paste', (e) => { if (formInput.readOnly) { e.preventDefault(); showLockedDrugWarning(); } });
 
   // Nếu người dùng gõ tay tên thuốc (không chọn từ gợi ý) thì vẫn tự điền cách dùng khi rời ô
   brandInput.addEventListener('blur', () => {
     if (!suggestBox.classList.contains('show')) autoFillUsage(brandInput.value, genericInput.value);
   });
 
-  brandInput.addEventListener('input', () => { brandLinked = false; renderSuggest(brandInput.value); });
+  brandInput.addEventListener('input', () => {
+    // Chế độ "Kê đơn ngoài Bệnh viện": tự động viết hoa đầu mỗi từ khi gõ (thuốc tự do,
+    // không có trong danh mục kho, nên chuẩn hoá cách trình bày tên).
+    if (rxPrescribeMode === 'outside') {
+      const pos = brandInput.selectionStart;
+      const capitalized = brandInput.value.replace(/(^|\s)(\p{L})/gu, (m, sp, ch) => sp + ch.toUpperCase());
+      if (capitalized !== brandInput.value) {
+        brandInput.value = capitalized;
+        brandInput.setSelectionRange(pos, pos);
+      }
+    }
+    brandLinked = false; renderSuggest(brandInput.value);
+  });
   brandInput.addEventListener('focus', () => { if (brandInput.value) renderSuggest(brandInput.value); });
   document.addEventListener('click', (e) => { if (!e.target.closest('.rx-autocomplete-wrap')) suggestBox.classList.remove('show'); });
 
@@ -1000,6 +1050,7 @@
   function clearRxForm() {
     CLEAR_ON_NEW_ROW_FIELDS.forEach((id) => { $(id).value = ''; });
     brandLinked = false;
+    unlockBrandFields();
     brandInput.focus();
   }
 
@@ -1035,6 +1086,10 @@
       afternoon: $('rxFieldAfternoon').value.trim() || '0',
       evening: $('rxFieldEvening').value.trim() || '0',
       qty: $('rxFieldQty').value.trim(),
+      // Nguồn thuốc: 'hospital' (trong kho BV, có thể trừ tồn kho tự động khi bán) hoặc
+      // 'outside' (mua ngoài, không liên quan tồn kho BV). 1 đơn có thể có cả 2 loại
+      // nếu người kê chuyển qua lại giữa 2 chế độ khi đang kê cùng 1 đơn.
+      source: rxPrescribeMode === 'outside' ? 'outside' : 'hospital',
     };
     rxRows.push(row);
     renderRxTable();
@@ -2282,11 +2337,16 @@
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
       logUsage('donthuoc_save');
+      // Nhãn "Nơi kê" của cả đơn: nếu các thuốc trong đơn không cùng nguồn (vừa có thuốc trong kho BV
+      // vừa có thuốc mua ngoài, do người kê chuyển qua lại chế độ khi đang kê) thì đánh dấu 'mixed';
+      // dược sĩ/quản lý xem theo từng thuốc (mỗi thuốc có source riêng) là chính xác nhất.
+      const rowSources = isHandwritten ? [] : [...new Set(rxRows.map((r) => r.source || 'hospital'))];
+      const orderMode = isHandwritten ? 'handwritten' : (rowSources.length > 1 ? 'mixed' : (rowSources[0] || rxPrescribeMode));
       saveRxHistory({
         patientName: name,
         diagnosis: diag,
         doctorName: doctor,
-        mode: rxPrescribeMode,
+        mode: orderMode,
         items: isHandwritten ? [] : rxRows,
       });
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
@@ -2351,19 +2411,10 @@
     }
   }
 
-  // PATCH trạng thái "Đã bán" cho 1 đơn (id là bigint primary key trong bảng prescriptions)
-  async function setRxSold(id, sold) {
-    try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${id}`, {
-        method: 'PATCH',
-        headers: { ...cloudHeaders(), Prefer: 'return=minimal' },
-        body: JSON.stringify({ sold, sold_at: sold ? new Date().toISOString() : null }),
-      });
-      return resp.ok;
-    } catch (e) {
-      return false;
-    }
-  }
+  // PATCH trạng thái "Đã bán" giờ chỉ thực hiện qua Worker (rx-worker, dùng service_role key,
+  // yêu cầu mật khẩu dược sĩ) — xem trang quan-ly-ban-thuoc.html. Ở đây (popup công khai) chỉ
+  // HIỂN THỊ trạng thái đã bán / ai bán, không có nút sửa, vì bảng "prescriptions" không còn
+  // policy cho phép anon UPDATE nữa.
 
   const rxHistoryOverlay = $('rxHistoryOverlay');
   const rxHistoryList = $('rxHistoryList');
@@ -2384,11 +2435,13 @@
   function rxModeLabel(mode) {
     if (mode === 'outside') return 'Ngoài Bệnh viện';
     if (mode === 'handwritten') return 'Viết tay';
+    if (mode === 'mixed') return 'Trong BV + Ngoài BV';
     return 'Trong Bệnh viện';
   }
   function rxModeClass(mode) {
     if (mode === 'outside') return 'rx-mode-outside';
     if (mode === 'handwritten') return 'rx-mode-handwritten';
+    if (mode === 'mixed') return 'rx-mode-mixed';
     return 'rx-mode-hospital';
   }
 
@@ -2479,21 +2532,34 @@
         }
       }
       const items = Array.isArray(row.items) ? row.items : [];
+      const soldCount = items.filter((it) => it && it.sold).length;
       const itemsHtml = items.map((it) => {
         const dosing = rxHistoryDosingLine(it);
         const usageLine = it.usage ? escapeHtml(it.usage) : '';
         const dosingHtml = (dosing || usageLine)
           ? `<br><span class="rx-history-dosing">${escapeHtml(dosing)}${dosing && usageLine ? ' — ' : ''}${usageLine}</span>`
           : '';
-        return `<li><b>${escapeHtml(it.brand || '')}</b>${it.generic ? ' (' + escapeHtml(it.generic) + ')' : ''}${it.form ? ' - ' + escapeHtml(it.form) : ''}${dosingHtml}</li>`;
+        const soldHtml = it && it.sold
+          ? `<br><span class="rx-history-sold-badge">✅ Đã bán${it.sold_by ? ' — ' + escapeHtml(it.sold_by) : ''}${it.sold_at ? ' (' + escapeHtml(fmtHistoryTime(it.sold_at)) + ')' : ''}</span>`
+          : `<br><span class="rx-history-unsold-badge">◻ Chưa bán</span>`;
+        return `<li><b>${escapeHtml(it.brand || '')}</b>${it.generic ? ' (' + escapeHtml(it.generic) + ')' : ''}${it.form ? ' - ' + escapeHtml(it.form) : ''}${dosingHtml}${soldHtml}</li>`;
       }).join('');
 
       const timeCellHtml = grouped
         ? escapeHtml(fmtHistoryTimeOnly(row.created_at))
         : `${escapeHtml(fmtHistoryTimeOnly(row.created_at))}<span class="rx-history-date-sub">${escapeHtml(fmtHistoryDateOnly(row.created_at))}</span>`;
 
+      const sellerNames = [...new Set(items.filter((it) => it && it.sold && it.sold_by).map((it) => it.sold_by))];
+      const soldSummary = items.length
+        ? (soldCount === 0
+            ? '<span class="rx-sold-summary rx-sold-summary-none">Chưa bán</span>'
+            : soldCount === items.length
+              ? `<span class="rx-sold-summary rx-sold-summary-full">✅ Đã bán hết${sellerNames.length ? ' — ' + escapeHtml(sellerNames.join(', ')) : ''}</span>`
+              : `<span class="rx-sold-summary rx-sold-summary-partial">${soldCount}/${items.length} đã bán${sellerNames.length ? ' — ' + escapeHtml(sellerNames.join(', ')) : ''}</span>`)
+        : '<span class="rx-history-dash">—</span>';
+
       const tr = document.createElement('tr');
-      tr.className = 'rx-history-row';
+      tr.className = 'rx-history-row' + (items.length && soldCount === items.length ? ' rx-history-row-sold' : '');
       tr.innerHTML = `
         <td class="rx-history-td-time">${timeCellHtml}</td>
         <td class="rx-history-td-patient">${escapeHtml(row.patient_name || '(không tên)')}</td>
@@ -2501,12 +2567,7 @@
         <td class="rx-history-td-doctor">${row.doctor_name ? escapeHtml(row.doctor_name) : '<span class="rx-history-dash">—</span>'}</td>
         <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
         <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button></td>
-        <td class="rx-history-td-sold">
-          <label class="rx-sold-check">
-            <input type="checkbox" class="rx-sold-checkbox" ${row.sold ? 'checked' : ''}>
-            <span>${row.sold ? 'Đã bán' : 'Chưa bán'}</span>
-          </label>
-        </td>
+        <td class="rx-history-td-sold">${soldSummary}</td>
       `;
 
       const detailTr = document.createElement('tr');
@@ -2520,23 +2581,6 @@
         detailTr.style.display = showing ? 'none' : 'table-row';
         tr.classList.toggle('expanded', !showing);
         toggleBtn.textContent = `${items.length} thuốc ${showing ? '▾' : '▴'}`;
-      });
-
-      const soldCheckbox = tr.querySelector('.rx-sold-checkbox');
-      const soldLabelSpan = tr.querySelector('.rx-sold-check span');
-      soldCheckbox.addEventListener('change', async () => {
-        const wantSold = soldCheckbox.checked;
-        soldCheckbox.disabled = true;
-        const ok = await setRxSold(row.id, wantSold);
-        soldCheckbox.disabled = false;
-        if (ok) {
-          row.sold = wantSold;
-          soldLabelSpan.textContent = wantSold ? 'Đã bán' : 'Chưa bán';
-          tr.classList.toggle('rx-history-row-sold', wantSold);
-        } else {
-          soldCheckbox.checked = !wantSold; // rollback nếu lỗi mạng
-          customAlert('Lỗi', 'Không cập nhật được trạng thái "Đã bán" (kiểm tra mạng, hoặc đã chạy SQL bổ sung cột "sold" chưa?)');
-        }
       });
 
       frag.appendChild(tr);
