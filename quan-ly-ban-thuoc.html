@@ -195,7 +195,9 @@
           <input type="text" id="searchInput" placeholder="Tìm theo tên bệnh nhân...">
           <button id="refreshSellBtn">Tìm</button>
           <button class="btn-secondary" id="clearSellDateBtn">Xem tất cả (bỏ lọc ngày)</button>
+          <button class="btn-secondary" id="manualRefreshSellBtn" title="Tải lại danh sách ngay">🔄 Làm mới</button>
           <span class="muted" id="statusMsgSell"></span>
+          <span class="muted" id="autoRefreshNote" style="margin-left:auto; font-size:12px;"></span>
         </div>
         <div class="card"><div id="sellOrdersWrap"><div class="loading">Đang tải...</div></div></div>
       </div>
@@ -374,7 +376,7 @@
   }
   document.getElementById('logoutBtn').addEventListener('click', () => {
     sessionStorage.removeItem('rxPass'); sessionStorage.removeItem('rxRole');
-    currentPassword = ''; currentRole = ''; showLogin();
+    currentPassword = ''; currentRole = ''; clearInterval(sellAutoRefreshTimer); showLogin();
   });
 
   function buildTabs() {
@@ -398,6 +400,7 @@
     document.getElementById('khoToolbar').style.display = canEdit ? '' : 'none';
     document.getElementById('danhMucBox').style.display = canEdit ? '' : 'none';
   }
+  let sellAutoRefreshTimer = null;
   function switchTab(key) {
     [...tabsRow.children].forEach((b) => b.classList.toggle('active', b.dataset.key === key));
     Object.entries(TAB_ELS).forEach(([k, el]) => { if (el) el.classList.toggle('hidden', k !== key); });
@@ -405,6 +408,12 @@
     if (key === 'sell') loadSellOrders();
     if (key === 'kho') loadKho();
     if (key === 'overview') loadOverview();
+    // Tự động tải lại danh sách "Bán thuốc" mỗi 10 giây khi đang mở tab này, để dược sĩ thấy đơn
+    // bác sĩ vừa kê / vừa in mà không cần bấm F5. Dừng lại khi rời sang tab khác để đỡ tốn request.
+    clearInterval(sellAutoRefreshTimer);
+    if (key === 'sell') {
+      sellAutoRefreshTimer = setInterval(() => loadSellOrders(true), 10000);
+    }
   }
 
   // ---------- TAB Thống kê ----------
@@ -445,22 +454,35 @@
   }
 
   // ---------- TAB Bán thuốc ----------
-  document.getElementById('refreshSellBtn').addEventListener('click', loadSellOrders);
+  document.getElementById('refreshSellBtn').addEventListener('click', () => loadSellOrders());
+  document.getElementById('manualRefreshSellBtn').addEventListener('click', () => loadSellOrders());
   document.getElementById('clearSellDateBtn').addEventListener('click', () => { sellDateInput.value = ''; loadSellOrders(); });
   searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadSellOrders(); });
-  sellDateInput.addEventListener('change', loadSellOrders);
+  sellDateInput.addEventListener('change', () => loadSellOrders());
 
-  async function loadSellOrders() {
+  let sellLoadInFlight = false;
+  async function loadSellOrders(silent) {
+    // Lần tự động (silent=true, chạy ngầm mỗi 10s): bỏ qua nếu đang có 1 lần tải khác chạy dở, hoặc
+    // đang mở modal "Ai bán thuốc này?" — tránh đè mất lựa chọn dở dang của dược sĩ giữa chừng.
+    if (silent && (sellLoadInFlight || pendingSell || !sellerModal.classList.contains('hidden'))) return;
     const statusEl = document.getElementById('statusMsgSell');
+    const noteEl = document.getElementById('autoRefreshNote');
     const wrap = document.getElementById('sellOrdersWrap');
-    statusEl.textContent = 'Đang tải...'; wrap.innerHTML = '<div class="loading">Đang tải...</div>';
+    sellLoadInFlight = true;
+    if (!silent) { statusEl.textContent = 'Đang tải...'; wrap.innerHTML = '<div class="loading">Đang tải...</div>'; }
     const extra = { search: searchInput.value };
     if (sellDateInput.value) extra.date = sellDateInput.value;
     const { ok, status, data } = await callWorker('orders_for_sale', extra);
+    sellLoadInFlight = false;
     if (status === 401 || status === 423) { handleAuthError(status, data); return; }
-    if (!ok) { statusEl.textContent = 'Lỗi: ' + (data.error || 'không tải được'); return; }
+    if (!ok) { if (!silent) statusEl.textContent = 'Lỗi: ' + (data.error || 'không tải được'); return; }
     statusEl.textContent = '';
+    const scrollBefore = silent ? window.scrollY : null;
     renderSellOrders(data.orders || []);
+    if (scrollBefore !== null) window.scrollTo(0, scrollBefore); // giữ nguyên vị trí đang xem khi tự làm mới ngầm
+    const pad = (n) => String(n).padStart(2, '0');
+    const t = new Date();
+    if (noteEl) noteEl.textContent = `Cập nhật lúc ${pad(t.getHours())}:${pad(t.getMinutes())}:${pad(t.getSeconds())} (tự động mỗi 10 giây)`;
   }
 
   // Không còn khoá cứng / cần Admin sửa nữa — chỉ hiện cảnh báo xác nhận để tránh
