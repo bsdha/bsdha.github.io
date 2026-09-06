@@ -718,8 +718,9 @@
       .filter((d) => d.brand);
   }
 
-  // "Trong Bệnh viện": ghi vào bảng Supabase "thuoc" (đọc trực tiếp bằng anon key,
-  // giống cách trang kê đơn đọc/ghi danh mục này).
+  // "Trong Bệnh viện": từ giờ KHÔNG ghi thẳng bằng anon key nữa — bảng "thuoc"
+  // chỉ nhận ghi qua Worker (yêu cầu mật khẩu dược sĩ/admin thật, việc lọc
+  // trùng tên cũng được Worker tự làm lại phía server để tránh race-condition).
   document.getElementById('drugCatalogInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -732,30 +733,20 @@
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       const parsed = parseDrugCatalogExcel(rows);
 
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc?select=ten_tm,ten_goc`, {
-        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
-      });
-      const existing = resp.ok ? await resp.json() : [];
-      const existingKeys = new Set(existing.map((d) => normalizeVN(d.ten_tm) + '|' + normalizeVN(d.ten_goc)));
-      const toAdd = parsed.filter((d) => {
-        const k = normalizeVN(d.brand) + '|' + normalizeVN(d.generic);
-        if (existingKeys.has(k)) return false;
-        existingKeys.add(k);
-        return true;
-      });
-
-      if (toAdd.length) {
-        const insResp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc`, {
-          method: 'POST',
-          headers: {
-            apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-            'Content-Type': 'application/json', Prefer: 'return=minimal',
-          },
-          body: JSON.stringify(toAdd.map((d) => ({ ten_tm: d.brand, ten_goc: d.generic, dang_thuoc: d.form || '' }))),
+      statusEl.textContent = `Đang nạp ${parsed.length} dòng qua Worker...`;
+      const CHUNK = 500;
+      let added = 0, total = 0;
+      for (let i = 0; i < parsed.length; i += CHUNK) {
+        const chunk = parsed.slice(i, i + CHUNK);
+        const { ok, status, data } = await callWorker('catalog_add_hospital', {
+          rows: chunk.map((d) => ({ brand: d.brand, generic: d.generic, form: d.form || '' })),
         });
-        if (!insResp.ok) throw new Error('Lỗi ghi vào Supabase (HTTP ' + insResp.status + ')');
+        if (status === 401 || status === 423) { handleAuthError(status, data); return; }
+        if (!ok) throw new Error(data.error || ('HTTP ' + status));
+        added += data.added || 0;
+        total += data.total || chunk.length;
       }
-      statusEl.textContent = `✓ Đã nạp ${parsed.length} dòng, thêm mới ${toAdd.length} thuốc (${parsed.length - toAdd.length} trùng, đã bỏ qua).`;
+      statusEl.textContent = `✓ Đã nạp ${total} dòng, thêm mới ${added} thuốc (${total - added} trùng, đã bỏ qua).`;
       e.target.value = '';
     } catch (err) {
       statusEl.textContent = 'Lỗi: ' + err.message;
