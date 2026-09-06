@@ -2419,6 +2419,8 @@
   const rxHistoryOverlay = $('rxHistoryOverlay');
   const rxHistoryList = $('rxHistoryList');
   const rxHistorySearch = $('rxHistorySearch');
+  const rxHistoryDateFilter = $('rxHistoryDateFilter');
+  const rxHistoryDateClearBtn = $('rxHistoryDateClearBtn');
   const rxHistoryLoadMoreBtn = $('rxHistoryLoadMoreBtn');
   const rxHistorySortHeaders = document.querySelectorAll('.rx-history-th-sort');
   const RX_HISTORY_PAGE_SIZE = 30;
@@ -2443,6 +2445,57 @@
     if (mode === 'handwritten') return 'rx-mode-handwritten';
     if (mode === 'mixed') return 'rx-mode-mixed';
     return 'rx-mode-hospital';
+  }
+
+  // In lại 1 đơn thuốc từ lịch sử. LƯU Ý: bảng lịch sử chỉ lưu tên bệnh nhân/chẩn đoán/bác sĩ/
+  // thuốc — KHÔNG lưu tuổi, giới tính, địa chỉ, sinh hiệu, ghi chú (những ô đó chỉ có trên form
+  // lúc kê), nên bản in lại là bản RÚT GỌN (đủ để đối chiếu/phát lại thuốc), không phải bản in
+  // đầy đủ y hệt lúc kê ban đầu.
+  function printHistoryRx(row) {
+    const items = Array.isArray(row.items) ? row.items : [];
+    const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
+    const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
+    const dateStr = fmtHistoryTime(row.created_at);
+    const rowsHtml = items.map((it, idx) => `
+      <tr>
+        <td style="text-align:center;">${idx + 1}</td>
+        <td><b>${escapeHtml(it.brand || '')}</b>${it.generic ? '<br><span style="color:#666;font-size:11px;">' + escapeHtml(it.generic) + '</span>' : ''}</td>
+        <td>${escapeHtml(it.form || '')}</td>
+        <td>${escapeHtml(it.usage || '')}</td>
+        <td style="text-align:center;">${escapeHtml(it.days || '')}</td>
+        <td style="text-align:center;">${escapeHtml(it.morning || '0')}-${escapeHtml(it.noon || '0')}-${escapeHtml(it.afternoon || '0')}-${escapeHtml(it.evening || '0')}</td>
+        <td style="text-align:center;">${escapeHtml(it.qty || '')}</td>
+      </tr>`).join('');
+    const win = window.open('', '_blank');
+    if (!win) { customAlert('Không mở được cửa sổ in', 'Trình duyệt đã chặn popup — vui lòng cho phép popup rồi thử lại.'); return; }
+    win.document.write(`
+      <html><head><meta charset="UTF-8"><title>In lại đơn thuốc</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
+        h2 { margin: 0 0 2px; } .org { color: #444; font-size: 12.5px; margin-bottom: 14px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
+        th, td { border: 1px solid #ccc; padding: 6px 8px; }
+        th { background: #f3f4f6; }
+        .info div { margin-bottom: 3px; font-size: 13px; }
+        .note { margin-top: 14px; font-size: 11.5px; color: #888; font-style: italic; }
+      </style></head><body>
+        <h2>${escapeHtml(org1)}</h2>
+        <div class="org">${escapeHtml(org2)}</div>
+        <h3>ĐƠN THUỐC (in lại từ lịch sử)</h3>
+        <div class="info">
+          <div><b>Bệnh nhân:</b> ${escapeHtml(row.patient_name || '(không tên)')}</div>
+          <div><b>Chẩn đoán:</b> ${escapeHtml(row.diagnosis || '—')}</div>
+          <div><b>Bác sĩ kê:</b> ${escapeHtml(row.doctor_name || '—')}</div>
+          <div><b>Nơi kê:</b> ${escapeHtml(rxModeLabel(row.mode))}</div>
+          <div><b>Thời gian kê:</b> ${escapeHtml(dateStr)}</div>
+        </div>
+        <table><thead><tr><th>#</th><th>Tên thuốc</th><th>Dạng</th><th>Cách dùng</th><th>Số ngày</th><th>S-T-C-T</th><th>SL</th></tr></thead>
+        <tbody>${rowsHtml || '<tr><td colspan="7" style="text-align:center;color:#888;">(không có thông tin thuốc)</td></tr>'}</tbody></table>
+        <p class="note">* Bản in lại rút gọn từ lịch sử hệ thống — không thể hiện tuổi/giới tính/địa chỉ/sinh hiệu vì các thông tin này không được lưu trữ.</p>
+        <script>window.onload = () => window.print();</script>
+      </body></html>
+    `);
+    win.document.close();
   }
 
   function fmtHistoryTime(iso) {
@@ -2515,7 +2568,7 @@
       rxHistoryLastGroupKey = null;
     }
     if (!rows || !rows.length) {
-      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Chưa có đơn thuốc nào được lưu.</td></tr>';
+      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="8">Chưa có đơn thuốc nào được lưu.</td></tr>';
       return;
     }
     const grouped = rxHistorySort.column === 'created_at';
@@ -2527,7 +2580,7 @@
           rxHistoryLastGroupKey = key;
           const groupTr = document.createElement('tr');
           groupTr.className = 'rx-history-date-group';
-          groupTr.innerHTML = `<td colspan="7">${escapeHtml(rxDateGroupLabel(row.created_at))}</td>`;
+          groupTr.innerHTML = `<td colspan="8">${escapeHtml(rxDateGroupLabel(row.created_at))}</td>`;
           frag.appendChild(groupTr);
         }
       }
@@ -2568,12 +2621,16 @@
         <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
         <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button></td>
         <td class="rx-history-td-sold">${soldSummary}</td>
+        <td class="rx-history-td-print"><button type="button" class="rx-history-print-btn" title="In lại đơn thuốc">🖨️ In</button></td>
       `;
+
+      const printBtn = tr.querySelector('.rx-history-print-btn');
+      printBtn.addEventListener('click', () => printHistoryRx(row));
 
       const detailTr = document.createElement('tr');
       detailTr.className = 'rx-history-detail-row';
       detailTr.style.display = 'none';
-      detailTr.innerHTML = `<td colspan="7"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul></td>`;
+      detailTr.innerHTML = `<td colspan="8"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul></td>`;
 
       const toggleBtn = tr.querySelector('.rx-history-toggle-btn');
       toggleBtn.addEventListener('click', () => {
@@ -2601,11 +2658,19 @@
     if (!rxHistoryOverlay) return;
     if (!append) rxHistoryOffset = 0;
     const term = (rxHistorySearch.value || '').trim();
+    const dateVal = rxHistoryDateFilter ? rxHistoryDateFilter.value : '';
     const from = rxHistoryOffset;
     let url = `${SUPABASE_URL}/rest/v1/prescriptions?select=*&order=${rxHistoryOrderParam()}&limit=${RX_HISTORY_PAGE_SIZE}&offset=${from}`;
     if (term) {
       const esc = term.replace(/[%,()]/g, '');
       url += `&or=(patient_name.ilike.*${encodeURIComponent(esc)}*,diagnosis.ilike.*${encodeURIComponent(esc)}*)`;
+    }
+    if (dateVal) {
+      // Lọc theo NGÀY kê (giờ Việt Nam, UTC+7): [00:00, 24:00) ngày đã chọn.
+      const [y, m, d] = dateVal.split('-').map(Number);
+      const startIso = new Date(Date.UTC(y, m - 1, d, -7, 0, 0)).toISOString();
+      const endIso = new Date(Date.UTC(y, m - 1, d, -7, 0, 0) + 24 * 3600 * 1000).toISOString();
+      url += `&created_at=gte.${encodeURIComponent(startIso)}&created_at=lt.${encodeURIComponent(endIso)}`;
     }
     rxHistoryLoadMoreBtn.disabled = true;
     rxHistoryLoadMoreBtn.textContent = 'Đang tải...';
@@ -2618,7 +2683,7 @@
       rxHistoryLoadMoreBtn.style.display = rows.length < RX_HISTORY_PAGE_SIZE ? 'none' : '';
     } catch (e) {
       if (!append) {
-        rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</td></tr>';
+        rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="8">Không tải được lịch sử (kiểm tra mạng, hoặc đã tạo bảng "prescriptions" trong Supabase chưa?)</td></tr>';
       }
       rxHistoryLoadMoreBtn.style.display = 'none';
     } finally {
@@ -2645,6 +2710,8 @@
       rxHistorySearchTimer = setTimeout(() => loadRxHistory(false), 400);
     });
   }
+  if (rxHistoryDateFilter) rxHistoryDateFilter.addEventListener('change', () => loadRxHistory(false));
+  if (rxHistoryDateClearBtn) rxHistoryDateClearBtn.addEventListener('click', () => { rxHistoryDateFilter.value = ''; loadRxHistory(false); });
   if (rxHistoryLoadMoreBtn) rxHistoryLoadMoreBtn.addEventListener('click', () => loadRxHistory(true));
   rxHistorySortHeaders.forEach((th) => {
     th.addEventListener('click', () => {
