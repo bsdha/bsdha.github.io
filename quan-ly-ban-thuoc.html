@@ -126,9 +126,16 @@
   .receipt-print-btn { margin-top: 10px; width: 100%; padding: 11px; border-radius: 9px; border: none; background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff; cursor: pointer; font-size: 13.5px; font-weight: 600; }
 
   @media print {
-    body * { visibility: hidden; }
-    #printArea, #printArea * { visibility: visible; }
-    #printArea { position: absolute; top: 0; left: 0; width: 100%; padding: 20px; }
+    @page { size: 210mm 148mm landscape; margin: 8mm; }
+    html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
+    /* Ẩn hẳn (display:none) mọi thứ ngoài phiếu thu — dùng visibility:hidden thôi thì các phần tử vẫn
+       chiếm chỗ trong layout, khiến tổng chiều cao trang bị kéo dài ra thành nhiều trang giấy khi in
+       (đây là lý do bản cũ in ra 3 trang trống thay vì đúng 1 trang khổ A5). */
+    body > *:not(#receiptModal) { display: none !important; }
+    #receiptModal { position: static !important; background: #fff !important; padding: 0 !important; display: block !important; }
+    #receiptModal .modal-box { box-shadow: none !important; padding: 0 !important; max-width: none !important; width: auto !important; }
+    #receiptModal .receipt-print-btn, #receiptModal .modal-cancel, #receiptModal .receipt-total { display: none !important; }
+    #printArea { position: static !important; width: 100% !important; padding: 0 !important; }
   }
 </style>
 </head>
@@ -200,13 +207,10 @@
           <div class="upload-box">
             <div class="upload-title">Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
             <p class="upload-desc">
-              1 bảng DUY NHẤT — vừa là danh mục để kê đơn, vừa là kho để dược sĩ thống kê. File cần có ít nhất cột
-              <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng"). Nếu file có thêm cột
-              <b>Tên gốc</b>/"Hoạt chất", "Dạng thuốc", "ĐVT", "Đơn giá", "Tồn cuối" (báo cáo Xuất nhập tồn) thì sẽ
-              tự nạp luôn giá + tồn kho. Có thể nạp nhiều lần từ nhiều file khác nhau (ví dụ: 1 file chỉ có
-              tên/hoạt chất để kê đơn, sau đó nạp thêm file "Xuất nhập tồn" để cập nhật giá/tồn) — thuốc trùng tên sẽ
-              tự <b>cập nhật</b> các cột có trong file mới, cột nào file không có thì <b>giữ nguyên</b> dữ liệu cũ;
-              thuốc chưa có thì thêm mới.
+              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và
+              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "Dạng thuốc"/"ĐVT". Thuốc mới sẽ được
+              <b>cộng dồn</b> vào danh mục hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên. Dùng cho việc
+              kê đơn/tìm thuốc trong Bệnh viện.
             </p>
             <input type="file" id="drugCatalogInput" accept=".xlsx,.xls">
             <span class="muted" id="statusMsgCatalog"></span>
@@ -224,6 +228,8 @@
           </div>
         </div>
         <div class="toolbar" id="khoToolbar">
+          <input type="file" id="excelFileInput" accept=".xls,.xlsx">
+          <button class="btn-green" id="importExcelBtn">Nhập từ Excel</button>
           <button class="btn-secondary" id="exportKhoBtn">Xuất báo cáo tồn kho (Excel)</button>
           <span class="muted" id="statusMsgKho"></span>
         </div>
@@ -362,7 +368,7 @@
   }
   function showDash() {
     loginShell.classList.add('hidden'); dashBox.classList.remove('hidden');
-    roleBadge.textContent = currentRole === 'admin' ? 'Admin (mở khoá được)' : currentRole === 'pharmacist' ? 'Dành cho Dược sĩ' : 'Quản lý (chỉ xem)';
+    roleBadge.textContent = currentRole === 'pharmacist' ? 'Dành cho Dược sĩ' : 'Quản lý chung';
     buildTabs();
     switchTab('stats');
   }
@@ -373,7 +379,7 @@
 
   function buildTabs() {
     tabsRow.innerHTML = '';
-    const canEdit = currentRole === 'pharmacist' || currentRole === 'admin';
+    const canEdit = currentRole === 'pharmacist';
     const tabs = [{ key: 'stats', label: '📊 Thống kê' }];
     if (canEdit) tabs.push({ key: 'sell', label: '💊 Bán thuốc' });
     tabs.push({ key: 'kho', label: '🏬 Kho thuốc' });
@@ -457,8 +463,10 @@
     renderSellOrders(data.orders || []);
   }
 
-  function showAdminNeededPopup(message) {
-    alert('🔒 ' + (message || 'Đã khoá, vui lòng liên hệ Admin 0868.91.97.90 để được hỗ trợ sửa.'));
+  // Không còn khoá cứng / cần Admin sửa nữa — chỉ hiện cảnh báo xác nhận để tránh
+  // bấm nhầm khi bỏ tích "Đã bán" cho thuốc đã bán từ hôm trước (trước 7h sáng nay).
+  function confirmUncheckOldSale(message) {
+    return confirm('⚠️ ' + (message || 'Thuốc này đã bán từ hôm trước (trước 7h sáng nay). Bạn có chắc chắn muốn bỏ đánh dấu "Đã bán" không?'));
   }
 
   function renderSellOrders(orders) {
@@ -483,7 +491,7 @@
         groupWrap.innerHTML = `<div class="sub-label">Thuốc trong bệnh viện (tự trừ kho)${groupLocked ? ' 🔒' : ''}</div>`;
         const groupRow = document.createElement('div');
         groupRow.className = 'group-row';
-        groupRow.innerHTML = `<input type="checkbox" ${allHospitalSold ? 'checked' : ''}><span class="group-label">Đã bán TẤT CẢ ${hospitalItems.length} thuốc trong BV của đơn này${groupLocked ? ' (đã khoá — cần Admin để sửa)' : ''}</span>`;
+        groupRow.innerHTML = `<input type="checkbox" ${allHospitalSold ? 'checked' : ''}><span class="group-label">Đã bán TẤT CẢ ${hospitalItems.length} thuốc trong BV của đơn này${groupLocked ? ' (đã bán từ hôm trước)' : ''}</span>`;
         const groupCheckbox = groupRow.querySelector('input');
         const itemsList = document.createElement('div');
         hospitalItems.forEach(({ it }) => {
@@ -496,17 +504,15 @@
           if (groupCheckbox.checked) {
             openSellerModal({ type: 'group', orderId: order.id, checkboxEl: groupCheckbox, cardEl: card, order, itemsListEl: itemsList });
           } else {
-            if (groupLocked && currentRole !== 'admin') {
+            if (groupLocked && !confirmUncheckOldSale('Đơn này có thuốc đã bán TỪ HÔM TRƯỚC (trước 7h sáng nay). Bạn có chắc chắn muốn bỏ đánh dấu "Đã bán" không?')) {
               groupCheckbox.checked = true;
-              showAdminNeededPopup('Đơn này đã bán từ hôm trước (đã khoá sau 7h sáng). Vui lòng liên hệ Admin 0868.91.97.90 để được hỗ trợ sửa.');
               return;
             }
             groupCheckbox.disabled = true;
             callWorker('toggle_hospital_group', { order_id: order.id, sold: false }).then(({ ok, status, data }) => {
               groupCheckbox.disabled = false;
               if (ok) loadSellOrders();
-              else if (status === 423) { groupCheckbox.checked = true; showAdminNeededPopup(data.message); }
-              else { groupCheckbox.checked = true; alert('Không huỷ được, thử lại.'); }
+              else { groupCheckbox.checked = true; alert((data && data.message) || 'Không huỷ được, thử lại.'); }
             });
           }
         });
@@ -527,17 +533,15 @@
             if (checkbox.checked) {
               openSellerModal({ type: 'item', orderId: order.id, itemIndex: idx, checkboxEl: checkbox, rowEl: row });
             } else {
-              if (it.locked && currentRole !== 'admin') {
+              if (it.locked && !confirmUncheckOldSale('Thuốc này đã bán TỪ HÔM TRƯỚC (trước 7h sáng nay). Bạn có chắc chắn muốn bỏ đánh dấu "Đã bán" không?')) {
                 checkbox.checked = true;
-                showAdminNeededPopup('Thuốc này đã bán từ hôm trước (đã khoá sau 7h sáng). Vui lòng liên hệ Admin 0868.91.97.90 để được hỗ trợ sửa.');
                 return;
               }
               checkbox.disabled = true;
               callWorker('toggle_item', { order_id: order.id, item_index: idx, sold: false }).then(({ ok, status, data }) => {
                 checkbox.disabled = false;
                 if (ok) loadSellOrders();
-                else if (status === 423) { checkbox.checked = true; showAdminNeededPopup(data.message); }
-                else { checkbox.checked = true; alert('Không huỷ được, thử lại.'); }
+                else { checkbox.checked = true; alert((data && data.message) || 'Không huỷ được, thử lại.'); }
               });
             }
           });
@@ -637,48 +641,60 @@
   }
 
   // ---------- Phiếu thu (mẫu chính thức, tự điền sẵn — in ra dùng ngay, không cần viết tay) ----------
+  // Mẫu theo đúng "Phiếu thu" (Mẫu số 01-TT, Thông tư 200/2014/TT-BTC) khổ A5 ngang mà nhà thuốc đang
+  // dùng bản giấy — xem @page trong CSS (khổ 210mm x 148mm ngang) để in ra vừa đúng 1 tờ A5, không lệch
+  // sang A4/3 trang như trước.
   const receiptModal = document.getElementById('receiptModal');
   let receiptSeq = 0;
   function showReceipt(receipt, sellerName, order) {
     const total = receipt.total || 0;
     const now = new Date();
     const soPT = 'PT-' + String((order && order.id) || ++receiptSeq).padStart(4, '0');
-    const org1 = 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2';
-    const org2 = 'NHÀ THUỐC';
+    const orgName = 'BVĐK BÌNH DƯƠNG CS2';
+    const orgAddr = 'ĐC: Ấp 13, Xã Bắc Tân Uyên, TP. HCM';
+    const lyDoNop = (order && order.doctor_name)
+      ? `Tiền mua thuốc theo đơn (BS ${esc(order.doctor_name)} kê)`
+      : 'Tiền mua thuốc theo đơn / Thanh toán tiền thuốc khách hàng';
     document.getElementById('receiptBody').innerHTML = `
-      <div style="font-family: 'Times New Roman', serif; font-size: 13px; color:#111; line-height:1.55;">
+      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12.5px; color:#111; line-height:1.5;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
-            <div style="font-weight:700;">${esc(org1)}</div>
-            <div>${esc(org2)}</div>
+            <div style="font-weight:700; font-size:13.5px;">${esc(orgName)}</div>
+            <div style="font-size:11.5px;">${esc(orgAddr)}</div>
           </div>
-          <div style="text-align:right; font-size:12px;">
-            <div>Quyển số: ..................</div>
-            <div>Số: <b>${esc(soPT)}</b></div>
+          <div style="text-align:right; font-size:11px;">
+            <div>Mẫu số 01 - TT</div>
+            <div>(Ban hành theo Thông tư số 200/2014/TT-BTC</div>
+            <div>ngày 22/12/2014 của Bộ Tài chính)</div>
           </div>
         </div>
-        <h3 style="text-align:center; margin:14px 0 2px; letter-spacing:1px;">PHIẾU THU TIỀN THUỐC</h3>
-        <div style="text-align:center; font-size:11.5px; color:#555; margin-bottom:14px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
 
-        <div style="margin-bottom:6px;">Nợ: .............................................</div>
-        <div style="margin-bottom:10px;">Có: .............................................</div>
+        <h2 style="text-align:center; margin:10px 0 14px; letter-spacing:1px; font-size:19px;">PHIẾU THU</h2>
 
-        <div style="margin-bottom:8px;">Họ và tên người nộp tiền: <b>${esc((order && order.patient_name) || '')}</b></div>
-        <div style="margin-bottom:8px;">Địa chỉ: ${order && order.patient_address ? '<b>' + esc(order.patient_address) + '</b>' : '..........................................................................................'}</div>
-        <div style="margin-bottom:8px;">Lý do nộp: Tiền mua thuốc theo đơn${order && order.doctor_name ? ' (BS ' + esc(order.doctor_name) + ' kê)' : ''}</div>
-        <div style="margin-bottom:8px;">Số tiền: <b>${fmtVnd(total)}</b></div>
-        <div style="margin-bottom:8px;">Viết bằng chữ: <i>${esc(soTienBangChuVN(total))}</i></div>
-        <div style="margin-bottom:16px;">Kèm theo: .......... Chứng từ gốc kèm theo.</div>
+        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+          <div>Quyển số: ..................</div>
+          <div>Số: <b>${esc(soPT)}</b></div>
+        </div>
+        <div style="margin-bottom:4px;">Nợ: .............................................</div>
+        <div style="margin-bottom:12px;">Có: .............................................</div>
 
-        <div style="text-align:right; font-size:11.5px; color:#555; margin-bottom:6px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
+        <div style="margin-bottom:6px;">Họ và tên người nộp tiền: <b>${esc((order && order.patient_name) || '')}</b></div>
+        <div style="margin-bottom:6px;">Địa chỉ: ${order && order.patient_address ? '<b>' + esc(order.patient_address) + '</b>' : '..........................................................................................'}</div>
+        <div style="margin-bottom:6px;">Lý do nộp: ${lyDoNop}</div>
+        <div style="margin-bottom:6px;">Số tiền: <b>${fmtVnd(total)}</b></div>
+        <div style="margin-bottom:6px;">Viết bằng chữ: <i>${esc(soTienBangChuVN(total))}</i></div>
+        <div style="margin-bottom:14px;">Kèm theo: .......... Chứng từ gốc kèm theo.</div>
+
+        <div style="margin-bottom:8px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
+
         <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11.5px;">
           <tr>
-            <td>Giám đốc</td><td>Kế toán trưởng</td><td>Thủ quỹ</td><td>Người nộp tiền</td><td>Người lập phiếu</td>
+            <td style="font-weight:700;">Giám đốc</td><td style="font-weight:700;">Kế toán trưởng</td><td style="font-weight:700;">Thủ quỹ</td><td style="font-weight:700;">Người nộp tiền</td><td style="font-weight:700;">Người lập phiếu</td>
           </tr>
           <tr style="color:#777; font-size:10.5px;">
             <td>(Ký, họ tên, đóng dấu)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td>
           </tr>
-          <tr><td style="height:50px;"></td><td></td><td></td><td></td><td><b>${esc(sellerName || '')}</b></td></tr>
+          <tr><td style="height:44px;"></td><td></td><td></td><td></td><td><b>${esc(sellerName || '')}</b></td></tr>
         </table>
       </div>
     `;
@@ -703,63 +719,24 @@
     }
     return -1;
   }
-
-  // Parser HỢP NHẤT: đọc 1 file Excel duy nhất cho cả danh mục (tên thương
-  // mại/tên gốc/dạng thuốc) LẪN kho (ĐVT/đơn giá/tồn kho) — cột nào có thì
-  // lấy, cột nào không có thì bỏ qua (không tạo key đó trong kết quả), để
-  // Worker biết cột nào là "không cung cấp" (giữ nguyên giá trị cũ trong CSDL)
-  // khác với cột "= 0" (ghi đè thành 0).
-  function parseThuocExcel(rows) {
-    // Dò dòng tiêu đề trong tối đa 15 dòng đầu (báo cáo "Xuất nhập tồn" của
-    // phần mềm nhà thuốc thường có vài dòng tiêu đề/thông tin phía trên).
-    let headerRow = -1, brandCol = -1;
-    for (let r = 0; r < Math.min(rows.length, 15); r++) {
-      const c = pickDrugCol((rows[r] || []).map((h) => String(h || '')), ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
-      if (c !== -1) { headerRow = r; brandCol = c; break; }
-    }
-    if (headerRow === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược"/"Tên thuốc" trong file.');
-    const headerArr = (rows[headerRow] || []).map((h) => String(h || ''));
-    const genericCol = pickDrugCol(headerArr, ['ten goc', 'hoat chat']);
-    const formCol = pickDrugCol(headerArr, ['dang thuoc']);
-    const unitCol = pickDrugCol(headerArr, ['dvt']);
-    const priceCol = pickDrugCol(headerArr, ['don gia']);
-    const stockHeaderCol = pickDrugCol(headerArr, ['ton cuoi', 'ton kho', 'so luong ton']);
-
-    // Báo cáo "Xuất nhập tồn": cột "Tồn cuối" là tiêu đề nhóm, số lượng thật
-    // nằm ở cột con "SL" 2 dòng dưới. Nếu không có dạng này thì dùng thẳng
-    // cột đã tìm thấy.
-    let stockCol = stockHeaderCol;
-    let dataStart = headerRow + 1;
-    if (stockHeaderCol !== -1) {
-      const subRow = (rows[headerRow + 2] || []).map((h) => String(h || ''));
-      for (let c = stockHeaderCol; c < subRow.length; c++) {
-        if (stripDiacriticsVN(subRow[c]) === 'sl') { stockCol = c; dataStart = headerRow + 3; break; }
-      }
-    }
-
-    const out = [];
-    for (let i = dataStart; i < rows.length; i++) {
-      const r = rows[i] || [];
-      const brand = String(r[brandCol] || '').trim();
-      if (!brand) continue;
-      const item = { brand };
-      if (genericCol !== -1) item.generic = String(r[genericCol] || '').trim();
-      if (formCol !== -1) item.form = String(r[formCol] || '').trim();
-      if (unitCol !== -1) item.unit = String(r[unitCol] || '').trim();
-      if (priceCol !== -1) item.unit_price = parseFloat(r[priceCol]) || 0;
-      if (stockCol !== -1) item.stock_qty = parseFloat(r[stockCol]) || 0;
-      out.push(item);
-    }
-    if (!out.length) throw new Error('Không đọc được dòng thuốc nào — kiểm tra lại file.');
-    return out;
+  function parseDrugCatalogExcel(rows) {
+    if (rows.length < 2) throw new Error('File rỗng hoặc không đúng định dạng.');
+    const headers = rows[0].map((h) => String(h || ''));
+    const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
+    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
+    const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
+    if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
+    return rows.slice(1)
+      .map((r) => ({
+        brand: String(r[brandIdx] || '').trim(),
+        generic: genericIdx !== -1 ? String(r[genericIdx] || '').trim() : '',
+        form: formIdx !== -1 ? String(r[formIdx] || '').trim() : '',
+      }))
+      .filter((d) => d.brand);
   }
 
-  // Nạp danh mục "Trong Bệnh viện" — CÓ THỂ dùng file chỉ có tên thuốc/hoạt
-  // chất (để kê đơn), HOẶC file báo cáo "Xuất nhập tồn" đầy đủ ĐVT/đơn
-  // giá/tồn kho (để dược sĩ thống kê) — Worker tự nhận diện cột nào có trong
-  // file rồi cập nhật đúng cột đó, cột không có thì GIỮ NGUYÊN giá trị cũ.
-  // Không còn ghi thẳng bằng anon key — mọi ghi đều qua Worker, yêu cầu mật
-  // khẩu dược sĩ/admin thật.
+  // "Trong Bệnh viện": ghi vào bảng Supabase "thuoc" (đọc trực tiếp bằng anon key,
+  // giống cách trang kê đơn đọc/ghi danh mục này).
   document.getElementById('drugCatalogInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -770,22 +747,33 @@
       const wb = XLSX.read(buf, { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      const parsed = parseThuocExcel(rows);
+      const parsed = parseDrugCatalogExcel(rows);
 
-      statusEl.textContent = `Đang nạp ${parsed.length} dòng qua Worker...`;
-      const CHUNK = 300;
-      let added = 0, total = 0;
-      for (let i = 0; i < parsed.length; i += CHUNK) {
-        const chunk = parsed.slice(i, i + CHUNK);
-        const { ok, status, data } = await callWorker('thuoc_import_bulk', { rows: chunk });
-        if (status === 401 || status === 423) { handleAuthError(status, data); return; }
-        if (!ok) throw new Error(data.error || ('HTTP ' + status));
-        added += data.added || 0;
-        total += data.total || chunk.length;
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc?select=ten_tm,ten_goc`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      });
+      const existing = resp.ok ? await resp.json() : [];
+      const existingKeys = new Set(existing.map((d) => normalizeVN(d.ten_tm) + '|' + normalizeVN(d.ten_goc)));
+      const toAdd = parsed.filter((d) => {
+        const k = normalizeVN(d.brand) + '|' + normalizeVN(d.generic);
+        if (existingKeys.has(k)) return false;
+        existingKeys.add(k);
+        return true;
+      });
+
+      if (toAdd.length) {
+        const insResp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json', Prefer: 'return=minimal',
+          },
+          body: JSON.stringify(toAdd.map((d) => ({ ten_tm: d.brand, ten_goc: d.generic, dang_thuoc: d.form || '' }))),
+        });
+        if (!insResp.ok) throw new Error('Lỗi ghi vào Supabase (HTTP ' + insResp.status + ')');
       }
-      statusEl.textContent = `✓ Đã nạp ${total} dòng, thêm mới ${added} thuốc (${total - added} đã có sẵn — cập nhật thông tin mới, không xoá dữ liệu cũ của cột không có trong file).`;
+      statusEl.textContent = `✓ Đã nạp ${parsed.length} dòng, thêm mới ${toAdd.length} thuốc (${parsed.length - toAdd.length} trùng, đã bỏ qua).`;
       e.target.value = '';
-      if (typeof khoCache !== 'undefined') loadKho();
     } catch (err) {
       statusEl.textContent = 'Lỗi: ' + err.message;
     }
@@ -844,7 +832,7 @@
   function renderKho() {
     const wrap = document.getElementById('khoTableWrap');
     if (!khoCache.length) { wrap.innerHTML = '<div class="empty">Kho trống — nhập dữ liệu từ file Excel ở trên.</div>'; return; }
-    const editable = currentRole === 'pharmacist' || currentRole === 'admin';
+    const editable = currentRole === 'pharmacist';
     wrap.innerHTML = `<table><thead><tr><th>Thuốc</th><th>ĐVT</th><th>Đơn giá</th><th>Tồn kho</th></tr></thead><tbody>
       ${khoCache.map((r) => `<tr data-id="${r.id}">
         <td><b>${esc(r.drug_name)}</b></td>
@@ -864,13 +852,71 @@
     }
   }
 
-  // Ghi chú: "stripDiacriticsVN" dùng trong parseThuocExcel() ở trên (đã gộp
-  // luôn phần đọc "Báo cáo xuất nhập tồn" theo tiêu đề cột vào hàm đó, không
-  // còn hàm/nút "Nhập từ Excel" riêng cho kho nữa — dùng chung 1 ô nạp file
-  // "Trong Bệnh viện" ở khối phía trên).
+  // Đọc file Excel "Báo cáo xuất nhập tồn" theo TIÊU ĐỀ CỘT (không cố định vị trí), vì các bản
+  // xuất khác nhau (từ phần mềm nhà thuốc) có thể lệch số cột/số dòng tiêu đề khác nhau.
   function stripDiacriticsVN(s) {
     return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
   }
+  function findHeaderCol(rowArr, keywords) {
+    if (!rowArr) return -1;
+    for (let c = 0; c < rowArr.length; c++) {
+      const val = stripDiacriticsVN(rowArr[c]);
+      if (keywords.some((k) => val.includes(k))) return c;
+    }
+    return -1;
+  }
+  function parseInventoryExcelRows(rows) {
+    let headerRow = -1, nameCol = -1;
+    for (let r = 0; r < Math.min(rows.length, 15); r++) {
+      const c = findHeaderCol(rows[r], ['ten thuoc', 'ten thuong mai']);
+      if (c !== -1) { headerRow = r; nameCol = c; break; }
+    }
+    if (headerRow === -1) throw new Error('Không tìm thấy dòng tiêu đề "Tên thuốc"/"Tên thương mại" trong file.');
+    const unitCol = findHeaderCol(rows[headerRow], ['dvt']);
+    const priceCol = findHeaderCol(rows[headerRow], ['don gia']);
+    const stockHeaderCol = findHeaderCol(rows[headerRow], ['ton cuoi']);
+    if (unitCol === -1 || priceCol === -1 || stockHeaderCol === -1) throw new Error('Thiếu cột ĐVT / Đơn giá / Tồn cuối trong file — kiểm tra lại file mẫu.');
+    // Dòng "SL"/"ST" (đơn vị con của nhóm "Tồn cuối") thường nằm 2 dòng dưới dòng tiêu đề chính.
+    const subRow = rows[headerRow + 2] || [];
+    let stockCol = stockHeaderCol;
+    for (let c = stockHeaderCol; c < subRow.length; c++) {
+      if (stripDiacriticsVN(subRow[c]) === 'sl') { stockCol = c; break; }
+    }
+    const dataStart = headerRow + 3;
+    const parsed = [];
+    for (let i = dataStart; i < rows.length; i++) {
+      const r = rows[i];
+      const name = (r[nameCol] || '').toString().trim();
+      if (!name) continue;
+      parsed.push({ drug_name: name, unit: (r[unitCol] || '').toString().trim(), unit_price: parseFloat(r[priceCol]) || 0, stock_qty: parseFloat(r[stockCol]) || 0 });
+    }
+    return parsed;
+  }
+
+  document.getElementById('importExcelBtn').addEventListener('click', async () => {
+    const fileInput = document.getElementById('excelFileInput');
+    const statusEl = document.getElementById('statusMsgKho');
+    const file = fileInput.files[0];
+    if (!file) { statusEl.textContent = 'Chọn file Excel trước.'; return; }
+    statusEl.textContent = 'Đang đọc file...';
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const parsed = parseInventoryExcelRows(rows);
+      if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; return; }
+      statusEl.textContent = `Đang nhập ${parsed.length} thuốc (thuốc trùng tên sẽ tự cập nhật giá/tồn/ĐVT mới)...`;
+      const CHUNK = 200;
+      for (let i = 0; i < parsed.length; i += CHUNK) {
+        const { ok, data } = await callWorker('inventory_upsert_bulk', { rows: parsed.slice(i, i + CHUNK) });
+        if (!ok) { statusEl.textContent = 'Lỗi khi nhập: ' + (data.error || ''); return; }
+      }
+      statusEl.textContent = `Đã nhập/cập nhật ${parsed.length} thuốc.`;
+      fileInput.value = '';
+      loadKho();
+    } catch (e) { statusEl.textContent = 'Lỗi đọc file: ' + e.message; }
+  });
 
   document.getElementById('exportKhoBtn').addEventListener('click', () => {
     if (!khoCache.length) { alert('Chưa có dữ liệu kho.'); return; }
