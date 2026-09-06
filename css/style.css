@@ -3027,3 +3027,122 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 @media (max-width: 480px) {
   #page-clinicalscores .result .value { font-size: 40px; }
 }
+
+/* ================= TÙY CHỈNH SIDEBAR: giữ chuột lâu để sắp xếp / ẩn-hiện mục ================= */
+@keyframes navShake {
+  0%   { transform: rotate(0deg); }
+  20%  { transform: rotate(-1.2deg); }
+  40%  { transform: rotate(1.2deg); }
+  60%  { transform: rotate(-1.2deg); }
+  80%  { transform: rotate(1.2deg); }
+  100% { transform: rotate(0deg); }
+}
+.nav-item.nav-shake {
+  animation: navShake .32s ease-in-out infinite;
+  background: var(--surface-2);
+}
+.sidebar.nav-edit-mode,
+.topbar.nav-edit-mode {
+  padding-bottom: 64px;
+}
+.nav-item .nav-reorder {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-right: 2px;
+  flex-shrink: 0;
+}
+.nav-item .nav-reorder button {
+  width: 18px;
+  height: 15px;
+  line-height: 1;
+  font-size: 9px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.nav-item .nav-reorder button:disabled {
+  opacity: .3;
+  cursor: default;
+}
+.nav-item .nav-reorder button:hover:not(:disabled) { background: var(--blue-light); border-color: var(--blue); }
+.nav-item .nav-visible-toggle {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.nav-item .nav-visible-toggle input {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--green);
+}
+.nav-item.nav-shake:hover { background: var(--surface-2); color: var(--text); }
+.topbar.nav-edit-mode .nav-item { flex-direction: column; gap: 2px; padding: 6px 8px; }
+.topbar .nav-item .nav-reorder { flex-direction: row; margin-right: 0; }
+.topbar .nav-item .nav-visible-toggle { margin-left: 0; }
+
+.nav-edit-toolbar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  gap: 6px;
+  padding: 10px 8px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  z-index: 5;
+}
+.nav-edit-toolbar .net-hint {
+  flex-basis: 100%;
+  font-size: 10.5px;
+  color: var(--muted);
+  margin: 0 0 4px;
+  text-align: center;
+}
+.nav-edit-toolbar button {
+  flex: 1;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+}
+.nav-edit-toolbar .net-save { background: var(--green); color: #fff; border-color: var(--green); }
+.nav-edit-toolbar .net-cancel { background: var(--surface); color: var(--text); }
+.nav-edit-toolbar .net-reset { background: var(--red-light); color: var(--red-dark); border-color: var(--red-border); flex: 0 0 auto; }
+
+/* Trang chủ: khi 1 nhóm còn ít mục sau khi ẩn bớt, phóng to thẻ cho dễ bấm */
+#page-home .hgrid.hgrid-compact-few {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 14px;
+}
+#page-home .hgrid.hgrid-compact-few .hcard {
+  min-height: 110px;
+  padding: 20px 12px;
+  border-radius: 16px;
+}
+#page-home .hgrid.hgrid-compact-few .hcard .ic { font-size: 34px; }
+#page-home .hgrid.hgrid-compact-few .hcard h2 { font-size: 15px; }
+@media (max-width: 780px) {
+  #page-home .hgrid.hgrid-compact-few { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  #page-home .hgrid.hgrid-compact-few .hcard { min-height: 84px; padding: 14px 8px; }
+  #page-home .hgrid.hgrid-compact-few .hcard .ic { font-size: 26px; }
+  #page-home .hgrid.hgrid-compact-few .hcard h2 { font-size: 12.5px; }
+}
