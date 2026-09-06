@@ -1191,7 +1191,7 @@
           <h1>💊 Kê đơn thuốc dịch vụ</h1>
           <div class="rx-panel-head-btns">
             <button class="rx-settings-btn rx-history-btn" id="rxHistoryBtn">📜 Đơn đã kê</button>
-            <a class="rx-settings-btn rx-history-btn" href="quan-ly-ban-thuoc.html" target="_blank" rel="noopener">📊 Quản lý bản thuốc</a>
+            <a class="rx-settings-btn rx-history-btn" href="quan-ly-ban-thuoc.html" target="_blank" rel="noopener">📊 Quản lý bán thuốc dịch vụ</a>
             <button class="rx-settings-btn" id="rxSettingsBtn">⚙ Cấu hình</button>
           </div>
         </div>
@@ -1334,6 +1334,7 @@
             </div>
           </div>
           <div class="rx-toast-inline" id="rxDupWarning">⚠ Thuốc này đã có trong toa, không thể thêm trùng.</div>
+          <div class="rx-toast-inline" id="rxLockedWarning">⚠ Thuốc không có trong kho, hãy chọn "Kê đơn ngoài Bệnh viện" để sửa tự do.</div>
 
           <div class="rx-table-wrap">
             <table class="rx-table">
@@ -1431,7 +1432,7 @@
                 <th class="rx-history-th-sort" data-sort="doctor_name">Bác sĩ kê <span class="rx-sort-ic"></span></th>
                 <th>Nơi kê</th>
                 <th>Thuốc</th>
-                <th class="rx-history-th-sold">Đã bán</th>
+                <th class="rx-history-th-sold">Trạng thái bán</th>
               </tr>
             </thead>
             <tbody id="rxHistoryList"></tbody>
