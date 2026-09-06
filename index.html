@@ -1239,26 +1239,13 @@
             </div>
           </div>
           <div class="rx-upload-box">
-            <div class="rx-cloud-title">📥 Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
+            <div class="rx-cloud-title">📥 Nạp danh sách thuốc (Trong &amp; Ngoài Bệnh viện)</div>
             <p class="rx-cloud-desc">
-              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và <b>Tên gốc</b>
-              (hoặc "Hoạt chất" / "Tên gốc, Hoạt chất"). Có thể có thêm cột "Dạng thuốc". Thuốc mới sẽ được
-              <b>cộng dồn</b> vào danh sách hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên.
+              Việc nạp/cập nhật danh sách thuốc từ file Excel (cho cả hai chế độ kê đơn) đã được chuyển sang trang
+              <b>📊 Quản lý bán thuốc dịch vụ</b> để gộp chung với phần quản lý kho thuốc, cho nhất quán.
+              Bấm nút bên dưới để mở trang đó (mục "🏬 Kho thuốc").
             </p>
-            <input type="file" id="rxExcelInput" accept=".xlsx,.xls">
-            <span id="rxExcelStatus" class="rx-sb-status"></span>
-          </div>
-
-          <div class="rx-upload-box">
-            <div class="rx-cloud-title">📥 Nạp danh sách thuốc "Ngoài Bệnh viện" từ file Excel</div>
-            <p class="rx-cloud-desc">
-              Dùng cho chế độ <b>Kê đơn ngoài Bệnh viện</b>. Đã có sẵn danh mục khởi điểm (tên gốc/hoạt chất phổ biến
-              theo nhiều nhóm bệnh) — có thể nạp thêm file Excel của riêng phòng khám (cùng định dạng cột như trên,
-              không giới hạn số lượng thuốc) để bổ sung, thuốc mới sẽ <b>cộng dồn</b>, tự bỏ qua thuốc trùng tên.
-            </p>
-            <input type="file" id="rxExcelInputOutside" accept=".xlsx,.xls">
-            <span id="rxExcelStatusOutside" class="rx-sb-status"></span>
-            <button type="button" class="rx-btn rx-btn-secondary" id="rxResetOutsideBtn" style="margin-top:8px;">↺ Khôi phục danh mục khởi điểm</button>
+            <a class="rx-settings-btn rx-history-btn" href="quan-ly-ban-thuoc.html" target="_blank" rel="noopener">📊 Mở Quản lý bán thuốc dịch vụ</a>
           </div>
         </div>
 

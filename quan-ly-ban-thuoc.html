@@ -86,6 +86,12 @@
   .num-input { width: 90px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
   .price-input { width: 100px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
 
+  .upload-box { border: 1.5px dashed var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+  .upload-box:last-child { margin-bottom: 0; }
+  .upload-title { font-weight: 700; font-size: 13.5px; margin-bottom: 6px; }
+  .upload-desc { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; line-height: 1.5; }
+  .upload-box input[type="file"] { padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 13px; background: var(--surface); }
+
   .order-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: #fff; transition: box-shadow .15s; }
   .order-card:hover { box-shadow: var(--shadow); }
   .order-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
@@ -189,6 +195,31 @@
 
       <!-- TAB: KHO THUỐC -->
       <div id="tabKho" class="hidden">
+        <div class="card" id="danhMucBox">
+          <h3 style="margin-top:0;">📋 Danh mục thuốc (tên thương mại + hoạt chất)</h3>
+          <div class="upload-box">
+            <div class="upload-title">Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
+            <p class="upload-desc">
+              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và
+              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "Dạng thuốc"/"ĐVT". Thuốc mới sẽ được
+              <b>cộng dồn</b> vào danh mục hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên. Dùng cho việc
+              kê đơn/tìm thuốc trong Bệnh viện.
+            </p>
+            <input type="file" id="drugCatalogInput" accept=".xlsx,.xls">
+            <span class="muted" id="statusMsgCatalog"></span>
+          </div>
+          <div class="upload-box">
+            <div class="upload-title">Nạp danh sách thuốc "Ngoài Bệnh viện" từ file Excel</div>
+            <p class="upload-desc">
+              Dùng cho chế độ <b>Kê đơn ngoài Bệnh viện</b>. Đã có sẵn danh mục khởi điểm (tên gốc/hoạt chất phổ
+              biến theo nhiều nhóm bệnh) — có thể nạp thêm file Excel riêng của phòng khám (cùng định dạng cột như
+              trên) để bổ sung, thuốc mới sẽ <b>cộng dồn</b>, tự bỏ qua thuốc trùng tên.
+            </p>
+            <input type="file" id="drugCatalogOutsideInput" accept=".xlsx,.xls">
+            <span class="muted" id="statusMsgCatalogOutside"></span>
+            <button type="button" class="btn-secondary" id="resetOutsideBtn" style="margin-top:8px;">↺ Khôi phục danh mục khởi điểm</button>
+          </div>
+        </div>
         <div class="toolbar" id="khoToolbar">
           <input type="file" id="excelFileInput" accept=".xls,.xlsx">
           <button class="btn-green" id="importExcelBtn">Nhập từ Excel</button>
@@ -356,8 +387,9 @@
     TAB_ELS.sell = document.getElementById('tabSell');
     TAB_ELS.kho = document.getElementById('tabKho');
     TAB_ELS.overview = document.getElementById('tabOverview');
-    // Ẩn công cụ sửa kho nếu là quản lý (chỉ xem)
+    // Ẩn công cụ sửa kho / nạp danh mục nếu là quản lý (chỉ xem)
     document.getElementById('khoToolbar').style.display = canEdit ? '' : 'none';
+    document.getElementById('danhMucBox').style.display = canEdit ? '' : 'none';
   }
   function switchTab(key) {
     [...tabsRow.children].forEach((b) => b.classList.toggle('active', b.dataset.key === key));
@@ -653,6 +685,122 @@
   }
   document.getElementById('receiptCloseBtn').addEventListener('click', () => receiptModal.classList.add('hidden'));
   document.getElementById('receiptPrintBtn').addEventListener('click', () => window.print());
+
+  // ---------- Danh mục thuốc (Trong BV / Ngoài BV) ----------
+  // Cùng cơ chế đọc cột và chuẩn hoá tên như trang kê đơn (index.html/js/prescription.js),
+  // để danh mục nạp ở đây tương thích với autocomplete lúc kê đơn.
+  const LS_DRUGS_OUTSIDE = 'rxLocalDrugsOutside';
+
+  function normalizeVN(str) {
+    return String(str || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').trim();
+  }
+  function pickDrugCol(headers, candidates) {
+    const normHeaders = headers.map(normalizeVN);
+    for (const cand of candidates) {
+      const idx = normHeaders.findIndex((h) => h.includes(normalizeVN(cand)));
+      if (idx !== -1) return idx;
+    }
+    return -1;
+  }
+  function parseDrugCatalogExcel(rows) {
+    if (rows.length < 2) throw new Error('File rỗng hoặc không đúng định dạng.');
+    const headers = rows[0].map((h) => String(h || ''));
+    const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
+    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
+    const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
+    if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
+    return rows.slice(1)
+      .map((r) => ({
+        brand: String(r[brandIdx] || '').trim(),
+        generic: genericIdx !== -1 ? String(r[genericIdx] || '').trim() : '',
+        form: formIdx !== -1 ? String(r[formIdx] || '').trim() : '',
+      }))
+      .filter((d) => d.brand);
+  }
+
+  // "Trong Bệnh viện": ghi vào bảng Supabase "thuoc" (đọc trực tiếp bằng anon key,
+  // giống cách trang kê đơn đọc/ghi danh mục này).
+  document.getElementById('drugCatalogInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('statusMsgCatalog');
+    statusEl.textContent = 'Đang đọc file...';
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      const parsed = parseDrugCatalogExcel(rows);
+
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc?select=ten_tm,ten_goc`, {
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      });
+      const existing = resp.ok ? await resp.json() : [];
+      const existingKeys = new Set(existing.map((d) => normalizeVN(d.ten_tm) + '|' + normalizeVN(d.ten_goc)));
+      const toAdd = parsed.filter((d) => {
+        const k = normalizeVN(d.brand) + '|' + normalizeVN(d.generic);
+        if (existingKeys.has(k)) return false;
+        existingKeys.add(k);
+        return true;
+      });
+
+      if (toAdd.length) {
+        const insResp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc`, {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json', Prefer: 'return=minimal',
+          },
+          body: JSON.stringify(toAdd.map((d) => ({ ten_tm: d.brand, ten_goc: d.generic, dang_thuoc: d.form || '' }))),
+        });
+        if (!insResp.ok) throw new Error('Lỗi ghi vào Supabase (HTTP ' + insResp.status + ')');
+      }
+      statusEl.textContent = `✓ Đã nạp ${parsed.length} dòng, thêm mới ${toAdd.length} thuốc (${parsed.length - toAdd.length} trùng, đã bỏ qua).`;
+      e.target.value = '';
+    } catch (err) {
+      statusEl.textContent = 'Lỗi: ' + err.message;
+    }
+  });
+
+  // "Ngoài Bệnh viện": lưu trong localStorage (dùng chung origin với trang kê đơn),
+  // đúng key mà index.html/js/prescription.js đọc ra (rxLocalDrugsOutside).
+  document.getElementById('drugCatalogOutsideInput').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('statusMsgCatalogOutside');
+    statusEl.textContent = 'Đang đọc file...';
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const wb = XLSX.read(ev.target.result, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        const parsed = parseDrugCatalogExcel(rows);
+
+        let current = [];
+        try { current = JSON.parse(localStorage.getItem(LS_DRUGS_OUTSIDE) || '[]'); } catch (er) { current = []; }
+        const existingKeys = new Set(current.map((d) => normalizeVN(d.brand) + '|' + normalizeVN(d.generic)));
+        const toAdd = parsed.filter((d) => {
+          const k = normalizeVN(d.brand) + '|' + normalizeVN(d.generic);
+          if (existingKeys.has(k)) return false;
+          existingKeys.add(k);
+          return true;
+        });
+        localStorage.setItem(LS_DRUGS_OUTSIDE, JSON.stringify(current.concat(toAdd)));
+        statusEl.textContent = `✓ Đã nạp ${parsed.length} dòng, thêm mới ${toAdd.length} thuốc (${parsed.length - toAdd.length} trùng, đã bỏ qua). Lưu ý: danh mục "Ngoài Bệnh viện" chỉ lưu trên trình duyệt này.`;
+        e.target.value = '';
+      } catch (err) {
+        statusEl.textContent = 'Lỗi: ' + err.message;
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  document.getElementById('resetOutsideBtn').addEventListener('click', () => {
+    if (!confirm('Thao tác này sẽ xoá mọi thuốc đã nạp thêm cho chế độ "Ngoài Bệnh viện" trên trình duyệt này và khôi phục lại danh mục mặc định ban đầu. Tiếp tục?')) return;
+    localStorage.removeItem(LS_DRUGS_OUTSIDE);
+    document.getElementById('statusMsgCatalogOutside').textContent = '✓ Đã khôi phục danh mục khởi điểm.';
+  });
 
   // ---------- TAB Kho thuốc ----------
   async function loadKho() {
