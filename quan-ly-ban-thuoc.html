@@ -8,74 +8,116 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
-    --bg: #f4f6f8; --surface: #fff; --border: #e2e6ea; --text: #1f2937; --muted: #6b7280;
-    --blue: #2563eb; --green: #1f9c8f; --green-light: #e6f7f5; --red: #dc2626; --amber: #92700a; --amber-bg: #fff3cd;
+    --bg-a: #eef2f9; --bg-b: #e7f1ee; --surface: #fff; --border: #e5e9f0; --text: #1f2937; --muted: #6b7280;
+    --blue: #2563eb; --blue-dark: #1d4ed8; --green: #17967f; --green-light: #e6f7f4; --red: #dc2626; --red-light: #fdecec;
+    --amber: #92700a; --amber-bg: #fff6dd; --shadow: 0 4px 18px rgba(30, 41, 59, .06), 0 1px 3px rgba(30, 41, 59, .06);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; background: var(--bg); color: var(--text); }
-  .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px 60px; }
-  h1 { font-size: 20px; margin: 0 0 4px; }
-  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 16px; }
-  .login-box { max-width: 340px; margin: 80px auto; text-align: center; }
-  .login-box input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 15px; margin: 10px 0; }
-  .login-box button, .toolbar button, .role-btn { background: var(--blue); color: #fff; border: none; border-radius: 8px; padding: 10px 16px; font-size: 14px; cursor: pointer; }
-  .login-box button:hover, .toolbar button:hover { opacity: .9; }
-  .err { color: var(--red); font-size: 13px; min-height: 18px; }
-  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
-  .role-badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--green-light); color: var(--green); font-weight: 700; }
-  .logout-link { font-size: 12.5px; color: var(--muted); cursor: pointer; text-decoration: underline; background: none; border: none; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-  .tab-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 13.5px; cursor: pointer; }
-  .tab-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+  body {
+    margin: 0; font-family: 'Segoe UI', Roboto, Arial, sans-serif; color: var(--text); min-height: 100vh;
+    background: linear-gradient(160deg, var(--bg-a) 0%, var(--bg-b) 100%);
+  }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 28px 18px 60px; }
+  h1 { font-size: 21px; margin: 0 0 4px; letter-spacing: .2px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; box-shadow: var(--shadow); }
+
+  /* ---- Đăng nhập ---- */
+  .login-shell { min-height: calc(100vh - 40px); display: flex; align-items: center; justify-content: center; }
+  .login-box {
+    max-width: 380px; width: 100%; text-align: center; padding: 36px 32px;
+    border-radius: 20px; box-shadow: 0 20px 50px rgba(30, 41, 59, .12), 0 2px 8px rgba(30, 41, 59, .06);
+  }
+  .login-icon {
+    width: 60px; height: 60px; margin: 0 auto 14px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--blue), var(--green)); display: flex; align-items: center; justify-content: center;
+    font-size: 28px; box-shadow: 0 8px 20px rgba(37, 99, 235, .25);
+  }
+  .login-box h1 { font-size: 19px; margin: 0 0 4px; }
+  .login-box .sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .login-box input {
+    width: 100%; padding: 13px 14px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 15px;
+    text-align: center; letter-spacing: 2px; transition: border-color .15s, box-shadow .15s; outline: none;
+  }
+  .login-box input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+  .login-box input.shake-error { border-color: var(--red); }
+  .login-box button {
+    width: 100%; margin-top: 16px; background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff;
+    border: none; border-radius: 10px; padding: 13px 16px; font-size: 14.5px; font-weight: 600; cursor: pointer;
+    transition: transform .12s, opacity .15s;
+  }
+  .login-box button:hover { opacity: .93; }
+  .login-box button:active { transform: scale(.98); }
+  .login-box button:disabled { opacity: .6; cursor: default; }
+  .err { color: var(--red); font-size: 12.5px; min-height: 18px; margin-top: 12px; font-weight: 600; }
+
+  @keyframes shakeAnim { 10%,90% { transform: translateX(-1px); } 20%,80% { transform: translateX(2px); } 30%,50%,70% { transform: translateX(-5px); } 40%,60% { transform: translateX(5px); } }
+  .shake { animation: shakeAnim .5s cubic-bezier(.36,.07,.19,.97) both; }
+
+  /* ---- Giao diện chính ---- */
+  .toolbar button, .role-btn { background: var(--blue); color: #fff; border: none; border-radius: 9px; padding: 9px 15px; font-size: 13.5px; cursor: pointer; transition: opacity .15s; }
+  .toolbar button:hover { opacity: .9; }
+  .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .top-bar h1 { display: flex; align-items: center; gap: 8px; }
+  .role-badge { font-size: 12px; padding: 5px 12px; border-radius: 999px; background: var(--green-light); color: var(--green); font-weight: 700; display: inline-block; }
+  .logout-link { font-size: 12.5px; color: var(--muted); cursor: pointer; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 7px 13px; transition: border-color .15s, color .15s; }
+  .logout-link:hover { border-color: var(--red); color: var(--red); }
+  .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; background: var(--surface); padding: 6px; border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow); width: fit-content; }
+  .tab-btn { background: transparent; border: none; border-radius: 8px; padding: 9px 16px; font-size: 13.5px; cursor: pointer; color: var(--muted); font-weight: 600; transition: background .15s, color .15s; }
+  .tab-btn:hover { background: var(--bg-a); }
+  .tab-btn.active { background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff; box-shadow: 0 4px 10px rgba(37, 99, 235, .25); }
   .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
-  .toolbar input[type="date"], .toolbar input[type="text"], .toolbar input[type="file"] { padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; }
-  .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; font-size: 13.5px; cursor: pointer; }
-  .btn-green { background: var(--green); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13.5px; cursor: pointer; }
+  .toolbar input[type="date"], .toolbar input[type="text"], .toolbar input[type="file"] { padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 13.5px; background: var(--surface); }
+  .toolbar input:focus { outline: none; border-color: var(--blue); }
+  .btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); border-radius: 9px; padding: 9px 15px; font-size: 13.5px; cursor: pointer; transition: border-color .15s; }
+  .btn-secondary:hover { border-color: var(--blue); }
+  .btn-green { background: linear-gradient(135deg, var(--green), #128069); color: #fff; border: none; border-radius: 9px; padding: 9px 15px; font-size: 13.5px; cursor: pointer; }
   .stat-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
-  .stat { flex: 1; min-width: 140px; background: var(--green-light); border-radius: 10px; padding: 14px; text-align: center; }
-  .stat .num { font-size: 24px; font-weight: 800; color: var(--green); }
-  .stat .lbl { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+  .stat { flex: 1; min-width: 150px; background: linear-gradient(160deg, var(--green-light), #fff); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
+  .stat .num { font-size: 25px; font-weight: 800; color: var(--green); }
+  .stat .lbl { font-size: 12px; color: var(--muted); margin-top: 3px; }
   table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 700; font-size: 11.5px; text-transform: uppercase; letter-spacing: .3px; }
+  tbody tr:hover { background: var(--bg-a); }
   .qty { font-weight: 700; color: var(--green); }
   .muted { color: var(--muted); font-size: 12.5px; }
-  .loading, .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 13.5px; }
+  .loading, .empty { text-align: center; color: var(--muted); padding: 34px 0; font-size: 13.5px; }
   .hidden { display: none !important; }
-  .num-input { width: 90px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
-  .price-input { width: 100px; padding: 5px 7px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; }
+  .num-input { width: 90px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
+  .price-input { width: 100px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 7px; font-size: 13px; }
 
-  .order-card { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; }
+  .order-card { border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; background: #fff; transition: box-shadow .15s; }
+  .order-card:hover { box-shadow: var(--shadow); }
   .order-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
   .order-head b { font-size: 14px; }
   .order-meta { font-size: 12px; color: var(--muted); }
-  .group-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: var(--green-light); border-radius: 8px; margin-bottom: 6px; }
+  .group-row { display: flex; align-items: center; gap: 10px; padding: 9px 12px; background: var(--green-light); border-radius: 9px; margin-bottom: 6px; }
   .group-row input[type="checkbox"] { width: 19px; height: 19px; accent-color: var(--green); cursor: pointer; flex: none; }
   .group-label { font-weight: 700; font-size: 13px; color: var(--green); flex: 1; }
-  .item-row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px dashed var(--border); }
+  .item-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-top: 1px dashed var(--border); }
   .item-row:first-of-type { border-top: none; }
   .item-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--blue); cursor: pointer; flex: none; }
   .item-info { flex: 1; font-size: 13px; }
   .item-sold-tag { font-size: 11.5px; color: var(--green); font-weight: 600; }
   .item-unsold-tag { font-size: 11.5px; color: var(--muted); }
   .no-match-tag { font-size: 11px; color: var(--red); }
-  .sub-label { font-size: 11.5px; color: var(--muted); font-weight: 700; text-transform: uppercase; margin: 8px 0 4px; }
+  .sub-label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .3px; margin: 10px 0 5px; }
 
-  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; }
-  .modal-box { background: #fff; border-radius: 12px; padding: 18px; max-width: 380px; width: 100%; max-height: 88vh; overflow-y: auto; }
+  .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .45); display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px; backdrop-filter: blur(2px); }
+  .modal-box { background: #fff; border-radius: 16px; padding: 20px; max-width: 380px; width: 100%; max-height: 88vh; overflow-y: auto; box-shadow: 0 24px 60px rgba(0,0,0,.25); }
   #receiptModal .modal-box { max-width: 560px; }
   .modal-box h3 { margin: 0 0 12px; font-size: 15px; }
   .seller-list { max-height: 220px; overflow-y: auto; margin-bottom: 10px; }
-  .seller-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; cursor: pointer; }
+  .seller-item { display: flex; justify-content: space-between; align-items: center; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px; margin-bottom: 6px; cursor: pointer; transition: border-color .15s; }
   .seller-item:hover { border-color: var(--blue); }
   .seller-item .del { color: var(--red); font-size: 12px; cursor: pointer; padding: 2px 6px; }
   .add-seller-row { display: flex; gap: 6px; margin-top: 8px; }
-  .add-seller-row input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; }
-  .add-seller-row button { padding: 8px 12px; border-radius: 8px; border: none; background: var(--green); color: #fff; cursor: pointer; font-size: 13px; }
-  .modal-cancel { display: block; width: 100%; margin-top: 10px; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; font-size: 13px; }
+  .add-seller-row input { flex: 1; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 9px; font-size: 13.5px; }
+  .add-seller-row button { padding: 9px 13px; border-radius: 9px; border: none; background: var(--green); color: #fff; cursor: pointer; font-size: 13px; }
+  .modal-cancel { display: block; width: 100%; margin-top: 10px; padding: 9px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; font-size: 13px; }
 
   .receipt-total { font-size: 20px; font-weight: 800; color: var(--green); text-align: right; margin-top: 8px; }
-  .receipt-print-btn { margin-top: 10px; width: 100%; padding: 10px; border-radius: 8px; border: none; background: var(--blue); color: #fff; cursor: pointer; font-size: 13.5px; }
+  .receipt-print-btn { margin-top: 10px; width: 100%; padding: 11px; border-radius: 9px; border: none; background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff; cursor: pointer; font-size: 13.5px; font-weight: 600; }
 
   @media print {
     body * { visibility: hidden; }
@@ -86,13 +128,17 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="login-box card" id="loginBox">
-      <h1>🔒 Quản lý bán thuốc dịch vụ</h1>
-      <p class="muted">Nhập mật khẩu — quản lý và dược sĩ dùng mật khẩu khác nhau</p>
-      <input type="password" id="passInput" placeholder="Mật khẩu" autocomplete="off">
-      <div class="err" id="loginErr"></div>
-      <button id="loginBtn">Đăng nhập</button>
+    <div class="login-shell" id="loginShell">
+      <div class="login-box card" id="loginBox">
+        <div class="login-icon">🔒</div>
+        <h1>Quản lý bán thuốc dịch vụ</h1>
+        <p class="sub">Nhập mật khẩu</p>
+        <input type="password" id="passInput" placeholder="••••••" autocomplete="off">
+        <div class="err" id="loginErr"></div>
+        <button id="loginBtn">Đăng nhập</button>
+      </div>
     </div>
+
 
     <div id="dashBox" class="hidden">
       <div class="top-bar">
@@ -192,6 +238,7 @@
   const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaHNxaGp5b2Jia3R6bXduYmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjgwNTgsImV4cCI6MjEwMDkwNDA1OH0.UZxojIHCrd8D8vUI6f-TWqZX_qmZjPJXlNT5ljn4Gp0';
 
   const loginBox = document.getElementById('loginBox');
+  const loginShell = document.getElementById('loginShell');
   const dashBox = document.getElementById('dashBox');
   const passInput = document.getElementById('passInput');
   const loginErr = document.getElementById('loginErr');
@@ -240,28 +287,49 @@
   document.getElementById('loginBtn').addEventListener('click', doLogin);
   passInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') doLogin(); });
 
+  function shakeLoginBox(errMsg) {
+    passInput.classList.add('shake-error');
+    loginBox.classList.remove('shake');
+    void loginBox.offsetWidth; // buộc reflow để animation chạy lại được từ đầu
+    loginBox.classList.add('shake');
+    if (errMsg) loginErr.textContent = errMsg;
+  }
+
   async function doLogin() {
     const p = passInput.value.trim();
-    if (!p) return;
+    if (!p) { shakeLoginBox('Vui lòng nhập mật khẩu.'); passInput.focus(); return; }
     loginErr.textContent = '';
+    passInput.classList.remove('shake-error');
     const btn = document.getElementById('loginBtn');
     btn.disabled = true; btn.textContent = 'Đang kiểm tra...';
     currentPassword = p;
     const { ok, status, data } = await callWorker('login');
     btn.disabled = false; btn.textContent = 'Đăng nhập';
-    if (status === 423) { loginErr.textContent = `Đã nhập sai quá nhiều lần. Thử lại sau ${Math.ceil((data.remainingSec || 1800) / 60)} phút.`; return; }
-    if (!ok || !data.role) { loginErr.textContent = 'Sai mật khẩu, vui lòng thử lại.'; return; }
+    if (status === 423) {
+      shakeLoginBox(`🔒 Đã khoá do nhập sai quá nhiều lần. Thử lại sau ${Math.ceil((data.remainingSec || 1800) / 60)} phút.`);
+      return;
+    }
+    if (!ok || !data.role) {
+      const left = data && data.attemptsLeft != null ? data.attemptsLeft : null;
+      const msg = left != null
+        ? `Sai mật khẩu — còn ${left} lần thử trước khi bị khoá 30 phút.`
+        : 'Sai mật khẩu, vui lòng thử lại.';
+      shakeLoginBox(msg);
+      passInput.select();
+      return;
+    }
     currentRole = data.role;
     sessionStorage.setItem('rxPass', currentPassword);
     sessionStorage.setItem('rxRole', currentRole);
     showDash();
   }
   function showLogin(err) {
-    loginBox.classList.remove('hidden'); dashBox.classList.add('hidden');
+    loginShell.classList.remove('hidden'); dashBox.classList.add('hidden');
     loginErr.textContent = err || ''; passInput.value = ''; passInput.focus();
+    if (err) shakeLoginBox();
   }
   function showDash() {
-    loginBox.classList.add('hidden'); dashBox.classList.remove('hidden');
+    loginShell.classList.add('hidden'); dashBox.classList.remove('hidden');
     roleBadge.textContent = currentRole === 'admin' ? 'Admin (mở khoá được)' : currentRole === 'pharmacist' ? 'Dành cho Dược sĩ' : 'Quản lý (chỉ xem)';
     buildTabs();
     switchTab('stats');
