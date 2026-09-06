@@ -563,7 +563,7 @@
         <div style="margin-bottom:10px;">Có: .............................................</div>
 
         <div style="margin-bottom:8px;">Họ và tên người nộp tiền: <b>${esc((order && order.patient_name) || '')}</b></div>
-        <div style="margin-bottom:8px;">Địa chỉ: ..........................................................................................</div>
+        <div style="margin-bottom:8px;">Địa chỉ: ${order && order.patient_address ? '<b>' + esc(order.patient_address) + '</b>' : '..........................................................................................'}</div>
         <div style="margin-bottom:8px;">Lý do nộp: Tiền mua thuốc theo đơn${order && order.doctor_name ? ' (BS ' + esc(order.doctor_name) + ' kê)' : ''}</div>
         <div style="margin-bottom:8px;">Số tiền: <b>${fmtVnd(total)}</b></div>
         <div style="margin-bottom:8px;">Viết bằng chữ: <i>${esc(soTienBangChuVN(total))}</i></div>
