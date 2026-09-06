@@ -2032,42 +2032,8 @@
     return dosing ? `${dosing}.` : '';
   }
 
-  $('rxPrintBtn').addEventListener('click', async () => {
-    const isHandwritten = rxPrescribeMode === 'handwritten';
-    if (!isHandwritten && rxRows.length === 0) { customAlert('Chưa có thuốc', 'Toa thuốc chưa có thuốc nào.'); return; }
-    const btn = $('rxPrintBtn');
-    const originalLabel = btn.textContent;
-    btn.disabled = true;
-    btn.textContent = 'Đang tạo PDF...';
-
-    try {
-      const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
-      const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
-      const logo = currentLogo();
-      const doctor = doctorSelect.value || '';
-      const name = $('rxPatientName').value.trim();
-      const age = calcAge(dobInput.value);
-      const sex = $('rxPatientSex').value;
-      const diag = $('rxDiagnosis').value.trim();
-      const address = getFullAddress();
-      const vPulse = $('rxVitalPulse').value.trim();
-      const vBpSys = $('rxVitalBpSys').value.trim();
-      const vBpDia = $('rxVitalBpDia').value.trim();
-      const vBp = (vBpSys || vBpDia) ? `${vBpSys}/${vBpDia}` : '';
-      const vTemp = $('rxVitalTemp').value.trim();
-      const vResp = $('rxVitalResp').value.trim();
-      const vWeight = $('rxVitalWeight').value.trim();
-      const vitalsParts = [];
-      if (vPulse) vitalsParts.push(`Mạch: ${vPulse} lần/phút`);
-      if (vBp) vitalsParts.push(`Huyết áp: ${vBp} mmHg`);
-      if (vTemp) vitalsParts.push(`Nhiệt độ: ${vTemp}°C`);
-      if (vResp) vitalsParts.push(`Nhịp thở: ${vResp} lần/phút`);
-      if (vWeight) vitalsParts.push(`Cân nặng: ${vWeight} kg`);
-      const note = $('rxNote').value.trim();
-      const dateWords = formatVNDateWords($('rxDate').value) || formatVNDateWords(todayLocalISO());
-      const blankDateSign = isHandwritten && !!$('rxHandwrittenBlankDate') && $('rxHandwrittenBlankDate').checked;
-
-      // ---------- Tạo PDF bằng văn bản thật (vector, nhẹ, sắc nét, copy được chữ) ----------
+  function buildRxPdfDoc(data) {
+    const { org1, org2, logo, doctor, name, age, sex, diag, address, vitalsParts, note, dateWords, blankDateSign, isHandwritten, items, numHandwrittenLines } = data;
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ unit: 'mm', format: 'a5', compress: true });
       pdf.addFileToVFS('Roboto-Regular.ttf', PDF_FONT_REGULAR_B64);
@@ -2231,7 +2197,7 @@
       y += 2;
       if (isHandwritten) {
         sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
-        const numLines = Math.max(3, Math.min(12, parseInt($('rxHandwrittenLines').value, 10) || 6));
+        const numLines = numHandwrittenLines || 6;
         setF('normal', 9);
         for (let i = 1; i <= numLines; i++) {
           ensureSpace(15);
@@ -2264,7 +2230,7 @@
         }
       } else {
         sectionHeader('II. THÔNG TIN ĐƠN THUỐC:');
-        rxRows.forEach((r, i) => {
+        items.forEach((r, i) => {
           ensureSpace(10);
           const nameStr = `${i + 1}. ${r.brand}${r.generic ? ' (' + r.generic + ')' : ''}`;
           const qtyStr = r.qty ? `${r.qty} ${unitFromForm(r.form)}` : '';
@@ -2347,6 +2313,47 @@
       } else {
         dottedBlank(signX, y, signW, 10.5);
       }
+    return pdf;
+  }
+
+  $('rxPrintBtn').addEventListener('click', async () => {
+    const isHandwritten = rxPrescribeMode === 'handwritten';
+    if (!isHandwritten && rxRows.length === 0) { customAlert('Chưa có thuốc', 'Toa thuốc chưa có thuốc nào.'); return; }
+    const btn = $('rxPrintBtn');
+    const originalLabel = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = 'Đang tạo PDF...';
+
+    try {
+      const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
+      const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
+      const logo = currentLogo();
+      const doctor = doctorSelect.value || '';
+      const name = $('rxPatientName').value.trim();
+      const age = calcAge(dobInput.value);
+      const sex = $('rxPatientSex').value;
+      const diag = $('rxDiagnosis').value.trim();
+      const address = getFullAddress();
+      const vPulse = $('rxVitalPulse').value.trim();
+      const vBpSys = $('rxVitalBpSys').value.trim();
+      const vBpDia = $('rxVitalBpDia').value.trim();
+      const vBp = (vBpSys || vBpDia) ? `${vBpSys}/${vBpDia}` : '';
+      const vTemp = $('rxVitalTemp').value.trim();
+      const vResp = $('rxVitalResp').value.trim();
+      const vWeight = $('rxVitalWeight').value.trim();
+      const vitalsParts = [];
+      if (vPulse) vitalsParts.push(`Mạch: ${vPulse} lần/phút`);
+      if (vBp) vitalsParts.push(`Huyết áp: ${vBp} mmHg`);
+      if (vTemp) vitalsParts.push(`Nhiệt độ: ${vTemp}°C`);
+      if (vResp) vitalsParts.push(`Nhịp thở: ${vResp} lần/phút`);
+      if (vWeight) vitalsParts.push(`Cân nặng: ${vWeight} kg`);
+      const note = $('rxNote').value.trim();
+      const dateWords = formatVNDateWords($('rxDate').value) || formatVNDateWords(todayLocalISO());
+      const blankDateSign = isHandwritten && !!$('rxHandwrittenBlankDate') && $('rxHandwrittenBlankDate').checked;
+      const numHandwrittenLines = isHandwritten ? Math.max(3, Math.min(12, parseInt($('rxHandwrittenLines').value, 10) || 6)) : 0;
+
+      // ---------- Tạo PDF bằng văn bản thật (vector, nhẹ, sắc nét, copy được chữ) ----------
+      const pdf = buildRxPdfDoc({ org1, org2, logo, doctor, name, age, sex, diag, address, vitalsParts, note, dateWords, blankDateSign, isHandwritten, items: rxRows, numHandwrittenLines });
 
       const safeName = (name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = $('rxDate').value || todayLocalISO();
@@ -2363,6 +2370,9 @@
         doctorName: doctor,
         mode: orderMode,
         items: isHandwritten ? [] : rxRows,
+        // Lưu kèm các thông tin còn lại lúc kê (tuổi/giới tính/sinh hiệu/lời dặn/ngày/để trống ký)
+        // để sau này "In lại" từ lịch sử ra được đúng y hệt bản gốc, không thiếu thông tin.
+        extra: { age, sex, vitalsParts, note, dateWords, blankDateSign },
       });
       pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
     } catch (err) {
@@ -2372,6 +2382,7 @@
       btn.textContent = originalLabel;
     }
   });
+
 
   // ======================================================================
   // PHẦN CUỐI: LỊCH SỬ "ĐƠN THUỐC ĐÃ KÊ" (công khai — ai kê ở đâu cũng thấy)
@@ -2408,7 +2419,7 @@
   // bảng "logo" đang dùng) nên chỉ lưu tên bệnh nhân + chẩn đoán + danh sách
   // thuốc, KHÔNG lưu CCCD/địa chỉ chi tiết hay thông tin định danh nhạy cảm.
   // ======================================================================
-  async function saveRxHistory({ patientName, patientAddress, diagnosis, doctorName, mode, items }) {
+  async function saveRxHistory({ patientName, patientAddress, diagnosis, doctorName, mode, items, extra }) {
     try {
       await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
         method: 'POST',
@@ -2420,6 +2431,7 @@
           doctor_name: doctorName || null,
           mode: mode || null,
           items: items || [],
+          extra: extra || null,
         }),
       });
     } catch (e) {
@@ -2463,57 +2475,47 @@
     return 'rx-mode-hospital';
   }
 
-  // In lại 1 đơn thuốc từ lịch sử. LƯU Ý: bảng lịch sử chỉ lưu tên bệnh nhân/chẩn đoán/bác sĩ/
-  // thuốc — KHÔNG lưu tuổi, giới tính, địa chỉ, sinh hiệu, ghi chú (những ô đó chỉ có trên form
-  // lúc kê), nên bản in lại là bản RÚT GỌN (đủ để đối chiếu/phát lại thuốc), không phải bản in
-  // đầy đủ y hệt lúc kê ban đầu.
+  // In lại 1 đơn thuốc từ lịch sử — dùng LẠI đúng hàm buildRxPdfDoc (như lúc kê), nên ra
+  // đúng y hệt bản gốc (bố cục, chữ ký, sinh hiệu...). Các đơn kê TỪ SAU khi có tính năng này
+  // (cột "extra" trong Supabase) mới có đủ tuổi/giới tính/sinh hiệu/lời dặn để in đủ như gốc;
+  // đơn kê TRƯỚC đó (chưa có cột "extra") sẽ in thiếu các mục đó (để trống), chỉ có tên/địa
+  // chỉ/chẩn đoán/bác sĩ/danh sách thuốc — không tránh được vì lúc đó chưa lưu các trường này.
   function printHistoryRx(row) {
-    const items = Array.isArray(row.items) ? row.items : [];
-    const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
-    const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
-    const dateStr = fmtHistoryTime(row.created_at);
-    const rowsHtml = items.map((it, idx) => `
-      <tr>
-        <td style="text-align:center;">${idx + 1}</td>
-        <td><b>${escapeHtml(it.brand || '')}</b>${it.generic ? '<br><span style="color:#666;font-size:11px;">' + escapeHtml(it.generic) + '</span>' : ''}</td>
-        <td>${escapeHtml(it.form || '')}</td>
-        <td>${escapeHtml(it.usage || '')}</td>
-        <td style="text-align:center;">${escapeHtml(it.days || '')}</td>
-        <td style="text-align:center;">${escapeHtml(it.morning || '0')}-${escapeHtml(it.noon || '0')}-${escapeHtml(it.afternoon || '0')}-${escapeHtml(it.evening || '0')}</td>
-        <td style="text-align:center;">${escapeHtml(it.qty || '')}</td>
-      </tr>`).join('');
-    const win = window.open('', '_blank');
-    if (!win) { customAlert('Không mở được cửa sổ in', 'Trình duyệt đã chặn popup — vui lòng cho phép popup rồi thử lại.'); return; }
-    win.document.write(`
-      <html><head><meta charset="UTF-8"><title>In lại đơn thuốc</title>
-      <style>
-        body { font-family: Arial, sans-serif; padding: 24px; color: #111; }
-        h2 { margin: 0 0 2px; } .org { color: #444; font-size: 12.5px; margin-bottom: 14px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12.5px; }
-        th, td { border: 1px solid #ccc; padding: 6px 8px; }
-        th { background: #f3f4f6; }
-        .info div { margin-bottom: 3px; font-size: 13px; }
-        .note { margin-top: 14px; font-size: 11.5px; color: #888; font-style: italic; }
-      </style></head><body>
-        <h2>${escapeHtml(org1)}</h2>
-        <div class="org">${escapeHtml(org2)}</div>
-        <h3>ĐƠN THUỐC (in lại từ lịch sử)</h3>
-        <div class="info">
-          <div><b>Bệnh nhân:</b> ${escapeHtml(row.patient_name || '(không tên)')}</div>
-          ${row.patient_address ? `<div><b>Địa chỉ:</b> ${escapeHtml(row.patient_address)}</div>` : ''}
-          <div><b>Chẩn đoán:</b> ${escapeHtml(row.diagnosis || '—')}</div>
-          <div><b>Bác sĩ kê:</b> ${escapeHtml(row.doctor_name || '—')}</div>
-          <div><b>Nơi kê:</b> ${escapeHtml(rxModeLabel(row.mode))}</div>
-          <div><b>Thời gian kê:</b> ${escapeHtml(dateStr)}</div>
-        </div>
-        <table><thead><tr><th>#</th><th>Tên thuốc</th><th>Dạng</th><th>Cách dùng</th><th>Số ngày</th><th>S-T-C-T</th><th>SL</th></tr></thead>
-        <tbody>${rowsHtml || '<tr><td colspan="7" style="text-align:center;color:#888;">(không có thông tin thuốc)</td></tr>'}</tbody></table>
-        <p class="note">* Bản in lại rút gọn từ lịch sử hệ thống — không thể hiện tuổi/giới tính/địa chỉ/sinh hiệu vì các thông tin này không được lưu trữ.</p>
-        <script>window.onload = () => window.print();</script>
-      </body></html>
-    `);
-    win.document.close();
+    if (row.mode === 'handwritten') {
+      customAlert('Không thể in lại', 'Đơn này là toa viết tay (chỉ lưu khung trống để bác sĩ tự ghi tay) — không có dữ liệu thuốc để in lại.');
+      return;
+    }
+    try {
+      const items = Array.isArray(row.items) ? row.items : [];
+      const extra = row.extra || {};
+      const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
+      const org2 = localStorage.getItem(LS_ORG2) || DEFAULT_ORG2;
+      const logo = currentLogo();
+      const dateWords = extra.dateWords || formatVNDateWords((row.created_at || '').slice(0, 10)) || formatVNDateWords(todayLocalISO());
+      const pdf = buildRxPdfDoc({
+        org1, org2, logo,
+        doctor: row.doctor_name || '',
+        name: row.patient_name || '',
+        age: extra.age != null ? extra.age : null,
+        sex: extra.sex || '',
+        diag: row.diagnosis || '',
+        address: row.patient_address || '',
+        vitalsParts: Array.isArray(extra.vitalsParts) ? extra.vitalsParts : [],
+        note: extra.note || '',
+        dateWords,
+        blankDateSign: !!extra.blankDateSign,
+        isHandwritten: false,
+        items,
+        numHandwrittenLines: 0,
+      });
+      const safeName = (row.patient_name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
+      const fileDate = (row.created_at || '').slice(0, 10) || todayLocalISO();
+      pdf.save(`DonThuoc_InLai_${safeName}_${fileDate}.pdf`);
+    } catch (err) {
+      customAlert('Lỗi in lại', 'Có lỗi khi tạo lại PDF: ' + err.message);
+    }
   }
+
 
   function fmtHistoryTime(iso) {
     try {
@@ -2709,8 +2711,21 @@
     }
   }
 
+  const LS_RX_HISTORY_UNLOCK = 'rxHistoryUnlocked';
+  const RX_HISTORY_PASSWORD = 'cs2';
+  async function unlockRxHistoryIfNeeded() {
+    if (sessionStorage.getItem(LS_RX_HISTORY_UNLOCK) === '1') return true;
+    const pass = await customPrompt('Nội bộ', 'Nhập mật khẩu để xem "Đơn đã kê" (chỉ nội bộ được xem)', '');
+    if (pass === null) return false;
+    if (pass !== RX_HISTORY_PASSWORD) { customAlert('Sai mật khẩu', 'Mật khẩu không đúng — mục này chỉ dành cho nội bộ.'); return false; }
+    sessionStorage.setItem(LS_RX_HISTORY_UNLOCK, '1');
+    return true;
+  }
+
   if ($('rxHistoryBtn') && rxHistoryOverlay) {
-    $('rxHistoryBtn').addEventListener('click', () => {
+    $('rxHistoryBtn').addEventListener('click', async () => {
+      const ok = await unlockRxHistoryIfNeeded();
+      if (!ok) return;
       rxHistoryOverlay.classList.add('show');
       rxHistoryLoadMoreBtn.style.display = '';
       updateRxSortIndicators();
