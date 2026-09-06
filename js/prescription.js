@@ -884,6 +884,7 @@
   }
 
   let brandLinked = false;
+  let brandFieldsLocked = false;
   function pickSuggest(d) {
     brandInput.value = d.brand;
     genericInput.value = d.generic;
@@ -891,11 +892,12 @@
     suggestBox.classList.remove('show');
     autoFillUsage(d.brand, d.generic);
     brandLinked = true;
-    // Thuốc trong bệnh viện = thuốc trong kho: khoá "Tên thương mại"/"Dạng thuốc" sau khi đã chọn,
-    // để không lệch với tên trong kho (ảnh hưởng việc trừ tồn kho tự động khi dược sĩ bán).
+    // Thuốc trong bệnh viện = thuốc trong kho: khoá "Tên thương mại"/"Dạng thuốc" sau khi đã chọn
+    // (không cho sửa từng ký tự, để không lệch với tên trong kho — ảnh hưởng việc trừ tồn kho tự
+    // động khi dược sĩ bán). Không khoá cứng bằng readOnly (vẫn bấm/click vào ô bình thường được,
+    // con trỏ vẫn nhấp nháy) — hễ cố gõ/xoá là XOÁ TRẮNG cả tên để chọn lại từ đầu, không khoá chết.
     if (rxPrescribeMode !== 'outside') {
-      brandInput.readOnly = true;
-      formInput.readOnly = true;
+      brandFieldsLocked = true;
       brandInput.classList.add('rx-field-locked');
       formInput.classList.add('rx-field-locked');
     }
@@ -904,8 +906,7 @@
   }
 
   function unlockBrandFields() {
-    brandInput.readOnly = false;
-    formInput.readOnly = false;
+    brandFieldsLocked = false;
     brandInput.classList.remove('rx-field-locked');
     formInput.classList.remove('rx-field-locked');
   }
@@ -919,17 +920,30 @@
     lockedWarnTimer = setTimeout(() => el.classList.remove('show'), 3200);
   }
 
+  // Xoá trắng toàn bộ thuốc đã chọn (mở khoá lại) để người dùng gõ/tìm lại từ đầu.
+  function clearLockedDrugSelection() {
+    brandInput.value = '';
+    genericInput.value = '';
+    formInput.value = '';
+    unlockBrandFields();
+    brandLinked = false;
+  }
+
   function guardLockedField(e) {
+    if (!brandFieldsLocked) return;
     const allowedKeys = ['Tab', 'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Shift', 'Control', 'Alt', 'Meta'];
     if (allowedKeys.includes(e.key)) return;
     if ((e.ctrlKey || e.metaKey) && ['c', 'a', 'C', 'A'].includes(e.key)) return; // cho phép copy / chọn hết để copy
+    // Mọi thao tác sửa nội dung (gõ chữ, Backspace, Delete, dán) đều xoá trắng cả tên thuốc để
+    // chọn lại từ đầu — không khoá chết không cho làm gì cả.
     e.preventDefault();
+    clearLockedDrugSelection();
     showLockedDrugWarning();
   }
-  brandInput.addEventListener('keydown', (e) => { if (brandInput.readOnly) guardLockedField(e); });
-  formInput.addEventListener('keydown', (e) => { if (formInput.readOnly) guardLockedField(e); });
-  brandInput.addEventListener('paste', (e) => { if (brandInput.readOnly) { e.preventDefault(); showLockedDrugWarning(); } });
-  formInput.addEventListener('paste', (e) => { if (formInput.readOnly) { e.preventDefault(); showLockedDrugWarning(); } });
+  brandInput.addEventListener('keydown', guardLockedField);
+  formInput.addEventListener('keydown', guardLockedField);
+  brandInput.addEventListener('paste', (e) => { if (brandFieldsLocked) { e.preventDefault(); clearLockedDrugSelection(); showLockedDrugWarning(); } });
+  formInput.addEventListener('paste', (e) => { if (brandFieldsLocked) { e.preventDefault(); clearLockedDrugSelection(); showLockedDrugWarning(); } });
 
   // Nếu người dùng gõ tay tên thuốc (không chọn từ gợi ý) thì vẫn tự điền cách dùng khi rời ô
   brandInput.addEventListener('blur', () => {
