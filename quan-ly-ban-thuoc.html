@@ -200,10 +200,13 @@
           <div class="upload-box">
             <div class="upload-title">Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
             <p class="upload-desc">
-              File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và
-              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "Dạng thuốc"/"ĐVT". Thuốc mới sẽ được
-              <b>cộng dồn</b> vào danh mục hiện có (không xoá thuốc cũ), tự bỏ qua thuốc trùng tên. Dùng cho việc
-              kê đơn/tìm thuốc trong Bệnh viện.
+              1 bảng DUY NHẤT — vừa là danh mục để kê đơn, vừa là kho để dược sĩ thống kê. File cần có ít nhất cột
+              <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng"). Nếu file có thêm cột
+              <b>Tên gốc</b>/"Hoạt chất", "Dạng thuốc", "ĐVT", "Đơn giá", "Tồn cuối" (báo cáo Xuất nhập tồn) thì sẽ
+              tự nạp luôn giá + tồn kho. Có thể nạp nhiều lần từ nhiều file khác nhau (ví dụ: 1 file chỉ có
+              tên/hoạt chất để kê đơn, sau đó nạp thêm file "Xuất nhập tồn" để cập nhật giá/tồn) — thuốc trùng tên sẽ
+              tự <b>cập nhật</b> các cột có trong file mới, cột nào file không có thì <b>giữ nguyên</b> dữ liệu cũ;
+              thuốc chưa có thì thêm mới.
             </p>
             <input type="file" id="drugCatalogInput" accept=".xlsx,.xls">
             <span class="muted" id="statusMsgCatalog"></span>
@@ -221,8 +224,6 @@
           </div>
         </div>
         <div class="toolbar" id="khoToolbar">
-          <input type="file" id="excelFileInput" accept=".xls,.xlsx">
-          <button class="btn-green" id="importExcelBtn">Nhập từ Excel</button>
           <button class="btn-secondary" id="exportKhoBtn">Xuất báo cáo tồn kho (Excel)</button>
           <span class="muted" id="statusMsgKho"></span>
         </div>
@@ -702,25 +703,63 @@
     }
     return -1;
   }
-  function parseDrugCatalogExcel(rows) {
-    if (rows.length < 2) throw new Error('File rỗng hoặc không đúng định dạng.');
-    const headers = rows[0].map((h) => String(h || ''));
-    const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
-    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
-    const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
-    if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
-    return rows.slice(1)
-      .map((r) => ({
-        brand: String(r[brandIdx] || '').trim(),
-        generic: genericIdx !== -1 ? String(r[genericIdx] || '').trim() : '',
-        form: formIdx !== -1 ? String(r[formIdx] || '').trim() : '',
-      }))
-      .filter((d) => d.brand);
+
+  // Parser HỢP NHẤT: đọc 1 file Excel duy nhất cho cả danh mục (tên thương
+  // mại/tên gốc/dạng thuốc) LẪN kho (ĐVT/đơn giá/tồn kho) — cột nào có thì
+  // lấy, cột nào không có thì bỏ qua (không tạo key đó trong kết quả), để
+  // Worker biết cột nào là "không cung cấp" (giữ nguyên giá trị cũ trong CSDL)
+  // khác với cột "= 0" (ghi đè thành 0).
+  function parseThuocExcel(rows) {
+    // Dò dòng tiêu đề trong tối đa 15 dòng đầu (báo cáo "Xuất nhập tồn" của
+    // phần mềm nhà thuốc thường có vài dòng tiêu đề/thông tin phía trên).
+    let headerRow = -1, brandCol = -1;
+    for (let r = 0; r < Math.min(rows.length, 15); r++) {
+      const c = pickDrugCol((rows[r] || []).map((h) => String(h || '')), ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
+      if (c !== -1) { headerRow = r; brandCol = c; break; }
+    }
+    if (headerRow === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược"/"Tên thuốc" trong file.');
+    const headerArr = (rows[headerRow] || []).map((h) => String(h || ''));
+    const genericCol = pickDrugCol(headerArr, ['ten goc', 'hoat chat']);
+    const formCol = pickDrugCol(headerArr, ['dang thuoc']);
+    const unitCol = pickDrugCol(headerArr, ['dvt']);
+    const priceCol = pickDrugCol(headerArr, ['don gia']);
+    const stockHeaderCol = pickDrugCol(headerArr, ['ton cuoi', 'ton kho', 'so luong ton']);
+
+    // Báo cáo "Xuất nhập tồn": cột "Tồn cuối" là tiêu đề nhóm, số lượng thật
+    // nằm ở cột con "SL" 2 dòng dưới. Nếu không có dạng này thì dùng thẳng
+    // cột đã tìm thấy.
+    let stockCol = stockHeaderCol;
+    let dataStart = headerRow + 1;
+    if (stockHeaderCol !== -1) {
+      const subRow = (rows[headerRow + 2] || []).map((h) => String(h || ''));
+      for (let c = stockHeaderCol; c < subRow.length; c++) {
+        if (stripDiacriticsVN(subRow[c]) === 'sl') { stockCol = c; dataStart = headerRow + 3; break; }
+      }
+    }
+
+    const out = [];
+    for (let i = dataStart; i < rows.length; i++) {
+      const r = rows[i] || [];
+      const brand = String(r[brandCol] || '').trim();
+      if (!brand) continue;
+      const item = { brand };
+      if (genericCol !== -1) item.generic = String(r[genericCol] || '').trim();
+      if (formCol !== -1) item.form = String(r[formCol] || '').trim();
+      if (unitCol !== -1) item.unit = String(r[unitCol] || '').trim();
+      if (priceCol !== -1) item.unit_price = parseFloat(r[priceCol]) || 0;
+      if (stockCol !== -1) item.stock_qty = parseFloat(r[stockCol]) || 0;
+      out.push(item);
+    }
+    if (!out.length) throw new Error('Không đọc được dòng thuốc nào — kiểm tra lại file.');
+    return out;
   }
 
-  // "Trong Bệnh viện": từ giờ KHÔNG ghi thẳng bằng anon key nữa — bảng "thuoc"
-  // chỉ nhận ghi qua Worker (yêu cầu mật khẩu dược sĩ/admin thật, việc lọc
-  // trùng tên cũng được Worker tự làm lại phía server để tránh race-condition).
+  // Nạp danh mục "Trong Bệnh viện" — CÓ THỂ dùng file chỉ có tên thuốc/hoạt
+  // chất (để kê đơn), HOẶC file báo cáo "Xuất nhập tồn" đầy đủ ĐVT/đơn
+  // giá/tồn kho (để dược sĩ thống kê) — Worker tự nhận diện cột nào có trong
+  // file rồi cập nhật đúng cột đó, cột không có thì GIỮ NGUYÊN giá trị cũ.
+  // Không còn ghi thẳng bằng anon key — mọi ghi đều qua Worker, yêu cầu mật
+  // khẩu dược sĩ/admin thật.
   document.getElementById('drugCatalogInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -731,23 +770,22 @@
       const wb = XLSX.read(buf, { type: 'array' });
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      const parsed = parseDrugCatalogExcel(rows);
+      const parsed = parseThuocExcel(rows);
 
       statusEl.textContent = `Đang nạp ${parsed.length} dòng qua Worker...`;
-      const CHUNK = 500;
+      const CHUNK = 300;
       let added = 0, total = 0;
       for (let i = 0; i < parsed.length; i += CHUNK) {
         const chunk = parsed.slice(i, i + CHUNK);
-        const { ok, status, data } = await callWorker('catalog_add_hospital', {
-          rows: chunk.map((d) => ({ brand: d.brand, generic: d.generic, form: d.form || '' })),
-        });
+        const { ok, status, data } = await callWorker('thuoc_import_bulk', { rows: chunk });
         if (status === 401 || status === 423) { handleAuthError(status, data); return; }
         if (!ok) throw new Error(data.error || ('HTTP ' + status));
         added += data.added || 0;
         total += data.total || chunk.length;
       }
-      statusEl.textContent = `✓ Đã nạp ${total} dòng, thêm mới ${added} thuốc (${total - added} trùng, đã bỏ qua).`;
+      statusEl.textContent = `✓ Đã nạp ${total} dòng, thêm mới ${added} thuốc (${total - added} đã có sẵn — cập nhật thông tin mới, không xoá dữ liệu cũ của cột không có trong file).`;
       e.target.value = '';
+      if (typeof khoCache !== 'undefined') loadKho();
     } catch (err) {
       statusEl.textContent = 'Lỗi: ' + err.message;
     }
@@ -826,71 +864,13 @@
     }
   }
 
-  // Đọc file Excel "Báo cáo xuất nhập tồn" theo TIÊU ĐỀ CỘT (không cố định vị trí), vì các bản
-  // xuất khác nhau (từ phần mềm nhà thuốc) có thể lệch số cột/số dòng tiêu đề khác nhau.
+  // Ghi chú: "stripDiacriticsVN" dùng trong parseThuocExcel() ở trên (đã gộp
+  // luôn phần đọc "Báo cáo xuất nhập tồn" theo tiêu đề cột vào hàm đó, không
+  // còn hàm/nút "Nhập từ Excel" riêng cho kho nữa — dùng chung 1 ô nạp file
+  // "Trong Bệnh viện" ở khối phía trên).
   function stripDiacriticsVN(s) {
     return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase().trim();
   }
-  function findHeaderCol(rowArr, keywords) {
-    if (!rowArr) return -1;
-    for (let c = 0; c < rowArr.length; c++) {
-      const val = stripDiacriticsVN(rowArr[c]);
-      if (keywords.some((k) => val.includes(k))) return c;
-    }
-    return -1;
-  }
-  function parseInventoryExcelRows(rows) {
-    let headerRow = -1, nameCol = -1;
-    for (let r = 0; r < Math.min(rows.length, 15); r++) {
-      const c = findHeaderCol(rows[r], ['ten thuoc', 'ten thuong mai']);
-      if (c !== -1) { headerRow = r; nameCol = c; break; }
-    }
-    if (headerRow === -1) throw new Error('Không tìm thấy dòng tiêu đề "Tên thuốc"/"Tên thương mại" trong file.');
-    const unitCol = findHeaderCol(rows[headerRow], ['dvt']);
-    const priceCol = findHeaderCol(rows[headerRow], ['don gia']);
-    const stockHeaderCol = findHeaderCol(rows[headerRow], ['ton cuoi']);
-    if (unitCol === -1 || priceCol === -1 || stockHeaderCol === -1) throw new Error('Thiếu cột ĐVT / Đơn giá / Tồn cuối trong file — kiểm tra lại file mẫu.');
-    // Dòng "SL"/"ST" (đơn vị con của nhóm "Tồn cuối") thường nằm 2 dòng dưới dòng tiêu đề chính.
-    const subRow = rows[headerRow + 2] || [];
-    let stockCol = stockHeaderCol;
-    for (let c = stockHeaderCol; c < subRow.length; c++) {
-      if (stripDiacriticsVN(subRow[c]) === 'sl') { stockCol = c; break; }
-    }
-    const dataStart = headerRow + 3;
-    const parsed = [];
-    for (let i = dataStart; i < rows.length; i++) {
-      const r = rows[i];
-      const name = (r[nameCol] || '').toString().trim();
-      if (!name) continue;
-      parsed.push({ drug_name: name, unit: (r[unitCol] || '').toString().trim(), unit_price: parseFloat(r[priceCol]) || 0, stock_qty: parseFloat(r[stockCol]) || 0 });
-    }
-    return parsed;
-  }
-
-  document.getElementById('importExcelBtn').addEventListener('click', async () => {
-    const fileInput = document.getElementById('excelFileInput');
-    const statusEl = document.getElementById('statusMsgKho');
-    const file = fileInput.files[0];
-    if (!file) { statusEl.textContent = 'Chọn file Excel trước.'; return; }
-    statusEl.textContent = 'Đang đọc file...';
-    try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      const sheet = wb.Sheets[wb.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      const parsed = parseInventoryExcelRows(rows);
-      if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; return; }
-      statusEl.textContent = `Đang nhập ${parsed.length} thuốc (thuốc trùng tên sẽ tự cập nhật giá/tồn/ĐVT mới)...`;
-      const CHUNK = 200;
-      for (let i = 0; i < parsed.length; i += CHUNK) {
-        const { ok, data } = await callWorker('inventory_upsert_bulk', { rows: parsed.slice(i, i + CHUNK) });
-        if (!ok) { statusEl.textContent = 'Lỗi khi nhập: ' + (data.error || ''); return; }
-      }
-      statusEl.textContent = `Đã nhập/cập nhật ${parsed.length} thuốc.`;
-      fileInput.value = '';
-      loadKho();
-    } catch (e) { statusEl.textContent = 'Lỗi đọc file: ' + e.message; }
-  });
 
   document.getElementById('exportKhoBtn').addEventListener('click', () => {
     if (!khoCache.length) { alert('Chưa có dữ liệu kho.'); return; }
