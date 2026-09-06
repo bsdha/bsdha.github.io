@@ -3045,6 +3045,9 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 .topbar.nav-edit-mode {
   padding-bottom: 64px;
 }
+.sidebar.nav-edit-mode {
+  width: 320px;
+}
 .nav-item .nav-reorder {
   display: flex;
   flex-direction: column;
@@ -3115,18 +3118,24 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   text-align: center;
 }
 .nav-edit-toolbar button {
-  flex: 1;
+  flex: 0 0 auto;
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 8px 6px;
-  font-size: 12px;
+  width: 36px;
+  height: 34px;
+  font-size: 16px;
+  line-height: 1;
   font-weight: 700;
   cursor: pointer;
   font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
+.nav-edit-toolbar { justify-content: center; }
 .nav-edit-toolbar .net-save { background: var(--green); color: #fff; border-color: var(--green); }
 .nav-edit-toolbar .net-cancel { background: var(--surface); color: var(--text); }
-.nav-edit-toolbar .net-reset { background: var(--red-light); color: var(--red-dark); border-color: var(--red-border); flex: 0 0 auto; }
+.nav-edit-toolbar .net-reset { background: var(--red-light); color: var(--red-dark); border-color: var(--red-border); }
 
 /* Trang chủ: khi 1 nhóm còn ít mục sau khi ẩn bớt, phóng to thẻ cho dễ bấm */
 #page-home .hgrid.hgrid-compact-few {
