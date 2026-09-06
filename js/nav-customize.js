@@ -139,10 +139,9 @@
     const bar = document.createElement('div');
     bar.className = 'nav-edit-toolbar';
     bar.innerHTML =
-      '<p class="net-hint">Đang sắp xếp — bấm mũi tên để đổi vị trí, bỏ chọn ô để ẩn mục, rồi bấm Lưu.</p>' +
-      '<button type="button" class="net-reset">Mặc định</button>' +
-      '<button type="button" class="net-cancel">Hủy</button>' +
-      '<button type="button" class="net-save">Lưu (OK)</button>';
+      '<button type="button" class="net-reset" title="Khôi phục mặc định ban đầu">↺</button>' +
+      '<button type="button" class="net-cancel" title="Hủy, không lưu thay đổi">✕</button>' +
+      '<button type="button" class="net-save" title="Lưu thay đổi (OK)">✓</button>';
     bar.querySelector('.net-save').addEventListener('click', function (e) {
       e.preventDefault(); e.stopPropagation();
       savePrefs(workingOrder, workingHidden);
