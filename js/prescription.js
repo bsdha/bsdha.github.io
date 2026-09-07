@@ -628,6 +628,8 @@
             brand: r.ten_tm || '',
             generic: r.ten_goc || '',
             form: r.dang_thuoc || '',
+            // Số lượng tồn kho hiện tại — null nghĩa là chưa nạp cột tồn kho cho thuốc này.
+            stockQty: r.stock_qty === null || r.stock_qty === undefined ? null : Number(r.stock_qty),
             outOfStock: r.stock_qty !== null && r.stock_qty !== undefined && Number(r.stock_qty) <= 0,
           }));
           return;
@@ -732,9 +734,15 @@
       }
       suggestBox.innerHTML = '<div class="rx-suggest-empty">Không tìm thấy thuốc phù hợp trong danh sách đã nạp.</div>';
     } else {
-      suggestBox.innerHTML = currentSuggestList.map((d, i) =>
-        `<div class="rx-suggest-item${d.outOfStock ? ' rx-suggest-oos' : ''}" data-idx="${i}"><b>${escapeHtml(d.brand)}</b><span class="g">${escapeHtml(d.generic)}${d.form ? ' — ' + escapeHtml(d.form) : ''}</span>${d.outOfStock ? '<span class="rx-oos-tag">Hết hàng</span>' : ''}</div>`
-      ).join('');
+      // Chỉ hiện số lượng tồn kho ở chế độ "Trong Bệnh viện" (chế độ "Ngoài Bệnh viện" không có khái
+      // niệm tồn kho, danh mục đó chỉ là danh sách tên gõ tự do lưu trên trình duyệt).
+      const showStock = rxPrescribeMode === 'hospital';
+      suggestBox.innerHTML = currentSuggestList.map((d, i) => {
+        const stockTag = (!showStock || d.outOfStock || d.stockQty === null || d.stockQty === undefined)
+          ? ''
+          : `<span class="rx-stock-tag" title="Số lượng tồn kho hiện tại">Tồn: ${escapeHtml(String(d.stockQty))}</span>`;
+        return `<div class="rx-suggest-item${d.outOfStock ? ' rx-suggest-oos' : ''}" data-idx="${i}"><b>${escapeHtml(d.brand)}</b><span class="g">${escapeHtml(d.generic)}${d.form ? ' — ' + escapeHtml(d.form) : ''}</span>${stockTag}${d.outOfStock ? '<span class="rx-oos-tag">Hết hàng</span>' : ''}</div>`;
+      }).join('');
     }
     suggestBox.classList.add('show');
   }
@@ -2508,6 +2516,37 @@
     });
   }
 
+  // ---------- Gộp các đơn đã "sửa lại" của cùng 1 bệnh nhân thành 1 dòng ----------
+  // Bác sĩ có thể kê rồi sửa lại 2-3 lần (hoặc hơn) cho cùng 1 bệnh nhân trước khi ra được đơn
+  // đúng — mỗi lần lưu tạo 1 dòng mới trong Supabase (không có nút "Sửa đơn cũ"). Để danh sách
+  // "Đơn đã kê" không hiện lặp lại nhiều bản nháp/sai của cùng 1 đơn, ta GOM các đơn có cùng
+  // (tên bệnh nhân + chẩn đoán, không phân biệt hoa/thường/khoảng trắng) và cùng 1 NGÀY (giờ VN)
+  // lại thành 1 nhóm — chỉ hiện đơn MỚI NHẤT trong nhóm ở danh sách chính (coi là bản chốt cuối
+  // cùng, chính xác nhất), các bản cũ hơn trong cùng nhóm được giữ nguyên trong Supabase (không
+  // xoá) và có thể xem lại qua nút "N bản trước đó" trên chính dòng đó.
+  // Lưu ý: việc gộp chỉ áp dụng trong PHẠM VI danh sách đang tải (1 trang 30 dòng) và chỉ khi đang
+  // sắp xếp theo "Thời gian kê" (mặc định) — nếu bác sĩ sửa đơn cách nhau quá xa (rơi sang trang
+  // "Tải thêm" tiếp theo) hoặc đang sắp xếp theo cột khác, danh sách sẽ hiện đầy đủ như trước.
+  function rxHistoryGroupKey(row) {
+    return `${normalize(row.patient_name || '')}|${normalize(row.diagnosis || '')}|${rxDateGroupKey(row.created_at)}`;
+  }
+  function groupRxHistoryRows(rows) {
+    const order = [];
+    const map = new Map();
+    rows.forEach((row) => {
+      // Bệnh nhân không tên / không chẩn đoán thì không gộp (tránh gộp nhầm các đơn không liên quan).
+      const key = (row.patient_name || '').trim() && (row.diagnosis || '').trim() ? rxHistoryGroupKey(row) : `__nogroup_${row.id}`;
+      if (!map.has(key)) {
+        map.set(key, { primary: row, previous: [] });
+        order.push(key);
+      } else {
+        // rows đã sắp theo created_at.desc nên bản gặp sau luôn CŨ hơn bản chính (primary).
+        map.get(key).previous.push(row);
+      }
+    });
+    return order.map((key) => map.get(key));
+  }
+
   function renderHistoryItems(rows, append) {
     if (!append) {
       rxHistoryList.innerHTML = '';
@@ -2518,8 +2557,9 @@
       return;
     }
     const grouped = rxHistorySort.column === 'created_at';
+    const rxGroups = grouped ? groupRxHistoryRows(rows) : rows.map((row) => ({ primary: row, previous: [] }));
     const frag = document.createDocumentFragment();
-    rows.forEach((row) => {
+    rxGroups.forEach(({ primary: row, previous }) => {
       if (grouped) {
         const key = rxDateGroupKey(row.created_at);
         if (key !== rxHistoryLastGroupKey) {
@@ -2565,7 +2605,7 @@
         <td class="rx-history-td-diag">${row.diagnosis ? escapeHtml(row.diagnosis) : '<span class="rx-history-dash">—</span>'}</td>
         <td class="rx-history-td-doctor">${row.doctor_name ? escapeHtml(row.doctor_name) : '<span class="rx-history-dash">—</span>'}</td>
         <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
-        <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button></td>
+        <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button>${previous.length ? `<span class="rx-history-edited-badge" title="Đã sửa lại ${previous.length} lần trước khi ra bản này">✏️ đã sửa ${previous.length} lần</span>` : ''}</td>
         <td class="rx-history-td-sold">${soldSummary}</td>
         <td class="rx-history-td-print"><button type="button" class="rx-history-print-btn" title="In lại đơn thuốc">🖨️ In</button></td>
       `;
@@ -2573,10 +2613,24 @@
       const printBtn = tr.querySelector('.rx-history-print-btn');
       printBtn.addEventListener('click', () => printHistoryRx(row));
 
+      const prevHtml = previous.length
+        ? `<div class="rx-history-prev-versions">
+            <div class="rx-history-prev-note">⚠ ${previous.length} bản trước đó của cùng bệnh nhân/chẩn đoán trong ngày này (có thể là bản kê sai, đã được sửa lại — chỉ để đối chiếu, không phải đơn chốt):</div>
+            <ul>${previous.map((p) => {
+              const pItems = Array.isArray(p.items) ? p.items : [];
+              return `<li><span class="rx-history-prev-time">${escapeHtml(fmtHistoryTime(p.created_at))}</span> — ${pItems.length} thuốc <button type="button" class="rx-history-print-btn rx-history-prev-print-btn" data-id="${p.id}" title="In lại bản này">🖨️ In bản này</button></li>`;
+            }).join('')}</ul>
+          </div>`
+        : '';
+
       const detailTr = document.createElement('tr');
       detailTr.className = 'rx-history-detail-row';
       detailTr.style.display = 'none';
-      detailTr.innerHTML = `<td colspan="8"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul></td>`;
+      detailTr.innerHTML = `<td colspan="8"><ul class="rx-history-drugs">${itemsHtml || '<li>(không có thông tin thuốc)</li>'}</ul>${prevHtml}</td>`;
+      detailTr.querySelectorAll('.rx-history-prev-print-btn').forEach((btn) => {
+        const pRow = previous.find((p) => String(p.id) === btn.getAttribute('data-id'));
+        if (pRow) btn.addEventListener('click', (e) => { e.stopPropagation(); printHistoryRx(pRow); });
+      });
 
       const toggleBtn = tr.querySelector('.rx-history-toggle-btn');
       toggleBtn.addEventListener('click', () => {
@@ -2638,18 +2692,25 @@
     }
   }
 
+  // Mật khẩu nội bộ "cs2" — dùng chung cho mọi trang/khung chỉ dành cho nhân viên nội bộ xem
+  // (hiện tại: "Đơn đã kê" và "Xem danh sách thuốc tồn hiện tại"). Mở khoá 1 lần trong phiên
+  // làm việc (sessionStorage) là dùng được cho tất cả các khung này, không phải nhập lại nhiều lần.
   const LS_RX_HISTORY_UNLOCK = 'rxHistoryUnlocked';
   const RX_HISTORY_PASSWORD = 'cs2';
-  async function unlockRxHistoryIfNeeded() {
+  async function unlockInternalIfNeeded(message) {
     if (sessionStorage.getItem(LS_RX_HISTORY_UNLOCK) === '1') return true;
     const pass = await customPasswordPrompt({
       title: 'Nội bộ',
-      message: 'Nhập mật khẩu để xem "Đơn đã kê" (chỉ nội bộ được xem)',
+      message: message || 'Nhập mật khẩu để xem (chỉ nội bộ được xem)',
       checkFn: (val) => val === RX_HISTORY_PASSWORD,
     });
     if (pass === null) return false; // bấm Huỷ / Esc / bấm ra ngoài
     sessionStorage.setItem(LS_RX_HISTORY_UNLOCK, '1');
     return true;
+  }
+  // Giữ tên cũ để không phải sửa các chỗ gọi khác — trỏ về cùng hàm dùng chung ở trên.
+  async function unlockRxHistoryIfNeeded() {
+    return unlockInternalIfNeeded('Nhập mật khẩu để xem "Đơn đã kê" (chỉ nội bộ được xem)');
   }
 
   if ($('rxHistoryBtn') && rxHistoryOverlay) {
@@ -2662,6 +2723,69 @@
       loadRxHistory(false);
     });
   }
+
+  // ======================================================================
+  // "Xem danh sách thuốc tồn hiện tại" — chỉ xem, khoá bằng mật khẩu nội bộ "cs2" (dùng chung
+  // với "Đơn đã kê"). Đọc thẳng bảng "thuoc" (đã cho phép anon SELECT) — không cần qua Worker.
+  // ======================================================================
+  const rxStockOverlay = $('rxStockOverlay');
+  const rxStockList = $('rxStockList');
+  const rxStockSearch = $('rxStockSearch');
+  let rxStockCache = [];
+  let rxStockLoaded = false;
+
+  async function loadStockList() {
+    rxStockList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Đang tải...</td></tr>';
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc?select=ten_tm,ten_goc,dang_thuoc,unit,unit_price,stock_qty,chi_dinh&order=ten_tm.asc`, {
+        headers: cloudHeaders(),
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      rxStockCache = await resp.json();
+      rxStockLoaded = true;
+      renderStockList();
+    } catch (e) {
+      rxStockList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Không tải được danh mục kho (kiểm tra mạng, hoặc cột "chi_dinh" đã tạo trong bảng "thuoc" chưa?)</td></tr>';
+    }
+  }
+
+  function renderStockList() {
+    const term = normalize((rxStockSearch && rxStockSearch.value) || '');
+    const rows = term
+      ? rxStockCache.filter((r) => normalize(r.ten_tm).includes(term) || normalize(r.ten_goc).includes(term))
+      : rxStockCache;
+    if (!rows.length) {
+      rxStockList.innerHTML = `<tr class="rx-history-empty"><td colspan="7">${rxStockCache.length ? 'Không tìm thấy thuốc phù hợp.' : 'Kho trống — chưa nạp danh mục "Trong Bệnh viện".'}</td></tr>`;
+      return;
+    }
+    rxStockList.innerHTML = rows.map((r, i) => {
+      const qty = r.stock_qty === null || r.stock_qty === undefined ? 0 : Number(r.stock_qty);
+      const qtyClass = qty <= 0 ? ' style="color:#dc2626;font-weight:700;"' : ' style="font-weight:700;"';
+      return `<tr>
+        <td class="rx-history-td-time">${i + 1}</td>
+        <td class="rx-history-td-patient"><b>${escapeHtml(r.ten_tm || '')}</b></td>
+        <td>${escapeHtml(r.ten_goc || '') || '<span class="rx-history-dash">—</span>'}</td>
+        <td>${escapeHtml(r.unit || r.dang_thuoc || '') || '<span class="rx-history-dash">—</span>'}</td>
+        <td>${escapeHtml(Number(r.unit_price || 0).toLocaleString('vi-VN'))}</td>
+        <td${qtyClass}>${escapeHtml(String(qty))}</td>
+        <td>${r.chi_dinh ? escapeHtml(r.chi_dinh) : '<span class="rx-history-dash">— (chưa có tóm tắt AI)</span>'}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  if ($('rxStockViewBtn') && rxStockOverlay) {
+    $('rxStockViewBtn').addEventListener('click', async () => {
+      const ok = await unlockInternalIfNeeded('Nhập mật khẩu để xem "Danh sách thuốc tồn hiện tại" (chỉ nội bộ được xem)');
+      if (!ok) return;
+      rxStockOverlay.classList.add('show');
+      if (!rxStockLoaded) loadStockList(); else renderStockList();
+    });
+  }
+  if ($('rxStockCloseX')) $('rxStockCloseX').addEventListener('click', () => rxStockOverlay.classList.remove('show'));
+  if (rxStockOverlay) {
+    rxStockOverlay.addEventListener('click', (e) => { if (e.target === rxStockOverlay) rxStockOverlay.classList.remove('show'); });
+  }
+  if (rxStockSearch) rxStockSearch.addEventListener('input', renderStockList);
   if ($('rxHistoryCloseX')) $('rxHistoryCloseX').addEventListener('click', () => rxHistoryOverlay.classList.remove('show'));
   if (rxHistoryOverlay) {
     rxHistoryOverlay.addEventListener('click', (e) => { if (e.target === rxHistoryOverlay) rxHistoryOverlay.classList.remove('show'); });
