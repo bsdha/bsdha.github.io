@@ -223,10 +223,11 @@
             <div class="upload-title">Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
             <p class="upload-desc">
               File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và
-              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "Dạng thuốc"/"ĐVT", <b>"Đơn giá"</b>,
-              <b>"Tồn kho"</b> — có thì nạp kèm giá/tồn luôn trong 1 lần, không có thì giữ nguyên giá/tồn cũ.
-              Thuốc mới sẽ được <b>cộng dồn</b> vào danh mục hiện có (không xoá thuốc cũ), tự bỏ qua thuốc
-              trùng tên. Dùng cho việc kê đơn/tìm thuốc trong Bệnh viện.
+              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "ĐVT", <b>"Đơn giá"</b>, và cột <b>"Tồn"</b>
+              (nếu file có nhiều cột tồn theo từng ngày, tự động lấy cột <b>NẰM BÊN PHẢI NHẤT</b> — tức ngày gần
+              hiện tại nhất). <b style="color:#dc2626;">⚠️ Mỗi lần nạp sẽ XOÁ SẠCH toàn bộ danh mục cũ (tên, giá,
+              tồn kho...) và thay hoàn toàn bằng dữ liệu file mới — không cộng dồn/giữ thuốc cũ nữa.</b>
+              Dùng cho việc kê đơn/tìm thuốc trong Bệnh viện.
             </p>
             <input type="file" id="drugCatalogInput" accept=".xlsx,.xls">
             <span class="muted" id="statusMsgCatalog"></span>
@@ -767,18 +768,33 @@
     }
     return -1;
   }
+  // Đọc file theo TIÊU ĐỀ CỘT (không cố định vị trí dòng/cột), vì file kiểm kê thực tế thường có 1-2
+  // dòng tiêu đề lớn phía trên (vd "KIỂM KÊ CƠ SỐ TỦ TRỰC...") rồi mới tới dòng tiêu đề cột thật sự.
   function parseDrugCatalogExcel(rows) {
     if (rows.length < 2) throw new Error('File rỗng hoặc không đúng định dạng.');
-    const headers = rows[0].map((h) => String(h || ''));
+    // Dò trong 10 dòng đầu để tìm đúng dòng tiêu đề cột (chứa "Tên thương mại"/"Tên thuốc"...).
+    let headerRowIdx = -1;
+    for (let r = 0; r < Math.min(rows.length, 10); r++) {
+      const idx = pickDrugCol(rows[r].map((h) => String(h || '')), ['ten thuong mai', 'ten biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
+      if (idx !== -1) { headerRowIdx = r; break; }
+    }
+    if (headerRowIdx === -1) throw new Error('Không tìm thấy dòng tiêu đề có cột "Tên thương mại"/"Tên thuốc" trong file.');
+    const headers = rows[headerRowIdx].map((h) => String(h || ''));
+    const normHeaders = headers.map(normalizeVN);
     const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
-    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
-    const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
-    // 2 cột này không bắt buộc — có thì nạp kèm giá/tồn luôn trong 1 lần, không có thì bỏ qua
-    // (giữ nguyên giá/tồn cũ trong CSDL, xem thuoc_import_bulk ở Worker).
+    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat', 'ten hoat chat']);
+    const formIdx = pickDrugCol(headers, ['dvt', 'dang thuoc']);
     const priceIdx = pickDrugCol(headers, ['don gia']);
-    const stockIdx = pickDrugCol(headers, ['ton kho', 'so luong ton', 'ton cuoi', 'so luong']);
+    // Cột "Tồn" — file kiểm kê thật thường có NHIỀU cột tồn theo từng ngày (Tồn đầu, Tồn cuối, rồi
+    // hàng loạt "TỒN dd/mm", "Ngày dd/mm"...). Cột nào NẰM BÊN PHẢI NHẤT có chữ "tồn" trong tiêu đề
+    // chính là cột tồn kho THỰC TẾ mới nhất (gần ngày hiện tại nhất) — lấy đúng cột đó, bỏ qua các
+    // cột tồn/ngày cũ hơn ở giữa file.
+    let stockIdx = -1;
+    for (let c = 0; c < normHeaders.length; c++) {
+      if (normHeaders[c].includes('ton')) stockIdx = c;
+    }
     if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
-    return rows.slice(1)
+    return rows.slice(headerRowIdx + 1)
       .map((r) => {
         const d = {
           brand: String(r[brandIdx] || '').trim(),
@@ -794,8 +810,9 @@
   }
 
   // "Trong Bệnh viện": nạp qua Worker (thuoc_import_bulk) bằng service_role key + mật khẩu dược sĩ —
-  // KHÔNG ghi thẳng bằng anon key nữa (bảng "thuoc" đã siết RLS, anon chỉ còn quyền đọc). Cột nào
-  // không có trong file thì giữ nguyên dữ liệu cũ, cột nào có thì ghi đè (kể cả 0), cộng dồn thuốc mới.
+  // KHÔNG ghi thẳng bằng anon key nữa (bảng "thuoc" đã siết RLS, anon chỉ còn quyền đọc).
+  // THEO YÊU CẦU MỚI: mỗi lần nạp file là XOÁ SẠCH toàn bộ danh mục cũ (tên, giá, tồn kho...) rồi thay
+  // hoàn toàn bằng dữ liệu trong file mới — KHÔNG còn cộng dồn/giữ thuốc cũ như trước nữa.
   document.getElementById('drugCatalogInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -807,16 +824,21 @@
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       const parsed = parseDrugCatalogExcel(rows);
-      if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; return; }
-      statusEl.textContent = `Đang nạp ${parsed.length} thuốc...`;
+      if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; e.target.value = ''; return; }
+      const sure = confirm(`⚠️ File này sẽ XOÁ SẠCH toàn bộ danh mục thuốc "Trong Bệnh viện" hiện có (tên, giá, tồn kho...) và thay hoàn toàn bằng ${parsed.length} dòng đọc được từ file mới.\n\nBạn có chắc chắn muốn tiếp tục?`);
+      if (!sure) { statusEl.textContent = ''; e.target.value = ''; return; }
+      statusEl.textContent = `Đang xoá danh mục cũ và nạp ${parsed.length} thuốc...`;
       const CHUNK = 200;
-      let added = 0, updated = 0;
+      let added = 0;
       for (let i = 0; i < parsed.length; i += CHUNK) {
-        const { ok, data } = await callWorker('thuoc_import_bulk', { rows: parsed.slice(i, i + CHUNK) });
+        // Chỉ báo "replace: true" ở lần gọi ĐẦU TIÊN để Worker xoá sạch bảng cũ 1 lần duy nhất trước
+        // khi nạp — các lượt gọi sau (file nhiều hơn 200 dòng phải chia nhỏ) chỉ nạp tiếp bình thường,
+        // không xoá lại (nếu không sẽ xoá mất phần vừa nạp ở lượt trước).
+        const { ok, data } = await callWorker('thuoc_import_bulk', { rows: parsed.slice(i, i + CHUNK), replace: i === 0 });
         if (!ok) { statusEl.textContent = 'Lỗi khi nạp: ' + (data.error || ''); return; }
-        added += data.added || 0; updated += data.updated || 0;
+        added += data.added || 0;
       }
-      statusEl.textContent = `✓ Đã nạp ${parsed.length} dòng — thêm mới ${added}, cập nhật ${updated} thuốc.`;
+      statusEl.textContent = `✓ Đã xoá danh mục cũ và nạp lại ${added} thuốc từ file mới.`;
       e.target.value = '';
       loadKho();
     } catch (err) {
