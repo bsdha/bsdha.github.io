@@ -2236,7 +2236,7 @@
     const btn = $('rxPrintBtn');
     const originalLabel = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Đang tạo PDF...';
+    btn.textContent = 'Đang tạo đơn thuốc...';
 
     try {
       const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
@@ -2288,7 +2288,17 @@
         // để sau này "In lại" từ lịch sử ra được đúng y hệt bản gốc, không thiếu thông tin.
         extra: { age, sex, vitalsParts, note, dateWords, blankDateSign },
       });
-      pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
+      // Trước đây dùng pdf.save(...) — LUÔN tự động tải 1 file PDF xuống ổ cứng mỗi lần bấm, kể cả khi
+      // chỉ cần in. Giờ đổi sang mở đơn thuốc trong tab mới bằng trình xem PDF có sẵn của trình duyệt:
+      // người dùng bấm in (🖶) để in thẳng — không tốn ổ cứng — và CHỈ khi họ tự bấm nút tải/lưu trong
+      // trình xem đó thì mới thật sự lưu file PDF. Dùng window.open() ngay (không await gì trước đó
+      // trong hàm) để giữ nguyên "cử chỉ người dùng" (user gesture), tránh bị trình duyệt chặn popup.
+      const blobUrl = pdf.output('bloburl');
+      const w = window.open(blobUrl, '_blank');
+      if (!w) {
+        // Phòng khi trình duyệt vẫn chặn popup (hiếm) — tải file PDF như cách cũ để không mất tác vụ.
+        pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
+      }
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
     } finally {
@@ -2296,7 +2306,6 @@
       btn.textContent = originalLabel;
     }
   });
-
 
   // ======================================================================
   // PHẦN CUỐI: LỊCH SỬ "ĐƠN THUỐC ĐÃ KÊ" (công khai — ai kê ở đâu cũng thấy)
@@ -2424,7 +2433,11 @@
       });
       const safeName = (row.patient_name || 'donthuoc').replace(/[^\p{L}\p{N}]+/gu, '_');
       const fileDate = (row.created_at || '').slice(0, 10) || todayLocalISO();
-      pdf.save(`DonThuoc_InLai_${safeName}_${fileDate}.pdf`);
+      // Giống nút in đơn thuốc lúc kê: mở trong tab mới bằng trình xem PDF của trình duyệt để in
+      // trực tiếp, không tự tải file PDF xuống ổ cứng trừ khi người dùng tự bấm lưu trong đó.
+      const blobUrl = pdf.output('bloburl');
+      const w = window.open(blobUrl, '_blank');
+      if (!w) pdf.save(`DonThuoc_InLai_${safeName}_${fileDate}.pdf`);
     } catch (err) {
       customAlert('Lỗi in lại', 'Có lỗi khi tạo lại PDF: ' + err.message);
     }
