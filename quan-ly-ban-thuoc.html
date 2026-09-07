@@ -126,14 +126,20 @@
   .receipt-print-btn { margin-top: 10px; width: 100%; padding: 11px; border-radius: 9px; border: none; background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff; cursor: pointer; font-size: 13.5px; font-weight: 600; }
 
   @media print {
-    @page { size: 210mm 148mm landscape; margin: 8mm; }
+    @page { size: 210mm 148mm landscape; margin: 6mm; }
     html, body { margin: 0 !important; padding: 0 !important; background: #fff !important; height: auto !important; }
     /* Ẩn hẳn (display:none) mọi thứ ngoài phiếu thu — dùng visibility:hidden thôi thì các phần tử vẫn
        chiếm chỗ trong layout, khiến tổng chiều cao trang bị kéo dài ra thành nhiều trang giấy khi in
        (đây là lý do bản cũ in ra 3 trang trống thay vì đúng 1 trang khổ A5). */
     body > *:not(#receiptModal) { display: none !important; }
     #receiptModal { position: static !important; background: #fff !important; padding: 0 !important; display: block !important; }
-    #receiptModal .modal-box { box-shadow: none !important; padding: 0 !important; max-width: none !important; width: auto !important; }
+    #receiptModal .modal-box {
+      box-shadow: none !important; padding: 0 !important; max-width: none !important; width: auto !important;
+      /* .modal-box mặc định có max-height:88vh + overflow-y:auto để cuộn được khi xem trên màn hình —
+         nếu để nguyên khi in, phần phiếu thu dài hơn khung xem sẽ bị cắt/cuộn mất, in ra thiếu nội dung
+         hoặc hiện thanh cuộn ngay trong bản xem trước khi in. Bỏ hẳn 2 thuộc tính này khi in. */
+      max-height: none !important; overflow: visible !important;
+    }
     #receiptModal .receipt-print-btn, #receiptModal .modal-cancel, #receiptModal .receipt-total { display: none !important; }
     #printArea { position: static !important; width: 100% !important; padding: 0 !important; }
   }
@@ -195,7 +201,6 @@
           <input type="text" id="searchInput" placeholder="Tìm theo tên bệnh nhân...">
           <button id="refreshSellBtn">Tìm</button>
           <button class="btn-secondary" id="clearSellDateBtn">Xem tất cả (bỏ lọc ngày)</button>
-          <button class="btn-secondary" id="manualRefreshSellBtn" title="Tải lại danh sách ngay">🔄 Làm mới</button>
           <span class="muted" id="statusMsgSell"></span>
           <span class="muted" id="autoRefreshNote" style="margin-left:auto; font-size:12px;"></span>
         </div>
@@ -455,7 +460,6 @@
 
   // ---------- TAB Bán thuốc ----------
   document.getElementById('refreshSellBtn').addEventListener('click', () => loadSellOrders());
-  document.getElementById('manualRefreshSellBtn').addEventListener('click', () => loadSellOrders());
   document.getElementById('clearSellDateBtn').addEventListener('click', () => { sellDateInput.value = ''; loadSellOrders(); });
   searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') loadSellOrders(); });
   sellDateInput.addEventListener('change', () => loadSellOrders());
@@ -707,16 +711,16 @@
         <div style="margin-bottom:6px;">Viết bằng chữ: <i>${esc(soTienBangChuVN(total))}</i></div>
         <div style="margin-bottom:14px;">Kèm theo: .......... Chứng từ gốc kèm theo.</div>
 
-        <div style="margin-bottom:8px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
+        <div style="margin-bottom:16px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
 
-        <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11.5px;">
+        <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11.5px; margin-top:4px;">
           <tr>
-            <td style="font-weight:700;">Giám đốc</td><td style="font-weight:700;">Kế toán trưởng</td><td style="font-weight:700;">Thủ quỹ</td><td style="font-weight:700;">Người nộp tiền</td><td style="font-weight:700;">Người lập phiếu</td>
+            <td style="font-weight:700; padding:3px 4px;">Giám đốc</td><td style="font-weight:700; padding:3px 4px;">Kế toán trưởng</td><td style="font-weight:700; padding:3px 4px;">Thủ quỹ</td><td style="font-weight:700; padding:3px 4px;">Người nộp tiền</td><td style="font-weight:700; padding:3px 4px;">Người lập phiếu</td>
           </tr>
           <tr style="color:#777; font-size:10.5px;">
-            <td>(Ký, họ tên, đóng dấu)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td><td>(Ký, họ tên)</td>
+            <td style="padding:2px 4px;">(Ký, họ tên, đóng dấu)</td><td style="padding:2px 4px;">(Ký, họ tên)</td><td style="padding:2px 4px;">(Ký, họ tên)</td><td style="padding:2px 4px;">(Ký, họ tên)</td><td style="padding:2px 4px;">(Ký, họ tên)</td>
           </tr>
-          <tr><td style="height:44px;"></td><td></td><td></td><td></td><td><b>${esc(sellerName || '')}</b></td></tr>
+          <tr><td style="height:48px;"></td><td></td><td></td><td></td><td><b>${esc(sellerName || '')}</b></td></tr>
         </table>
       </div>
     `;
