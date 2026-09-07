@@ -124,6 +124,11 @@
 
   .receipt-total { font-size: 20px; font-weight: 800; color: var(--green); text-align: right; margin-top: 8px; }
   .receipt-print-btn { margin-top: 10px; width: 100%; padding: 11px; border-radius: 9px; border: none; background: linear-gradient(135deg, var(--blue), var(--blue-dark)); color: #fff; cursor: pointer; font-size: 13.5px; font-weight: 600; }
+  /* Trên màn hình KHÔNG hiện bản xem trước phiếu thu (đỡ rối, chỉ cần bấm in là đủ) — nội dung đầy
+     đủ vẫn nằm trong DOM (#printArea) để dùng khi in, chỉ ẩn lúc xem trên màn hình. */
+  #printArea { display: none; }
+  #receiptSummary { font-size: 14px; line-height: 1.7; }
+  #receiptSummary b { color: var(--text); }
 
   @media print {
     @page { size: 210mm 148mm landscape; margin: 6mm; }
@@ -140,8 +145,8 @@
          hoặc hiện thanh cuộn ngay trong bản xem trước khi in. Bỏ hẳn 2 thuộc tính này khi in. */
       max-height: none !important; overflow: visible !important;
     }
-    #receiptModal .receipt-print-btn, #receiptModal .modal-cancel, #receiptModal .receipt-total { display: none !important; }
-    #printArea { position: static !important; width: 100% !important; padding: 0 !important; }
+    #receiptModal .receipt-print-btn, #receiptModal .modal-cancel, #receiptModal .receipt-total, #receiptModal h3, #receiptModal #receiptSummary { display: none !important; }
+    #printArea { position: static !important; width: 100% !important; padding: 0 !important; display: block !important; }
   }
 </style>
 </head>
@@ -271,6 +276,8 @@
   <!-- Modal phiếu thu -->
   <div class="modal-overlay hidden" id="receiptModal">
     <div class="modal-box">
+      <h3>✅ Đã ghi nhận bán thuốc</h3>
+      <div id="receiptSummary"></div>
       <div id="printArea"><div id="receiptBody"></div></div>
       <button class="receipt-print-btn" id="receiptPrintBtn">🖨️ In phiếu thu</button>
       <button class="modal-cancel" id="receiptCloseBtn">Đóng</button>
@@ -678,11 +685,26 @@
     const soPT = 'PT-' + String((order && order.id) || ++receiptSeq).padStart(4, '0');
     const orgName = 'BVĐK BÌNH DƯƠNG CS2';
     const orgAddr = 'ĐC: Ấp 13, Xã Bắc Tân Uyên, TP. HCM';
+    // Tên bác sĩ trong CSDL nhiều khi đã có sẵn tiền tố "BS"/"BS." (vd "BS. Nguyễn Thị Nhung") — nếu
+    // cứ nối thêm "BS " phía trước sẽ bị dư thành "BS BS. Nguyễn Thị Nhung". Chỉ thêm "BS " khi tên
+    // CHƯA có sẵn tiền tố này.
+    function doctorLabel(name) {
+      const n = String(name || '').trim();
+      return /^bs\.?\s+/i.test(n) ? n : ('BS ' + n);
+    }
     const lyDoNop = (order && order.doctor_name)
-      ? `Tiền mua thuốc theo đơn (BS ${esc(order.doctor_name)} kê)`
+      ? `Tiền mua thuốc theo đơn (${esc(doctorLabel(order.doctor_name))} kê)`
       : 'Tiền mua thuốc theo đơn / Thanh toán tiền thuốc khách hàng';
+
+    // Tóm tắt hiện trên màn hình (không hiện bản xem trước phiếu thu để đỡ rối — bấm in là ra ngay)
+    document.getElementById('receiptSummary').innerHTML = `
+      Bệnh nhân: <b>${esc((order && order.patient_name) || '(không tên)')}</b><br>
+      Số tiền: <b>${fmtVnd(total)}</b><br>
+      Người bán: <b>${esc(sellerName || '')}</b> — Số phiếu: <b>${esc(soPT)}</b>
+    `;
+
     document.getElementById('receiptBody').innerHTML = `
-      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12.5px; color:#111; line-height:1.5;">
+      <div style="font-family: 'Times New Roman', Times, serif; font-size: 12px; color:#111; line-height:1.5;">
         <div style="display:flex; justify-content:space-between; align-items:flex-start;">
           <div>
             <div style="font-weight:700; font-size:13.5px;">${esc(orgName)}</div>
@@ -695,7 +717,7 @@
           </div>
         </div>
 
-        <h2 style="text-align:center; margin:10px 0 14px; letter-spacing:1px; font-size:19px;">PHIẾU THU</h2>
+        <h2 style="text-align:center; margin:8px 0 10px; letter-spacing:1px; font-size:18px;">PHIẾU THU</h2>
 
         <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
           <div>Quyển số: ..................</div>
@@ -709,9 +731,10 @@
         <div style="margin-bottom:6px;">Lý do nộp: ${lyDoNop}</div>
         <div style="margin-bottom:6px;">Số tiền: <b>${fmtVnd(total)}</b></div>
         <div style="margin-bottom:6px;">Viết bằng chữ: <i>${esc(soTienBangChuVN(total))}</i></div>
-        <div style="margin-bottom:14px;">Kèm theo: .......... Chứng từ gốc kèm theo.</div>
+        <div style="margin-bottom:10px;">Kèm theo: .......... Chứng từ gốc kèm theo.</div>
 
-        <div style="margin-bottom:16px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
+        <!-- Cụm ngày/tháng/năm dời sang góc phải theo yêu cầu -->
+        <div style="text-align:right; margin-bottom:8px;">Ngày ${now.getDate()} tháng ${now.getMonth() + 1} năm ${now.getFullYear()}</div>
 
         <table style="width:100%; border-collapse:collapse; text-align:center; font-size:11.5px; margin-top:4px;">
           <tr>
@@ -720,7 +743,8 @@
           <tr style="color:#777; font-size:10.5px;">
             <td style="padding:2px 4px;">(Ký, họ tên, đóng dấu)</td><td style="padding:2px 4px;">(Ký, họ tên)</td><td style="padding:2px 4px;">(Ký, họ tên)</td><td style="padding:2px 4px;">(Ký, họ tên)</td><td style="padding:2px 4px;">(Ký, họ tên)</td>
           </tr>
-          <tr><td style="height:48px;"></td><td></td><td></td><td></td><td><b>${esc(sellerName || '')}</b></td></tr>
+          <!-- Chừa thêm ~3 dòng trống phía trên để dược sĩ ký tay, tên chỉ in ở SÁT ĐÁY ô -->
+          <tr><td style="height:90px; vertical-align:bottom;"></td><td></td><td></td><td></td><td style="vertical-align:bottom;"><b>${esc(sellerName || '')}</b></td></tr>
         </table>
       </div>
     `;
