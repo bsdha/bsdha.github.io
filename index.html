@@ -1263,6 +1263,7 @@
               <input type="radio" name="rxPrescribeMode" id="rxModeHandwritten" value="handwritten">
               <span>In toa thuốc viết tay</span>
             </label>
+            <button type="button" class="rx-settings-btn rx-history-btn" id="rxStockViewBtn" title="Xem danh sách thuốc tồn kho hiện tại (chỉ xem)">📦 Xem danh sách thuốc tồn hiện tại</button>
           </div>
 
           <div id="rxDigitalDrugArea">
@@ -1431,6 +1432,40 @@
         <div class="rx-history-loadmore-row">
           <button type="button" class="rx-btn rx-btn-secondary" id="rxHistoryLoadMoreBtn">Tải thêm</button>
         </div>
+      </div>
+    </div>
+
+    <!-- Danh sách thuốc tồn kho hiện tại (chỉ xem) — cùng mật khẩu nội bộ "cs2" như "Đơn đã kê" -->
+    <div class="rx-warn-overlay" id="rxStockOverlay">
+      <div class="rx-warn-box rx-history-box">
+        <div class="rx-warn-head rx-history-head">
+          <span class="ic">📦</span>
+          <h3>Thuốc tồn kho hiện tại (Trong Bệnh viện) — chỉ xem</h3>
+          <button type="button" class="rx-history-close-x" id="rxStockCloseX" title="Đóng">✕</button>
+        </div>
+        <div class="rx-history-search-row">
+          <input type="text" id="rxStockSearch" placeholder="Tìm theo tên thương mại hoặc tên gốc/hoạt chất...">
+        </div>
+        <div class="rx-history-table-wrap">
+          <table class="rx-history-table">
+            <thead>
+              <tr>
+                <th style="width:44px;">STT</th>
+                <th>Tên thương mại</th>
+                <th>Tên gốc / Hoạt chất</th>
+                <th>ĐVT</th>
+                <th>Đơn giá</th>
+                <th>Tồn kho</th>
+                <th>Chỉ định / Nhóm điều trị (AI tóm tắt)</th>
+              </tr>
+            </thead>
+            <tbody id="rxStockList"></tbody>
+          </table>
+        </div>
+        <p class="rx-history-note" style="padding:0 4px;color:#6b7280;font-size:12.5px;">
+          Cột "Chỉ định / Nhóm điều trị" do AI tự tóm tắt khi nạp danh mục từ file Excel — chỉ mang tính tham khảo,
+          không thay thế tờ hướng dẫn sử dụng thuốc.
+        </p>
       </div>
     </div>
 
