@@ -3170,3 +3170,89 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   #page-home .hgrid.hgrid-compact-few .hcard .ic { font-size: 26px; }
   #page-home .hgrid.hgrid-compact-few .hcard h2 { font-size: 12.5px; }
 }
+
+/* ============================================================
+   CÁC THÊM MỚI: post-print overlay, stock table sort, AI panel
+   ============================================================ */
+
+/* Nút "Xoá hết" trong header cột xóa của bảng toa */
+.rx-clear-all-th-btn {
+  background: none; border: 1px solid #dc2626; color: #dc2626; border-radius: 5px;
+  padding: 2px 6px; font-size: 11px; cursor: pointer; white-space: nowrap; font-weight: 600;
+}
+.rx-clear-all-th-btn:hover { background: #fee2e2; }
+
+/* Post-print overlay */
+.rx-postprint-box {
+  max-width: 520px; width: 94%; padding: 0;
+}
+.rx-postprint-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+}
+.rx-postprint-head h3 { margin: 0; font-size: 17px; }
+.rx-postprint-summary {
+  padding: 14px 20px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  max-height: 300px;
+  overflow-y: auto;
+}
+.rx-postprint-summary .ps-label { font-weight: 700; color: #374151; min-width: 100px; display: inline-block; }
+.rx-postprint-summary .ps-row { margin-bottom: 4px; }
+.rx-postprint-summary .ps-drugs { margin-top: 8px; padding: 8px 10px; background: #f9fafb; border-radius: 7px; border: 1px solid var(--border); }
+.rx-postprint-summary .ps-drug-item { padding: 2px 0; border-bottom: 1px dotted #e5e7eb; }
+.rx-postprint-summary .ps-drug-item:last-child { border-bottom: none; }
+.rx-postprint-actions {
+  display: flex; gap: 12px; padding: 16px 20px; flex-wrap: wrap;
+}
+.rx-postprint-edit-btn, .rx-postprint-new-btn { flex: 1; min-width: 160px; justify-content: center; }
+.rx-postprint-hint {
+  padding: 0 20px 14px; font-size: 12px; color: #6b7280; margin: 0;
+}
+.rx-btn-outline {
+  background: var(--surface); color: var(--blue); border: 2px solid var(--blue); font-weight: 700;
+}
+.rx-btn-outline:hover { background: #eff6ff; }
+.rx-btn-ai {
+  background: #7c3aed; color: #fff; border: 1px solid #6d28d9;
+}
+.rx-btn-ai:hover { background: #6d28d9; }
+
+/* Sortable stock headers */
+.rx-stock-th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.rx-stock-th-sort:hover { background: #f0f9ff; }
+.rx-stock-th-sort .rx-sort-ic::after { content: ' ⇅'; font-size: 10px; color: #9ca3af; }
+.rx-stock-th-sort.sort-asc .rx-sort-ic::after { content: ' ↑'; color: var(--blue); }
+.rx-stock-th-sort.sort-desc .rx-sort-ic::after { content: ' ↓'; color: var(--blue); }
+
+/* Low-stock warning badge */
+.rx-low-stock-warn { color: #b45309; background: #fef3c7; border-radius: 4px; padding: 0 5px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+.rx-out-stock-warn { color: #dc2626; background: #fee2e2; border-radius: 4px; padding: 0 5px; font-size: 11px; font-weight: 700; margin-left: 4px; }
+
+/* Stock actions row (copy + AI buttons) */
+.rx-stock-actions-row {
+  display: flex; gap: 10px; padding: 10px 4px 4px; flex-wrap: wrap;
+}
+.rx-stock-actions-row .rx-btn { padding: 7px 14px; font-size: 13px; }
+
+/* AI query panel */
+.rx-stock-ai-panel {
+  padding: 0 4px 10px;
+}
+.rx-stock-ai-input-row {
+  display: flex; gap: 8px; margin-bottom: 8px;
+}
+.rx-stock-ai-input-row input {
+  flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 7px;
+  font-size: 13.5px; font-family: inherit; background: var(--surface);
+}
+.rx-stock-ai-answer {
+  padding: 12px 14px; background: #f5f3ff; border-radius: 8px; font-size: 13.5px;
+  line-height: 1.7; border: 1px solid #ddd6fe; white-space: pre-wrap; display: none;
+  color: #1e1b4b;
+}
+.rx-stock-ai-answer.show { display: block; }
+.rx-stock-ai-answer.loading { color: #7c3aed; }
