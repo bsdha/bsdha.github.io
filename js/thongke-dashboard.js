@@ -105,6 +105,15 @@
         border:none;background:linear-gradient(120deg,#0f7b3d,#1fae63);color:#fff;cursor:pointer;
         box-shadow:0 0 14px rgba(23,163,74,.4);}
       .tk-import-confirm-btn:disabled{opacity:.6;cursor:progress;}
+      .tk-sync-status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10050;
+        background:rgba(14,34,51,.92);color:#fff;font-family:inherit;font-weight:700;font-size:15px;
+        padding:16px 28px;border-radius:12px;box-shadow:0 16px 46px rgba(0,0,0,.35);
+        display:flex;align-items:center;gap:10px;pointer-events:none;text-align:center;white-space:nowrap;}
+      .tk-sync-status .tk-sync-spinner{width:16px;height:16px;border-radius:50%;
+        border:2.5px solid rgba(255,255,255,.35);border-top-color:#fff;animation:tkSpin .8s linear infinite;
+        flex:0 0 auto;}
+      .tk-sync-status.tk-sync-done .tk-sync-spinner{display:none;}
+      @keyframes tkSpin{to{transform:rotate(360deg);}}
       .tk-live{font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
@@ -210,7 +219,7 @@
               </div>
               <div class="tk-filter-group">
                 <label>&nbsp;</label>
-                <button type="button" class="tk-import-btn" id="tkImportBtn" title="Đọc file Excel &quot;Danh sách thăm khám&quot; và tự động đếm số lượt mỗi phòng khám">📤 Nhập từ Excel</button>
+                <button type="button" class="tk-import-btn" id="tkImportBtn" title="Đọc file Excel &quot;Danh sách thăm khám&quot; và tự động đếm số lượt mỗi phòng khám">📤 Nhập File Excel của Helix</button>
                 <input type="file" id="tkImportFile" accept=".xlsx,.xls" style="display:none;">
               </div>
             </div>
@@ -564,8 +573,12 @@
         tkHeaderStuck = true;
         spacer.style.height = header.offsetHeight + 'px';
         header.classList.add('tk-head-stuck');
-        updateStuckGeometry(container);
       }
+      // Đo lại left/width mỗi lần cuộn trong lúc đang dính: rẻ (chỉ 1 lần
+      // getBoundingClientRect), nhưng cần thiết vì .tk-wrap có thể lệch trái/phải
+      // theo thời gian (thanh cuộn xuất hiện/biến mất, nội dung đổi chiều cao...),
+      // nếu chỉ đo một lần lúc chuyển trạng thái thì phần đầu trang sẽ bị trôi lệch.
+      updateStuckGeometry(container);
       header.style.top = topOffset + 'px';
     } else if (tkHeaderStuck) {
       tkHeaderStuck = false;
@@ -1241,6 +1254,32 @@
     return { date, counts, unmatched, totalRows };
   }
 
+  function showSyncStatus(text) {
+    let el = document.getElementById('tkSyncStatus');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'tkSyncStatus';
+      el.className = 'tk-sync-status';
+      document.body.appendChild(el);
+    }
+    el.classList.remove('tk-sync-done');
+    el.innerHTML = `<span class="tk-sync-spinner"></span><span>${escapeXml(text)}</span>`;
+    return el;
+  }
+
+  function finishSyncStatus(text, autoHideMs) {
+    const el = showSyncStatus(text);
+    el.classList.add('tk-sync-done');
+    if (autoHideMs) {
+      setTimeout(() => { if (el && el.parentNode) el.remove(); }, autoHideMs);
+    }
+  }
+
+  function hideSyncStatus() {
+    const el = document.getElementById('tkSyncStatus');
+    if (el) el.remove();
+  }
+
   function closeImportOverlay() {
     const ov = document.getElementById('tkImportOverlay');
     if (ov) ov.remove();
@@ -1309,6 +1348,8 @@
       const vnDate = `${Number(dd)}/${Number(mm)}/${yyyy}`;
       btn.disabled = true;
       btn.textContent = '⏳ Đang đồng bộ…';
+      closeImportOverlay();
+      showSyncStatus('Đang đồng bộ...');
       try {
         const res = await fetch(DATA_URL, {
           method: 'POST',
@@ -1317,12 +1358,12 @@
         });
         const json = await res.json().catch(() => ({}));
         if (!res.ok || !json.ok) throw new Error((json && json.error) || ('HTTP ' + res.status));
-        closeImportOverlay();
         await loadData(container);
         renderAll(container);
-        alert('Đã đồng bộ số liệu ngày ' + vnDate + ' thành công.');
+        finishSyncStatus('Đã đồng bộ xong!', 1500);
       } catch (err) {
-        alert('Đồng bộ thất bại: ' + err.message);
+        finishSyncStatus('Đồng bộ thất bại: ' + err.message, 2200);
+      } finally {
         btn.disabled = false;
         btn.textContent = '✅ Đồng bộ số liệu';
       }
