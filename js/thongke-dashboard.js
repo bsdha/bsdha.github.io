@@ -548,14 +548,16 @@
     if (shouldStick) {
       if (!tkHeaderStuck) {
         tkHeaderStuck = true;
-        // Phải thêm class TRƯỚC rồi mới đo offsetHeight: class 'tk-head-stuck'
-        // đổi padding-top/margin của header, nên chiều cao thật sự SAU khi dính
-        // khác với chiều cao lúc còn ở trong luồng bình thường. Đo trước khi thêm
-        // class (như trước đây) khiến spacer thấp/cao hơn header thật một chút,
-        // gây giật/lệch nội dung đúng vào thời điểm chuyển sang trạng thái dính.
         header.classList.add('tk-head-stuck');
-        spacer.style.height = header.offsetHeight + 'px';
       }
+      // Đồng bộ chiều cao spacer với chiều cao THẬT của header mỗi lần cuộn
+      // (không chỉ một lần lúc vừa dính): nội dung header có thể đổi chiều cao
+      // sau đó (VD: dòng "Đồng bộ gần nhất" đổi độ dài, các ô lọc xuống dòng khi
+      // dữ liệu/tháng tải xong, font tải xong...). Nếu chỉ đo một lần lúc chuyển
+      // trạng thái, spacer sẽ thấp hơn header thật, khiến bảng bên dưới bị trôi
+      // lên và chui vào gầm vùng cố định — đây chính là lỗi "số liệu chui vào
+      // vùng cố định" khi cuộn. offsetHeight rẻ, an toàn để đọc mỗi khung hình.
+      spacer.style.height = header.offsetHeight + 'px';
       // Đo lại left/width mỗi lần cuộn trong lúc đang dính: rẻ (chỉ 1 lần
       // getBoundingClientRect), nhưng cần thiết vì .tk-wrap có thể lệch trái/phải
       // theo thời gian (thanh cuộn xuất hiện/biến mất, nội dung đổi chiều cao...),
