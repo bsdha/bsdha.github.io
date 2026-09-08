@@ -1381,28 +1381,17 @@
           </div>
 
           <div class="rx-actions">
-            <button class="rx-btn rx-btn-danger" id="rxClearBtn">Xoá toàn bộ toa</button>
+            <div class="rx-actions-left">
+              <div id="rxLockedBanner" class="rx-locked-banner" style="display:none;">🔒 Đơn đã in — chỉnh sửa hoặc kê toa mới</div>
+              <button class="rx-btn rx-btn-new-rx" id="rxClearBtn">➕ Kê toa mới</button>
+              <button class="rx-btn rx-btn-edit-rx" id="rxEditRxBtn" style="display:none;">✏️ Chỉnh sửa toa</button>
+            </div>
             <button class="rx-btn rx-btn-print" id="rxPrintBtn">🖶 Xem &amp; in đơn thuốc</button>
+          </div>
           </div>
         </div>
       </div>
 
-    </div>
-
-    <!-- Overlay hiển thị SAU KHI IN ĐƠN THUỐC -->
-    <div class="rx-warn-overlay" id="rxPostPrintOverlay">
-      <div class="rx-warn-box rx-postprint-box">
-        <div class="rx-warn-head rx-postprint-head">
-          <span class="ic">✅</span>
-          <h3>Đơn thuốc đã tạo</h3>
-        </div>
-        <div id="rxPostPrintSummary" class="rx-postprint-summary"></div>
-        <div class="rx-postprint-actions">
-          <button type="button" id="rxPostPrintEdit" class="rx-btn rx-btn-outline rx-postprint-edit-btn">✏️ Chỉnh sửa đơn thuốc</button>
-          <button type="button" id="rxPostPrintNew" class="rx-btn rx-btn-print rx-postprint-new-btn">➕ Kê đơn mới</button>
-        </div>
-        <p class="rx-postprint-hint">Bấm <b>Chỉnh sửa</b> để sửa lại đơn này (sẽ cập nhật vào đơn đã lưu, không tạo thêm). Bấm <b>Kê đơn mới</b> để bắt đầu toa hoàn toàn mới.</p>
-      </div>
     </div>
 
     <div class="rx-warn-overlay" id="rxWarnOverlay">
