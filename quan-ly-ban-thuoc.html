@@ -968,11 +968,19 @@
   async function loadKho() {
     const wrap = document.getElementById('khoTableWrap');
     wrap.innerHTML = '<div class="loading">Đang tải...</div>';
-    const { ok, status, data } = await callWorker('inventory_list');
-    if (status === 401 || status === 423) { handleAuthError(status, data); return; }
-    if (!ok) { wrap.innerHTML = '<div class="empty">Lỗi: ' + esc(data.error || '') + '</div>'; return; }
-    khoCache = data.inventory || [];
-    renderKho();
+    try {
+      const { ok, status, data } = await callWorker('inventory_list');
+      if (status === 401 || status === 423) { handleAuthError(status, data); return; }
+      if (!ok) { wrap.innerHTML = '<div class="empty">Lỗi: ' + esc(data.error || '') + '</div>'; return; }
+      khoCache = data.inventory || [];
+      renderKho();
+    } catch (e) {
+      // FIX: bat loi o day de "Dang tai..." khong bi treo mai neu co exception
+      // (vd du lieu tra ve khong dung dinh dang) — hien loi that ra man hinh
+      // + console de de debug, thay vi im lang khong lam gi ca.
+      console.error('loadKho error:', e);
+      wrap.innerHTML = '<div class="empty">Lỗi hiển thị Kho thuốc: ' + esc(e && e.message) + '</div>';
+    }
   }
   let khoSort = { col: 'drug_name', dir: 'asc' };
   function stockWarnLevelKho(qty, unit) {
@@ -987,6 +995,7 @@
   function renderKho() {
     const wrap = document.getElementById('khoTableWrap');
     if (!khoCache.length) { wrap.innerHTML = '<div class="empty">Kho trống — nhập dữ liệu từ file Excel ở trên.</div>'; return; }
+    try {
     const editable = currentRole === 'pharmacist';
 
     // Sắp xếp
@@ -1041,6 +1050,12 @@
         if (priceInput) priceInput.addEventListener('change', () => callWorker('inventory_update_one', { id, unit_price: priceInput.value }));
         if (qtyInput) qtyInput.addEventListener('change', () => callWorker('inventory_update_one', { id, stock_qty: qtyInput.value }));
       });
+    }
+    } catch (e) {
+      // FIX: neu build bang HTML that bai giua chung, "Dang tai..." (hoac
+      // bang cu) se khong bi ket lai vinh vien - hien ro loi that thay vao do.
+      console.error('renderKho error:', e);
+      wrap.innerHTML = '<div class="empty">Lỗi hiển thị bảng Kho thuốc: ' + esc(e && e.message) + '</div>';
     }
   }
 
