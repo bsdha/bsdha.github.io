@@ -55,9 +55,12 @@
       .tk-banner-title{position:relative;color:#fff;font-size:23px;font-weight:800;margin-top:7px;
         text-shadow:0 0 14px rgba(120,220,255,.85),0 0 30px rgba(60,180,255,.5);}
       .tk-head-sticky{background:#fff;z-index:30;padding-bottom:2px;}
-      .tk-head-sticky.tk-head-stuck{position:fixed;box-shadow:0 8px 18px -8px rgba(14,34,51,.28);padding-top:8px;}
+      .tk-head-sticky.tk-head-stuck{position:fixed;left:0;right:0;width:auto;
+        box-shadow:0 8px 18px -8px rgba(14,34,51,.28);padding-top:8px;}
       .tk-head-sticky .tk-banner{margin-bottom:12px;}
       .tk-head-sticky.tk-head-stuck .tk-banner{margin-bottom:10px;}
+      .tk-head-inner{}
+      .tk-head-sticky.tk-head-stuck .tk-head-inner{max-width:1320px;margin:0 auto;padding:0 6px;box-sizing:border-box;}
       .tk-head-spacer{height:0;}
       .tk-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px 18px;
         padding-bottom:10px;}
@@ -171,6 +174,7 @@
       <div class="tk-wrap">
         <div id="tkHeadSentinel"></div>
         <div class="tk-head-sticky" id="tkHeadSticky">
+          <div class="tk-head-inner">
           <div class="tk-banner">
             <div class="tk-banner-org">Bệnh viện đa khoa Bình Dương - Cơ sở 2</div>
             <div class="tk-banner-title" id="tkReportTitle">Báo cáo số liệu KCB ngày --/--/----</div>
@@ -206,6 +210,7 @@
             </div>
           </div>
           <hr class="tk-head-divider">
+          </div>
         </div>
         <div class="tk-head-spacer" id="tkHeadSpacer"></div>
         <div class="tk-panel tk-detail-panel">
@@ -395,14 +400,8 @@
 
     if (!resizeListenerBound) {
       resizeListenerBound = true;
-      document.addEventListener('scroll', () => checkHeaderStick(container), true);
-      window.addEventListener('scroll', () => checkHeaderStick(container));
-      window.addEventListener('resize', () => {
-        // Đổi kích thước cửa sổ (xoay màn hình, thu/phóng trình duyệt...) có thể
-        // làm thay đổi bề rộng thật của .tk-wrap -> đo lại nếu đang ở trạng thái dính.
-        if (tkHeaderStuck) updateStuckGeometry(container);
-        checkHeaderStick(container);
-      });
+      window.addEventListener('scroll', () => checkHeaderStick(container), { passive: true });
+      window.addEventListener('resize', () => checkHeaderStick(container));
     }
 
     const chartToggle = container.querySelector('#tkChartToggle');
@@ -518,6 +517,12 @@
 
   // ---------- Khoá vùng bộ lọc/đầu trang khi cuộn (thay cho position:sticky, để không phụ
   // thuộc vào ancestor cuộn nào của SPA) ----------
+  // Header dùng position:fixed;left:0;right:0 (full-width, KHÔNG đo left/width bằng JS
+  // nữa) — bên trong có .tk-head-inner tự canh giữa bằng max-width/margin:auto giống
+  // .tk-wrap. Cách này không phụ thuộc getBoundingClientRect() của .tk-wrap, nên miễn
+  // nhiễm với trường hợp một phần tử cha nào đó của SPA có transform/filter/
+  // will-change:transform làm đổi containing block của position:fixed — đây là nguyên
+  // nhân gây hiện tượng "lệch qua 1 bên giữa chừng khi cuộn" trước đây.
   let tkHeaderStuck = false;
 
   function getStickyTopOffset() {
@@ -529,18 +534,10 @@
   }
 
   function checkHeaderStick(container) {
-    // Dùng position:fixed điều khiển bằng JS (bắt buộc trong cấu trúc SPA này vì
-    // position:sticky bị một phần tử cha nào đó chặn mất ngữ cảnh, khiến vùng
-    // "khoá" trôi mất hẳn thay vì dính lại — đã kiểm chứng thực tế).
-    // Để tránh lỗi lệch trái từng gặp trước đây: left/width của vùng khoá CHỈ
-    // được đo lại tại đúng thời điểm chuyển sang trạng thái "dính" (hoặc khi cửa
-    // sổ đổi kích thước), KHÔNG đo lại liên tục theo từng khung hình cuộn nữa —
-    // đó chính là nguyên nhân gây trôi/lệch trước đây.
     const sentinel = container.querySelector('#tkHeadSentinel');
     const header = container.querySelector('#tkHeadSticky');
     const spacer = container.querySelector('#tkHeadSpacer');
-    const wrap = container.querySelector('.tk-wrap');
-    if (!sentinel || !header || !spacer || !wrap) return;
+    if (!sentinel || !header || !spacer) return;
     const topOffset = getStickyTopOffset();
     const sentinelTop = sentinel.getBoundingClientRect().top;
     const shouldStick = sentinelTop <= topOffset;
@@ -558,32 +555,13 @@
       // lên và chui vào gầm vùng cố định — đây chính là lỗi "số liệu chui vào
       // vùng cố định" khi cuộn. offsetHeight rẻ, an toàn để đọc mỗi khung hình.
       spacer.style.height = header.offsetHeight + 'px';
-      // Đo lại left/width mỗi lần cuộn trong lúc đang dính: rẻ (chỉ 1 lần
-      // getBoundingClientRect), nhưng cần thiết vì .tk-wrap có thể lệch trái/phải
-      // theo thời gian (thanh cuộn xuất hiện/biến mất, nội dung đổi chiều cao...),
-      // nếu chỉ đo một lần lúc chuyển trạng thái thì phần đầu trang sẽ bị trôi lệch.
-      updateStuckGeometry(container);
       header.style.top = topOffset + 'px';
     } else if (tkHeaderStuck) {
       tkHeaderStuck = false;
       header.classList.remove('tk-head-stuck');
       header.style.top = '';
-      header.style.left = '';
-      header.style.width = '';
       spacer.style.height = '0';
     }
-  }
-
-  // Đo lại left/width của vùng khoá dựa trên vị trí thật của .tk-wrap. Chỉ được
-  // gọi khi vừa chuyển sang trạng thái dính, hoặc khi resize — không gọi trong
-  // lúc đang cuộn, để tránh mọi khả năng bị lệch do đo đạc giữa chừng.
-  function updateStuckGeometry(container) {
-    const header = container.querySelector('#tkHeadSticky');
-    const wrap = container.querySelector('.tk-wrap');
-    if (!header || !wrap) return;
-    const wrapRect = wrap.getBoundingClientRect();
-    header.style.left = wrapRect.left + 'px';
-    header.style.width = wrapRect.width + 'px';
   }
 
   function renderLastSync(container) {
