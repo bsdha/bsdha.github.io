@@ -2313,8 +2313,8 @@
         extra: { age, sex, vitalsParts, note, dateWords, blankDateSign },
       });
 
-      // Hiện overlay tóm tắt đơn sau khi in
-      showPostPrintOverlay({ name, diag, doctor, items: isHandwritten ? [] : rxRows });
+      // Khóa form sau khi in — bác sĩ phải bấm "Chỉnh sửa toa" hoặc "Kê toa mới" để tiếp tục
+      lockRxForm();
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
     } finally {
@@ -2324,49 +2324,89 @@
   });
 
   // ======================================================================
-  // POST-PRINT OVERLAY: tóm tắt đơn sau khi in, nút Chỉnh sửa / Kê đơn mới
+  // KHÓA / MỞ KHÓA FORM SAU KHI IN TOA
+  // Sau khi in: form bị khóa (readonly), nút cuối đổi thành "Kê toa mới" + "Chỉnh sửa toa".
+  // "Kê toa mới"   → xóa form, reset ID, mở khóa.
+  // "Chỉnh sửa toa" → mở khóa, giữ nguyên dữ liệu, lần in tiếp sẽ PATCH.
   // ======================================================================
-  function showPostPrintOverlay({ name, diag, doctor, items }) {
-    const overlay = $('rxPostPrintOverlay');
-    const summary = $('rxPostPrintSummary');
-    if (!overlay || !summary) return;
-    const drugsHtml = items.length
-      ? items.map((r) => `<div class="ps-drug-item">• <b>${escapeHtml(r.brand)}</b>${r.generic ? ` (${escapeHtml(r.generic)})` : ''} — ${escapeHtml(r.qty || '')} ${escapeHtml(r.form || '')}, ${escapeHtml(r.usage || '')}, ${escapeHtml(r.days || '')} ngày</div>`).join('')
-      : '<div style="color:#6b7280">(Toa viết tay — không có danh sách thuốc lưu trữ)</div>';
-    summary.innerHTML = `
-      <div class="ps-row"><span class="ps-label">Bệnh nhân:</span> ${escapeHtml(name || '(chưa nhập)')}</div>
-      <div class="ps-row"><span class="ps-label">Chẩn đoán:</span> ${escapeHtml(diag || '(chưa nhập)')}</div>
-      <div class="ps-row"><span class="ps-label">Bác sĩ kê:</span> ${escapeHtml(doctor || '(chưa chọn)')}</div>
-      <div class="ps-row"><span class="ps-label">Số thuốc:</span> ${items.length} thuốc</div>
-      <div class="ps-drugs">${drugsHtml}</div>`;
-    overlay.classList.add('show');
+  const RX_LOCKED_CLASS = 'rx-form-locked';
+  const rxFormArea = $('rxPrescribeArea') || document.querySelector('.rx-section') || document.querySelector('form');
+
+  function lockRxForm() {
+    const area = document.querySelector('.rx-section');
+    if (area) area.classList.add(RX_LOCKED_CLASS);
+    _setRxFieldsDisabled(true);
+    const editRxBtn = $('rxEditRxBtn');
+    if (editRxBtn) { editRxBtn.style.display = ''; editRxBtn.disabled = false; }
+    const printBtn = $('rxPrintBtn');
+    if (printBtn) printBtn.disabled = true;
+    const banner = $('rxLockedBanner');
+    if (banner) banner.style.display = '';
   }
 
-  // Nút "Chỉnh sửa đơn thuốc" — đóng overlay, giữ nguyên form, in lại sẽ PATCH
-  if ($('rxPostPrintEdit')) {
-    $('rxPostPrintEdit').addEventListener('click', () => {
-      const overlay = $('rxPostPrintOverlay');
-      if (overlay) overlay.classList.remove('show');
-      // lastSavedRxId vẫn còn → lần in tiếp theo sẽ PATCH đơn này
+  function unlockRxForm() {
+    const area = document.querySelector('.rx-section');
+    if (area) area.classList.remove(RX_LOCKED_CLASS);
+    _setRxFieldsDisabled(false);
+    const editRxBtn = $('rxEditRxBtn');
+    if (editRxBtn) editRxBtn.style.display = 'none';
+    const printBtn = $('rxPrintBtn');
+    if (printBtn) printBtn.disabled = false;
+    const banner = $('rxLockedBanner');
+    if (banner) banner.style.display = 'none';
+  }
+
+  function _setRxFieldsDisabled(disabled) {
+    // Tất cả input/select/textarea/button trong khu vực kê đơn
+    const EXCLUDE_IDS = ['rxClearBtn', 'rxEditRxBtn']; // 2 nút luôn hoạt động
+    const containers = [
+      document.querySelector('.rx-patient-section'),
+      document.querySelector('.rx-table-wrap'),
+      document.querySelector('.rx-drug-input-area'),
+      document.querySelector('.rx-note-area'),
+      document.querySelector('.rx-doctor-area'),
+    ].filter(Boolean);
+    // Fallback: tìm theo class chính của section kê đơn
+    const allFields = document.querySelectorAll(
+      '.rx-section input, .rx-section select, .rx-section textarea, .rx-section button,' +
+      '[id^="rx"]:is(input,select,textarea,button):not(#rxClearBtn):not(#rxEditRxBtn),' +
+      '#rxClearAllInTable, #rxAddBtn, #rxWarnDelBtn'
+    );
+    allFields.forEach((el) => {
+      if (EXCLUDE_IDS.includes(el.id)) return;
+      el.disabled = disabled;
     });
   }
 
-  // Nút "Kê đơn mới" — xoá toàn bộ form + reset ID
-  if ($('rxPostPrintNew')) {
-    $('rxPostPrintNew').addEventListener('click', async () => {
-      const overlay = $('rxPostPrintOverlay');
-      if (overlay) overlay.classList.remove('show');
-      lastSavedRxId = null; // đơn tiếp theo sẽ POST mới
-      // Xoá danh sách thuốc
-      rxRows = []; renderRxTable();
-      // Xoá thông tin bệnh nhân
-      ['rxPatientName','rxPatientDob','rxPatientSex','rxDiagnosis','rxNote',
-       'rxVitalPulse','rxVitalBpSys','rxVitalBpDia','rxVitalTemp','rxVitalResp','rxVitalWeight'].forEach((id) => { if ($(id)) $(id).value = ''; });
-      if ($('rxPatientAgeHint')) $('rxPatientAgeHint').textContent = '';
+  // "➕ Kê toa mới" — xóa sạch form, reset ID, mở khóa (nếu đang khóa)
+  $('rxClearBtn').addEventListener('click', async () => {
+    const isLocked = !!document.querySelector(`.${RX_LOCKED_CLASS}`);
+    if (!isLocked && rxRows.length === 0 &&
+        !($('rxPatientName') && $('rxPatientName').value.trim()) &&
+        !($('rxDiagnosis') && $('rxDiagnosis').value.trim())) {
+      return; // form đã trống, không làm gì
+    }
+    if (!isLocked) {
+      const ok = await customConfirm('Kê toa mới', 'Xoá toàn bộ thông tin đang nhập và bắt đầu toa mới?');
+      if (!ok) return;
+    }
+    lastSavedRxId = null;
+    rxRows = []; renderRxTable();
+    ['rxPatientName','rxPatientDob','rxPatientSex','rxAddress','rxDiagnosis','rxNote',
+     'rxVitalPulse','rxVitalBpSys','rxVitalBpDia','rxVitalTemp','rxVitalResp','rxVitalWeight'].forEach((id) => { if ($(id)) $(id).value = ''; });
+    if ($('rxPatientAgeHint')) $('rxPatientAgeHint').textContent = '';
+    unlockRxForm();
+  });
+
+  // "Chỉnh sửa toa" → mở khóa, giữ data, lần in tiếp PATCH
+  if ($('rxEditRxBtn')) {
+    $('rxEditRxBtn').addEventListener('click', () => {
+      unlockRxForm();
+      // lastSavedRxId vẫn còn → lần in tiếp sẽ PATCH đúng đơn này
     });
   }
 
-  // Nút "Xoá hết" trong header bảng toa (thêm để nổi bật hơn)
+  // Nút "Xoá hết" trong header bảng toa
   const rxClearAllInTable = $('rxClearAllInTable');
   if (rxClearAllInTable) {
     rxClearAllInTable.addEventListener('click', async () => {
@@ -2782,6 +2822,7 @@
           );
           if (!ok) return;
           loadRxFromHistory(row);
+          unlockRxForm(); // mở khóa form để chỉnh sửa
           rxHistoryOverlay.classList.remove('show');
         });
       }
