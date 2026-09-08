@@ -313,6 +313,29 @@
     </div>
   </div>
 
+  <div class="import-modal-overlay" id="importModeOverlay">
+    <div class="import-modal-box">
+      <div class="import-modal-head">
+        <span style="font-size:22px;">📥</span>
+        <h3>Chọn cách nạp danh mục</h3>
+      </div>
+      <div class="import-modal-body">
+        <p id="importModeFileInfo" style="color:#6b7280;font-size:12.5px;margin-bottom:12px;"></p>
+        <button class="import-mode-btn mode-add" id="importModeAdd">
+          <b>➕ Cộng dồn số lượng</b>
+          Thuốc đã có trong kho → <b>cộng thêm</b> số lượng từ file vào tồn hiện tại, cập nhật giá nếu có.<br>
+          Thuốc chưa có → thêm mới kèm số lượng.
+        </button>
+        <button class="import-mode-btn mode-replace" id="importModeReplace">
+          <b>🗑 Ghi đè hoàn toàn</b>
+          <span style="color:#dc2626;">Xoá toàn bộ danh mục & kho cũ</span>, sau đó ghi dữ liệu từ file vào.<br>
+          Không thể hoàn tác — dùng khi muốn làm mới hoàn toàn.
+        </button>
+        <button class="import-modal-cancel" id="importModeCancel">Huỷ</button>
+      </div>
+    </div>
+  </div>
+
 <script>
   const WORKER_URL = 'https://rx-stats.dhabolero.workers.dev/rx-stats';
   const SUPABASE_URL = 'https://bihsqhjyobbktzmwnbdx.supabase.co';
@@ -1133,29 +1156,6 @@
 
   if (currentPassword && currentRole) showDash(); else showLogin();
 </script>
-  <!-- Modal chọn cách nạp file Excel thuốc -->
-  <div class="import-modal-overlay" id="importModeOverlay">
-    <div class="import-modal-box">
-      <div class="import-modal-head">
-        <span style="font-size:22px;">📥</span>
-        <h3>Chọn cách nạp danh mục</h3>
-      </div>
-      <div class="import-modal-body">
-        <p id="importModeFileInfo" style="color:#6b7280;font-size:12.5px;margin-bottom:12px;"></p>
-        <button class="import-mode-btn mode-add" id="importModeAdd">
-          <b>➕ Cộng dồn số lượng</b>
-          Thuốc đã có trong kho → <b>cộng thêm</b> số lượng từ file vào tồn hiện tại, cập nhật giá nếu có.<br>
-          Thuốc chưa có → thêm mới kèm số lượng.
-        </button>
-        <button class="import-mode-btn mode-replace" id="importModeReplace">
-          <b>🗑 Ghi đè hoàn toàn</b>
-          <span style="color:#dc2626;">Xoá toàn bộ danh mục & kho cũ</span>, sau đó ghi dữ liệu từ file vào.<br>
-          Không thể hoàn tác — dùng khi muốn làm mới hoàn toàn.
-        </button>
-        <button class="import-modal-cancel" id="importModeCancel">Huỷ</button>
-      </div>
-    </div>
-  </div>
 
 </body>
 </html>
