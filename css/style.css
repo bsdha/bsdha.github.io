@@ -3313,3 +3313,12 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 }
 /* Bảng thuốc trong toa khi locked */
 .rx-form-locked .rx-table-wrap { opacity: 0.6; pointer-events: none; }
+
+/* Hàng 2 nút (Kê toa mới + Chỉnh sửa toa) nằm ngang */
+.rx-actions-btn-row {
+  display: flex; flex-direction: row; align-items: center; gap: 8px; flex-wrap: nowrap;
+}
+/* Override lại rx-actions-left để không còn flex-direction:column */
+.rx-actions-left {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+}
