@@ -2357,39 +2357,19 @@
   }
 
   function _setRxFieldsDisabled(disabled) {
-    // Tất cả input/select/textarea/button trong khu vực kê đơn
-    const EXCLUDE_IDS = ['rxClearBtn', 'rxEditRxBtn']; // 2 nút luôn hoạt động
-    const containers = [
-      document.querySelector('.rx-patient-section'),
-      document.querySelector('.rx-table-wrap'),
-      document.querySelector('.rx-drug-input-area'),
-      document.querySelector('.rx-note-area'),
-      document.querySelector('.rx-doctor-area'),
-    ].filter(Boolean);
-    // Fallback: tìm theo class chính của section kê đơn
-    const allFields = document.querySelectorAll(
-      '.rx-section input, .rx-section select, .rx-section textarea, .rx-section button,' +
-      '[id^="rx"]:is(input,select,textarea,button):not(#rxClearBtn):not(#rxEditRxBtn),' +
-      '#rxClearAllInTable, #rxAddBtn, #rxWarnDelBtn'
-    );
-    allFields.forEach((el) => {
-      if (EXCLUDE_IDS.includes(el.id)) return;
+    const NEVER_LOCK = new Set(['rxClearBtn', 'rxEditRxBtn', 'rxHistoryBtn', 'rxSettingsBtn', 'rxStockViewBtn']);
+    const section = document.querySelector('.rx-section');
+    if (!section) return;
+    section.querySelectorAll('input, select, textarea, button').forEach((el) => {
+      if (NEVER_LOCK.has(el.id)) return;
+      if (el.closest('.rx-warn-overlay')) return;
+      if (el.closest('.rx-actions-left')) return;
       el.disabled = disabled;
     });
   }
 
-  // "➕ Kê toa mới" — xóa sạch form, reset ID, mở khóa (nếu đang khóa)
-  $('rxClearBtn').addEventListener('click', async () => {
-    const isLocked = !!document.querySelector(`.${RX_LOCKED_CLASS}`);
-    if (!isLocked && rxRows.length === 0 &&
-        !($('rxPatientName') && $('rxPatientName').value.trim()) &&
-        !($('rxDiagnosis') && $('rxDiagnosis').value.trim())) {
-      return; // form đã trống, không làm gì
-    }
-    if (!isLocked) {
-      const ok = await customConfirm('Kê toa mới', 'Xoá toàn bộ thông tin đang nhập và bắt đầu toa mới?');
-      if (!ok) return;
-    }
+  // "➕ Kê toa mới" — xóa sạch form, reset ID, mở khóa (không hỏi xác nhận)
+  $('rxClearBtn').addEventListener('click', () => {
     lastSavedRxId = null;
     rxRows = []; renderRxTable();
     ['rxPatientName','rxPatientDob','rxPatientSex','rxAddress','rxDiagnosis','rxNote',
