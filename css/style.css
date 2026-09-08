@@ -3256,3 +3256,19 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 }
 .rx-stock-ai-answer.show { display: block; }
 .rx-stock-ai-answer.loading { color: #7c3aed; }
+
+/* Nút "✏️ Sửa" trong lịch sử đơn thuốc */
+.rx-history-edit-btn {
+  background: #eff6ff; color: #1d4ed8; border: 1.5px solid #93c5fd;
+  border-radius: 6px; padding: 3px 9px; font-size: 12px; font-weight: 700;
+  cursor: pointer; margin-right: 5px; white-space: nowrap;
+}
+.rx-history-edit-btn:hover { background: #dbeafe; border-color: #3b82f6; }
+
+/* Badge hiển thị số lần sửa + audit log */
+.rx-history-editlog-badge {
+  display: inline-block; margin-left: 6px;
+  background: #fef3c7; color: #92400e; border: 1px solid #fcd34d;
+  border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 700;
+  cursor: help;
+}
