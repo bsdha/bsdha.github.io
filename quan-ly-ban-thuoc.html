@@ -367,9 +367,20 @@
   function itemSource(order, it) { return it.source || (order.mode === 'outside' ? 'outside' : 'hospital'); }
 
   async function callWorker(action, extra) {
-    const resp = await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, password: currentPassword, ...extra }) });
-    const data = await resp.json().catch(() => ({}));
-    return { ok: resp.ok, status: resp.status, data };
+    // FIX: fetch() co the nem loi (mat mang, CORS bi chan, workers.dev
+    // dang tat, DNS loi...). Truoc day khong co try/catch nen loi nay se
+    // "nem" ra ngoai ham dang goi (vd doLogin) va LAM DUNG IM LANG toan
+    // bo giao dien (nut bi disable mai mai, khong co thong bao gi) - dung
+    // trieu chung "nhap mat khau khong co phan hoi gi".
+    try {
+      const resp = await fetch(WORKER_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, password: currentPassword, ...extra }) });
+      const data = await resp.json().catch(() => ({}));
+      return { ok: resp.ok, status: resp.status, data };
+    } catch (e) {
+      // status: 0 dung de danh dau day la loi MANG (khong ket noi duoc
+      // toi worker), khac voi loi sai mat khau (status 401) tra ve tu server.
+      return { ok: false, status: 0, data: { error: 'network', message: e && e.message } };
+    }
   }
 
   // ---------- Đăng nhập ----------
@@ -394,6 +405,11 @@
     currentPassword = p;
     const { ok, status, data } = await callWorker('login');
     btn.disabled = false; btn.textContent = 'Đăng nhập';
+    if (status === 0) {
+      // Loi mang / khong ket noi duoc toi worker (xem fix trong callWorker).
+      shakeLoginBox('⚠️ Không kết nối được tới máy chủ. Kiểm tra mạng rồi thử lại (F12 → tab Console/Network xem chi tiết lỗi).');
+      return;
+    }
     if (status === 423) {
       shakeLoginBox(`🔒 Đã khoá do nhập sai quá nhiều lần. Thử lại sau ${Math.ceil((data.remainingSec || 1800) / 60)} phút.`);
       return;
@@ -956,6 +972,8 @@
     if (status === 401 || status === 423) { handleAuthError(status, data); return; }
     if (!ok) { wrap.innerHTML = '<div class="empty">Lỗi: ' + esc(data.error || '') + '</div>'; return; }
     khoCache = data.inventory || [];
+    renderKho();
+  }
   let khoSort = { col: 'drug_name', dir: 'asc' };
   function stockWarnLevelKho(qty, unit) {
     const u = (unit || '').toLowerCase().trim();
@@ -966,7 +984,6 @@
     if (!isUnit && qty < 2) return 'low';
     return 'ok';
   }
-  renderKho();
   function renderKho() {
     const wrap = document.getElementById('khoTableWrap');
     if (!khoCache.length) { wrap.innerHTML = '<div class="empty">Kho trống — nhập dữ liệu từ file Excel ở trên.</div>'; return; }
