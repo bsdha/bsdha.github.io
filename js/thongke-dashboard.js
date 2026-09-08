@@ -77,6 +77,34 @@
         display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(23,163,74,.4);white-space:nowrap;}
       .tk-export-btn:hover{filter:brightness(1.08);}
       .tk-export-btn:disabled{opacity:.65;cursor:progress;filter:none;}
+      .tk-import-btn{font-family:inherit;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px;
+        border:none;background:linear-gradient(120deg,#7c3aed,#a855f7);color:#fff;cursor:pointer;height:33px;
+        display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(124,58,237,.4);white-space:nowrap;}
+      .tk-import-btn:hover{filter:brightness(1.08);}
+      .tk-import-btn:disabled{opacity:.65;cursor:progress;filter:none;}
+      .tk-import-overlay{position:fixed;inset:0;background:rgba(14,34,51,.55);z-index:9999;
+        display:flex;align-items:center;justify-content:center;padding:16px;}
+      .tk-import-modal{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:86vh;
+        overflow-y:auto;padding:22px 22px 18px;box-shadow:0 16px 46px rgba(0,0,0,.35);font-family:inherit;}
+      .tk-import-modal h3{margin:0 0 4px;font-size:17px;color:#0e2233;font-weight:800;}
+      .tk-import-modal .tk-import-sub{font-size:13px;color:#5c7284;margin-bottom:14px;}
+      .tk-import-table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;}
+      .tk-import-table th{text-align:left;font-size:12.5px;color:#5c7284;padding:6px 8px;border-bottom:2px solid #0e2233;}
+      .tk-import-table th:last-child, .tk-import-table td:last-child{text-align:right;}
+      .tk-import-table td{padding:6px 8px;border-bottom:1px solid #e3e9ed;color:#0e2233;}
+      .tk-import-table tr.tk-import-total td{font-weight:800;border-top:2px solid #0e2233;border-bottom:none;}
+      .tk-import-warn{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:12.5px;
+        border-radius:8px;padding:9px 12px;margin-bottom:12px;}
+      .tk-import-date-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13.5px;color:#0e2233;}
+      .tk-import-date-row input[type=date]{font-family:inherit;font-size:14px;padding:5px 8px;border-radius:7px;
+        border:1px solid #c9d6de;}
+      .tk-import-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px;}
+      .tk-import-cancel-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:8px 16px;border-radius:8px;
+        border:1px solid #c9d6de;background:#fff;color:#5c7284;cursor:pointer;}
+      .tk-import-confirm-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:8px 16px;border-radius:8px;
+        border:none;background:linear-gradient(120deg,#0f7b3d,#1fae63);color:#fff;cursor:pointer;
+        box-shadow:0 0 14px rgba(23,163,74,.4);}
+      .tk-import-confirm-btn:disabled{opacity:.6;cursor:progress;}
       .tk-live{font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
@@ -179,6 +207,11 @@
               <div class="tk-filter-group">
                 <label>&nbsp;</label>
                 <button type="button" class="tk-export-btn" id="tkExportBtn" title="Xuất số liệu đang xem ra file Excel">📊 Xuất File Excel</button>
+              </div>
+              <div class="tk-filter-group">
+                <label>&nbsp;</label>
+                <button type="button" class="tk-import-btn" id="tkImportBtn" title="Đọc file Excel &quot;Danh sách thăm khám&quot; và tự động đếm số lượt mỗi phòng khám">📤 Nhập từ Excel</button>
+                <input type="file" id="tkImportFile" accept=".xlsx,.xls" style="display:none;">
               </div>
             </div>
             <div class="tk-head-actions">
@@ -356,6 +389,22 @@
     if (exportBtn && !exportBtn.dataset.bound) {
       exportBtn.dataset.bound = '1';
       exportBtn.addEventListener('click', () => exportToExcel(exportBtn));
+    }
+
+    const importBtn = container.querySelector('#tkImportBtn');
+    const importFileInput = container.querySelector('#tkImportFile');
+    if (importBtn && !importBtn.dataset.bound) {
+      importBtn.dataset.bound = '1';
+      importBtn.addEventListener('click', () => importFileInput && importFileInput.click());
+    }
+    if (importFileInput && !importFileInput.dataset.bound) {
+      importFileInput.dataset.bound = '1';
+      importFileInput.addEventListener('change', async () => {
+        const file = importFileInput.files && importFileInput.files[0];
+        importFileInput.value = ''; // cho phép chọn lại cùng 1 file lần sau
+        if (!file) return;
+        await handleImportFile(file, importBtn, container);
+      });
     }
 
     if (!resizeListenerBound) {
@@ -1070,6 +1119,233 @@
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch (e) {
       alert('Không thể xuất file Excel: ' + e.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = originalText;
+    }
+  }
+
+  // ---------- Nhập từ Excel (Danh sách thăm khám ngoại trú) ----------
+  // Đọc file Excel xuất ra từ phần mềm HIS (danh sách từng lượt khám, có cột
+  // "Tên khu vực" ghi tên phòng khám của lượt đó), đếm số lượt theo từng phòng,
+  // rồi gộp vào đúng 14 dòng số liệu sẵn có (3-16) theo từ khoá trong tên phòng —
+  // không đổi tên hiển thị, chỉ dùng từ khoá để nhận diện đúng dòng cần cộng vào.
+  function stripDiacritics(s) {
+    return String(s == null ? '' : s)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/đ/gi, 'd');
+  }
+  function normText(s) {
+    return stripDiacritics(s).toLowerCase().replace(/\s+/g, ' ').trim();
+  }
+
+  // Thứ tự kiểm tra có ý nghĩa: các mẫu đặc thù hơn (vd "noi tong hop 1/2/3")
+  // được đặt trước để tránh nhận nhầm.
+  const ROOM_MATCHERS = [
+    { row: 3, label: 'Phòng khám Nội 1', test: (t) => /noi.*(tong.*hop)?.*\b1\b/.test(t) && /noi/.test(t) },
+    { row: 4, label: 'Phòng khám Nội 2', test: (t) => /noi.*(tong.*hop)?.*\b2\b/.test(t) && /noi/.test(t) },
+    { row: 5, label: 'Phòng Khám Nội 3', test: (t) => /noi.*(tong.*hop)?.*\b3\b/.test(t) && /noi/.test(t) },
+    { row: 6, label: 'Phòng khám Ngoại tổng hợp', test: (t) => /ngoai/.test(t) },
+    { row: 7, label: 'Phòng khám khoa Sản', test: (t) => /san/.test(t) },
+    { row: 8, label: 'Khám Nhi', test: (t) => /\bnhi\b/.test(t) },
+    { row: 9, label: 'Khám Mắt', test: (t) => /\bmat\b/.test(t) },
+    { row: 10, label: 'PK CS2_RHM', test: (t) => /rang.*ham.*mat|\brhm\b/.test(t) },
+    { row: 11, label: 'Khám Tai Mũi Họng', test: (t) => /tai.*mui.*hong|\btmh\b/.test(t) },
+    { row: 12, label: 'Phòng khám YHCT', test: (t) => /y.*hoc.*co.*truyen|\byhct\b/.test(t) },
+    { row: 13, label: 'Cấp Cứu', test: (t) => /cap.*cuu/.test(t) },
+    { row: 14, label: 'Không BHYT (chuyên khoa + dịch vụ)', test: (t) => /dich.*vu|khong.*bhyt/.test(t) },
+    { row: 15, label: 'Khám sức khoẻ lái xe', test: (t) => /suc.*khoe.*lai.*xe/.test(t) },
+    { row: 16, label: 'Phòng tiêm ngừa', test: (t) => /tiem.*ngua|tiem.*chung/.test(t) },
+  ];
+
+  function matchRoomRow(areaText) {
+    const t = normText(areaText);
+    if (!t) return null;
+    for (const m of ROOM_MATCHERS) {
+      if (m.test(t)) return m;
+    }
+    return null;
+  }
+
+  function cellText(cell) {
+    if (!cell) return '';
+    const v = cell.value;
+    if (v == null) return '';
+    if (typeof v === 'object') {
+      if (v.richText) return v.richText.map((r) => r.text).join('');
+      if (v.text) return String(v.text);
+      if (v.result != null) return String(v.result);
+    }
+    return String(v);
+  }
+
+  // Tìm hàng tiêu đề (chứa cột "Tên khu vực") và cột tương ứng, quét vài chục
+  // hàng đầu để chịu được sai khác nhỏ về bố cục giữa các lần xuất file của HIS.
+  function findAreaColumn(ws) {
+    let headerRowNumber = -1;
+    let areaColNumber = -1;
+    const maxScan = Math.min(ws.rowCount || 30, 30);
+    for (let r = 1; r <= maxScan; r += 1) {
+      const row = ws.getRow(r);
+      let found = -1;
+      row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
+        if (found !== -1) return;
+        const t = normText(cellText(cell));
+        if (t === 'ten khu vuc' || t === 'khu vuc' || t === 'phong kham') found = colNumber;
+      });
+      if (found !== -1) { headerRowNumber = r; areaColNumber = found; break; }
+    }
+    return { headerRowNumber, areaColNumber };
+  }
+
+  // Cố gắng tìm ngày trong vài hàng đầu file (dạng "Ngày dd/mm/yyyy").
+  function findReportDate(ws, headerRowNumber) {
+    const maxScan = Math.min(headerRowNumber > 0 ? headerRowNumber : 10, 10);
+    for (let r = 1; r <= maxScan; r += 1) {
+      const row = ws.getRow(r);
+      let text = '';
+      row.eachCell({ includeEmpty: false }, (cell) => { text += ' ' + cellText(cell); });
+      const m = text.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (m) return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`;
+    }
+    return null;
+  }
+
+  function parseImportedWorkbook(wb) {
+    const ws = wb.worksheets[0];
+    if (!ws) throw new Error('File Excel không có sheet dữ liệu.');
+    const { headerRowNumber, areaColNumber } = findAreaColumn(ws);
+    if (headerRowNumber === -1) {
+      throw new Error('Không tìm thấy cột "Tên khu vực" trong file. Vui lòng kiểm tra lại file danh sách thăm khám.');
+    }
+    const date = findReportDate(ws, headerRowNumber);
+
+    const counts = {}; // rowNum -> count
+    const unmatched = {}; // tên khu vực gốc -> count (không khớp phòng nào)
+    let totalRows = 0;
+
+    for (let r = headerRowNumber + 1; r <= ws.rowCount; r += 1) {
+      const row = ws.getRow(r);
+      const areaText = cellText(row.getCell(areaColNumber));
+      if (!areaText || !normText(areaText)) continue;
+      totalRows += 1;
+      const match = matchRoomRow(areaText);
+      if (match) {
+        counts[match.row] = (counts[match.row] || 0) + 1;
+      } else {
+        unmatched[areaText] = (unmatched[areaText] || 0) + 1;
+      }
+    }
+
+    return { date, counts, unmatched, totalRows };
+  }
+
+  function closeImportOverlay() {
+    const ov = document.getElementById('tkImportOverlay');
+    if (ov) ov.remove();
+  }
+
+  function showImportPreview(result, container) {
+    closeImportOverlay();
+    const rowsHtml = Object.keys(ROW_LABELS_FALLBACK)
+      .map(Number)
+      .sort((a, b) => a - b)
+      .map((rowNum) => {
+        const n = result.counts[rowNum] || 0;
+        const label = DISPLAY_LABEL_OVERRIDES[ROW_LABELS_FALLBACK[rowNum]] || ROW_LABELS_FALLBACK[rowNum];
+        return `<tr><td>${escapeXml(label)}</td><td>${n.toLocaleString('vi-VN')}</td></tr>`;
+      })
+      .join('');
+    const totalMatched = Object.values(result.counts).reduce((s, n) => s + n, 0);
+    const unmatchedEntries = Object.entries(result.unmatched);
+    const unmatchedTotal = unmatchedEntries.reduce((s, [, n]) => s + n, 0);
+    const unmatchedHtml = unmatchedEntries.length
+      ? `<div class="tk-import-warn">⚠️ Có ${unmatchedTotal.toLocaleString('vi-VN')} lượt thuộc ${unmatchedEntries.length} khu vực chưa nhận diện được, sẽ KHÔNG được tính vào số liệu:<br>` +
+        unmatchedEntries.map(([name, n]) => `• ${escapeXml(name)}: ${n}`).join('<br>') + '</div>'
+      : '';
+
+    const overlay = document.createElement('div');
+    overlay.className = 'tk-import-overlay';
+    overlay.id = 'tkImportOverlay';
+    overlay.innerHTML = `
+      <div class="tk-import-modal">
+        <h3>Xác nhận số liệu nhập từ Excel</h3>
+        <div class="tk-import-sub">Đã đọc ${result.totalRows.toLocaleString('vi-VN')} lượt khám trong file. Khớp được ${totalMatched.toLocaleString('vi-VN')} lượt vào các phòng khám bên dưới.</div>
+        <div class="tk-import-date-row">
+          <label for="tkImportDate">Ngày áp dụng số liệu:</label>
+          <input type="date" id="tkImportDate">
+        </div>
+        ${unmatchedHtml}
+        <table class="tk-import-table">
+          <thead><tr><th>Phòng khám</th><th>Số lượt</th></tr></thead>
+          <tbody>
+            ${rowsHtml}
+            <tr class="tk-import-total"><td>Tổng cộng</td><td>${totalMatched.toLocaleString('vi-VN')}</td></tr>
+          </tbody>
+        </table>
+        <div class="tk-import-actions">
+          <button type="button" class="tk-import-cancel-btn" id="tkImportCancelBtn">Huỷ</button>
+          <button type="button" class="tk-import-confirm-btn" id="tkImportConfirmBtn">✅ Đồng bộ số liệu</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const dateInput = overlay.querySelector('#tkImportDate');
+    if (result.date) {
+      const [dd, mm, yyyy] = result.date.split('/');
+      dateInput.value = `${yyyy}-${mm}-${dd}`;
+    } else {
+      dateInput.value = todayStr();
+    }
+
+    overlay.querySelector('#tkImportCancelBtn').addEventListener('click', closeImportOverlay);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeImportOverlay(); });
+
+    overlay.querySelector('#tkImportConfirmBtn').addEventListener('click', async (e) => {
+      const btn = e.currentTarget;
+      const [yyyy, mm, dd] = (dateInput.value || todayStr()).split('-');
+      if (!yyyy || !mm || !dd) { alert('Vui lòng chọn ngày hợp lệ.'); return; }
+      const vnDate = `${Number(dd)}/${Number(mm)}/${yyyy}`;
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang đồng bộ…';
+      try {
+        const res = await fetch(DATA_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: vnDate, values: result.counts }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json.ok) throw new Error((json && json.error) || ('HTTP ' + res.status));
+        closeImportOverlay();
+        await loadData(container);
+        renderAll(container);
+        alert('Đã đồng bộ số liệu ngày ' + vnDate + ' thành công.');
+      } catch (err) {
+        alert('Đồng bộ thất bại: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '✅ Đồng bộ số liệu';
+      }
+    });
+  }
+
+  async function handleImportFile(file, btn, container) {
+    const originalText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ Đang đọc file…';
+    try {
+      await loadExcelJs();
+      const buf = await file.arrayBuffer();
+      const wb = new window.ExcelJS.Workbook();
+      await wb.xlsx.load(buf);
+      const result = parseImportedWorkbook(wb);
+      if (result.totalRows === 0) {
+        alert('Không tìm thấy dòng dữ liệu nào trong file.');
+        return;
+      }
+      showImportPreview(result, container);
+    } catch (e) {
+      alert('Không đọc được file Excel: ' + e.message);
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
