@@ -1091,23 +1091,28 @@
     return String(v);
   }
 
-  // Tìm hàng tiêu đề (chứa cột "Tên khu vực") và cột tương ứng, quét vài chục
-  // hàng đầu để chịu được sai khác nhỏ về bố cục giữa các lần xuất file của HIS.
+  // Tìm hàng tiêu đề và các cột cần dùng: "Tên khu vực" (bắt buộc, để đếm số lượt
+  // theo phòng khám) và "Số thẻ BHYT" (tuỳ chọn — nếu tìm thấy, dòng nào có ô này
+  // TRỐNG sẽ được coi là bệnh nhân dịch vụ, cộng dồn vào dòng "Dịch vụ" bất kể
+  // đang ở phòng khám nào). Quét vài chục hàng đầu để chịu được sai khác nhỏ về
+  // bố cục giữa các lần xuất file của HIS.
   function findAreaColumn(ws) {
     let headerRowNumber = -1;
     let areaColNumber = -1;
+    let bhytColNumber = -1;
     const maxScan = Math.min(ws.rowCount || 30, 30);
     for (let r = 1; r <= maxScan; r += 1) {
       const row = ws.getRow(r);
-      let found = -1;
+      let foundArea = -1;
+      let foundBhyt = -1;
       row.eachCell({ includeEmpty: false }, (cell, colNumber) => {
-        if (found !== -1) return;
         const t = normText(cellText(cell));
-        if (t === 'ten khu vuc' || t === 'khu vuc' || t === 'phong kham') found = colNumber;
+        if (foundArea === -1 && (t === 'ten khu vuc' || t === 'khu vuc' || t === 'phong kham')) foundArea = colNumber;
+        if (foundBhyt === -1 && (t === 'so the bhyt' || t === 'the bhyt' || t === 'ma the bhyt' || t.includes('bhyt'))) foundBhyt = colNumber;
       });
-      if (found !== -1) { headerRowNumber = r; areaColNumber = found; break; }
+      if (foundArea !== -1) { headerRowNumber = r; areaColNumber = foundArea; bhytColNumber = foundBhyt; break; }
     }
-    return { headerRowNumber, areaColNumber };
+    return { headerRowNumber, areaColNumber, bhytColNumber };
   }
 
   // Cố gắng tìm ngày trong vài hàng đầu file (dạng "Ngày dd/mm/yyyy").
@@ -1126,7 +1131,7 @@
   function parseImportedWorkbook(wb) {
     const ws = wb.worksheets[0];
     if (!ws) throw new Error('File Excel không có sheet dữ liệu.');
-    const { headerRowNumber, areaColNumber } = findAreaColumn(ws);
+    const { headerRowNumber, areaColNumber, bhytColNumber } = findAreaColumn(ws);
     if (headerRowNumber === -1) {
       throw new Error('Không tìm thấy cột "Tên khu vực" trong file. Vui lòng kiểm tra lại file danh sách thăm khám.');
     }
@@ -1135,12 +1140,23 @@
     const counts = {}; // rowNum -> count
     const unmatched = {}; // tên khu vực gốc -> count (không khớp phòng nào)
     let totalRows = 0;
+    let noBhytCount = 0; // số lượt có ô "Số thẻ BHYT" trống, đã gộp vào dòng Dịch vụ (14)
 
     for (let r = headerRowNumber + 1; r <= ws.rowCount; r += 1) {
       const row = ws.getRow(r);
       const areaText = cellText(row.getCell(areaColNumber));
       if (!areaText || !normText(areaText)) continue;
       totalRows += 1;
+
+      // Ô "Số thẻ BHYT" trống -> tính là bệnh nhân dịch vụ (không BHYT), cộng dồn
+      // vào dòng "Dịch vụ" (14) bất kể đang ở phòng khám nào, KHÔNG cộng thêm vào
+      // dòng phòng khám gốc nữa để tránh đếm trùng 1 lượt khám ở 2 dòng.
+      if (bhytColNumber !== -1 && !normText(cellText(row.getCell(bhytColNumber)))) {
+        counts[14] = (counts[14] || 0) + 1;
+        noBhytCount += 1;
+        continue;
+      }
+
       const match = matchRoomRow(areaText);
       if (match) {
         counts[match.row] = (counts[match.row] || 0) + 1;
@@ -1149,7 +1165,7 @@
       }
     }
 
-    return { date, counts, unmatched, totalRows };
+    return { date, counts, unmatched, totalRows, noBhytCount };
   }
 
   function showSyncStatus(text) {
