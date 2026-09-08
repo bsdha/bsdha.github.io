@@ -998,6 +998,14 @@
   }
   function renderKho() {
     const wrap = document.getElementById('khoTableWrap');
+    // FIX: bao ve tuyet doi - du vi ly do gi (cache trinh duyet, thu tu tai
+    // script...) khien "khoSort" chua co gia tri, luon tu gan lai gia tri
+    // mac dinh o day truoc khi dung, thay vi de crash "Cannot read
+    // properties of undefined". typeof khong bao gio nem loi ke ca voi bien
+    // chua khai bao, nen dong kiem tra nay luon an toan.
+    if (typeof khoSort === 'undefined' || !khoSort || typeof khoSort !== 'object') {
+      khoSort = { col: 'drug_name', dir: 'asc' };
+    }
     if (!khoCache.length) { wrap.innerHTML = '<div class="empty">Kho trống — nhập dữ liệu từ file Excel ở trên.</div>'; return; }
     try {
     const editable = currentRole === 'pharmacist';
