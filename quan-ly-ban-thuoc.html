@@ -813,9 +813,31 @@
     }
     return -1;
   }
+  // Dò dòng header thật trong N dòng đầu (bỏ qua các dòng tiêu đề gộp ô, dòng trống...).
+  // Chấm điểm mỗi dòng theo số cột khớp được với các nhóm cột đã biết; dòng nào có
+  // cột "brand" khớp và tổng điểm cao nhất sẽ được chọn làm header.
+  function findHeaderRow(rows, maxScan) {
+    const scanLimit = Math.min(rows.length, maxScan || 15);
+    let best = { idx: -1, score: -1, brandIdx: -1 };
+    for (let i = 0; i < scanLimit; i++) {
+      const headers = (rows[i] || []).map((h) => String(h || ''));
+      if (!headers.some((h) => h.trim() !== '')) continue; // dòng trống
+      const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
+      if (brandIdx === -1) continue; // dòng này không thể là header nếu thiếu cột bắt buộc
+      const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
+      const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
+      const priceIdx = pickDrugCol(headers, ['don gia']);
+      const stockIdx = pickDrugCol(headers, ['ton kho', 'so luong ton', 'ton cuoi', 'so luong']);
+      const score = [genericIdx, formIdx, priceIdx, stockIdx].filter((v) => v !== -1).length;
+      if (score > best.score) best = { idx: i, score, brandIdx };
+    }
+    return best.idx;
+  }
   function parseDrugCatalogExcel(rows) {
     if (rows.length < 2) throw new Error('File rỗng hoặc không đúng định dạng.');
-    const headers = rows[0].map((h) => String(h || ''));
+    const headerRowIdx = findHeaderRow(rows, 15);
+    if (headerRowIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
+    const headers = rows[headerRowIdx].map((h) => String(h || ''));
     const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
     const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
     const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
@@ -824,7 +846,7 @@
     const priceIdx = pickDrugCol(headers, ['don gia']);
     const stockIdx = pickDrugCol(headers, ['ton kho', 'so luong ton', 'ton cuoi', 'so luong']);
     if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
-    return rows.slice(1)
+    return rows.slice(headerRowIdx + 1)
       .map((r) => {
         const d = {
           brand: String(r[brandIdx] || '').trim(),
