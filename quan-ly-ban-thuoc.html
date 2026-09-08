@@ -6,6 +6,7 @@
 <title>Quản lý bán thuốc dịch vụ</title>
 <meta name="robots" content="noindex, nofollow">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <style>
   :root {
     --bg-a: #eef2f9; --bg-b: #e7f1ee; --surface: #fff; --border: #e5e9f0; --text: #1f2937; --muted: #6b7280;
@@ -70,6 +71,7 @@
   .toolbar input:focus { outline: none; border-color: var(--blue); }
   .btn-secondary { background: var(--surface); color: var(--text); border: 1.5px solid var(--border); border-radius: 9px; padding: 9px 15px; font-size: 13.5px; cursor: pointer; transition: border-color .15s; }
   .btn-secondary:hover { border-color: var(--blue); }
+  #exportKhoBtn:hover, #resetOutsideBtn:hover { background: #1d4ed8 !important; border-color: #1d4ed8 !important; }
   .btn-green { background: linear-gradient(135deg, var(--green), #128069); color: #fff; border: none; border-radius: 9px; padding: 9px 15px; font-size: 13.5px; cursor: pointer; }
   .stat-row { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 4px; }
   .stat { flex: 1; min-width: 150px; background: linear-gradient(160deg, var(--green-light), #fff); border: 1px solid var(--border); border-radius: 12px; padding: 16px; text-align: center; }
@@ -178,11 +180,11 @@
   .import-mode-btn b { display: block; font-size: 14px; margin-bottom: 3px; }
   .import-mode-btn.mode-replace:hover { border-color: #dc2626; background: #fff1f2; }
   .import-modal-cancel {
-    display: block; width: 100%; padding: 10px; border: none; background: none;
-    color: #6b7280; cursor: pointer; font-family: inherit; font-size: 13px;
-    border-top: 1px solid #f3f4f6; margin-top: 4px;
+    display: block; width: 100%; padding: 10px; border: none; background: #dc2626;
+    color: #fff; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 600;
+    border-radius: 8px; margin-top: 10px;
   }
-  .import-modal-cancel:hover { background: #f9fafb; }
+  .import-modal-cancel:hover { background: #b91c1c; }
 </style>
 </head>
 <body>
@@ -260,7 +262,7 @@
             </p>
             <input type="file" id="drugCatalogInput" accept=".xlsx,.xls">
             <span class="muted" id="statusMsgCatalog"></span>
-            <button type="button" class="btn-secondary" id="exportKhoBtn" style="margin-left:8px;">Xuất báo cáo tồn kho (Excel)</button>
+            <button type="button" class="btn-secondary" id="exportKhoBtn" style="margin-left:8px; background:#2563eb; color:#fff; border-color:#2563eb;">Xuất báo cáo tồn kho (Excel)</button>
           </div>
           <div class="upload-box">
             <div class="upload-title">Nạp danh sách thuốc "Ngoài Bệnh viện" từ file Excel</div>
@@ -271,7 +273,7 @@
             </p>
             <input type="file" id="drugCatalogOutsideInput" accept=".xlsx,.xls">
             <span class="muted" id="statusMsgCatalogOutside"></span>
-            <button type="button" class="btn-secondary" id="resetOutsideBtn" style="margin-top:8px;">↺ Khôi phục danh mục khởi điểm</button>
+            <button type="button" class="btn-secondary" id="resetOutsideBtn" style="margin-top:8px; background:#2563eb; color:#fff; border-color:#2563eb;">↺ Khôi phục danh mục khởi điểm</button>
           </div>
         </div>
         <div class="card"><div id="khoTableWrap"><div class="loading">Đang tải...</div></div></div>
@@ -1133,14 +1135,115 @@
     }
   }
 
-  document.getElementById('exportKhoBtn').addEventListener('click', () => {
+  document.getElementById('exportKhoBtn').addEventListener('click', async () => {
     if (!khoCache.length) { alert('Chưa có dữ liệu kho.'); return; }
-    const rows = [['Tên thuốc - hàm lượng (thương mại)', 'Tên hoạt chất (tên gốc)', 'ĐVT', 'Đơn giá', 'Tồn kho hiện tại']];
-    khoCache.forEach((r) => rows.push([r.drug_name, r.ten_goc || '', r.unit || '', r.unit_price, r.stock_qty]));
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    const wbOut = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wbOut, ws, 'Tồn kho');
-    XLSX.writeFile(wbOut, `bao_cao_ton_kho_${todayVnStr()}.xlsx`);
+    const btn = document.getElementById('exportKhoBtn');
+    const oldLabel = btn.textContent;
+    btn.disabled = true; btn.textContent = 'Đang tạo báo cáo...';
+    try {
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'BSDHA - Bộ công cụ Y khoa';
+      wb.created = new Date();
+      const ws = wb.addWorksheet('Tồn kho', { pageSetup: { orientation: 'landscape', fitToPage: true, fitToWidth: 1 } });
+
+      const COLS = ['STT', 'Tên thương mại (biệt dược)', 'Tên hoạt chất (tên gốc)', 'ĐVT', 'Đơn giá (đ)', 'Tồn kho hiện tại', 'Thành tiền (đ)'];
+      const LAST_COL = COLS.length; // 7
+
+      // ---- Header bệnh viện + tiêu đề báo cáo ----
+      ws.mergeCells(1, 1, 1, LAST_COL);
+      const hospCell = ws.getCell(1, 1);
+      hospCell.value = 'BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG CƠ SỞ 2';
+      hospCell.font = { bold: true, size: 13, color: { argb: 'FF1E3A8A' } };
+      hospCell.alignment = { horizontal: 'center' };
+
+      ws.mergeCells(2, 1, 2, LAST_COL);
+      const subCell = ws.getCell(2, 1);
+      subCell.value = 'Nhà thuốc dịch vụ';
+      subCell.font = { italic: true, size: 10.5, color: { argb: 'FF6B7280' } };
+      subCell.alignment = { horizontal: 'center' };
+
+      ws.mergeCells(4, 1, 4, LAST_COL);
+      const titleCell = ws.getCell(4, 1);
+      titleCell.value = 'BÁO CÁO TỒN KHO THUỐC DỊCH VỤ';
+      titleCell.font = { bold: true, size: 16, color: { argb: 'FF111827' } };
+      titleCell.alignment = { horizontal: 'center' };
+
+      const now = new Date(Date.now() + 7 * 3600 * 1000);
+      const dateStr = `Ngày xuất báo cáo: ${String(now.getUTCDate()).padStart(2, '0')}/${String(now.getUTCMonth() + 1).padStart(2, '0')}/${now.getUTCFullYear()}`;
+      ws.mergeCells(5, 1, 5, LAST_COL);
+      const dateCell = ws.getCell(5, 1);
+      dateCell.value = dateStr;
+      dateCell.font = { italic: true, size: 10.5, color: { argb: 'FF6B7280' } };
+      dateCell.alignment = { horizontal: 'center' };
+
+      // ---- Dòng header cột ----
+      const HEADER_ROW = 7;
+      const headerRow = ws.getRow(HEADER_ROW);
+      headerRow.values = COLS;
+      headerRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };
+        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+      });
+      headerRow.height = 24;
+
+      // ---- Dữ liệu ----
+      let totalValue = 0;
+      khoCache.forEach((r, i) => {
+        const price = Number(r.unit_price) || 0;
+        const qty = Number(r.stock_qty) || 0;
+        const lineTotal = price * qty;
+        totalValue += lineTotal;
+        const row = ws.addRow([i + 1, r.drug_name || '', r.ten_goc || '', r.unit || '', price, qty, lineTotal]);
+        row.eachCell((cell, colNum) => {
+          cell.border = { top: { style: 'hair', color: { argb: 'FFE5E7EB' } }, bottom: { style: 'hair', color: { argb: 'FFE5E7EB' } }, left: { style: 'hair', color: { argb: 'FFE5E7EB' } }, right: { style: 'hair', color: { argb: 'FFE5E7EB' } } };
+          if (colNum === 5 || colNum === 7) cell.numFmt = '#,##0';
+          if (colNum === 1 || colNum === 4 || colNum === 6) cell.alignment = { horizontal: 'center' };
+          if (colNum === 5 || colNum === 7) cell.alignment = { horizontal: 'right' };
+        });
+        if ((i % 2) === 1) {
+          row.eachCell((cell) => { cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } }; });
+        }
+        if (qty <= 0) {
+          row.getCell(6).font = { bold: true, color: { argb: 'FFDC2626' } };
+        }
+      });
+
+      // ---- Dòng tổng cộng ----
+      const totalRow = ws.addRow(['', '', '', '', 'TỔNG GIÁ TRỊ TỒN KHO:', '', totalValue]);
+      ws.mergeCells(totalRow.number, 1, totalRow.number, 5);
+      totalRow.getCell(1).alignment = { horizontal: 'right' };
+      totalRow.eachCell((cell) => { cell.font = { bold: true, size: 12 }; });
+      totalRow.getCell(7).numFmt = '#,##0';
+      totalRow.getCell(7).alignment = { horizontal: 'right' };
+      totalRow.getCell(7).font = { bold: true, size: 12, color: { argb: 'FF1D4ED8' } };
+      totalRow.eachCell((cell) => { cell.border = { top: { style: 'medium' } }; });
+
+      // ---- Độ rộng cột ----
+      ws.getColumn(1).width = 6;
+      ws.getColumn(2).width = 34;
+      ws.getColumn(3).width = 30;
+      ws.getColumn(4).width = 10;
+      ws.getColumn(5).width = 14;
+      ws.getColumn(6).width = 14;
+      ws.getColumn(7).width = 18;
+
+      ws.views = [{ state: 'frozen', ySplit: HEADER_ROW }];
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `bao_cao_ton_kho_${todayVnStr()}.xlsx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('export error:', err);
+      alert('Lỗi khi xuất báo cáo: ' + (err && err.message));
+    } finally {
+      btn.disabled = false; btn.textContent = oldLabel;
+    }
   });
 
   // ---------- TAB Tổng quan ----------
