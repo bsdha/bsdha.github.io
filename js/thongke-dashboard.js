@@ -548,8 +548,13 @@
     if (shouldStick) {
       if (!tkHeaderStuck) {
         tkHeaderStuck = true;
-        spacer.style.height = header.offsetHeight + 'px';
+        // Phải thêm class TRƯỚC rồi mới đo offsetHeight: class 'tk-head-stuck'
+        // đổi padding-top/margin của header, nên chiều cao thật sự SAU khi dính
+        // khác với chiều cao lúc còn ở trong luồng bình thường. Đo trước khi thêm
+        // class (như trước đây) khiến spacer thấp/cao hơn header thật một chút,
+        // gây giật/lệch nội dung đúng vào thời điểm chuyển sang trạng thái dính.
         header.classList.add('tk-head-stuck');
+        spacer.style.height = header.offsetHeight + 'px';
       }
       // Đo lại left/width mỗi lần cuộn trong lúc đang dính: rẻ (chỉ 1 lần
       // getBoundingClientRect), nhưng cần thiết vì .tk-wrap có thể lệch trái/phải
