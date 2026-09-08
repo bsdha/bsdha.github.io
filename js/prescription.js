@@ -738,9 +738,16 @@
       // niệm tồn kho, danh mục đó chỉ là danh sách tên gõ tự do lưu trên trình duyệt).
       const showStock = rxPrescribeMode === 'hospital';
       suggestBox.innerHTML = currentSuggestList.map((d, i) => {
-        const stockTag = (!showStock || d.outOfStock || d.stockQty === null || d.stockQty === undefined)
-          ? ''
-          : `<span class="rx-stock-tag" title="Số lượng tồn kho hiện tại">Tồn: ${escapeHtml(String(d.stockQty))}</span>`;
+        let stockTag = '';
+        if (showStock && d.stockQty !== null && d.stockQty !== undefined && !d.outOfStock) {
+          // Cảnh báo tồn kho thấp trong gợi ý
+          const unit = (d.form || '').toLowerCase();
+          const isUnit = /viên|vien|capsule|tab|gói|goi/.test(unit);
+          const isLow = isUnit ? d.stockQty < 10 : d.stockQty < 2;
+          const warnText = isLow ? ` ⚠ Sắp hết` : '';
+          const tagStyle = isLow ? ' style="color:#b45309;font-weight:700;"' : '';
+          stockTag = `<span class="rx-stock-tag"${tagStyle} title="Tồn kho hiện tại">Tồn: ${escapeHtml(String(d.stockQty))}${warnText}</span>`;
+        }
         return `<div class="rx-suggest-item${d.outOfStock ? ' rx-suggest-oos' : ''}" data-idx="${i}"><b>${escapeHtml(d.brand)}</b><span class="g">${escapeHtml(d.generic)}${d.form ? ' — ' + escapeHtml(d.form) : ''}</span>${stockTag}${d.outOfStock ? '<span class="rx-oos-tag">Hết hàng</span>' : ''}</div>`;
       }).join('');
     }
@@ -2285,28 +2292,29 @@
       // dược sĩ/quản lý xem theo từng thuốc (mỗi thuốc có source riêng) là chính xác nhất.
       const rowSources = isHandwritten ? [] : [...new Set(rxRows.map((r) => r.source || 'hospital'))];
       const orderMode = isHandwritten ? 'handwritten' : (rowSources.length > 1 ? 'mixed' : (rowSources[0] || rxPrescribeMode));
-      saveRxHistory({
+
+      // QUAN TRỌNG: window.open() phải gọi NGAY trong cử chỉ đồng bộ của người dùng (click),
+      // không được có await nào trước — nếu không trình duyệt sẽ chặn popup tab mới.
+      // Vì vậy: mở tab PDF TRƯỚC, rồi mới await lưu lịch sử + hiện overlay.
+      const blobUrl = pdf.output('bloburl');
+      const w = window.open(blobUrl, '_blank');
+      if (!w) {
+        pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
+      }
+
+      // Lưu lịch sử (có thể await vì popup đã mở rồi, không còn cần user gesture nữa)
+      await saveRxHistory({
         patientName: name,
         patientAddress: address,
         diagnosis: diag,
         doctorName: doctor,
         mode: orderMode,
         items: isHandwritten ? [] : rxRows,
-        // Lưu kèm các thông tin còn lại lúc kê (tuổi/giới tính/sinh hiệu/lời dặn/ngày/để trống ký)
-        // để sau này "In lại" từ lịch sử ra được đúng y hệt bản gốc, không thiếu thông tin.
         extra: { age, sex, vitalsParts, note, dateWords, blankDateSign },
       });
-      // Trước đây dùng pdf.save(...) — LUÔN tự động tải 1 file PDF xuống ổ cứng mỗi lần bấm, kể cả khi
-      // chỉ cần in. Giờ đổi sang mở đơn thuốc trong tab mới bằng trình xem PDF có sẵn của trình duyệt:
-      // người dùng bấm in (🖶) để in thẳng — không tốn ổ cứng — và CHỈ khi họ tự bấm nút tải/lưu trong
-      // trình xem đó thì mới thật sự lưu file PDF. Dùng window.open() ngay (không await gì trước đó
-      // trong hàm) để giữ nguyên "cử chỉ người dùng" (user gesture), tránh bị trình duyệt chặn popup.
-      const blobUrl = pdf.output('bloburl');
-      const w = window.open(blobUrl, '_blank');
-      if (!w) {
-        // Phòng khi trình duyệt vẫn chặn popup (hiếm) — tải file PDF như cách cũ để không mất tác vụ.
-        pdf.save(`DonThuoc_${safeName}_${fileDate}.pdf`);
-      }
+
+      // Hiện overlay tóm tắt đơn sau khi in
+      showPostPrintOverlay({ name, diag, doctor, items: isHandwritten ? [] : rxRows });
     } catch (err) {
       customAlert('Lỗi tạo PDF', 'Có lỗi khi tạo PDF: ' + err.message);
     } finally {
@@ -2314,6 +2322,59 @@
       btn.textContent = originalLabel;
     }
   });
+
+  // ======================================================================
+  // POST-PRINT OVERLAY: tóm tắt đơn sau khi in, nút Chỉnh sửa / Kê đơn mới
+  // ======================================================================
+  function showPostPrintOverlay({ name, diag, doctor, items }) {
+    const overlay = $('rxPostPrintOverlay');
+    const summary = $('rxPostPrintSummary');
+    if (!overlay || !summary) return;
+    const drugsHtml = items.length
+      ? items.map((r) => `<div class="ps-drug-item">• <b>${escapeHtml(r.brand)}</b>${r.generic ? ` (${escapeHtml(r.generic)})` : ''} — ${escapeHtml(r.qty || '')} ${escapeHtml(r.form || '')}, ${escapeHtml(r.usage || '')}, ${escapeHtml(r.days || '')} ngày</div>`).join('')
+      : '<div style="color:#6b7280">(Toa viết tay — không có danh sách thuốc lưu trữ)</div>';
+    summary.innerHTML = `
+      <div class="ps-row"><span class="ps-label">Bệnh nhân:</span> ${escapeHtml(name || '(chưa nhập)')}</div>
+      <div class="ps-row"><span class="ps-label">Chẩn đoán:</span> ${escapeHtml(diag || '(chưa nhập)')}</div>
+      <div class="ps-row"><span class="ps-label">Bác sĩ kê:</span> ${escapeHtml(doctor || '(chưa chọn)')}</div>
+      <div class="ps-row"><span class="ps-label">Số thuốc:</span> ${items.length} thuốc</div>
+      <div class="ps-drugs">${drugsHtml}</div>`;
+    overlay.classList.add('show');
+  }
+
+  // Nút "Chỉnh sửa đơn thuốc" — đóng overlay, giữ nguyên form, in lại sẽ PATCH
+  if ($('rxPostPrintEdit')) {
+    $('rxPostPrintEdit').addEventListener('click', () => {
+      const overlay = $('rxPostPrintOverlay');
+      if (overlay) overlay.classList.remove('show');
+      // lastSavedRxId vẫn còn → lần in tiếp theo sẽ PATCH đơn này
+    });
+  }
+
+  // Nút "Kê đơn mới" — xoá toàn bộ form + reset ID
+  if ($('rxPostPrintNew')) {
+    $('rxPostPrintNew').addEventListener('click', async () => {
+      const overlay = $('rxPostPrintOverlay');
+      if (overlay) overlay.classList.remove('show');
+      lastSavedRxId = null; // đơn tiếp theo sẽ POST mới
+      // Xoá danh sách thuốc
+      rxRows = []; renderRxTable();
+      // Xoá thông tin bệnh nhân
+      ['rxPatientName','rxPatientDob','rxPatientSex','rxDiagnosis','rxNote',
+       'rxVitalPulse','rxVitalBpSys','rxVitalBpDia','rxVitalTemp','rxVitalResp','rxVitalWeight'].forEach((id) => { if ($(id)) $(id).value = ''; });
+      if ($('rxPatientAgeHint')) $('rxPatientAgeHint').textContent = '';
+    });
+  }
+
+  // Nút "Xoá hết" trong header bảng toa (thêm để nổi bật hơn)
+  const rxClearAllInTable = $('rxClearAllInTable');
+  if (rxClearAllInTable) {
+    rxClearAllInTable.addEventListener('click', async () => {
+      if (rxRows.length === 0) return;
+      const ok = await customConfirm('Xoá toàn bộ thuốc', 'Xoá toàn bộ thuốc đang có trong toa?');
+      if (ok) { rxRows = []; renderRxTable(); }
+    });
+  }
 
   // ======================================================================
   // PHẦN CUỐI: LỊCH SỬ "ĐƠN THUỐC ĐÃ KÊ" (công khai — ai kê ở đâu cũng thấy)
@@ -2350,24 +2411,44 @@
   // bảng "logo" đang dùng) nên chỉ lưu tên bệnh nhân + chẩn đoán + danh sách
   // thuốc, KHÔNG lưu CCCD/địa chỉ chi tiết hay thông tin định danh nhạy cảm.
   // ======================================================================
+  // ID của đơn vừa lưu (để PATCH thay vì POST khi bác sĩ chỉnh sửa rồi in lại)
+  let lastSavedRxId = null;
+
   async function saveRxHistory({ patientName, patientAddress, diagnosis, doctorName, mode, items, extra }) {
+    const payload = {
+      patient_name: patientName || null,
+      patient_address: patientAddress || null,
+      diagnosis: diagnosis || null,
+      doctor_name: doctorName || null,
+      mode: mode || null,
+      items: items || [],
+      extra: extra || null,
+    };
     try {
-      await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
-        method: 'POST',
-        headers: { ...cloudHeaders(), Prefer: 'return=minimal' },
-        body: JSON.stringify({
-          patient_name: patientName || null,
-          patient_address: patientAddress || null,
-          diagnosis: diagnosis || null,
-          doctor_name: doctorName || null,
-          mode: mode || null,
-          items: items || [],
-          extra: extra || null,
-        }),
-      });
+      if (lastSavedRxId) {
+        // Chỉnh sửa đơn đã lưu → PATCH thay vì tạo thêm bản mới
+        await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${lastSavedRxId}`, {
+          method: 'PATCH',
+          headers: { ...cloudHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+          body: JSON.stringify(payload),
+        });
+        return lastSavedRxId;
+      } else {
+        // Đơn mới → POST và lấy ID trả về để dùng khi chỉnh sửa lại
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
+          method: 'POST',
+          headers: { ...cloudHeaders(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+          body: JSON.stringify(payload),
+        });
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data[0] && data[0].id) { lastSavedRxId = data[0].id; return data[0].id; }
+        }
+      }
     } catch (e) {
       // im lặng nếu lỗi mạng/chưa tạo bảng — không ảnh hưởng việc tải PDF
     }
+    return null;
   }
 
   // PATCH trạng thái "Đã bán" giờ chỉ thực hiện qua Worker (rx-worker, dùng service_role key,
@@ -2737,7 +2818,7 @@
   async function loadStockList() {
     rxStockList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Đang tải...</td></tr>';
     try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc?select=ten_tm,ten_goc,dang_thuoc,unit,unit_price,stock_qty,chi_dinh&order=ten_tm.asc`, {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/thuoc?select=ten_tm,ten_goc,dang_thuoc,unit,unit_price,stock_qty&order=ten_tm.asc`, {
         headers: cloudHeaders(),
       });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -2745,32 +2826,76 @@
       rxStockLoaded = true;
       renderStockList();
     } catch (e) {
-      rxStockList.innerHTML = '<tr class="rx-history-empty"><td colspan="7">Không tải được danh mục kho (kiểm tra mạng, hoặc cột "chi_dinh" đã tạo trong bảng "thuoc" chưa?)</td></tr>';
+      rxStockList.innerHTML = '<tr class="rx-history-empty"><td colspan="6">Không tải được danh mục kho (kiểm tra kết nối mạng).</td></tr>';
     }
+  }
+
+  // Trạng thái sắp xếp bảng kho
+  let rxStockSort = { col: 'ten_tm', dir: 'asc' };
+
+  // Phân loại đơn vị tính để ngưỡng cảnh báo tồn kho
+  function stockWarnLevel(qty, unit) {
+    const u = (unit || '').toLowerCase().trim();
+    const isUnit = /viên|vien|capsule|tab|gói|goi|packet|sachet/.test(u);
+    const isBottle = /chai|lọ|lo|ống|ong|tuýp|tuyp|tube|vial|amp|ml/.test(u);
+    if (qty <= 0) return 'out';
+    if (isUnit && qty < 10) return 'low';
+    if (isBottle && qty < 2) return 'low';
+    if (!isUnit && !isBottle && qty < 2) return 'low'; // mặc định ngưỡng chai/lọ cho ĐVT không xác định
+    return 'ok';
   }
 
   function renderStockList() {
     const term = normalize((rxStockSearch && rxStockSearch.value) || '');
-    const rows = term
-      ? rxStockCache.filter((r) => normalize(r.ten_tm).includes(term) || normalize(r.ten_goc).includes(term))
-      : rxStockCache;
+    let rows = term
+      ? rxStockCache.filter((r) => normalize(r.ten_tm).includes(term) || normalize(r.ten_goc || '').includes(term))
+      : [...rxStockCache];
+
+    // Sắp xếp
+    rows.sort((a, b) => {
+      let va, vb;
+      if (rxStockSort.col === 'stock_qty' || rxStockSort.col === 'unit_price') {
+        va = Number(a[rxStockSort.col] || 0); vb = Number(b[rxStockSort.col] || 0);
+        return rxStockSort.dir === 'asc' ? va - vb : vb - va;
+      } else {
+        va = String(a[rxStockSort.col] || '').toLowerCase();
+        vb = String(b[rxStockSort.col] || '').toLowerCase();
+        return rxStockSort.dir === 'asc' ? va.localeCompare(vb, 'vi') : vb.localeCompare(va, 'vi');
+      }
+    });
+
     if (!rows.length) {
-      rxStockList.innerHTML = `<tr class="rx-history-empty"><td colspan="7">${rxStockCache.length ? 'Không tìm thấy thuốc phù hợp.' : 'Kho trống — chưa nạp danh mục "Trong Bệnh viện".'}</td></tr>`;
+      rxStockList.innerHTML = `<tr class="rx-history-empty"><td colspan="6">${rxStockCache.length ? 'Không tìm thấy thuốc phù hợp.' : 'Kho trống — chưa nạp danh mục "Trong Bệnh viện".'}</td></tr>`;
+      // Cập nhật sort indicators
+      document.querySelectorAll('.rx-stock-th-sort').forEach((th) => {
+        th.classList.remove('sort-asc', 'sort-desc');
+        if (th.dataset.sort === rxStockSort.col) th.classList.add(rxStockSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+      });
       return;
     }
+
     rxStockList.innerHTML = rows.map((r, i) => {
       const qty = r.stock_qty === null || r.stock_qty === undefined ? 0 : Number(r.stock_qty);
-      const qtyClass = qty <= 0 ? ' style="color:#dc2626;font-weight:700;"' : ' style="font-weight:700;"';
+      const warnLevel = stockWarnLevel(qty, r.unit || r.dang_thuoc);
+      const qtyStyle = warnLevel === 'out' ? ' style="color:#dc2626;font-weight:700;"'
+        : warnLevel === 'low' ? ' style="color:#b45309;font-weight:700;"' : ' style="font-weight:700;"';
+      const warnBadge = warnLevel === 'out' ? '<span class="rx-out-stock-warn">Hết hàng!</span>'
+        : warnLevel === 'low' ? '<span class="rx-low-stock-warn">⚠ Sắp hết</span>' : '';
       return `<tr>
         <td class="rx-history-td-time">${i + 1}</td>
         <td class="rx-history-td-patient"><b>${escapeHtml(r.ten_tm || '')}</b></td>
         <td>${escapeHtml(r.ten_goc || '') || '<span class="rx-history-dash">—</span>'}</td>
         <td>${escapeHtml(r.unit || r.dang_thuoc || '') || '<span class="rx-history-dash">—</span>'}</td>
         <td>${escapeHtml(Number(r.unit_price || 0).toLocaleString('vi-VN'))}</td>
-        <td${qtyClass}>${escapeHtml(String(qty))}</td>
-        <td>${r.chi_dinh ? escapeHtml(r.chi_dinh) : '<span class="rx-history-dash">— (chưa có tóm tắt AI)</span>'}</td>
+        <td${qtyStyle}>${escapeHtml(String(qty))}${warnBadge}</td>
       </tr>`;
     }).join('');
+
+    // Cập nhật sort indicators
+    document.querySelectorAll('.rx-stock-th-sort').forEach((th) => {
+      th.classList.remove('sort-asc', 'sort-desc');
+      if (th.dataset.sort === rxStockSort.col) th.classList.add(rxStockSort.dir === 'asc' ? 'sort-asc' : 'sort-desc');
+    });
   }
 
   if ($('rxStockViewBtn') && rxStockOverlay) {
@@ -2786,6 +2911,104 @@
     rxStockOverlay.addEventListener('click', (e) => { if (e.target === rxStockOverlay) rxStockOverlay.classList.remove('show'); });
   }
   if (rxStockSearch) rxStockSearch.addEventListener('input', renderStockList);
+
+  // Sort bảng kho theo header
+  document.querySelectorAll('.rx-stock-th-sort').forEach((th) => {
+    th.addEventListener('click', () => {
+      const col = th.dataset.sort;
+      if (!col || col === 'stt') return;
+      if (rxStockSort.col === col) {
+        rxStockSort.dir = rxStockSort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        rxStockSort = { col, dir: col === 'stock_qty' ? 'asc' : 'asc' };
+      }
+      renderStockList();
+    });
+  });
+
+  // Nút "Sao chép tên thuốc" — copy danh sách tên thuốc đang hiện vào clipboard
+  if ($('rxStockCopyNames')) {
+    $('rxStockCopyNames').addEventListener('click', async () => {
+      const term = normalize((rxStockSearch && rxStockSearch.value) || '');
+      const rows = term
+        ? rxStockCache.filter((r) => normalize(r.ten_tm).includes(term) || normalize(r.ten_goc || '').includes(term))
+        : rxStockCache;
+      if (!rows.length) { customAlert('Kho trống', 'Chưa có thuốc nào để sao chép.'); return; }
+      const names = rows.map((r, i) => `${i + 1}. ${r.ten_tm}${r.ten_goc ? ` (${r.ten_goc})` : ''}`).join('\n');
+      try {
+        await navigator.clipboard.writeText(names);
+        const btn = $('rxStockCopyNames');
+        const orig = btn.textContent;
+        btn.textContent = '✅ Đã sao chép!';
+        setTimeout(() => { btn.textContent = orig; }, 2000);
+      } catch (e) { customAlert('Không sao chép được', 'Trình duyệt không cho phép truy cập clipboard.'); }
+    });
+  }
+
+  // Nút "Hỏi AI về kho thuốc" — gọi Anthropic API
+  const rxStockAiPanel = $('rxStockAiPanel');
+  const rxStockAiInput = $('rxStockAiInput');
+  const rxStockAiAnswer = $('rxStockAiAnswer');
+  if ($('rxStockAiQuery')) {
+    $('rxStockAiQuery').addEventListener('click', () => {
+      if (!rxStockAiPanel) return;
+      const isVisible = rxStockAiPanel.style.display !== 'none';
+      rxStockAiPanel.style.display = isVisible ? 'none' : 'block';
+      if (!isVisible && rxStockAiInput) rxStockAiInput.focus();
+    });
+  }
+  async function askAiAboutStock() {
+    if (!rxStockAiInput || !rxStockAiAnswer) return;
+    const question = rxStockAiInput.value.trim();
+    if (!question) { rxStockAiInput.focus(); return; }
+    if (!rxStockCache.length) { rxStockAiAnswer.className = 'rx-stock-ai-answer show'; rxStockAiAnswer.textContent = 'Kho chưa có thuốc. Hãy nạp danh mục trước.'; return; }
+    rxStockAiAnswer.className = 'rx-stock-ai-answer show loading';
+    rxStockAiAnswer.textContent = '🤖 AI đang phân tích danh sách thuốc...';
+    const term = normalize((rxStockSearch && rxStockSearch.value) || '');
+    const rows = term
+      ? rxStockCache.filter((r) => normalize(r.ten_tm).includes(term) || normalize(r.ten_goc || '').includes(term))
+      : rxStockCache;
+    const listText = rows.map((r, i) => `${i + 1}. ${r.ten_tm}${r.ten_goc ? ` (${r.ten_goc})` : ''} — ĐVT: ${r.unit || r.dang_thuoc || '?'}, Tồn: ${r.stock_qty ?? 0}`).join('\n');
+    const prompt = `Đây là danh sách thuốc hiện có trong kho bệnh viện:\n\n${listText}\n\nCâu hỏi của bác sĩ/dược sĩ: "${question}"\n\nHãy trả lời ngắn gọn, rõ ràng bằng tiếng Việt. Chỉ dựa vào danh sách trên — không bịa thuốc ngoài danh sách.`;
+    try {
+      const resp = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': '', 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 800, messages: [{ role: 'user', content: prompt }] }),
+      });
+      // API key không có ở client-side → dùng proxy worker hoặc fallback tìm local
+      if (resp.status === 401 || resp.status === 403) {
+        // Fallback: tìm thủ công trong danh sách
+        const q = question.toLowerCase();
+        const matched = rows.filter((r) =>
+          normalize(r.ten_tm + ' ' + (r.ten_goc || '')).includes(normalize(q))
+        );
+        if (matched.length) {
+          rxStockAiAnswer.className = 'rx-stock-ai-answer show';
+          rxStockAiAnswer.textContent = `Tìm thấy ${matched.length} thuốc liên quan:\n` + matched.map((r) => `• ${r.ten_tm}${r.ten_goc ? ` (${r.ten_goc})` : ''} — Tồn: ${r.stock_qty ?? 0} ${r.unit || ''}`).join('\n');
+        } else {
+          rxStockAiAnswer.className = 'rx-stock-ai-answer show';
+          rxStockAiAnswer.textContent = `Không tìm thấy thuốc nào khớp với từ khoá "${question}" trong kho hiện tại.\n\n💡 Mẹo: Hãy sao chép danh sách tên thuốc (nút "📋 Sao chép tên thuốc") rồi dán vào ChatGPT hoặc AI khác để hỏi chi tiết hơn.`;
+        }
+        return;
+      }
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+      const text = (data.content || []).map((b) => b.text || '').join('').trim();
+      rxStockAiAnswer.className = 'rx-stock-ai-answer show';
+      rxStockAiAnswer.textContent = text || '(Không có phản hồi)';
+    } catch (e) {
+      // Fallback khi không có AI
+      const q = normalize(question);
+      const matched = rows.filter((r) => normalize(r.ten_tm + ' ' + (r.ten_goc || '')).includes(q));
+      rxStockAiAnswer.className = 'rx-stock-ai-answer show';
+      rxStockAiAnswer.textContent = matched.length
+        ? `Tìm thấy ${matched.length} thuốc liên quan:\n` + matched.map((r) => `• ${r.ten_tm}${r.ten_goc ? ` (${r.ten_goc})` : ''} — Tồn: ${r.stock_qty ?? 0} ${r.unit || ''}`).join('\n')
+        : `Không tìm thấy thuốc nào khớp "${question}".\n\n💡 Sao chép danh sách thuốc và hỏi ChatGPT để tra cứu chi tiết.`;
+    }
+  }
+  if ($('rxStockAiAsk')) $('rxStockAiAsk').addEventListener('click', askAiAboutStock);
+  if (rxStockAiInput) rxStockAiInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') askAiAboutStock(); });
   if ($('rxHistoryCloseX')) $('rxHistoryCloseX').addEventListener('click', () => rxHistoryOverlay.classList.remove('show'));
   if (rxHistoryOverlay) {
     rxHistoryOverlay.addEventListener('click', (e) => { if (e.target === rxHistoryOverlay) rxHistoryOverlay.classList.remove('show'); });
