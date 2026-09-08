@@ -982,7 +982,11 @@
       wrap.innerHTML = '<div class="empty">Lỗi hiển thị Kho thuốc: ' + esc(e && e.message) + '</div>';
     }
   }
-  let khoSort = { col: 'drug_name', dir: 'asc' };
+  // FIX: doi "let" -> "var" o day de loai han kha nang loi TDZ
+  // ("Cannot access 'khoSort' before initialization") du trinh duyet/thu tu
+  // thuc thi co bat thuong the nao - var duoc hoist voi gia tri undefined
+  // ngay tu dau, khong bao gio bi chan boi "temporal dead zone" nhu let/const.
+  var khoSort = { col: 'drug_name', dir: 'asc' };
   function stockWarnLevelKho(qty, unit) {
     const u = (unit || '').toLowerCase().trim();
     const isUnit = /viên|vien|capsule|tab|gói|goi|packet|sachet/.test(u);
