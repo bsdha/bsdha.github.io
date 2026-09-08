@@ -3272,3 +3272,44 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   border-radius: 5px; padding: 1px 6px; font-size: 11px; font-weight: 700;
   cursor: help;
 }
+
+/* ============================================================
+   KHÓA FORM SAU KHI IN TOA
+   ============================================================ */
+
+/* Banner thông báo form đang bị khóa */
+.rx-locked-banner {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: #fef9c3; color: #854d0e; border: 1.5px solid #fde047;
+  border-radius: 8px; padding: 6px 12px; font-size: 13px; font-weight: 700;
+  margin-bottom: 6px;
+}
+
+/* Khu vực 2 nút bên trái */
+.rx-actions-left {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+}
+
+/* Nút "➕ Kê toa mới" (thay "Xoá toàn bộ toa" khi locked) */
+.rx-btn-new-rx {
+  background: #16a34a; color: #fff; border: 1px solid #15803d; font-weight: 700;
+}
+.rx-btn-new-rx:hover { background: #15803d; }
+
+/* Nút "✏️ Chỉnh sửa toa" */
+.rx-btn-edit-rx {
+  background: #fff; color: #1d4ed8; border: 2px solid #3b82f6; font-weight: 700;
+}
+.rx-btn-edit-rx:hover { background: #eff6ff; }
+
+/* Khi form bị khóa: mờ các field, thêm con trỏ not-allowed */
+.rx-form-locked input:not(:disabled),
+.rx-form-locked select:not(:disabled),
+.rx-form-locked textarea:not(:disabled) {
+  opacity: 0.55; pointer-events: none;
+}
+.rx-form-locked button:disabled {
+  opacity: 0.35; cursor: not-allowed;
+}
+/* Bảng thuốc trong toa khi locked */
+.rx-form-locked .rx-table-wrap { opacity: 0.6; pointer-events: none; }
