@@ -82,29 +82,6 @@
         display:inline-flex;align-items:center;gap:7px;box-shadow:0 0 14px rgba(124,58,237,.4);white-space:nowrap;}
       .tk-import-btn:hover{filter:brightness(1.08);}
       .tk-import-btn:disabled{opacity:.65;cursor:progress;filter:none;}
-      .tk-import-overlay{position:fixed;inset:0;background:rgba(14,34,51,.55);z-index:9999;
-        display:flex;align-items:center;justify-content:center;padding:16px;}
-      .tk-import-modal{background:#fff;border-radius:14px;max-width:560px;width:100%;max-height:86vh;
-        overflow-y:auto;padding:22px 22px 18px;box-shadow:0 16px 46px rgba(0,0,0,.35);font-family:inherit;}
-      .tk-import-modal h3{margin:0 0 4px;font-size:17px;color:#0e2233;font-weight:800;}
-      .tk-import-modal .tk-import-sub{font-size:13px;color:#5c7284;margin-bottom:14px;}
-      .tk-import-table{width:100%;border-collapse:collapse;font-size:14px;margin-bottom:10px;}
-      .tk-import-table th{text-align:left;font-size:12.5px;color:#5c7284;padding:6px 8px;border-bottom:2px solid #0e2233;}
-      .tk-import-table th:last-child, .tk-import-table td:last-child{text-align:right;}
-      .tk-import-table td{padding:6px 8px;border-bottom:1px solid #e3e9ed;color:#0e2233;}
-      .tk-import-table tr.tk-import-total td{font-weight:800;border-top:2px solid #0e2233;border-bottom:none;}
-      .tk-import-warn{background:#fff7ed;border:1px solid #fdba74;color:#9a3412;font-size:12.5px;
-        border-radius:8px;padding:9px 12px;margin-bottom:12px;}
-      .tk-import-date-row{display:flex;align-items:center;gap:8px;margin-bottom:14px;font-size:13.5px;color:#0e2233;}
-      .tk-import-date-row input[type=date]{font-family:inherit;font-size:14px;padding:5px 8px;border-radius:7px;
-        border:1px solid #c9d6de;}
-      .tk-import-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:8px;}
-      .tk-import-cancel-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:8px 16px;border-radius:8px;
-        border:1px solid #c9d6de;background:#fff;color:#5c7284;cursor:pointer;}
-      .tk-import-confirm-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:8px 16px;border-radius:8px;
-        border:none;background:linear-gradient(120deg,#0f7b3d,#1fae63);color:#fff;cursor:pointer;
-        box-shadow:0 0 14px rgba(23,163,74,.4);}
-      .tk-import-confirm-btn:disabled{opacity:.6;cursor:progress;}
       .tk-sync-status{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:10050;
         background:rgba(14,34,51,.92);color:#fff;font-family:inherit;font-weight:700;font-size:15px;
         padding:16px 28px;border-radius:12px;box-shadow:0 16px 46px rgba(0,0,0,.35);
@@ -1280,94 +1257,28 @@
     if (el) el.remove();
   }
 
-  function closeImportOverlay() {
-    const ov = document.getElementById('tkImportOverlay');
-    if (ov) ov.remove();
+  async function performImportSync(result, container) {
+    const vnDate = result.date || todayVnDate();
+    showSyncStatus('Đang đồng bộ...');
+    try {
+      const res = await fetch(DATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: vnDate, values: result.counts }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json.ok) throw new Error((json && json.error) || ('HTTP ' + res.status));
+      await loadData(container);
+      renderAll(container);
+      finishSyncStatus('Đã đồng bộ xong!', 1500);
+    } catch (err) {
+      finishSyncStatus('Đồng bộ thất bại: ' + err.message, 2600);
+    }
   }
 
-  function showImportPreview(result, container) {
-    closeImportOverlay();
-    const rowsHtml = Object.keys(ROW_LABELS_FALLBACK)
-      .map(Number)
-      .sort((a, b) => a - b)
-      .map((rowNum) => {
-        const n = result.counts[rowNum] || 0;
-        const label = DISPLAY_LABEL_OVERRIDES[ROW_LABELS_FALLBACK[rowNum]] || ROW_LABELS_FALLBACK[rowNum];
-        return `<tr><td>${escapeXml(label)}</td><td>${n.toLocaleString('vi-VN')}</td></tr>`;
-      })
-      .join('');
-    const totalMatched = Object.values(result.counts).reduce((s, n) => s + n, 0);
-    const unmatchedEntries = Object.entries(result.unmatched);
-    const unmatchedTotal = unmatchedEntries.reduce((s, [, n]) => s + n, 0);
-    const unmatchedHtml = unmatchedEntries.length
-      ? `<div class="tk-import-warn">⚠️ Có ${unmatchedTotal.toLocaleString('vi-VN')} lượt thuộc ${unmatchedEntries.length} khu vực chưa nhận diện được, sẽ KHÔNG được tính vào số liệu:<br>` +
-        unmatchedEntries.map(([name, n]) => `• ${escapeXml(name)}: ${n}`).join('<br>') + '</div>'
-      : '';
-
-    const overlay = document.createElement('div');
-    overlay.className = 'tk-import-overlay';
-    overlay.id = 'tkImportOverlay';
-    overlay.innerHTML = `
-      <div class="tk-import-modal">
-        <h3>Xác nhận số liệu nhập từ Excel</h3>
-        <div class="tk-import-sub">Đã đọc ${result.totalRows.toLocaleString('vi-VN')} lượt khám trong file. Khớp được ${totalMatched.toLocaleString('vi-VN')} lượt vào các phòng khám bên dưới.</div>
-        <div class="tk-import-date-row">
-          <label for="tkImportDate">Ngày áp dụng số liệu:</label>
-          <input type="date" id="tkImportDate">
-        </div>
-        ${unmatchedHtml}
-        <table class="tk-import-table">
-          <thead><tr><th>Phòng khám</th><th>Số lượt</th></tr></thead>
-          <tbody>
-            ${rowsHtml}
-            <tr class="tk-import-total"><td>Tổng cộng</td><td>${totalMatched.toLocaleString('vi-VN')}</td></tr>
-          </tbody>
-        </table>
-        <div class="tk-import-actions">
-          <button type="button" class="tk-import-cancel-btn" id="tkImportCancelBtn">Huỷ</button>
-          <button type="button" class="tk-import-confirm-btn" id="tkImportConfirmBtn">✅ Đồng bộ số liệu</button>
-        </div>
-      </div>`;
-    document.body.appendChild(overlay);
-
-    const dateInput = overlay.querySelector('#tkImportDate');
-    if (result.date) {
-      const [dd, mm, yyyy] = result.date.split('/');
-      dateInput.value = `${yyyy}-${mm}-${dd}`;
-    } else {
-      dateInput.value = todayStr();
-    }
-
-    overlay.querySelector('#tkImportCancelBtn').addEventListener('click', closeImportOverlay);
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) closeImportOverlay(); });
-
-    overlay.querySelector('#tkImportConfirmBtn').addEventListener('click', async (e) => {
-      const btn = e.currentTarget;
-      const [yyyy, mm, dd] = (dateInput.value || todayStr()).split('-');
-      if (!yyyy || !mm || !dd) { alert('Vui lòng chọn ngày hợp lệ.'); return; }
-      const vnDate = `${Number(dd)}/${Number(mm)}/${yyyy}`;
-      btn.disabled = true;
-      btn.textContent = '⏳ Đang đồng bộ…';
-      closeImportOverlay();
-      showSyncStatus('Đang đồng bộ...');
-      try {
-        const res = await fetch(DATA_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: vnDate, values: result.counts }),
-        });
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json.ok) throw new Error((json && json.error) || ('HTTP ' + res.status));
-        await loadData(container);
-        renderAll(container);
-        finishSyncStatus('Đã đồng bộ xong!', 1500);
-      } catch (err) {
-        finishSyncStatus('Đồng bộ thất bại: ' + err.message, 2200);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '✅ Đồng bộ số liệu';
-      }
-    });
+  function todayVnDate() {
+    const d = new Date();
+    return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
   }
 
   async function handleImportFile(file, btn, container) {
@@ -1381,12 +1292,12 @@
       await wb.xlsx.load(buf);
       const result = parseImportedWorkbook(wb);
       if (result.totalRows === 0) {
-        alert('Không tìm thấy dòng dữ liệu nào trong file.');
+        finishSyncStatus('Không tìm thấy dòng dữ liệu nào trong file.', 2600);
         return;
       }
-      showImportPreview(result, container);
+      await performImportSync(result, container);
     } catch (e) {
-      alert('Không đọc được file Excel: ' + e.message);
+      finishSyncStatus('Không đọc được file Excel: ' + e.message, 2600);
     } finally {
       btn.disabled = false;
       btn.textContent = originalText;
