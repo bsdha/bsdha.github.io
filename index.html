@@ -1339,7 +1339,7 @@
                   <th>Chiều</th>
                   <th>Tối</th>
                   <th>Số lượng</th>
-                  <th></th>
+                  <th><button type="button" id="rxClearAllInTable" class="rx-clear-all-th-btn" title="Xoá toàn bộ toa">🗑 Xoá hết</button></th>
                 </tr>
               </thead>
               <tbody id="rxTableBody"></tbody>
@@ -1387,6 +1387,22 @@
         </div>
       </div>
 
+    </div>
+
+    <!-- Overlay hiển thị SAU KHI IN ĐƠN THUỐC -->
+    <div class="rx-warn-overlay" id="rxPostPrintOverlay">
+      <div class="rx-warn-box rx-postprint-box">
+        <div class="rx-warn-head rx-postprint-head">
+          <span class="ic">✅</span>
+          <h3>Đơn thuốc đã tạo</h3>
+        </div>
+        <div id="rxPostPrintSummary" class="rx-postprint-summary"></div>
+        <div class="rx-postprint-actions">
+          <button type="button" id="rxPostPrintEdit" class="rx-btn rx-btn-outline rx-postprint-edit-btn">✏️ Chỉnh sửa đơn thuốc</button>
+          <button type="button" id="rxPostPrintNew" class="rx-btn rx-btn-print rx-postprint-new-btn">➕ Kê đơn mới</button>
+        </div>
+        <p class="rx-postprint-hint">Bấm <b>Chỉnh sửa</b> để sửa lại đơn này (sẽ cập nhật vào đơn đã lưu, không tạo thêm). Bấm <b>Kê đơn mới</b> để bắt đầu toa hoàn toàn mới.</p>
+      </div>
     </div>
 
     <div class="rx-warn-overlay" id="rxWarnOverlay">
@@ -1440,7 +1456,7 @@
       <div class="rx-warn-box rx-history-box">
         <div class="rx-warn-head rx-history-head">
           <span class="ic">📦</span>
-          <h3>Thuốc tồn kho hiện tại (Trong Bệnh viện) — chỉ xem</h3>
+          <h3>Thuốc tồn kho hiện tại (Trong Bệnh viện)</h3>
           <button type="button" class="rx-history-close-x" id="rxStockCloseX" title="Đóng">✕</button>
         </div>
         <div class="rx-history-search-row">
@@ -1450,22 +1466,28 @@
           <table class="rx-history-table">
             <thead>
               <tr>
-                <th style="width:44px;">STT</th>
-                <th>Tên thương mại</th>
-                <th>Tên gốc / Hoạt chất</th>
-                <th>ĐVT</th>
-                <th>Đơn giá</th>
-                <th>Tồn kho</th>
-                <th>Chỉ định / Nhóm điều trị (AI tóm tắt)</th>
+                <th style="width:36px;" class="rx-stock-th-sort" data-sort="stt">#</th>
+                <th class="rx-stock-th-sort" data-sort="ten_tm">Tên thương mại <span class="rx-sort-ic"></span></th>
+                <th class="rx-stock-th-sort" data-sort="ten_goc">Hoạt chất <span class="rx-sort-ic"></span></th>
+                <th class="rx-stock-th-sort" data-sort="unit">ĐVT <span class="rx-sort-ic"></span></th>
+                <th class="rx-stock-th-sort" data-sort="unit_price">Đơn giá <span class="rx-sort-ic"></span></th>
+                <th class="rx-stock-th-sort" data-sort="stock_qty">Tồn kho <span class="rx-sort-ic"></span></th>
               </tr>
             </thead>
             <tbody id="rxStockList"></tbody>
           </table>
         </div>
-        <p class="rx-history-note" style="padding:0 4px;color:#6b7280;font-size:12.5px;">
-          Cột "Chỉ định / Nhóm điều trị" do AI tự tóm tắt khi nạp danh mục từ file Excel — chỉ mang tính tham khảo,
-          không thay thế tờ hướng dẫn sử dụng thuốc.
-        </p>
+        <div class="rx-stock-actions-row">
+          <button type="button" id="rxStockCopyNames" class="rx-btn rx-btn-outline" title="Sao chép tên tất cả thuốc đang hiển thị">📋 Sao chép tên thuốc</button>
+          <button type="button" id="rxStockAiQuery" class="rx-btn rx-btn-ai" title="Hỏi AI về danh sách thuốc này">🤖 Hỏi AI về kho thuốc</button>
+        </div>
+        <div id="rxStockAiPanel" class="rx-stock-ai-panel" style="display:none;">
+          <div class="rx-stock-ai-input-row">
+            <input type="text" id="rxStockAiInput" placeholder='Ví dụ: "Có thuốc trị mỡ máu không?" hoặc "Liệt kê kháng sinh đang còn hàng"'>
+            <button type="button" id="rxStockAiAsk" class="rx-btn rx-btn-ai">Hỏi</button>
+          </div>
+          <div id="rxStockAiAnswer" class="rx-stock-ai-answer"></div>
+        </div>
       </div>
     </div>
 

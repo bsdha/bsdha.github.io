@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Quản lý bán thuốc dịch vụ</title>
 <meta name="robots" content="noindex, nofollow">
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
   :root {
     --bg-a: #eef2f9; --bg-b: #e7f1ee; --surface: #fff; --border: #e5e9f0; --text: #1f2937; --muted: #6b7280;
@@ -151,6 +151,38 @@
     #receiptModal .receipt-print-btn, #receiptModal .modal-cancel, #receiptModal .receipt-total, #receiptModal h3, #receiptModal #receiptSummary { display: none !important; }
     #printArea { position: static !important; width: 100% !important; padding: 0 !important; display: block !important; }
   }
+  /* Modal xác nhận cách nạp file */
+  .import-modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45);
+    z-index: 9999; align-items: center; justify-content: center;
+  }
+  .import-modal-overlay.show { display: flex; }
+  .import-modal-box {
+    background: #fff; border-radius: 14px; padding: 0; max-width: 440px; width: 94%;
+    box-shadow: 0 8px 40px rgba(0,0,0,.22); overflow: hidden;
+  }
+  .import-modal-head {
+    padding: 18px 20px 14px; border-bottom: 1px solid #e5e7eb;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .import-modal-head h3 { margin: 0; font-size: 16px; }
+  .import-modal-body { padding: 16px 20px; }
+  .import-modal-body p { margin: 0 0 14px; font-size: 13.5px; color: #374151; line-height: 1.6; }
+  .import-mode-btn {
+    display: block; width: 100%; text-align: left; padding: 13px 16px;
+    border: 2px solid #e5e7eb; border-radius: 10px; background: #fff;
+    cursor: pointer; margin-bottom: 10px; font-family: inherit; font-size: 13.5px;
+    transition: border-color .15s, background .15s;
+  }
+  .import-mode-btn:hover { border-color: #3b82f6; background: #eff6ff; }
+  .import-mode-btn b { display: block; font-size: 14px; margin-bottom: 3px; }
+  .import-mode-btn.mode-replace:hover { border-color: #dc2626; background: #fff1f2; }
+  .import-modal-cancel {
+    display: block; width: 100%; padding: 10px; border: none; background: none;
+    color: #6b7280; cursor: pointer; font-family: inherit; font-size: 13px;
+    border-top: 1px solid #f3f4f6; margin-top: 4px;
+  }
+  .import-modal-cancel:hover { background: #f9fafb; }
 </style>
 </head>
 <body>
@@ -223,11 +255,8 @@
             <div class="upload-title">Nạp danh sách thuốc "Trong Bệnh viện" từ file Excel</div>
             <p class="upload-desc">
               File cần có ít nhất 2 cột: <b>Tên thương mại</b> (hoặc "Tên biệt dược" / "Tên thuốc - hàm lượng") và
-              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "ĐVT", <b>"Đơn giá"</b>, và cột <b>"Tồn"</b>
-              (nếu file có nhiều cột tồn theo từng ngày, tự động lấy cột <b>NẰM BÊN PHẢI NHẤT</b> — tức ngày gần
-              hiện tại nhất). <b style="color:#dc2626;">⚠️ Mỗi lần nạp sẽ XOÁ SẠCH toàn bộ danh mục cũ (tên, giá,
-              tồn kho...) và thay hoàn toàn bằng dữ liệu file mới — không cộng dồn/giữ thuốc cũ nữa.</b>
-              Dùng cho việc kê đơn/tìm thuốc trong Bệnh viện.
+              <b>Tên gốc</b> (hoặc "Hoạt chất"). Có thể có thêm cột "Dạng thuốc"/"ĐVT", <b>"Đơn giá"</b>,
+              <b>"Tồn kho"</b>. Sau khi chọn file sẽ hỏi cách nạp.
             </p>
             <input type="file" id="drugCatalogInput" accept=".xlsx,.xls">
             <span class="muted" id="statusMsgCatalog"></span>
@@ -768,33 +797,18 @@
     }
     return -1;
   }
-  // Đọc file theo TIÊU ĐỀ CỘT (không cố định vị trí dòng/cột), vì file kiểm kê thực tế thường có 1-2
-  // dòng tiêu đề lớn phía trên (vd "KIỂM KÊ CƠ SỐ TỦ TRỰC...") rồi mới tới dòng tiêu đề cột thật sự.
   function parseDrugCatalogExcel(rows) {
     if (rows.length < 2) throw new Error('File rỗng hoặc không đúng định dạng.');
-    // Dò trong 10 dòng đầu để tìm đúng dòng tiêu đề cột (chứa "Tên thương mại"/"Tên thuốc"...).
-    let headerRowIdx = -1;
-    for (let r = 0; r < Math.min(rows.length, 10); r++) {
-      const idx = pickDrugCol(rows[r].map((h) => String(h || '')), ['ten thuong mai', 'ten biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
-      if (idx !== -1) { headerRowIdx = r; break; }
-    }
-    if (headerRowIdx === -1) throw new Error('Không tìm thấy dòng tiêu đề có cột "Tên thương mại"/"Tên thuốc" trong file.');
-    const headers = rows[headerRowIdx].map((h) => String(h || ''));
-    const normHeaders = headers.map(normalizeVN);
+    const headers = rows[0].map((h) => String(h || ''));
     const brandIdx = pickDrugCol(headers, ['ten thuong mai', 'ten biet duoc', 'biet duoc', 'ten thuoc - ham luong', 'ten thuoc']);
-    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat', 'ten hoat chat']);
-    const formIdx = pickDrugCol(headers, ['dvt', 'dang thuoc']);
+    const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
+    const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
+    // 2 cột này không bắt buộc — có thì nạp kèm giá/tồn luôn trong 1 lần, không có thì bỏ qua
+    // (giữ nguyên giá/tồn cũ trong CSDL, xem thuoc_import_bulk ở Worker).
     const priceIdx = pickDrugCol(headers, ['don gia']);
-    // Cột "Tồn" — file kiểm kê thật thường có NHIỀU cột tồn theo từng ngày (Tồn đầu, Tồn cuối, rồi
-    // hàng loạt "TỒN dd/mm", "Ngày dd/mm"...). Cột nào NẰM BÊN PHẢI NHẤT có chữ "tồn" trong tiêu đề
-    // chính là cột tồn kho THỰC TẾ mới nhất (gần ngày hiện tại nhất) — lấy đúng cột đó, bỏ qua các
-    // cột tồn/ngày cũ hơn ở giữa file.
-    let stockIdx = -1;
-    for (let c = 0; c < normHeaders.length; c++) {
-      if (normHeaders[c].includes('ton')) stockIdx = c;
-    }
+    const stockIdx = pickDrugCol(headers, ['ton kho', 'so luong ton', 'ton cuoi', 'so luong']);
     if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
-    return rows.slice(headerRowIdx + 1)
+    return rows.slice(1)
       .map((r) => {
         const d = {
           brand: String(r[brandIdx] || '').trim(),
@@ -809,10 +823,63 @@
       .filter((d) => d.brand);
   }
 
-  // "Trong Bệnh viện": nạp qua Worker (thuoc_import_bulk) bằng service_role key + mật khẩu dược sĩ —
-  // KHÔNG ghi thẳng bằng anon key nữa (bảng "thuoc" đã siết RLS, anon chỉ còn quyền đọc).
-  // THEO YÊU CẦU MỚI: mỗi lần nạp file là XOÁ SẠCH toàn bộ danh mục cũ (tên, giá, tồn kho...) rồi thay
-  // hoàn toàn bằng dữ liệu trong file mới — KHÔNG còn cộng dồn/giữ thuốc cũ như trước nữa.
+  // "Trong Bệnh viện": nạp qua Worker — hiện popup chọn cách nạp trước khi gửi lên server.
+  // Chế độ 1 (add): cộng dồn stock_qty với thuốc đã có, thêm thuốc mới — Worker nhận replace=false.
+  // Chế độ 2 (replace): xoá toàn bộ rồi ghi lại — Worker nhận replace=true.
+  let _pendingImportRows = null; // lưu tạm dữ liệu đã parse, chờ người dùng chọn chế độ
+
+  function showImportModeModal(parsed, fileName) {
+    _pendingImportRows = parsed;
+    const overlay = document.getElementById('importModeOverlay');
+    const info = document.getElementById('importModeFileInfo');
+    if (info) info.textContent = `File: ${fileName} — ${parsed.length} dòng thuốc đọc được.`;
+    if (overlay) overlay.classList.add('show');
+  }
+  function hideImportModeModal() {
+    const overlay = document.getElementById('importModeOverlay');
+    if (overlay) overlay.classList.remove('show');
+    _pendingImportRows = null;
+    const inp = document.getElementById('drugCatalogInput');
+    if (inp) inp.value = '';
+  }
+
+  async function doImport(replace) {
+    const parsed = _pendingImportRows;
+    hideImportModeModal();
+    if (!parsed || !parsed.length) return;
+
+    // Xác nhận thêm lần nữa nếu ghi đè
+    if (replace) {
+      const sure = confirm(
+        '⚠️ GHI ĐÈ HOÀN TOÀN\n\nThao tác này sẽ XOÁ SẠCH toàn bộ danh mục và kho thuốc "Trong Bệnh viện" hiện tại,\nsau đó ghi dữ liệu từ file vừa chọn vào.\n\nKHÔNG THỂ HOÀN TÁC.\n\nBạn có chắc chắn muốn tiếp tục?'
+      );
+      if (!sure) return;
+    }
+
+    const statusEl = document.getElementById('statusMsgCatalog');
+    statusEl.textContent = replace ? 'Đang xoá dữ liệu cũ và ghi mới...' : `Đang cộng dồn ${parsed.length} thuốc...`;
+
+    // Nạp dữ liệu cộng dồn: Worker tự xử lý cộng stock_qty khi replace=false.
+    // Với chế độ cộng dồn, đánh dấu mỗi dòng là "add_qty" để Worker biết cộng thay vì ghi đè.
+    const CHUNK = 200;
+    let added = 0, updated = 0;
+    const firstChunk = true;
+    for (let i = 0; i < parsed.length; i += CHUNK) {
+      const isFirst = i === 0;
+      const payload = {
+        rows: parsed.slice(i, i + CHUNK),
+        replace: replace && isFirst, // chỉ gửi replace=true ở chunk đầu (Worker xoá 1 lần)
+        add_qty: !replace,           // cộng dồn stock_qty thay vì ghi đè
+      };
+      const { ok, data } = await callWorker('thuoc_import_bulk', payload);
+      if (!ok) { statusEl.textContent = 'Lỗi khi nạp: ' + (data.error || ''); return; }
+      added += data.added || 0; updated += data.updated || 0;
+    }
+    const modeLabel = replace ? 'Ghi đè hoàn toàn' : 'Cộng dồn';
+    statusEl.textContent = `✓ [${modeLabel}] Đã nạp ${parsed.length} dòng — thêm mới ${added}, cập nhật ${updated} thuốc.`;
+    loadKho();
+  }
+
   document.getElementById('drugCatalogInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -824,26 +891,21 @@
       const sheet = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       const parsed = parseDrugCatalogExcel(rows);
-      if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; e.target.value = ''; return; }
-      const sure = confirm(`⚠️ File này sẽ XOÁ SẠCH toàn bộ danh mục thuốc "Trong Bệnh viện" hiện có (tên, giá, tồn kho...) và thay hoàn toàn bằng ${parsed.length} dòng đọc được từ file mới.\n\nBạn có chắc chắn muốn tiếp tục?`);
-      if (!sure) { statusEl.textContent = ''; e.target.value = ''; return; }
-      statusEl.textContent = `Đang xoá danh mục cũ và nạp ${parsed.length} thuốc...`;
-      const CHUNK = 200;
-      let added = 0;
-      for (let i = 0; i < parsed.length; i += CHUNK) {
-        // Chỉ báo "replace: true" ở lần gọi ĐẦU TIÊN để Worker xoá sạch bảng cũ 1 lần duy nhất trước
-        // khi nạp — các lượt gọi sau (file nhiều hơn 200 dòng phải chia nhỏ) chỉ nạp tiếp bình thường,
-        // không xoá lại (nếu không sẽ xoá mất phần vừa nạp ở lượt trước).
-        const { ok, data } = await callWorker('thuoc_import_bulk', { rows: parsed.slice(i, i + CHUNK), replace: i === 0 });
-        if (!ok) { statusEl.textContent = 'Lỗi khi nạp: ' + (data.error || ''); return; }
-        added += data.added || 0;
-      }
-      statusEl.textContent = `✓ Đã xoá danh mục cũ và nạp lại ${added} thuốc từ file mới.`;
-      e.target.value = '';
-      loadKho();
+      if (!parsed.length) { statusEl.textContent = 'Không đọc được dòng thuốc nào — kiểm tra đúng file mẫu chưa.'; return; }
+      statusEl.textContent = `Đọc được ${parsed.length} dòng — đang chờ chọn cách nạp...`;
+      showImportModeModal(parsed, file.name);
     } catch (err) {
       statusEl.textContent = 'Lỗi: ' + err.message;
+      e.target.value = '';
     }
+  });
+
+  document.getElementById('importModeAdd').addEventListener('click', () => doImport(false));
+  document.getElementById('importModeReplace').addEventListener('click', () => doImport(true));
+  document.getElementById('importModeCancel').addEventListener('click', hideImportModeModal);
+  // Bấm ngoài vùng modal cũng huỷ
+  document.getElementById('importModeOverlay').addEventListener('click', (ev) => {
+    if (ev.target === document.getElementById('importModeOverlay')) hideImportModeModal();
   });
 
   // "Ngoài Bệnh viện": lưu trong localStorage (dùng chung origin với trang kê đơn),
@@ -894,103 +956,82 @@
     if (status === 401 || status === 423) { handleAuthError(status, data); return; }
     if (!ok) { wrap.innerHTML = '<div class="empty">Lỗi: ' + esc(data.error || '') + '</div>'; return; }
     khoCache = data.inventory || [];
-    renderKho();
+  let khoSort = { col: 'drug_name', dir: 'asc' };
+  function stockWarnLevelKho(qty, unit) {
+    const u = (unit || '').toLowerCase().trim();
+    const isUnit = /viên|vien|capsule|tab|gói|goi|packet|sachet/.test(u);
+    const isBottle = /chai|lọ|lo|ống|ong|tuýp|tuyp|tube|vial|amp/.test(u);
+    if (qty <= 0) return 'out';
+    if (isUnit && qty < 10) return 'low';
+    if (!isUnit && qty < 2) return 'low';
+    return 'ok';
   }
+  renderKho();
   function renderKho() {
     const wrap = document.getElementById('khoTableWrap');
     if (!khoCache.length) { wrap.innerHTML = '<div class="empty">Kho trống — nhập dữ liệu từ file Excel ở trên.</div>'; return; }
     const editable = currentRole === 'pharmacist';
-    wrap.innerHTML = `<table><thead><tr><th style="width:44px;">STT</th><th>Thuốc</th><th>ĐVT</th><th>Đơn giá</th><th>Tồn kho</th><th>Chỉ định / Nhóm điều trị (AI)</th></tr></thead><tbody>
-      ${khoCache.map((r, i) => `<tr data-id="${r.id}">
-        <td class="muted">${i + 1}</td>
-        <td><b>${esc(r.drug_name)}</b></td>
-        <td class="muted">${esc(r.unit || '')}</td>
-        <td>${editable ? `<input class="price-input" type="number" step="0.01" value="${r.unit_price}">` : fmtVnd(r.unit_price)}</td>
-        <td>${editable ? `<input class="num-input" type="number" step="0.01" value="${r.stock_qty}">` : `<b class="qty">${esc(r.stock_qty)}</b>`}</td>
-        <td>${editable ? `<input class="chidinh-input" type="text" placeholder="(chưa có, để trống nếu chưa nạp lại danh mục)" value="${esc(r.chi_dinh || '')}" style="width:100%;min-width:220px;">` : esc(r.chi_dinh || '—')}</td>
-      </tr>`).join('')}
+
+    // Sắp xếp
+    let sorted = [...khoCache].sort((a, b) => {
+      let va, vb;
+      if (khoSort.col === 'stock_qty' || khoSort.col === 'unit_price') {
+        va = Number(a[khoSort.col] || 0); vb = Number(b[khoSort.col] || 0);
+        return khoSort.dir === 'asc' ? va - vb : vb - va;
+      }
+      va = String(a[khoSort.col] || '').toLowerCase();
+      vb = String(b[khoSort.col] || '').toLowerCase();
+      return khoSort.dir === 'asc' ? va.localeCompare(vb, 'vi') : vb.localeCompare(va, 'vi');
+    });
+
+    const sortArrow = (col) => khoSort.col === col ? (khoSort.dir === 'asc' ? ' ↑' : ' ↓') : ' ⇅';
+    wrap.innerHTML = `<table><thead><tr>
+      <th class="kho-sort-th" data-col="drug_name" style="cursor:pointer;">Thuốc${sortArrow('drug_name')}</th>
+      <th class="kho-sort-th" data-col="unit" style="cursor:pointer;">ĐVT${sortArrow('unit')}</th>
+      <th class="kho-sort-th" data-col="unit_price" style="cursor:pointer;">Đơn giá${sortArrow('unit_price')}</th>
+      <th class="kho-sort-th" data-col="stock_qty" style="cursor:pointer;">Tồn kho${sortArrow('stock_qty')}</th>
+    </tr></thead><tbody>
+      ${sorted.map((r) => {
+        const qty = Number(r.stock_qty ?? 0);
+        const wl = stockWarnLevelKho(qty, r.unit);
+        const qtyStyle = wl === 'out' ? 'color:#dc2626;font-weight:700;' : wl === 'low' ? 'color:#b45309;font-weight:700;' : 'font-weight:700;';
+        const badge = wl === 'out' ? ' <span style="background:#fee2e2;color:#dc2626;border-radius:4px;padding:0 5px;font-size:11px;font-weight:700;">Hết!</span>'
+          : wl === 'low' ? ' <span style="background:#fef3c7;color:#b45309;border-radius:4px;padding:0 5px;font-size:11px;font-weight:700;">⚠ Sắp hết</span>' : '';
+        return `<tr data-id="${r.id}">
+          <td><b>${esc(r.drug_name)}</b></td>
+          <td class="muted">${esc(r.unit || '')}</td>
+          <td>${editable ? `<input class="price-input" type="number" step="0.01" value="${r.unit_price}">` : fmtVnd(r.unit_price)}</td>
+          <td style="${qtyStyle}">${editable ? `<input class="num-input" type="number" step="0.01" value="${qty}">` : `${esc(qty)}${badge}`}</td>
+        </tr>`;
+      }).join('')}
     </tbody></table>`;
+
+    // Sort click
+    wrap.querySelectorAll('.kho-sort-th').forEach((th) => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        if (khoSort.col === col) khoSort.dir = khoSort.dir === 'asc' ? 'desc' : 'asc';
+        else khoSort = { col, dir: 'asc' };
+        renderKho();
+      });
+    });
+
     if (editable) {
       wrap.querySelectorAll('tr[data-id]').forEach((tr) => {
         const id = Number(tr.getAttribute('data-id'));
         const priceInput = tr.querySelector('.price-input');
         const qtyInput = tr.querySelector('.num-input');
-        const chiDinhInput = tr.querySelector('.chidinh-input');
-        priceInput.addEventListener('change', () => callWorker('inventory_update_one', { id, unit_price: priceInput.value }));
-        qtyInput.addEventListener('change', () => callWorker('inventory_update_one', { id, stock_qty: qtyInput.value }));
-        chiDinhInput.addEventListener('change', () => callWorker('inventory_update_one', { id, chi_dinh: chiDinhInput.value }));
+        if (priceInput) priceInput.addEventListener('change', () => callWorker('inventory_update_one', { id, unit_price: priceInput.value }));
+        if (qtyInput) qtyInput.addEventListener('change', () => callWorker('inventory_update_one', { id, stock_qty: qtyInput.value }));
       });
     }
   }
 
   document.getElementById('exportKhoBtn').addEventListener('click', () => {
     if (!khoCache.length) { alert('Chưa có dữ liệu kho.'); return; }
-
-    // ---- Style helpers (dùng xlsx-js-style — bản mở rộng của SheetJS có hỗ trợ font/màu nền/viền) ----
-    const BLUE = '1D4ED8', BLUE_LIGHT = 'DBEAFE', GRAY_LIGHT = 'F3F4F6', BORDER_C = 'D1D5DB';
-    const thinBorder = { style: 'thin', color: { rgb: BORDER_C } };
-    const boxBorder = { top: thinBorder, bottom: thinBorder, left: thinBorder, right: thinBorder };
-    const money = (v) => Number(v || 0);
-    const cell = (v, s, t) => ({ v, t: t || (typeof v === 'number' ? 'n' : 's'), s });
-    const titleStyle = { font: { name: 'Calibri', sz: 15, bold: true, color: { rgb: BLUE } }, alignment: { horizontal: 'center', vertical: 'center' } };
-    const subTitleStyle = { font: { name: 'Calibri', sz: 11, color: { rgb: '4B5563' } }, alignment: { horizontal: 'center', vertical: 'center' } };
-    const orgStyle = { font: { name: 'Calibri', sz: 12, bold: true }, alignment: { horizontal: 'left' } };
-    const addrStyle = { font: { name: 'Calibri', sz: 10.5, color: { rgb: '4B5563' } }, alignment: { horizontal: 'left' } };
-    const headStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: 'FFFFFF' } }, fill: { patternType: 'solid', fgColor: { rgb: BLUE } }, alignment: { horizontal: 'center', vertical: 'center', wrapText: true }, border: boxBorder };
-    const bodyBase = { font: { name: 'Calibri', sz: 10.5 }, border: boxBorder, alignment: { vertical: 'center' } };
-    const cAlign = (h) => ({ ...bodyBase, alignment: { ...bodyBase.alignment, horizontal: h } });
-    const zebra = (h, i) => ({ ...cAlign(h), fill: i % 2 ? { patternType: 'solid', fgColor: { rgb: GRAY_LIGHT } } : undefined });
-    const moneyFmt = '#,##0';
-    const totalLabelStyle = { font: { name: 'Calibri', sz: 11, bold: true }, alignment: { horizontal: 'right', vertical: 'center' }, border: boxBorder, fill: { patternType: 'solid', fgColor: { rgb: BLUE_LIGHT } } };
-    const totalValStyle = { font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: BLUE } }, alignment: { horizontal: 'right', vertical: 'center' }, border: boxBorder, fill: { patternType: 'solid', fgColor: { rgb: BLUE_LIGHT } }, numFmt: moneyFmt };
-
-    const COLS = 6; // STT, Tên thuốc, ĐVT, Đơn giá, Tồn kho, Thành tiền
-    const now = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    const stamp = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
-
-    const aoa = [];
-    aoa.push([cell('BVĐK BÌNH DƯƠNG CS2', orgStyle)]);
-    aoa.push([cell('ĐC: Ấp 13, Xã Bắc Tân Uyên, TP. HCM', addrStyle)]);
-    aoa.push([]);
-    aoa.push([cell('BÁO CÁO TỒN KHO THUỐC DỊCH VỤ', titleStyle)]);
-    aoa.push([cell(`Ngày xuất báo cáo: ${stamp}`, subTitleStyle)]);
-    aoa.push([]);
-    const headerRowIdx = aoa.length;
-    aoa.push(['STT', 'Tên thuốc - hàm lượng', 'ĐVT', 'Đơn giá (đ)', 'Tồn kho', 'Thành tiền (đ)'].map((v) => cell(v, headStyle)));
-
-    let totalValue = 0;
-    khoCache.forEach((r, i) => {
-      const price = money(r.unit_price), qty = money(r.stock_qty), lineTotal = price * qty;
-      totalValue += lineTotal;
-      aoa.push([
-        cell(i + 1, zebra('center', i)),
-        cell(r.drug_name || '', zebra('left', i)),
-        cell(r.unit || '', zebra('center', i)),
-        cell(price, { ...zebra('right', i), numFmt: moneyFmt }),
-        cell(qty, zebra('right', i)),
-        cell(lineTotal, { ...zebra('right', i), numFmt: moneyFmt }),
-      ]);
-    });
-
-    const totalRow = [
-      cell('TỔNG GIÁ TRỊ TỒN KHO', totalLabelStyle), cell('', totalLabelStyle), cell('', totalLabelStyle),
-      cell('', totalLabelStyle), cell('', totalLabelStyle),
-      cell(totalValue, totalValStyle),
-    ];
-    aoa.push(totalRow);
-
-    const ws = XLSX.utils.aoa_to_sheet(aoa);
-    ws['!cols'] = [{ wch: 6 }, { wch: 42 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 16 }];
-    ws['!rows'] = [{ hpt: 20 }, { hpt: 16 }, { hpt: 6 }, { hpt: 24 }, { hpt: 16 }, { hpt: 6 }, { hpt: 22 }];
-    ws['!merges'] = [
-      { s: { r: 0, c: 0 }, e: { r: 0, c: COLS - 1 } },
-      { s: { r: 1, c: 0 }, e: { r: 1, c: COLS - 1 } },
-      { s: { r: 3, c: 0 }, e: { r: 3, c: COLS - 1 } },
-      { s: { r: 4, c: 0 }, e: { r: 4, c: COLS - 1 } },
-      { s: { r: aoa.length - 1, c: 0 }, e: { r: aoa.length - 1, c: 4 } }, // ô "TỔNG GIÁ TRỊ TỒN KHO"
-    ];
-
+    const rows = [['Tên thuốc - hàm lượng (thương mại)', 'Tên hoạt chất (tên gốc)', 'ĐVT', 'Đơn giá', 'Tồn kho hiện tại']];
+    khoCache.forEach((r) => rows.push([r.drug_name, r.ten_goc || '', r.unit || '', r.unit_price, r.stock_qty]));
+    const ws = XLSX.utils.aoa_to_sheet(rows);
     const wbOut = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wbOut, ws, 'Tồn kho');
     XLSX.writeFile(wbOut, `bao_cao_ton_kho_${todayVnStr()}.xlsx`);
@@ -1010,8 +1051,8 @@
     statusEl.textContent = '';
     const rows = data.overview || [];
     wrap.innerHTML = rows.length
-      ? `<table><thead><tr><th style="width:44px;">STT</th><th>Thuốc</th><th>Tồn đầu ngày (ước tính)</th><th>Đã bán trong ngày</th><th>Đã bán trong tháng</th><th>Tồn hiện tại</th></tr></thead><tbody>
-          ${rows.map((r, i) => `<tr><td class="muted">${i + 1}</td><td><b>${esc(r.drug_name)}</b><span class="muted"> (${esc(r.unit || '')})</span></td><td>${esc(Number(r.stock_qty) + Number(r.sold_day))}</td><td class="qty">${esc(r.sold_day)}</td><td class="qty">${esc(r.sold_month)}</td><td><b>${esc(r.stock_qty)}</b></td></tr>`).join('')}
+      ? `<table><thead><tr><th>Thuốc</th><th>Tồn đầu ngày (ước tính)</th><th>Đã bán trong ngày</th><th>Đã bán trong tháng</th><th>Tồn hiện tại</th></tr></thead><tbody>
+          ${rows.map((r) => `<tr><td><b>${esc(r.drug_name)}</b><span class="muted"> (${esc(r.unit || '')})</span></td><td>${esc(Number(r.stock_qty) + Number(r.sold_day))}</td><td class="qty">${esc(r.sold_day)}</td><td class="qty">${esc(r.sold_month)}</td><td><b>${esc(r.stock_qty)}</b></td></tr>`).join('')}
         </tbody></table>
         <p class="muted" style="margin-top:8px;">"Tồn đầu ngày" = Tồn hiện tại + Đã bán trong ngày đã chọn (ước tính lùi từ tồn hiện tại, chính xác nhất khi chọn đúng ngày hôm nay).</p>`
       : '<div class="empty">Chưa có dữ liệu kho.</div>';
@@ -1026,5 +1067,29 @@
 
   if (currentPassword && currentRole) showDash(); else showLogin();
 </script>
+  <!-- Modal chọn cách nạp file Excel thuốc -->
+  <div class="import-modal-overlay" id="importModeOverlay">
+    <div class="import-modal-box">
+      <div class="import-modal-head">
+        <span style="font-size:22px;">📥</span>
+        <h3>Chọn cách nạp danh mục</h3>
+      </div>
+      <div class="import-modal-body">
+        <p id="importModeFileInfo" style="color:#6b7280;font-size:12.5px;margin-bottom:12px;"></p>
+        <button class="import-mode-btn mode-add" id="importModeAdd">
+          <b>➕ Cộng dồn số lượng</b>
+          Thuốc đã có trong kho → <b>cộng thêm</b> số lượng từ file vào tồn hiện tại, cập nhật giá nếu có.<br>
+          Thuốc chưa có → thêm mới kèm số lượng.
+        </button>
+        <button class="import-mode-btn mode-replace" id="importModeReplace">
+          <b>🗑 Ghi đè hoàn toàn</b>
+          <span style="color:#dc2626;">Xoá toàn bộ danh mục & kho cũ</span>, sau đó ghi dữ liệu từ file vào.<br>
+          Không thể hoàn tác — dùng khi muốn làm mới hoàn toàn.
+        </button>
+        <button class="import-modal-cancel" id="importModeCancel">Huỷ</button>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>
