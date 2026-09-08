@@ -2426,15 +2426,19 @@
     };
     try {
       if (lastSavedRxId) {
-        // Chỉnh sửa đơn đã lưu → PATCH
+        // Chỉnh sửa đơn đã lưu → PATCH, ghi thêm 1 mục vào edit_log trong extra
+        const editEntry = { at: new Date().toISOString() };
+        const updatedExtra = {
+          ...(payload.extra || {}),
+          edit_log: [...((payload.extra && Array.isArray(payload.extra.edit_log)) ? payload.extra.edit_log : []), editEntry],
+        };
         const patchResp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${lastSavedRxId}`, {
           method: 'PATCH',
           headers: { ...cloudHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, extra: updatedExtra }),
         });
         if (patchResp.ok) return lastSavedRxId;
-        // PATCH thất bại (thường do RLS chưa cho phép UPDATE) → fallback: POST mới
-        // Đặt lại ID để lần sau không bị lặp lại lỗi này
+        // PATCH thất bại → fallback POST mới
         lastSavedRxId = null;
         console.warn('[saveRxHistory] PATCH thất bại (HTTP', patchResp.status, ')— sẽ tạo bản mới bằng POST. Kiểm tra RLS policy UPDATE trên bảng prescriptions.');
       }
@@ -2495,6 +2499,66 @@
   // (cột "extra" trong Supabase) mới có đủ tuổi/giới tính/sinh hiệu/lời dặn để in đủ như gốc;
   // đơn kê TRƯỚC đó (chưa có cột "extra") sẽ in thiếu các mục đó (để trống), chỉ có tên/địa
   // chỉ/chẩn đoán/bác sĩ/danh sách thuốc — không tránh được vì lúc đó chưa lưu các trường này.
+  // Nạp 1 đơn từ lịch sử vào form kê đơn để chỉnh sửa.
+  // Đặt lastSavedRxId → lần in tiếp theo sẽ PATCH đơn này thay vì tạo bản mới.
+  function loadRxFromHistory(row) {
+    lastSavedRxId = row.id; // khoá vào đơn cũ, in lại sẽ PATCH
+
+    // Thông tin bệnh nhân
+    const setV = (id, val) => { const el = $(id); if (el && val != null) el.value = val; };
+    setV('rxPatientName', row.patient_name || '');
+    setV('rxPatientAddress', row.patient_address || '');
+    setV('rxDiagnosis', row.diagnosis || '');
+
+    // Thông tin bổ sung trong extra (nếu có)
+    const ex = row.extra || {};
+    setV('rxPatientDob', ex.dob || '');
+    setV('rxPatientSex', ex.sex || '');
+    setV('rxAddress', row.patient_address || ex.address || '');
+    setV('rxNote', ex.note || '');
+    setV('rxVitalPulse', (ex.vitalsParts || {}).pulse || '');
+    setV('rxVitalBpSys', (ex.vitalsParts || {}).bpSys || '');
+    setV('rxVitalBpDia', (ex.vitalsParts || {}).bpDia || '');
+    setV('rxVitalTemp', (ex.vitalsParts || {}).temp || '');
+    setV('rxVitalResp', (ex.vitalsParts || {}).resp || '');
+    setV('rxVitalWeight', (ex.vitalsParts || {}).weight || '');
+
+    // Bác sĩ
+    const docSel = $('rxDoctorSelect');
+    if (docSel && row.doctor_name) {
+      const opt = [...docSel.options].find((o) => o.text === row.doctor_name || o.value === row.doctor_name);
+      if (opt) docSel.value = opt.value;
+    }
+
+    // Chế độ kê (hospital/outside/handwritten)
+    const mode = row.mode || 'hospital';
+    const modeToSet = mode === 'mixed' ? 'hospital' : mode;
+    const modeRadio = document.querySelector(`input[name="rxPrescribeMode"][value="${modeToSet}"]`);
+    if (modeRadio) { modeRadio.checked = true; modeRadio.dispatchEvent(new Event('change')); }
+
+    // Danh sách thuốc — nạp vào rxRows
+    const items = Array.isArray(row.items) ? row.items : [];
+    rxRows = items.map((it) => ({
+      brand:    it.brand    || '',
+      generic:  it.generic  || '',
+      form:     it.form     || '',
+      usage:    it.usage    || '',
+      days:     it.days     || '',
+      morning:  it.morning  !== undefined ? it.morning  : '',
+      noon:     it.noon     !== undefined ? it.noon     : '',
+      afternoon:it.afternoon!== undefined ? it.afternoon: '',
+      evening:  it.evening  !== undefined ? it.evening  : '',
+      qty:      it.qty      || '',
+      source:   it.source   || (modeToSet === 'outside' ? 'outside' : 'hospital'),
+      sold:     false, // khi sửa lại, reset trạng thái bán (dược sĩ sẽ xác nhận lại)
+    }));
+    renderRxTable();
+
+    // Cuộn lên đầu form
+    const formTop = $('rxPatientName');
+    if (formTop) formTop.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
   function printHistoryRx(row) {
     if (row.mode === 'handwritten') {
       customAlert('Không thể in lại', 'Đơn này là toa viết tay (chỉ lưu khung trống để bác sĩ tự ghi tay) — không có dữ liệu thuốc để in lại.');
@@ -2681,21 +2745,46 @@
               : `<span class="rx-sold-summary rx-sold-summary-partial">${soldCount}/${items.length} đã bán${sellerNames.length ? ' — ' + escapeHtml(sellerNames.join(', ')) : ''}</span>`)
         : '<span class="rx-history-dash">—</span>';
 
+      const allSold = items.length > 0 && soldCount === items.length;
+      const hasAnySold = soldCount > 0;
+      // Lấy thông tin audit (lần sửa) từ extra
+      const editLog = (row.extra && Array.isArray(row.extra.edit_log)) ? row.extra.edit_log : [];
+      const editBadge = editLog.length
+        ? `<span class="rx-history-editlog-badge" title="Lịch sử sửa:\n${editLog.map((e) => `• ${e.at ? fmtHistoryTime(e.at) : '?'}`).join('\n')}">✏️ sửa ${editLog.length} lần</span>`
+        : '';
+      // Nút sửa: chỉ hiện khi đơn CHƯA BÁN hoàn toàn (an toàn để sửa — nếu đã bán một phần, chặn)
+      const editBtnHtml = !allSold && !hasAnySold
+        ? `<button type="button" class="rx-history-edit-btn" title="Mở lại đơn này để chỉnh sửa rồi in lại">✏️ Sửa</button>`
+        : '';
+
       const tr = document.createElement('tr');
-      tr.className = 'rx-history-row' + (items.length && soldCount === items.length ? ' rx-history-row-sold' : '');
+      tr.className = 'rx-history-row' + (allSold ? ' rx-history-row-sold' : '');
       tr.innerHTML = `
         <td class="rx-history-td-time">${timeCellHtml}</td>
         <td class="rx-history-td-patient">${escapeHtml(row.patient_name || '(không tên)')}</td>
         <td class="rx-history-td-diag">${row.diagnosis ? escapeHtml(row.diagnosis) : '<span class="rx-history-dash">—</span>'}</td>
         <td class="rx-history-td-doctor">${row.doctor_name ? escapeHtml(row.doctor_name) : '<span class="rx-history-dash">—</span>'}</td>
         <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
-        <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button>${previous.length ? `<span class="rx-history-edited-badge" title="Đã sửa lại ${previous.length} lần trước khi ra bản này">✏️ đã sửa ${previous.length} lần</span>` : ''}</td>
+        <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button>${previous.length ? `<span class="rx-history-edited-badge" title="Đã sửa lại ${previous.length} lần trước khi ra bản này">✏️ đã sửa ${previous.length} lần</span>` : ''}${editBadge}</td>
         <td class="rx-history-td-sold">${soldSummary}</td>
-        <td class="rx-history-td-print"><button type="button" class="rx-history-print-btn" title="In lại đơn thuốc">🖨️ In</button></td>
+        <td class="rx-history-td-print">${editBtnHtml}<button type="button" class="rx-history-print-btn" title="In lại đơn thuốc">🖨️ In</button></td>
       `;
 
       const printBtn = tr.querySelector('.rx-history-print-btn');
       printBtn.addEventListener('click', () => printHistoryRx(row));
+
+      // Nút "Sửa" — nạp đơn vào form để chỉnh sửa, đặt lastSavedRxId để lần in tiếp sẽ PATCH
+      const editBtn = tr.querySelector('.rx-history-edit-btn');
+      if (editBtn) {
+        editBtn.addEventListener('click', () => {
+          const ok = confirm(
+            `Mở đơn của "${row.patient_name || '(không tên)'}" để chỉnh sửa?\n\nSau khi sửa xong, bấm "Xem và in đơn thuốc" để lưu lại — đơn sẽ được cập nhật, không tạo thêm bản mới.\n\nLưu ý: mọi thay đổi đều được ghi nhận (thời gian sửa) trong hệ thống.`
+          );
+          if (!ok) return;
+          loadRxFromHistory(row);
+          rxHistoryOverlay.classList.remove('show');
+        });
+      }
 
       const prevHtml = previous.length
         ? `<div class="rx-history-prev-versions">
