@@ -2426,24 +2426,27 @@
     };
     try {
       if (lastSavedRxId) {
-        // Chỉnh sửa đơn đã lưu → PATCH thay vì tạo thêm bản mới
-        await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${lastSavedRxId}`, {
+        // Chỉnh sửa đơn đã lưu → PATCH
+        const patchResp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions?id=eq.${lastSavedRxId}`, {
           method: 'PATCH',
           headers: { ...cloudHeaders(), 'Content-Type': 'application/json', Prefer: 'return=minimal' },
           body: JSON.stringify(payload),
         });
-        return lastSavedRxId;
-      } else {
-        // Đơn mới → POST và lấy ID trả về để dùng khi chỉnh sửa lại
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
-          method: 'POST',
-          headers: { ...cloudHeaders(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
-          body: JSON.stringify(payload),
-        });
-        if (resp.ok) {
-          const data = await resp.json();
-          if (data && data[0] && data[0].id) { lastSavedRxId = data[0].id; return data[0].id; }
-        }
+        if (patchResp.ok) return lastSavedRxId;
+        // PATCH thất bại (thường do RLS chưa cho phép UPDATE) → fallback: POST mới
+        // Đặt lại ID để lần sau không bị lặp lại lỗi này
+        lastSavedRxId = null;
+        console.warn('[saveRxHistory] PATCH thất bại (HTTP', patchResp.status, ')— sẽ tạo bản mới bằng POST. Kiểm tra RLS policy UPDATE trên bảng prescriptions.');
+      }
+      // Đơn mới (hoặc fallback từ PATCH) → POST
+      const postResp = await fetch(`${SUPABASE_URL}/rest/v1/prescriptions`, {
+        method: 'POST',
+        headers: { ...cloudHeaders(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+        body: JSON.stringify(payload),
+      });
+      if (postResp.ok) {
+        const data = await postResp.json();
+        if (data && data[0] && data[0].id) { lastSavedRxId = data[0].id; return data[0].id; }
       }
     } catch (e) {
       // im lặng nếu lỗi mạng/chưa tạo bảng — không ảnh hưởng việc tải PDF
