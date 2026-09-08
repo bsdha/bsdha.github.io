@@ -836,6 +836,23 @@
     }
     return -1;
   }
+  // Cột tồn kho cần xử lý riêng: nhiều file kiểm kê có RẤT NHIỀU cột "Tồn ..."
+  // ứng với từng mốc ngày (Tồn đầu, Tồn cuối, TỒN 24/08, TỒN 26/08...), và cột
+  // đúng nhất luôn là cột "Tồn ..." NẰM CUỐI CÙNG (bên phải nhất, tức mốc gần nhất) —
+  // trừ "Tồn đầu" (đầu kỳ, luôn sai vì đã lỗi thời ngay từ đầu bảng).
+  function pickStockCol(headers) {
+    const norm = headers.map(normalizeVN);
+    // Ưu tiên tên cột rõ ràng, không mập mờ theo ngày tháng
+    const explicit = pickDrugCol(headers, ['ton kho', 'so luong ton']);
+    if (explicit !== -1) return explicit;
+    // Nếu có nhiều cột dạng "tồn ..." theo mốc thời gian, lấy cột cuối cùng (mới nhất)
+    let lastTonIdx = -1;
+    for (let i = 0; i < norm.length; i++) {
+      if (norm[i].startsWith('ton') && !norm[i].startsWith('ton dau')) lastTonIdx = i;
+    }
+    if (lastTonIdx !== -1) return lastTonIdx;
+    return pickDrugCol(headers, ['so luong']);
+  }
   // Dò dòng header thật trong N dòng đầu (bỏ qua các dòng tiêu đề gộp ô, dòng trống...).
   // Chấm điểm mỗi dòng theo số cột khớp được với các nhóm cột đã biết; dòng nào có
   // cột "brand" khớp và tổng điểm cao nhất sẽ được chọn làm header.
@@ -850,7 +867,7 @@
       const genericIdx = pickDrugCol(headers, ['ten goc', 'hoat chat']);
       const formIdx = pickDrugCol(headers, ['dang thuoc', 'dvt']);
       const priceIdx = pickDrugCol(headers, ['don gia']);
-      const stockIdx = pickDrugCol(headers, ['ton kho', 'so luong ton', 'ton cuoi', 'so luong']);
+      const stockIdx = pickStockCol(headers);
       const score = [genericIdx, formIdx, priceIdx, stockIdx].filter((v) => v !== -1).length;
       if (score > best.score) best = { idx: i, score, brandIdx };
     }
@@ -867,7 +884,7 @@
     // 2 cột này không bắt buộc — có thì nạp kèm giá/tồn luôn trong 1 lần, không có thì bỏ qua
     // (giữ nguyên giá/tồn cũ trong CSDL, xem thuoc_import_bulk ở Worker).
     const priceIdx = pickDrugCol(headers, ['don gia']);
-    const stockIdx = pickDrugCol(headers, ['ton kho', 'so luong ton', 'ton cuoi', 'so luong']);
+    const stockIdx = pickStockCol(headers);
     if (brandIdx === -1) throw new Error('Không tìm thấy cột "Tên thương mại"/"Tên biệt dược" trong file.');
     return rows.slice(headerRowIdx + 1)
       .map((r) => {
