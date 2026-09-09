@@ -3322,3 +3322,160 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 .rx-actions-left {
   display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
 }
+
+/* ============================================================
+   GIAO DIỆN MỚI CHO TRANG TRA CỨU ICD-10 — chỉ áp dụng trong #page-icd,
+   không ảnh hưởng các trang khác. Mục tiêu: bớt viền đen gắt, bớt đổ
+   bóng nặng, bớt mảng màu phẳng chói mắt — nhưng vẫn giữ nguyên cấu trúc
+   HTML/JS cũ (không đổi class name nào), chỉ "phủ" lại màu sắc/độ mềm.
+   ============================================================ */
+#page-icd {
+  --icd-bg: #f6f7fb;
+  --icd-border: #e4e7ee;
+  --icd-border-soft: #edeff4;
+  --icd-shadow: 0 1px 2px rgba(30, 41, 59, 0.04), 0 4px 14px rgba(30, 41, 59, 0.05);
+  --icd-shadow-hover: 0 2px 6px rgba(30, 41, 59, 0.06), 0 8px 20px rgba(30, 41, 59, 0.08);
+  --icd-ink: #1e2430;
+  --icd-muted: #6b7280;
+  --icd-blue: #2563eb;
+  --icd-blue-ink: #1d4ed8;
+  --icd-blue-soft: #eef3ff;
+  --icd-blue-border: #d6e3fb;
+  --icd-green: #0f9d78;
+  --icd-green-soft: #e9f8f2;
+  --icd-green-border: #cdeee1;
+  --icd-amber: #b07a15;
+  --icd-amber-soft: #fdf4e2;
+  --icd-amber-border: #f3e1b6;
+  --icd-red: #d0483f;
+  --icd-red-soft: #fbebe9;
+  --icd-red-border: #f2cdc9;
+  --icd-yhct: #a6650a;
+  --icd-yhct-soft: #fdf0dc;
+  --icd-yhct-border: #f2ddb2;
+  background: var(--icd-bg);
+  min-height: 100vh;
+}
+
+/* Khối tìm kiếm + từng thẻ kết quả: viền xám nhạt thay vì đen, bóng mềm thay vì gắt */
+#page-icd .panel {
+  border: 1px solid var(--icd-border);
+  border-radius: 16px;
+  box-shadow: var(--icd-shadow);
+}
+#page-icd .panel h1 { color: var(--icd-ink); }
+#page-icd .panel .sub,
+#page-icd #status { color: var(--icd-muted); }
+
+#page-icd .search-row {
+  border: 1.5px solid var(--icd-border);
+  border-radius: 12px;
+  background: #fff;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+#page-icd .search-row:focus-within {
+  border-color: var(--icd-blue);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+#page-icd .search-row input { color: var(--icd-ink); }
+#page-icd .search-row input::placeholder { color: #9aa1ae; }
+
+#page-icd .option-row,
+#page-icd #status { color: var(--icd-muted); }
+#page-icd .option-row input[type="checkbox"] { accent-color: var(--icd-blue); }
+
+#page-icd #dataStatus.ok { background: var(--icd-green-soft); color: var(--icd-green); }
+#page-icd #dataStatus.warn { background: var(--icd-amber-soft); color: var(--icd-amber); }
+
+/* Thẻ kết quả: bo tròn hơn, viền nhạt, bóng nhẹ, nổi lên khi hover thay vì đổi nền đột ngột */
+#page-icd .card {
+  border: 1px solid var(--icd-border);
+  border-radius: 14px;
+  box-shadow: var(--icd-shadow);
+  transition: box-shadow 0.18s ease, border-color 0.18s ease;
+}
+#page-icd .card:hover { box-shadow: var(--icd-shadow-hover); border-color: var(--icd-border-soft); }
+
+#page-icd .result-row.clickable:hover { background: #f0f3fa; }
+#page-icd .result-row.clickable:hover .result-name { color: var(--icd-blue-ink); }
+
+/* Mã ICD: nền xanh dương pastel dịu thay vì xanh đậm gắt */
+#page-icd .result-code,
+#page-icd .code {
+  color: var(--icd-blue-ink);
+  background: var(--icd-blue-soft);
+  border: 1px solid var(--icd-blue-border);
+}
+
+/* Banner trạng thái: giữ ý nghĩa màu (xanh lá = ổn, vàng = cảnh báo, đỏ = nguy) nhưng dịu hơn,
+   có viền mảnh cùng tông thay vì mảng màu phẳng chói */
+#page-icd .banner.ok { background: var(--icd-green-soft); color: var(--icd-green); border: 1px solid var(--icd-green-border); }
+#page-icd .banner.warn { background: var(--icd-amber-soft); color: var(--icd-amber); border: 1px solid var(--icd-amber-border); }
+#page-icd .banner.danger { background: var(--icd-red-soft); color: var(--icd-red); border: 1px solid var(--icd-red-border); }
+#page-icd .banner.default { background: #f4f5f8; color: var(--icd-muted); border: 1px solid var(--icd-border); }
+
+#page-icd .result-row--dropped .result-code,
+#page-icd .result-row--dropped .result-name,
+#page-icd .result-row--dropped.clickable:hover .result-name {
+  color: var(--icd-red);
+}
+#page-icd .inline-warning--dropped { background: var(--icd-red); color: #fff; }
+#page-icd .inline-warning--not-recommended { background: var(--icd-amber-soft); color: var(--icd-amber); border: 1px solid var(--icd-amber-border); }
+
+/* Nhãn YHCT: cam đất nhạt thay vì cam vàng chói */
+#page-icd .result-row .tag-yhct,
+#page-icd .card-top .tag-yhct {
+  color: var(--icd-yhct) !important;
+  background: var(--icd-yhct-soft);
+  border: 1px solid var(--icd-yhct-border);
+}
+
+/* Badge "Tên hiện đại" của mã YHCT: hồng phấn nhẹ, bỏ viền đen gắt */
+#page-icd .icd10-copy-btn {
+  background: #fdeef4;
+  color: #9c3866;
+  border: 1px solid #f6d3e3;
+}
+#page-icd .icd10-copy-btn:hover { background: #fbdeeb; }
+
+/* Nút copy / xem thêm: viền xám nhạt, hover chuyển xanh dương dịu */
+#page-icd .copy-btn {
+  border: 1px solid var(--icd-border);
+  background: #fff;
+  color: var(--icd-muted);
+}
+#page-icd .copy-btn:hover { background: var(--icd-blue-soft); color: var(--icd-blue-ink); border-color: var(--icd-blue-border); }
+
+#page-icd .load-more-btn {
+  border: 1px solid var(--icd-blue-border);
+  background: var(--icd-blue-soft);
+  color: var(--icd-blue-ink);
+}
+#page-icd .load-more-btn:hover { background: #e2ecff; }
+
+#page-icd .back-btn {
+  border: 1px solid var(--icd-blue-ink);
+  background: var(--icd-blue);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+}
+#page-icd .back-btn:hover { background: var(--icd-blue-ink); }
+
+#page-icd .meta span { background: #f0f2f6; color: var(--icd-muted); }
+#page-icd .note { border-top: 1px dashed var(--icd-border); color: var(--icd-muted); }
+#page-icd .empty { color: var(--icd-muted); }
+
+#page-icd .children-block summary { color: var(--icd-blue); }
+#page-icd .child-btn {
+  border: 1px solid var(--icd-green-border);
+  background: var(--icd-green-soft);
+}
+#page-icd .child-btn code { color: var(--icd-green); }
+
+#page-icd .expand-arrow { color: #9aa1ae; }
+#page-icd .result-row[aria-expanded="true"] .expand-arrow { color: var(--icd-blue); }
+
+/* Nút cuộn lên đầu/cuối trang: nhẹ nhàng hơn */
+#page-icd #backToTop,
+#page-icd #goToBottom {
+  box-shadow: var(--icd-shadow-hover);
+}
