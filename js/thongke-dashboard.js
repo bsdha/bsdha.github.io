@@ -88,6 +88,22 @@
         flex:0 0 auto;}
       .tk-sync-status.tk-sync-done .tk-sync-spinner{display:none;}
       @keyframes tkSpin{to{transform:rotate(360deg);}}
+      .tk-sheet-popup-overlay{position:fixed;inset:0;background:rgba(4,10,16,.55);z-index:10060;
+        display:flex;align-items:center;justify-content:center;animation:tkFadeIn .15s ease;}
+      @keyframes tkFadeIn{from{opacity:0;}to{opacity:1;}}
+      .tk-sheet-popup{background:#0e2233;color:#fff;font-family:inherit;border-radius:14px;
+        padding:26px 28px 20px;max-width:360px;width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.45);
+        text-align:center;border:1px solid rgba(255,255,255,.08);}
+      .tk-sheet-popup-icon{font-size:34px;margin-bottom:8px;}
+      .tk-sheet-popup-title{font-size:16px;font-weight:800;line-height:1.4;margin-bottom:18px;}
+      .tk-sheet-popup-actions{display:flex;gap:10px;justify-content:center;}
+      .tk-sheet-popup-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 18px;
+        border-radius:8px;border:none;cursor:pointer;white-space:nowrap;}
+      .tk-sheet-popup-btn.tk-open{background:linear-gradient(120deg,#0f7b3d,#1fae63);color:#fff;
+        box-shadow:0 0 14px rgba(23,163,74,.4);}
+      .tk-sheet-popup-btn.tk-open:hover{filter:brightness(1.08);}
+      .tk-sheet-popup-btn.tk-close{background:rgba(255,255,255,.1);color:#fff;}
+      .tk-sheet-popup-btn.tk-close:hover{background:rgba(255,255,255,.18);}
       .tk-live{font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid #17a34a;
         background:#f0fdf4;color:#15803d;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;}
       .tk-live-dot{width:8px;height:8px;border-radius:50%;background:#17a34a;display:inline-block;
@@ -1165,6 +1181,13 @@
       }
     }
 
+    // Điền đủ "0" cho các phòng khám không có lượt nào trong file, thay vì
+    // bỏ trống — để D1/web và cột trên Google Sheet luôn hiển thị rõ số "0"
+    // (không nhầm lẫn với ô "chưa từng đồng bộ").
+    Object.keys(ROW_LABELS_FALLBACK).forEach((rowKey) => {
+      if (counts[rowKey] == null) counts[rowKey] = 0;
+    });
+
     return { date, counts, unmatched, totalRows, noBhytCount };
   }
 
@@ -1194,6 +1217,37 @@
     if (el) el.remove();
   }
 
+  // Link Google Sheet báo cáo KCB CS2 — nơi worker ghi song song số liệu.
+  const GOOGLE_SHEET_URL = 'https://docs.google.com/spreadsheets/d/1nsx9ew0fDMfyNDyzUq1h8jTRtafnxswo01F8Z8wLazc/edit';
+
+  function showGoogleSheetSyncedPopup() {
+    // Chỉ hiện 1 popup tại 1 thời điểm — gỡ popup cũ nếu còn (phòng bấm nhập nhiều lần liên tiếp).
+    const existing = document.getElementById('tkSheetPopupOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'tkSheetPopupOverlay';
+    overlay.className = 'tk-sheet-popup-overlay';
+    overlay.innerHTML = `
+      <div class="tk-sheet-popup">
+        <div class="tk-sheet-popup-icon">✅</div>
+        <div class="tk-sheet-popup-title">Đã đồng bộ vào Google Sheet báo cáo KCB CS2</div>
+        <div class="tk-sheet-popup-actions">
+          <button type="button" class="tk-sheet-popup-btn tk-open" id="tkSheetPopupOpenBtn">Mở ngay</button>
+          <button type="button" class="tk-sheet-popup-btn tk-close" id="tkSheetPopupCloseBtn">Đóng</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    const close = () => { if (overlay && overlay.parentNode) overlay.remove(); };
+    document.getElementById('tkSheetPopupOpenBtn').addEventListener('click', () => {
+      window.open(GOOGLE_SHEET_URL, '_blank', 'noopener');
+      close();
+    });
+    document.getElementById('tkSheetPopupCloseBtn').addEventListener('click', close);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+  }
+
   async function performImportSync(result, container) {
     const vnDate = result.date || todayVnDate();
     showSyncStatus('Đang đồng bộ...');
@@ -1208,6 +1262,7 @@
       await loadData(container);
       renderAll(container);
       finishSyncStatus('Đã đồng bộ xong!', 1500);
+      showGoogleSheetSyncedPopup();
     } catch (err) {
       finishSyncStatus('Đồng bộ thất bại: ' + err.message, 2600);
     }
