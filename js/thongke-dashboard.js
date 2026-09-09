@@ -1234,7 +1234,7 @@
     overlay.innerHTML = `
       <div class="tk-sheet-popup">
         <div class="tk-sheet-popup-icon">✅</div>
-        <div class="tk-sheet-popup-title">Đã đồng bộ vào Google Sheet báo cáo KCB CS2</div>
+        <div class="tk-sheet-popup-title">Đã đồng bộ vào Google Sheet<br>Báo cáo số liệu KCB CS2_BTU</div>
         <div class="tk-sheet-popup-actions">
           <button type="button" class="tk-sheet-popup-btn tk-open" id="tkSheetPopupOpenBtn">Mở ngay</button>
           <button type="button" class="tk-sheet-popup-btn tk-close" id="tkSheetPopupCloseBtn">Đóng</button>
