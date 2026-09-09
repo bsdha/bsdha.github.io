@@ -102,9 +102,9 @@
       .tk-sheet-popup-actions{display:flex;gap:10px;justify-content:center;}
       .tk-sheet-popup-btn{font-family:inherit;font-size:13.5px;font-weight:700;padding:9px 18px;
         border-radius:8px;border:2px solid transparent;cursor:pointer;white-space:nowrap;}
-      .tk-sheet-popup-btn.tk-open{background:linear-gradient(120deg,#12b3c9,#0b5fa5,#9333ea);color:#fff;
-        border-color:rgba(255,255,255,.5);box-shadow:0 0 16px rgba(18,179,201,.55),0 0 24px rgba(147,51,234,.35);}
-      .tk-sheet-popup-btn.tk-open:hover{filter:brightness(1.1);box-shadow:0 0 20px rgba(18,179,201,.75),0 0 32px rgba(147,51,234,.5);}
+      .tk-sheet-popup-btn.tk-open{background:#0b5fa5;color:#fff;
+        border-color:#0b5fa5;}
+      .tk-sheet-popup-btn.tk-open:hover{background:#0a538f;}
       .tk-sheet-popup-btn.tk-close{background:#e3edf1;color:#0e2233;border-color:#0b5fa5;}
       .tk-sheet-popup-btn.tk-close:hover{background:#d3e2e9;}
       .tk-live{font-size:12.5px;font-weight:700;padding:6px 11px;border-radius:7px;border:1px solid #17a34a;
