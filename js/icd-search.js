@@ -300,7 +300,11 @@
   // Mã ICD (vốn không có dấu) luôn so khớp theo bản chuẩn hoá bình thường, không đổi theo tuỳ chọn này.
   // Biên dịch sẵn 1 regex ranh giới từ cho 1 token (dùng lại `escapeRegex` đã có ở trên)
   function buildWordBoundaryRegex(token) {
-    return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token), 'iu');
+    // Ranh giới CẢ ĐẦU LẪN CUỐI từ khóa: token phải đứng trọn vẹn thành 1 từ, không được dính liền
+    // ký tự chữ/số phía trước hoặc phía sau. Nếu chỉ kiểm tra ranh giới đầu (như trước đây), gõ
+    // "tuy" sẽ khớp nhầm vào đầu chữ "tuyến" (chuẩn hoá: "tuyen") vì "tuy" đứng ngay đầu chuỗi/sau
+    // khoảng trắng, dù ngay sau nó vẫn còn chữ cái "ến" nối tiếp thành 1 từ khác.
+    return new RegExp('(^|[^\\p{L}\\p{N}])' + escapeRegex(token) + '(?=[^\\p{L}\\p{N}]|$)', 'iu');
   }
 
   function buildQueryInfo(rawQuery, strict) {
