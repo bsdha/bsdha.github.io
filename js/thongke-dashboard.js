@@ -1287,8 +1287,10 @@
       await wb.xlsx.load(buf);
       const result = parseImportedWorkbook(wb);
       if (result.totalRows === 0) {
-        finishSyncStatus('Không tìm thấy dòng dữ liệu nào trong file.', 2600);
-        return;
+        // File không có dòng dữ liệu nào (trống) -> vẫn đồng bộ, điền số 0 cho
+        // toàn bộ các phòng khám thay vì huỷ, để không nhầm lẫn với ô "chưa
+        // từng đồng bộ" trên D1/web và Google Sheet.
+        showSyncStatus('File trống — đang điền số 0 cho tất cả các ô…');
       }
       await performImportSync(result, container);
     } catch (e) {
