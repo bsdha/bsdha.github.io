@@ -26,9 +26,41 @@
 
   function todayLabel() {
     const d = new Date();
-    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0');
+    return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
   }
   if (dateInput) dateInput.value = todayLabel();
+
+  // ---------- Chữ hoa tiếng Việt (kể cả khi người dùng dán/gõ chữ thường) ----------
+  function toVNUpper(s) {
+    return String(s || '').toLocaleUpperCase('vi-VN');
+  }
+
+  // ---------- Viết tắt tên quá dài (>= 5 từ) khi in bảng — "Tên" (từ cuối) không bao giờ viết tắt ----------
+  const VN_VOWELS_RE = /[AĂÂEÊIOÔƠUƯYÁẮẤÉẾÍÓỐỚÚỨÝÀẰẦÈỀÌÒỒỜÙỪỲẢẲẨẺỂỈỎỔỞỦỬỶÃẴẪẼỄĨÕỖỠŨỮỸẠẶẬẸỆỊỌỘỢỤỰỴ]/g;
+  function abbreviateLeadWord(word) {
+    if (!word || word.length <= 2) return word;
+    const first = word[0];
+    const rest = word.slice(1).replace(VN_VOWELS_RE, '');
+    const abb = first + rest;
+    return (abb.length > 0 && abb.length < word.length) ? abb : word;
+  }
+  function abbreviateSecondWord(word) {
+    if (!word) return word;
+    return word[0] + '.';
+  }
+  function formatNameForPrint(rawName) {
+    const upper = toVNUpper(rawName).trim();
+    const words = upper.split(/\s+/).filter(Boolean);
+    if (words.length < 5) return words.join(' ');
+    const lastWord = words[words.length - 1]; // "Tên" — tuyệt đối không viết tắt
+    const middle = words.slice(0, -1).map((w, idx) => {
+      if (idx === 0) return abbreviateLeadWord(w);
+      if (idx === 1) return abbreviateSecondWord(w);
+      return w;
+    });
+    middle.push(lastWord);
+    return middle.join(' ');
+  }
 
   // ---------- Phân tích văn bản: mỗi dòng cố nhận ra "Họ & tên" + "Năm sinh" ----------
   function parseListText(text) {
@@ -55,28 +87,31 @@
       }
       // Bỏ hẳn các dòng không còn chữ cái nào (VD dòng chỉ có số phòng...)
       if (!/[A-Za-zÀ-ỹ]/.test(name)) return;
-      rows.push({ name, year });
+      rows.push({ name: toVNUpper(name), year });
     });
     return rows;
   }
 
   function renderEditRows(rows) {
     editBody.innerHTML = '';
-    rows.forEach(r => addEditRow(r.name, r.year));
-    if (!rows.length) addEditRow('', '');
+    rows.forEach(r => addEditRow(r.name, r.year, r.bed));
+    if (!rows.length) addEditRow('', '', '');
     previewCard.hidden = false;
     sheetCard.hidden = true;
     previewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  function addEditRow(name, year) {
+  function addEditRow(name, year, bed) {
     const tr = document.createElement('tr');
     tr.innerHTML =
+      '<td class="wv-drag-handle-cell"><span class="wv-drag-handle" title="Kéo để đổi thứ tự">⋮⋮</span></td>' +
       '<td class="wv-stt"></td>' +
-      '<td><input type="text" class="wv-name-input" value="' + escapeAttr(name || '') + '" placeholder="Họ và tên"></td>' +
+      '<td><input type="text" class="wv-name-input" value="' + escapeAttr(toVNUpper(name || '')) + '" placeholder="Họ và tên"></td>' +
       '<td><input type="text" class="wv-year-input" value="' + escapeAttr(year || '') + '" placeholder="Năm sinh"></td>' +
+      '<td><input type="text" class="wv-bed-input" value="' + escapeAttr(bed || '') + '" placeholder="Số giường"></td>' +
       '<td><button type="button" class="wv-row-del" title="Xoá dòng">✕</button></td>';
     editBody.appendChild(tr);
+    attachRowDrag(tr);
     renumberRows();
   }
 
@@ -85,6 +120,48 @@
       tr.querySelector('.wv-stt').textContent = i + 1;
     });
   }
+
+  // ---------- Kéo-thả để đổi thứ tự các dòng trong bảng kiểm tra danh sách ----------
+  let dragSrcRow = null;
+  function attachRowDrag(tr) {
+    const handle = tr.querySelector('.wv-drag-handle');
+    if (handle) {
+      handle.addEventListener('mousedown', () => { tr.draggable = true; });
+      handle.addEventListener('touchstart', () => { tr.draggable = true; }, { passive: true });
+    }
+    tr.addEventListener('dragstart', (e) => {
+      dragSrcRow = tr;
+      tr.classList.add('wv-dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      try { e.dataTransfer.setData('text/plain', ''); } catch (err) { /* Safari cũ */ }
+    });
+    tr.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      if (!dragSrcRow || tr === dragSrcRow) return;
+      const rect = tr.getBoundingClientRect();
+      const putAfter = (e.clientY - rect.top) / rect.height > 0.5;
+      tr.parentNode.insertBefore(dragSrcRow, putAfter ? tr.nextSibling : tr);
+      renumberRows();
+    });
+    tr.addEventListener('dragend', () => {
+      tr.draggable = false;
+      tr.classList.remove('wv-dragging');
+      dragSrcRow = null;
+      renumberRows();
+    });
+  }
+  // Phòng khi người dùng bấm-giữ tay cầm rồi thả ra mà không kéo (không kích hoạt dragstart)
+  document.addEventListener('mouseup', () => {
+    if (!editBody) return;
+    Array.from(editBody.querySelectorAll('tr')).forEach(tr => { tr.draggable = false; });
+  });
+
+  // Tự động chuyển tên sang chữ hoa toàn bộ ngay khi người dùng gõ/sửa trực tiếp trong bảng
+  editBody.addEventListener('blur', (e) => {
+    if (e.target && e.target.classList && e.target.classList.contains('wv-name-input')) {
+      e.target.value = toVNUpper(e.target.value);
+    }
+  }, true);
 
   function escapeAttr(s) {
     return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
@@ -103,7 +180,7 @@
     }
   });
 
-  if (addRowBtn) addRowBtn.addEventListener('click', () => addEditRow('', ''));
+  if (addRowBtn) addRowBtn.addEventListener('click', () => addEditRow('', '', ''));
 
   if (parseBtn) parseBtn.addEventListener('click', () => {
     const rows = parseListText(pasteArea.value);
@@ -218,10 +295,11 @@
   if (buildBtn) buildBtn.addEventListener('click', () => {
     const names = Array.from(editBody.querySelectorAll('.wv-name-input')).map(i => i.value.trim());
     const years = Array.from(editBody.querySelectorAll('.wv-year-input')).map(i => i.value.trim());
+    const beds = Array.from(editBody.querySelectorAll('.wv-bed-input')).map(i => i.value.trim());
     const rows = [];
     for (let i = 0; i < names.length; i++) {
       if (!names[i]) continue;
-      rows.push({ name: names[i], year: years[i] || '' });
+      rows.push({ name: names[i], year: years[i] || '', bed: beds[i] || '' });
     }
     if (!rows.length) {
       setStatus('Danh sách đang trống, chưa có bệnh nhân nào để tạo bảng.', true);
@@ -231,8 +309,9 @@
     sheetBody.innerHTML = rows.map((r, i) =>
       '<tr>' +
       '<td>' + (i + 1) + '</td>' +
-      '<td>' + escapeHtml(r.name) + '</td>' +
+      '<td>' + escapeHtml(formatNameForPrint(r.name)) + '</td>' +
       '<td>' + escapeHtml(r.year) + '</td>' +
+      '<td>' + escapeHtml(r.bed) + '</td>' +
       '<td></td><td></td><td></td><td></td><td></td>' +
       '</tr>'
     ).join('');
