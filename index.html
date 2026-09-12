@@ -951,35 +951,7 @@
     <main>
       <div class="wv-wrap">
         <h1 class="wv-h1">📋 Bảng sinh hiệu đi buồng</h1>
-        <p class="wv-sub">Copy danh sách bệnh nhân dạng text trên danh sách Nội trú (có chứa Họ tên &amp; Năm sinh) trong Phần mềm Helix/VNPT His,... vào ô bên dưới — hệ thống sẽ tự nhận diện <b>Họ &amp; tên</b> và <b>Năm sinh</b>. Nếu không tiện copy, có thể tải lên file PDF / Excel / Word thay thế.</p>
-
-        <div class="wv-blank-card">
-          <div class="wv-blank-head">
-            <div>
-              <div class="wv-h2">🖨️ In bảng đi buồng trắng</div>
-              <p class="wv-sub" style="margin:4px 0 0;">Không cần danh sách bệnh nhân — in sẵn bảng trống để điền tay tại giường.</p>
-            </div>
-            <button type="button" class="wv-btn wv-btn-ghost" id="wvBlankToggleBtn">Tùy chọn in ▾</button>
-          </div>
-          <div class="wv-blank-options" id="wvBlankOptions" hidden>
-            <div class="wv-actions-row">
-              <label class="wv-label-inline">Tiêu đề khoa:
-                <input type="text" id="wvBlankDeptInput" class="wv-date-input" list="wvBlankDeptList" placeholder="VD: CCHS">
-              </label>
-              <datalist id="wvBlankDeptList"></datalist>
-            </div>
-            <div class="wv-actions-row">
-              <span class="wv-label-inline" style="margin-right:2px;">Số trang:</span>
-              <div class="wv-toggle-group" id="wvBlankPageToggle">
-                <button type="button" data-pages="1">1 trang (20 dòng)</button>
-                <button type="button" data-pages="2">2 trang (40 dòng)</button>
-              </div>
-            </div>
-            <div class="wv-actions-row">
-              <button type="button" class="wv-btn wv-btn-primary" id="wvBlankPrintBtn">🖨️ In bảng trắng</button>
-            </div>
-          </div>
-        </div>
+        <p class="wv-sub">Copy danh sách bệnh nhân dạng text trên danh sách Nội trú (có chứa Họ tên &amp; Năm sinh) trong Phần mềm Helix/VNPT His,... vào ô bên dưới — hệ thống sẽ tự nhận diện <b>Họ &amp; tên</b> và <b>Năm sinh</b>. Có thể tải lên file danh sách PDF / Excel / Word.</p>
 
         <div class="wv-input-card">
           <label class="wv-label" for="wvPasteArea">Dán danh sách tại đây</label>
@@ -1051,6 +1023,20 @@
               <tbody id="wvSheetBody"></tbody>
             </table>
           </div>
+        </div>
+
+        <div class="wv-blank-inline">
+          <span class="wv-blank-inline-label">🖨️ In bảng đi buồng trắng (mẫu trống, viết tay — dùng khi không dán danh sách):</span>
+          <label class="wv-label-inline">Tiêu đề khoa:
+            <select id="wvBlankDeptSelect" class="wv-date-input"></select>
+          </label>
+          <label class="wv-label-inline">Số trang:
+            <select id="wvBlankPagesSelect" class="wv-date-input">
+              <option value="1">1 trang (20 dòng)</option>
+              <option value="2">2 trang (40 dòng)</option>
+            </select>
+          </label>
+          <button type="button" class="wv-btn wv-btn-ghost" id="wvBlankPrintBtn">🖨️ In bảng trắng</button>
         </div>
       </div>
 

@@ -3867,29 +3867,32 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   font-family: inherit; color: var(--text);
 }
 
-.wv-blank-card {
-  background: var(--surface, #fff);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  margin-bottom: 18px;
-}
-.wv-blank-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.wv-blank-options { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 10px; }
-.wv-toggle-group { display: inline-flex; gap: 6px; flex-wrap: wrap; }
-.wv-toggle-group button {
-  border: 1px solid var(--border);
+.wv-blank-inline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
   background: var(--surface-2);
-  color: var(--text);
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 12.5px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: filter .15s ease, background .15s ease;
 }
-.wv-toggle-group button:hover { filter: brightness(1.05); }
-.wv-toggle-group button.active { background: var(--blue, #2563eb); border-color: var(--blue, #2563eb); color: #fff; }
+.wv-blank-inline-label {
+  font-size: 12.5px;
+  color: var(--muted, #666);
+  font-weight: 600;
+  flex: 1 1 100%;
+}
+.wv-blank-inline .wv-label-inline { font-size: 12.5px; }
+.wv-blank-inline select.wv-date-input {
+  background: var(--surface);
+  cursor: pointer;
+}
+.wv-blank-inline .wv-btn { margin-left: auto; }
+@media (max-width: 640px) {
+  .wv-blank-inline .wv-btn { margin-left: 0; width: 100%; text-align: center; }
+}
 
 .wv-sheet-title { text-align: center; font-size: 17px; font-weight: 700; margin: 4px 0 4px; }
 .wv-sheet-date { text-align: center; font-size: 14px; margin: 0 0 14px; }
@@ -3914,6 +3917,23 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   #wvBlankPrintArea.wv-printing, #wvBlankPrintArea.wv-printing * { visibility: visible; }
   #wvBlankPrintArea.wv-printing { display: block; position: absolute; left: 0; top: 0; width: 100%; }
   .wv-no-print { display: none !important; }
+
+  /* Dãn đều 20 dòng lấp gần hết chiều cao trang A4 thay vì co cụm phía trên,
+     thừa nhiều khoảng trắng bên dưới (chỉ áp dụng cho bảng in trắng, vì bảng
+     có sẵn danh sách bệnh nhân có thể có số dòng ít, không nên bị kéo giãn). */
+  #wvBlankPrintArea.wv-printing .wv-blank-page {
+    display: flex;
+    flex-direction: column;
+    min-height: 273mm; /* A4 cao 297mm, trừ @page margin 8mm x 2 phía */
+  }
+  #wvBlankPrintArea.wv-printing .wv-sheet-table-wrap {
+    flex: 1;
+    display: flex;
+  }
+  #wvBlankPrintArea.wv-printing .wv-sheet-table {
+    flex: 1;
+    height: 100%;
+  }
 }
 #wvBlankPrintArea { display: none; }
 #wvBlankPrintArea .wv-blank-page:last-child { page-break-after: auto; }

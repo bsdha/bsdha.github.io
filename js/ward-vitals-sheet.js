@@ -333,18 +333,16 @@
   // ============================================================
   // In bảng đi buồng TRẮNG (mẫu trống, viết tay) — không cần danh sách bệnh nhân
   // ============================================================
-  const blankToggleBtn = document.getElementById('wvBlankToggleBtn');
-  const blankOptions = document.getElementById('wvBlankOptions');
-  const blankDeptInput = document.getElementById('wvBlankDeptInput');
-  const blankDeptList = document.getElementById('wvBlankDeptList');
-  const blankPageToggle = document.getElementById('wvBlankPageToggle');
+  const blankDeptSelect = document.getElementById('wvBlankDeptSelect');
+  const blankPagesSelect = document.getElementById('wvBlankPagesSelect');
   const blankPrintBtn = document.getElementById('wvBlankPrintBtn');
   const blankPrintArea = document.getElementById('wvBlankPrintArea');
 
-  if (blankToggleBtn && blankOptions) {
+  if (blankDeptSelect && blankPrintBtn) {
     const DEPTS_KEY = 'bsdha_wv_blank_depts_v1';
     const LAST_DEPT_KEY = 'bsdha_wv_blank_last_dept_v1';
     const LAST_PAGES_KEY = 'bsdha_wv_blank_last_pages_v1';
+    const ADD_NEW_VALUE = '__add_new__';
     const DEFAULT_DEPTS = ['CCHS', 'Nội tổng hợp', 'Ngoại tổng hợp', 'Sản', 'Nhi', 'Cấp cứu', 'Hồi sức tích cực (ICU)', 'YHCT - PHCN'];
 
     function loadDepts() {
@@ -364,36 +362,35 @@
       if (idx !== -1) list.splice(idx, 1);
       list.unshift(name);
       saveDepts(list);
-      renderDeptOptions();
     }
-    function renderDeptOptions() {
-      blankDeptList.innerHTML = loadDepts().map(d => '<option value="' + escapeAttr(d) + '"></option>').join('');
+
+    function renderDeptOptions(selectedValue) {
+      const list = loadDepts();
+      blankDeptSelect.innerHTML = list.map(d => '<option value="' + escapeAttr(d) + '">' + escapeHtml(d) + '</option>').join('') +
+        '<option value="' + ADD_NEW_VALUE + '">+ Thêm khoa mới...</option>';
+      if (selectedValue && list.some(d => d.toLowerCase() === selectedValue.toLowerCase())) {
+        blankDeptSelect.value = list.find(d => d.toLowerCase() === selectedValue.toLowerCase());
+      } else {
+        blankDeptSelect.selectedIndex = 0;
+      }
     }
-    renderDeptOptions();
 
     // Khôi phục lựa chọn lần in gần nhất (lưu trong trình duyệt — còn nguyên dù tắt/mở lại máy)
     let lastDept = '';
     try { lastDept = localStorage.getItem(LAST_DEPT_KEY) || ''; } catch (e) {}
-    blankDeptInput.value = lastDept || 'CCHS';
+    renderDeptOptions(lastDept || 'CCHS');
 
-    let blankPages = '1';
-    try { blankPages = localStorage.getItem(LAST_PAGES_KEY) || '1'; } catch (e) {}
-    function setPagesActive(val) {
-      blankPages = val;
-      blankPageToggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.pages === val));
-    }
-    setPagesActive(blankPages === '2' ? '2' : '1');
+    let lastPages = '1';
+    try { lastPages = localStorage.getItem(LAST_PAGES_KEY) || '1'; } catch (e) {}
+    blankPagesSelect.value = lastPages === '2' ? '2' : '1';
 
-    blankToggleBtn.addEventListener('click', () => {
-      const willShow = blankOptions.hidden;
-      blankOptions.hidden = !willShow;
-      blankToggleBtn.textContent = willShow ? 'Tùy chọn in ▴' : 'Tùy chọn in ▾';
-    });
-
-    blankPageToggle.addEventListener('click', (e) => {
-      const btn = e.target.closest('button[data-pages]');
-      if (!btn) return;
-      setPagesActive(btn.dataset.pages);
+    blankDeptSelect.addEventListener('change', () => {
+      if (blankDeptSelect.value !== ADD_NEW_VALUE) return;
+      const name = (window.prompt('Nhập tên khoa mới:') || '').trim();
+      if (!name) { renderDeptOptions(lastDept || 'CCHS'); return; }
+      rememberDept(name);
+      lastDept = name;
+      renderDeptOptions(name);
     });
 
     function buildBlankPageHtml(deptTitle, startNum, count, lastPage) {
@@ -404,24 +401,27 @@
       return '<div class="wv-blank-page"' + (lastPage ? '' : ' style="page-break-after:always;"') + '>' +
         '<h2 class="wv-sheet-title">DANH SÁCH BỆNH NHÂN KHOA ' + escapeHtml(toVNUpper(deptTitle || 'CCHS')) + '</h2>' +
         '<p class="wv-sheet-date">NGÀY: .................................................</p>' +
-        '<table class="wv-sheet-table">' +
+        '<div class="wv-sheet-table-wrap"><table class="wv-sheet-table">' +
         '<colgroup><col style="width:5%"><col style="width:27%"><col style="width:8%"><col style="width:6%">' +
         '<col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>' +
         '<thead><tr><th>STT</th><th>HỌ &amp; TÊN</th><th>NĂM SINH</th><th>GIƯỜNG</th><th>MẠCH</th><th>NHIỆT ĐỘ</th><th>HUYẾT ÁP</th><th>NHỊP THỞ</th><th>SpO2</th><th>ĐHMM</th></tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
-        '</table>' +
+        '</table></div>' +
         '</div>';
     }
 
     blankPrintBtn.addEventListener('click', () => {
-      const deptTitle = (blankDeptInput.value || 'CCHS').trim() || 'CCHS';
+      if (blankDeptSelect.value === ADD_NEW_VALUE) return; // đang mở prompt thêm khoa, chưa có gì để in
+      const deptTitle = blankDeptSelect.value || 'CCHS';
+      const pages = blankPagesSelect.value === '2' ? '2' : '1';
 
       try { localStorage.setItem(LAST_DEPT_KEY, deptTitle); } catch (e) {}
-      try { localStorage.setItem(LAST_PAGES_KEY, blankPages); } catch (e) {}
-      rememberDept(deptTitle);
+      try { localStorage.setItem(LAST_PAGES_KEY, pages); } catch (e) {}
+      lastDept = deptTitle;
+      lastPages = pages;
 
       let html;
-      if (blankPages === '2') {
+      if (pages === '2') {
         html = buildBlankPageHtml(deptTitle, 1, 20, false) + buildBlankPageHtml(deptTitle, 21, 20, true);
       } else {
         html = buildBlankPageHtml(deptTitle, 1, 20, true);
