@@ -75,8 +75,8 @@
   #page-home .hcard h2 { margin: 0; font-size: 12.5px; font-weight: 600; line-height: 1.25; }
   #page-home .hcard p { display: none; }
   #page-home .hcard .tag { display: none; } /* nhãn "Đang hoạt động" lặp lại ở mọi thẻ, bỏ cho gọn */
-  #page-home .hcard.soon { opacity: 0.55; cursor: default; }
-  #page-home .hcard.soon:hover { border-color: var(--border); background: var(--surface); transform: none; }
+  #page-home .hcard.soon { opacity: 0.7; cursor: pointer; }
+  #page-home .hcard.soon:hover { border-color: var(--blue); background: var(--surface-2); transform: translateY(-2px); opacity: 0.9; }
   #page-home footer { text-align: center; margin-top: auto; padding-top: 16px; font-size: 13px; color: #454545; font-weight: 500; line-height: 1.6; }
   @media (max-width: 640px) {
     #page-home .hgrid { grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -1503,8 +1503,8 @@
     margin-bottom: 12px;
   }
   .sidebar .home-btn:hover { background: var(--blue-border); }
-  .nav-item.soon { opacity: 0.5; cursor: default; }
-  .nav-item.soon:hover { background: none; }
+  .nav-item.soon { opacity: 0.7; cursor: pointer; }
+  .nav-item.soon:hover { background: var(--surface-2); color: var(--text); }
   .nav-item {
     display: flex;
     align-items: center;
@@ -3496,4 +3496,189 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 #page-icd #backToTop,
 #page-icd #goToBottom {
   box-shadow: var(--icd-shadow-hover);
+}
+
+/* ===== Trang dùng chung "Sắp triển khai" (các tính năng chưa ra mắt) ===== */
+.soon-wrap {
+  max-width: 560px;
+  margin: 48px auto;
+  padding: 32px 24px;
+  text-align: center;
+  font-family: inherit;
+}
+.soon-icon { font-size: 52px; margin-bottom: 10px; line-height: 1; }
+.soon-title { margin: 0 0 10px; font-size: 21px; font-weight: 700; color: var(--text); }
+.soon-badge {
+  display: inline-block;
+  margin-bottom: 14px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--blue-light, #e0edff);
+  color: var(--blue, #2563eb);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.soon-msg { color: var(--muted, #666); font-size: 14.5px; line-height: 1.6; margin: 0 0 28px; }
+
+.soon-joke {
+  border-top: 1px dashed var(--border);
+  padding-top: 22px;
+  margin-top: 6px;
+}
+.soon-joke-q { font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 16px; }
+.soon-joke-area {
+  position: relative;
+  height: 140px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  overflow: hidden;
+}
+.soon-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s ease, transform .1s ease;
+}
+.soon-btn:active { transform: scale(.97); }
+.soon-btn-yes { background: var(--green, #16a34a); color: #fff; }
+.soon-btn-yes:hover { filter: brightness(1.08); }
+.soon-btn-no {
+  background: var(--red, #dc2626);
+  color: #fff;
+  position: relative;
+  /* Khi ở trong .soon-joke-area và được JS gán vị trí tuyệt đối, nút sẽ "né" chuột. */
+  transition: top .28s cubic-bezier(.34,1.56,.64,1), left .28s cubic-bezier(.34,1.56,.64,1);
+}
+.soon-joke-area.soon-dodging .soon-btn-no {
+  position: absolute;
+}
+
+/* Popup cảm ơn khi bấm "Dạ có!" */
+.soon-thanks-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+  animation: soonFadeIn .15s ease-out;
+}
+.soon-thanks-overlay.open { display: flex; }
+.soon-thanks-box {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  max-width: 360px;
+  width: 100%;
+  padding: 28px 24px 22px;
+  text-align: center;
+  animation: soonPopIn .22s cubic-bezier(.34,1.56,.64,1);
+}
+.soon-thanks-icon { font-size: 44px; margin-bottom: 10px; }
+.soon-thanks-msg { font-size: 15px; font-weight: 600; color: #0f172a; line-height: 1.5; margin: 0 0 20px; }
+.soon-thanks-close {
+  border: none;
+  background: var(--blue, #2563eb);
+  color: #fff;
+  border-radius: 999px;
+  padding: 9px 26px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.soon-thanks-close:hover { filter: brightness(1.08); }
+
+@keyframes soonFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes soonPopIn { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+
+@media (max-width: 560px) {
+  .soon-wrap { margin: 24px auto; padding: 24px 14px; }
+  .soon-joke-area { height: 170px; flex-direction: column; }
+}
+
+/* ===== Danh sách bệnh nhân nội trú — bảng sinh hiệu đi buồng (#page-wardvitals) ===== */
+.wv-wrap { max-width: 900px; margin: 0 auto; padding: 20px 16px 60px; font-family: inherit; }
+.wv-h1 { font-size: 19px; font-weight: 700; margin: 0 0 8px; color: var(--text); }
+.wv-h2 { font-size: 15px; font-weight: 700; margin: 0; color: var(--text); }
+.wv-sub { font-size: 13.5px; color: var(--muted, #666); line-height: 1.6; margin: 0 0 18px; }
+
+.wv-input-card, .wv-preview-card, .wv-sheet-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 18px;
+}
+.wv-label { display: block; font-size: 12.5px; font-weight: 600; color: var(--muted, #666); margin-bottom: 6px; }
+.wv-label-inline { font-size: 13px; font-weight: 600; color: var(--muted, #666); display: flex; align-items: center; gap: 6px; }
+.wv-textarea {
+  width: 100%; box-sizing: border-box; resize: vertical;
+  border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+  font-size: 13.5px; font-family: inherit; color: var(--text); background: var(--surface-2);
+}
+.wv-textarea:focus { outline: none; border-color: var(--blue); }
+
+.wv-actions-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.wv-or { font-size: 12.5px; color: var(--muted, #999); }
+.wv-btn {
+  border: none; border-radius: 999px; padding: 9px 18px; font-size: 13.5px; font-weight: 700;
+  cursor: pointer; transition: filter .15s ease; white-space: nowrap;
+}
+.wv-btn-primary { background: var(--blue, #2563eb); color: #fff; }
+.wv-btn-primary:hover { filter: brightness(1.08); }
+.wv-btn-ghost { background: var(--surface-2); color: var(--text); border: 1px solid var(--border); }
+.wv-btn-ghost:hover { background: var(--surface); }
+.wv-btn-file { background: var(--surface-2); color: var(--text); border: 1px dashed var(--border); display: inline-flex; align-items: center; }
+.wv-btn-file:hover { border-color: var(--blue); color: var(--blue); }
+.wv-filename { font-size: 12.5px; color: var(--muted, #666); }
+.wv-status { margin-top: 8px; font-size: 12.5px; color: var(--muted, #666); min-height: 16px; }
+.wv-status.wv-error { color: var(--red, #dc2626); font-weight: 600; }
+
+.wv-preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.wv-edit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.wv-edit-table th, .wv-edit-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
+.wv-edit-table th { background: var(--surface-2); font-weight: 700; font-size: 12px; }
+.wv-edit-table input {
+  width: 100%; box-sizing: border-box; border: none; background: transparent; font-size: 13px;
+  font-family: inherit; color: var(--text); padding: 3px 2px;
+}
+.wv-edit-table input:focus { outline: none; background: var(--surface-2); border-radius: 4px; }
+.wv-row-del { border: none; background: none; color: var(--red, #dc2626); cursor: pointer; font-size: 15px; }
+.wv-date-input {
+  border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px;
+  font-family: inherit; color: var(--text);
+}
+
+.wv-sheet-title { text-align: center; font-size: 17px; font-weight: 700; margin: 4px 0 4px; }
+.wv-sheet-date { text-align: center; font-size: 14px; margin: 0 0 14px; }
+.wv-sheet-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.wv-sheet-table th, .wv-sheet-table td {
+  border: 1px solid #333; padding: 8px 6px; text-align: center;
+}
+.wv-sheet-table th { background: #f1f5f9; font-weight: 700; }
+.wv-sheet-table td:nth-child(2) { text-align: left; }
+.wv-sheet-table td { height: 34px; }
+
+@media (max-width: 640px) {
+  .wv-sheet-table { font-size: 11px; }
+  .wv-sheet-table th, .wv-sheet-table td { padding: 5px 3px; }
+}
+
+/* In bảng: chỉ in phần bảng, ẩn menu/nút bấm */
+@media print {
+  body * { visibility: hidden; }
+  #wvSheetPrintArea, #wvSheetPrintArea * { visibility: visible; }
+  #wvSheetPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+  .wv-no-print { display: none !important; }
 }

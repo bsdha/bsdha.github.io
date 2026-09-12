@@ -16,6 +16,27 @@
   const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/thongkekcb-bvdkbdcs2': 'thongke', '/thongkekcb-bvdkbdcs2/': 'thongke', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/dichtruyen': 'dichtruyen', '/dichtruyen/': 'dichtruyen', '/tuongtacthuoc': 'tuongtac', '/tuongtacthuoc/': 'tuongtac', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word', '/pdftools': 'pdftools', '/pdftools/': 'pdftools', '/chuyentuyen': 'chuyentuyen', '/chuyentuyen/': 'chuyentuyen', '/nghiviecbhxh': 'nghiviecbhxh', '/nghiviecbhxh/': 'nghiviecbhxh', '/giayravien': 'giayravien', '/giayravien/': 'giayravien', '/ghepcccd': 'cccd', '/ghepcccd/': 'cccd', '/clinical-scores': 'clinicalscores', '/clinical-scores/': 'clinicalscores' };
   const KEY_PATH = { home: '/', icd: '/icd10', thongke: '/thongkekcb-bvdkbdcs2', sinhhieu: '/sinhhieu', insulin: '/insulin', ldl: '/ldl', egfr: '/egfr', dichtruyen: '/dichtruyen', tuongtac: '/tuongtacthuoc', donthuoc: '/donthuoc', pdf2word: '/pdf2word', pdftools: '/pdftools', chuyentuyen: '/chuyentuyen', nghiviecbhxh: '/nghiviecbhxh', giayravien: '/giayravien', cccd: '/ghepcccd', clinicalscores: '/clinical-scores' };
 
+  // --- Các tính năng "Sắp ra mắt": mỗi mục có đường dẫn riêng, nhưng cùng dùng chung
+  // 1 trang nội dung "page-comingsoon" (xem actuallyShowPage bên dưới). ---
+  const SOON_KEYS = [
+    'vitals-chart', 'ped-dose', 'io-balance', 'wound-care', 'cam-icu', 'apgar',
+    'shock-index', 'padua-score', 'transfusion-monitor', 'nursing-care-plan',
+    'vasopressor-calc', 'drain-tracking', 'fluid-nutrition-peds',
+    'handoff-checklist'
+  ];
+  SOON_KEYS.forEach(k => {
+    const path = '/' + k;
+    const key = 'soon:' + k;
+    PATH_MAP[path] = key;
+    PATH_MAP[path + '/'] = key;
+    KEY_PATH[key] = path;
+  });
+
+  // Danh sách bệnh nhân nội trú (bảng sinh hiệu đi buồng) — tính năng đã hoạt động thật.
+  PATH_MAP['/ward-vitals-sheet'] = 'wardvitals';
+  PATH_MAP['/ward-vitals-sheet/'] = 'wardvitals';
+  KEY_PATH['wardvitals'] = '/ward-vitals-sheet';
+
   function focusFirstField(key) {
     const pageEl = document.getElementById('page-' + key);
     if (!pageEl) return;
@@ -124,17 +145,23 @@
   window.BSDHA_LOCK = { isUnlocked, requestUnlock };
 
   function actuallyShowPage(key, push) {
-    pages.forEach(p => p.classList.toggle('active', p.id === 'page-' + key));
+    // Các trang "Sắp ra mắt" (key dạng "soon:xxx") đều hiển thị chung nội dung của
+    // #page-comingsoon, chỉ khác nhau ở đường dẫn URL và mục đang được tô sáng ở menu.
+    const isSoon = typeof key === 'string' && key.indexOf('soon:') === 0;
+    const pageElId = isSoon ? 'page-comingsoon' : 'page-' + key;
+    pages.forEach(p => p.classList.toggle('active', p.id === pageElId));
     navEls.forEach(b => {
       if (b.classList.contains('home-btn')) return;
       b.classList.toggle('active', b.dataset.page === key);
     });
     window.scrollTo({ top: 0 });
-    focusFirstField(key);
+    if (!isSoon) focusFirstField(key);
     if (push) {
       const path = KEY_PATH[key] || '/';
       if (location.pathname !== path) history.pushState({ page: key }, '', path);
     }
+    // Báo cho coming-soon.js biết mục nào vừa được mở, để cập nhật tiêu đề/icon phù hợp.
+    window.dispatchEvent(new CustomEvent('spa:navigate', { detail: { key } }));
   }
 
   function showPage(key, push) {
