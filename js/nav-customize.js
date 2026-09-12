@@ -12,6 +12,9 @@
 (function () {
   const STORAGE_KEY = 'bsdha_nav_prefs_v1';
   const HOLD_MS = 3000;
+  // Các mục cách nhau 10 đơn vị order thay vì 1, để chèn được tiêu đề/đường kẻ
+  // nhóm vào giữa mà không phải dồn hết các mục lên trước (xem positionGroupMarkers).
+  const ORDER_STEP = 10;
 
   const sidebar = document.getElementById('sidebarNav');
   if (!sidebar) return;
@@ -23,6 +26,38 @@
 
   // Thứ tự & danh sách mục gốc (chụp lại trước khi có bất kỳ thay đổi nào)
   const DEFAULT_ORDER = itemsOf(sidebar).map(function (el) { return el.dataset.page; });
+
+  // ---------- Xác định ranh giới các nhóm (dựa theo sidebar: tiêu đề + đường kẻ) ----------
+  // Mỗi nhóm giữ lại danh sách "thành viên" (page key) gốc của mình, để dù người
+  // dùng sắp xếp lại thứ tự thế nào, tiêu đề nhóm vẫn luôn bám theo đúng nhóm đó
+  // (đặt ngay trước mục có order nhỏ nhất trong nhóm) thay vì biến mất hoặc bị
+  // dồn hết lên đầu danh sách.
+  const SIDEBAR_GROUPS = (function () {
+    const groups = [];
+    let cur = null;
+    Array.prototype.slice.call(sidebar.children).forEach(function (el) {
+      if (el.classList && el.classList.contains('nav-group-divider')) {
+        cur = { dividerEl: el, titleEl: null, members: [] };
+        groups.push(cur);
+        return;
+      }
+      if (el.classList && el.classList.contains('nav-group-title')) {
+        if (!cur) { cur = { dividerEl: null, titleEl: el, members: [] }; groups.push(cur); }
+        else { cur.titleEl = el; }
+        return;
+      }
+      if (el.classList && el.classList.contains('nav-item') && el.dataset.page) {
+        if (!cur) { cur = { dividerEl: null, titleEl: null, members: [] }; groups.push(cur); }
+        cur.members.push(el.dataset.page);
+      }
+    });
+    return groups.filter(function (g) { return g.titleEl || g.dividerEl; });
+  })();
+
+  // Ghép đường kẻ ngăn cách bên topbar với đúng nhóm tương ứng bên sidebar
+  // (topbar không có chữ tiêu đề, chỉ có đường kẻ dọc, theo đúng thứ tự xuất hiện).
+  const TOPBAR_DIVIDERS = topbar ? Array.prototype.slice.call(topbar.querySelectorAll('.nav-group-divider')) : [];
+  const GROUPS_WITH_DIVIDER = SIDEBAR_GROUPS.filter(function (g) { return g.dividerEl; });
 
   // ---------- Lưu trữ ----------
   function loadPrefs() {
@@ -47,16 +82,37 @@
     DEFAULT_ORDER.forEach(function (k) { if (!set[k]) merged.push(k); });
     return merged;
   }
+  function orderValueOf(order, key) {
+    const idx = order.indexOf(key);
+    return (idx === -1 ? order.length : idx) * ORDER_STEP;
+  }
+
+  // ---------- Đặt lại vị trí tiêu đề/đường kẻ nhóm theo order hiện tại ----------
+  // Luôn hiển thị (không bao giờ ẩn), chỉ dịch chuyển theo đúng nhóm của mình.
+  function positionGroupMarkers(order) {
+    SIDEBAR_GROUPS.forEach(function (g) {
+      const minVal = g.members.length
+        ? Math.min.apply(null, g.members.map(function (k) { return orderValueOf(order, k); }))
+        : orderValueOf(order, '__end__');
+      if (g.titleEl) g.titleEl.style.order = String(minVal - 5);
+      if (g.dividerEl) g.dividerEl.style.order = String(minVal - 6);
+    });
+    GROUPS_WITH_DIVIDER.forEach(function (g, i) {
+      const dividerEl = TOPBAR_DIVIDERS[i];
+      if (!dividerEl) return;
+      const minVal = g.members.length
+        ? Math.min.apply(null, g.members.map(function (k) { return orderValueOf(order, k); }))
+        : 0;
+      dividerEl.style.order = String(minVal - 6);
+    });
+  }
 
   // ---------- Áp dụng cấu hình (thứ tự + ẩn/hiện) lên giao diện ----------
-  function applyOrderTo(root, order, hidden, flat) {
+  function applyOrderTo(root, order, hidden) {
     itemsOf(root).forEach(function (el) {
-      const idx = order.indexOf(el.dataset.page);
-      el.style.order = idx === -1 ? '' : String(idx + 1);
+      el.style.order = String(orderValueOf(order, el.dataset.page));
       el.style.display = hidden.indexOf(el.dataset.page) !== -1 ? 'none' : '';
     });
-    const groupEls = root.querySelectorAll('.nav-group-title, .nav-group-divider');
-    for (let i = 0; i < groupEls.length; i++) groupEls[i].style.display = flat ? 'none' : '';
   }
 
   function applyHomeCards(order, hidden) {
@@ -65,8 +121,7 @@
       const cards = Array.prototype.slice.call(grid.querySelectorAll('.hcard'));
       let visibleCount = 0;
       cards.forEach(function (el) {
-        const idx = order.indexOf(el.dataset.page);
-        el.style.order = idx === -1 ? '' : String(idx + 1);
+        el.style.order = String(orderValueOf(order, el.dataset.page));
         const isHidden = hidden.indexOf(el.dataset.page) !== -1;
         el.style.display = isHidden ? 'none' : '';
         if (!isHidden) visibleCount++;
@@ -77,8 +132,13 @@
 
   function restoreDefaults(root) {
     itemsOf(root).forEach(function (el) { el.style.order = ''; el.style.display = ''; });
-    const groupEls = root.querySelectorAll('.nav-group-title, .nav-group-divider');
-    for (let i = 0; i < groupEls.length; i++) groupEls[i].style.display = '';
+  }
+  function restoreGroupMarkers() {
+    SIDEBAR_GROUPS.forEach(function (g) {
+      if (g.titleEl) g.titleEl.style.order = '';
+      if (g.dividerEl) g.dividerEl.style.order = '';
+    });
+    TOPBAR_DIVIDERS.forEach(function (el) { el.style.order = ''; });
   }
   function restoreHomeDefaults() {
     document.querySelectorAll('#page-home .hgrid').forEach(function (grid) {
@@ -92,13 +152,15 @@
     if (!prefs) {
       restoreDefaults(sidebar);
       if (topbar) restoreDefaults(topbar);
+      restoreGroupMarkers();
       restoreHomeDefaults();
       return;
     }
     const order = fullOrder(prefs.order);
     const hidden = prefs.hidden || [];
-    applyOrderTo(sidebar, order, hidden, true);
-    if (topbar) applyOrderTo(topbar, order, hidden, true);
+    applyOrderTo(sidebar, order, hidden);
+    if (topbar) applyOrderTo(topbar, order, hidden);
+    positionGroupMarkers(order);
     applyHomeCards(order, hidden);
   }
 
@@ -109,7 +171,7 @@
   let workingOrder = [];
   let workingHidden = [];
   let toolbarEl = null;
-  const injected = []; // các phần tử điều khiển (nút lên/xuống, checkbox) đã chèn thêm
+  const injected = []; // các phần tử điều khiển (nút lên/xuống, tay kéo, checkbox) đã chèn thêm
 
   function isHomeBtn(el) { return el.classList.contains('home-btn'); }
 
@@ -117,12 +179,13 @@
     // Gọi lại sau mỗi lần đổi chỗ để cập nhật CSS order + bật/tắt nút lên/xuống
     itemsOf(sidebar).forEach(function (el) {
       const idx = workingOrder.indexOf(el.dataset.page);
-      el.style.order = idx === -1 ? '' : String(idx + 1);
+      el.style.order = idx === -1 ? '' : String((idx + 1) * ORDER_STEP);
       const upBtn = el.querySelector('.nav-up');
       const downBtn = el.querySelector('.nav-down');
       if (upBtn) upBtn.disabled = idx <= 0;
       if (downBtn) downBtn.disabled = idx === -1 || idx >= workingOrder.length - 1;
     });
+    positionGroupMarkers(workingOrder);
   }
 
   function moveItem(key, dir) {
@@ -134,6 +197,65 @@
     workingOrder[newIdx] = tmp;
     renumber();
   }
+
+  // ---------- Kéo-thả bằng tay cầm (chỉ trên sidebar desktop — danh sách dọc) ----------
+  let dragState = null;
+
+  function startDrag(handle, el, key, pointerId) {
+    const rect = el.getBoundingClientRect();
+    dragState = {
+      el: el,
+      key: key,
+      pointerId: pointerId,
+      startY: rect.top,
+      offsetInItem: 0,
+      lastClientY: 0,
+    };
+    el.classList.add('nav-dragging');
+    try { handle.setPointerCapture(pointerId); } catch (e) {}
+  }
+
+  function onDragMove(e) {
+    if (!dragState || e.pointerId !== dragState.pointerId) return;
+    e.preventDefault();
+    dragState.lastClientY = e.clientY;
+    dragState.el.style.transform = 'translateY(' + (e.clientY - (dragState.startY + dragState.el.offsetHeight / 2)) + 'px)';
+
+    // So sánh tâm phần tử đang kéo với các mục còn lại để hoán đổi vị trí ngay khi vượt qua điểm giữa
+    const draggedCenter = e.clientY;
+    const siblings = itemsOf(sidebar).filter(function (s) { return s !== dragState.el; });
+    for (let i = 0; i < siblings.length; i++) {
+      const sib = siblings[i];
+      const r = sib.getBoundingClientRect();
+      const sibCenter = r.top + r.height / 2;
+      const sibKey = sib.dataset.page;
+      const draggedIdx = workingOrder.indexOf(dragState.key);
+      const sibIdx = workingOrder.indexOf(sibKey);
+      if (sibIdx === -1 || draggedIdx === -1) continue;
+      if (draggedIdx < sibIdx && draggedCenter > sibCenter) {
+        workingOrder.splice(draggedIdx, 1);
+        workingOrder.splice(sibIdx, 0, dragState.key);
+        renumber();
+        break;
+      } else if (draggedIdx > sibIdx && draggedCenter < sibCenter) {
+        workingOrder.splice(draggedIdx, 1);
+        workingOrder.splice(sibIdx, 0, dragState.key);
+        renumber();
+        break;
+      }
+    }
+  }
+
+  function endDrag(e) {
+    if (!dragState || (e && e.pointerId !== dragState.pointerId)) return;
+    dragState.el.classList.remove('nav-dragging');
+    dragState.el.style.transform = '';
+    dragState = null;
+  }
+
+  document.addEventListener('pointermove', onDragMove);
+  document.addEventListener('pointerup', endDrag);
+  document.addEventListener('pointercancel', endDrag);
 
   function buildToolbar() {
     const bar = document.createElement('div');
@@ -175,11 +297,24 @@
 
     sidebar.classList.add('nav-edit-mode');
 
-    itemsOf(sidebar).forEach(function (el) {
+    itemsOf(sidebar).forEach(function (el, i) {
       const key = el.dataset.page;
       // Hiện tạm tất cả mục (kể cả đang ẩn) để có thể tick lại và mở lại dễ dàng
       el.style.display = '';
       el.classList.add('nav-shake');
+      // Lệch pha thời gian rung một chút giữa các mục để đỡ rối mắt hơn là
+      // rung đồng loạt cùng nhịp (giống hiệu ứng sắp xếp icon trên điện thoại).
+      el.style.animationDelay = (-(i % 5) * 0.09) + 's';
+
+      const handle = document.createElement('span');
+      handle.className = 'nav-drag-handle';
+      handle.title = 'Giữ và kéo để đổi vị trí';
+      handle.innerHTML = '<span></span><span></span><span></span><span></span><span></span><span></span>';
+      handle.addEventListener('pointerdown', function (e) {
+        e.preventDefault(); e.stopPropagation();
+        startDrag(handle, el, key, e.pointerId);
+      });
+      el.insertBefore(handle, el.firstChild);
 
       const reorder = document.createElement('span');
       reorder.className = 'nav-reorder';
@@ -191,7 +326,7 @@
       reorder.querySelector('.nav-down').addEventListener('click', function (e) {
         e.preventDefault(); e.stopPropagation(); moveItem(key, 1);
       });
-      el.insertBefore(reorder, el.firstChild);
+      el.insertBefore(reorder, handle.nextSibling);
 
       const label = document.createElement('label');
       label.className = 'nav-visible-toggle';
@@ -201,15 +336,15 @@
       cb.checked = workingHidden.indexOf(key) === -1;
       cb.addEventListener('click', function (e) { e.stopPropagation(); });
       cb.addEventListener('change', function () {
-        const i = workingHidden.indexOf(key);
-        if (cb.checked) { if (i !== -1) workingHidden.splice(i, 1); }
-        else if (i === -1) { workingHidden.push(key); }
+        const i2 = workingHidden.indexOf(key);
+        if (cb.checked) { if (i2 !== -1) workingHidden.splice(i2, 1); }
+        else if (i2 === -1) { workingHidden.push(key); }
       });
       label.appendChild(cb);
       label.appendChild(document.createTextNode('Hiện'));
       el.appendChild(label);
 
-      injected.push({ el: el, reorder: reorder, label: label });
+      injected.push({ el: el, handle: handle, reorder: reorder, label: label });
     });
 
     renumber();
@@ -218,10 +353,14 @@
 
   function exitEditMode() {
     editMode = false;
+    endDrag(null);
     sidebar.classList.remove('nav-edit-mode');
     injected.forEach(function (rec) {
       rec.el.classList.remove('nav-shake');
+      rec.el.style.animationDelay = '';
       rec.el.style.order = '';
+      rec.el.style.transform = '';
+      if (rec.handle.parentNode) rec.handle.parentNode.removeChild(rec.handle);
       if (rec.reorder.parentNode) rec.reorder.parentNode.removeChild(rec.reorder);
       if (rec.label.parentNode) rec.label.parentNode.removeChild(rec.label);
     });

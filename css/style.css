@@ -167,6 +167,65 @@
   }
   .news-banner-group .nb-stats-banner .nb-stat-text.nb-stat-fade { opacity: 0; }
 
+  /* ===== Thanh tìm kiếm công cụ (trang chủ) ===== */
+  .tool-search-wrap {
+    position: relative;
+    margin: 4px 0 22px;
+  }
+  .tool-search-wrap .tool-search-icon {
+    position: absolute;
+    left: 16px; top: 50%; transform: translateY(-50%);
+    font-size: 16px;
+    color: var(--muted);
+    pointer-events: none;
+  }
+  .tool-search-wrap input {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 13px 42px 13px 42px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14.5px;
+    outline: none;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+  .tool-search-wrap input:focus {
+    border-color: var(--blue, #2f6fed);
+    box-shadow: 0 0 0 3px rgba(47, 111, 237, .12);
+  }
+  .tool-search-wrap .tool-search-clear {
+    position: absolute;
+    right: 10px; top: 50%; transform: translateY(-50%);
+    width: 26px; height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .tool-search-wrap.has-value .tool-search-clear { display: flex; }
+  .tool-search-empty {
+    display: none;
+    text-align: center;
+    color: var(--muted);
+    font-size: 13.5px;
+    padding: 28px 12px;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    margin: 4px 0 22px;
+  }
+  .tool-search-empty.show { display: block; }
+  .hcard.ts-hidden { display: none !important; }
+  .home-group-title.ts-hidden { display: none !important; }
+  #page-home .hgrid.ts-hidden { display: none !important; }
+
   /* ===== Widget số liệu KCB (góc trên-trái trang chủ) ===== */
   #page-home .kcb-widget {
     align-self: flex-start;
@@ -2554,7 +2613,7 @@
         @page{margin:8mm;}
       }
 
-      #page-insulin .wrap { max-width: 640px; margin: 0 auto; padding: 12px 16px 20px; }
+      #page-insulin .wrap { max-width: 720px; margin: 0 auto; padding: 12px 16px 20px; }
       #page-insulin .panel {
         background: var(--surface, #fff);
         border: 1px solid var(--border, #e3e6e2);
@@ -2603,6 +2662,28 @@
         color: var(--green, #1f8a5f);
         margin-top: 4px;
       }
+
+      #page-glucose .wrap { max-width: 720px; margin: 0 auto; padding: 12px 16px 20px; }
+      #page-glucose .panel {
+        background: var(--surface, #fff);
+        border: 1px solid var(--border, #e3e6e2);
+        border-radius: 16px;
+        padding: 16px 22px 18px;
+      }
+      #page-glucose .panel h1 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+      #page-glucose .sub { color: var(--muted, #6b7a75); font-size: 12.5px; margin-bottom: 12px; }
+      #page-glucose .field { margin-bottom: 7px; }
+      #page-glucose .field label { display: block; font-size: 12.5px; color: var(--blue, #2f6fed); font-weight: 600; margin-bottom: 4px; }
+      #page-glucose .field input[type="number"] {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 8px 12px;
+        border-radius: 10px;
+        border: 1px solid var(--border, #d7dbd6);
+        font-size: 14px;
+        outline: none;
+      }
+      #page-glucose .field input[type="number"]:focus { outline: none; border-color: var(--blue, #2f6fed); }
 
 /* ===== #page-tuongtac — Tra cứu tương tác thuốc — khung trang ===== */
 #page-tuongtac .wrap { max-width: 720px; margin: 0 auto; padding: 28px 16px 60px; box-sizing: border-box; }
@@ -3151,16 +3232,45 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 /* ================= TÙY CHỈNH SIDEBAR: giữ chuột lâu để sắp xếp / ẩn-hiện mục ================= */
 @keyframes navShake {
   0%   { transform: rotate(0deg); }
-  20%  { transform: rotate(-1.2deg); }
-  40%  { transform: rotate(1.2deg); }
-  60%  { transform: rotate(-1.2deg); }
-  80%  { transform: rotate(1.2deg); }
+  25%  { transform: rotate(-0.5deg); }
+  50%  { transform: rotate(0deg); }
+  75%  { transform: rotate(0.5deg); }
   100% { transform: rotate(0deg); }
 }
 .nav-item.nav-shake {
-  animation: navShake .32s ease-in-out infinite;
+  animation: navShake .55s ease-in-out infinite;
   background: var(--surface-2);
 }
+.nav-item.nav-dragging {
+  animation: none;
+  position: relative;
+  z-index: 20;
+  background: var(--surface);
+  box-shadow: 0 6px 18px rgba(0,0,0,.16);
+  border-radius: 8px;
+  cursor: grabbing;
+}
+.nav-item .nav-drag-handle {
+  flex-shrink: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 3px);
+  grid-template-rows: repeat(3, 3px);
+  gap: 2px;
+  width: 14px;
+  height: 14px;
+  margin-right: 4px;
+  align-content: center;
+  justify-content: center;
+  cursor: grab;
+  touch-action: none;
+}
+.nav-item .nav-drag-handle span {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.nav-item .nav-drag-handle:active { cursor: grabbing; }
 .sidebar.nav-edit-mode,
 .topbar.nav-edit-mode {
   padding-bottom: 64px;
@@ -3757,6 +3867,30 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   font-family: inherit; color: var(--text);
 }
 
+.wv-blank-card {
+  background: var(--surface, #fff);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+}
+.wv-blank-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.wv-blank-options { margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: 10px; }
+.wv-toggle-group { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.wv-toggle-group button {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter .15s ease, background .15s ease;
+}
+.wv-toggle-group button:hover { filter: brightness(1.05); }
+.wv-toggle-group button.active { background: var(--blue, #2563eb); border-color: var(--blue, #2563eb); color: #fff; }
+
 .wv-sheet-title { text-align: center; font-size: 17px; font-weight: 700; margin: 4px 0 4px; }
 .wv-sheet-date { text-align: center; font-size: 14px; margin: 0 0 14px; }
 .wv-sheet-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
@@ -3777,5 +3911,9 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   body * { visibility: hidden; }
   #wvSheetPrintArea, #wvSheetPrintArea * { visibility: visible; }
   #wvSheetPrintArea { position: absolute; left: 0; top: 0; width: 100%; }
+  #wvBlankPrintArea.wv-printing, #wvBlankPrintArea.wv-printing * { visibility: visible; }
+  #wvBlankPrintArea.wv-printing { display: block; position: absolute; left: 0; top: 0; width: 100%; }
   .wv-no-print { display: none !important; }
 }
+#wvBlankPrintArea { display: none; }
+#wvBlankPrintArea .wv-blank-page:last-child { page-break-after: auto; }

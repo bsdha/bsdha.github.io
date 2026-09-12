@@ -81,11 +81,10 @@
   <!-- Thanh điều hướng: sidebar (desktop) / topbar (mobile) — chuyển trang bằng pushState, không tải lại -->
   <nav class="sidebar" id="sidebarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
-    <!-- TODO: đặt tên cho nhóm công cụ dùng chung này (sẽ hiển thị ngay dưới nút Trang chủ), ví dụ:
-    <div class="nav-group-title">Tên nhóm chưa đặt</div>
-    -->
+    <div class="nav-group-title">CÔNG CỤ CHO KHÁM BỆNH</div>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> Tra cứu ICD-10</a>
-    <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Insulin &amp; Đường huyết</a>
+    <a href="/duonghuyet" class="nav-item" data-page="glucose" data-path="/duonghuyet"><span class="ic">🩸</span> Đổi đơn vị đường huyết</a>
+    <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Tính số bút Insulin</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> Tính LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> Tính eGFR</a>
     <a href="/tuongtacthuoc" class="nav-item" data-page="tuongtac" data-path="/tuongtacthuoc"><span class="ic">💊</span> Tra cứu tương tác thuốc</a>
@@ -126,6 +125,7 @@
   <nav class="topbar" id="topbarNav">
     <a href="/" class="home-btn" data-page="home" data-path="/"><span class="ic">🏠</span> Trang chủ</a>
     <a href="/icd10" class="nav-item" data-page="icd" data-path="/icd10"><span class="ic">🔎</span> ICD-10</a>
+    <a href="/duonghuyet" class="nav-item" data-page="glucose" data-path="/duonghuyet"><span class="ic">🩸</span> Đường huyết</a>
     <a href="/insulin" class="nav-item" data-page="insulin" data-path="/insulin"><span class="ic">💉</span> Insulin</a>
     <a href="/ldl" class="nav-item" data-page="ldl" data-path="/ldl"><span class="ic">🩸</span> LDL-C</a>
     <a href="/egfr" class="nav-item" data-page="egfr" data-path="/egfr"><span class="ic">🧪</span> eGFR</a>
@@ -194,60 +194,74 @@
         </div>
       </div>
 
+      <div class="tool-search-wrap" id="toolSearchWrap">
+        <span class="tool-search-icon">🔎</span>
+        <input type="text" id="toolSearchInput" placeholder="Tìm công cụ... (VD: pdf sang word, BMI, tương tác thuốc...)" autocomplete="off">
+        <button type="button" class="tool-search-clear" id="toolSearchClear" title="Xóa tìm kiếm">✕</button>
+      </div>
+      <div class="tool-search-empty" id="toolSearchEmpty">Không tìm thấy công cụ phù hợp. Thử từ khóa khác, ví dụ: "BMI", "chuyển đổi file", "tương tác thuốc"...</div>
+
       <div class="home-group-title">
         <span>CÔNG CỤ CHO KHÁM BỆNH</span>
       </div>
       <div class="hgrid">
-        <a href="/icd10" class="hcard" data-page="icd" data-path="/icd10">
+        <a href="/icd10" class="hcard" data-page="icd" data-path="/icd10" data-kw="tra mã bệnh icd 10 tên bệnh yhct y học cổ truyền">
           <div class="ic">🔎</div>
           <h2>Tra cứu ICD-10</h2>
           <p>Tra mã bệnh / tên bệnh theo TT06/2026/TT-BYT, hỗ trợ mã YHCT và tìm bằng AI.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/insulin" class="hcard" data-page="insulin" data-path="/insulin">
-          <div class="ic">💉</div>
-          <h2>Insulin &amp; Đường huyết</h2>
-          <p>Tính số bút Insulin cần cấp theo liều Sáng - Trưa - Chiều, và đổi đơn vị đường huyết mg/dL ⇄ mmol/L kèm cảnh báo phân loại.</p>
+        <a href="/duonghuyet" class="hcard" data-page="glucose" data-path="/duonghuyet" data-kw="đổi đơn vị đường huyết mg/dl mmol/l glucose tiểu đường đtđ">
+          <div class="ic">🩸</div>
+          <h2>Đổi đơn vị đường huyết</h2>
+          <p>Chuyển đổi mg/dL ⇄ mmol/L, kèm cảnh báo phân loại lâm sàng theo ngưỡng chẩn đoán (ĐTĐ, tiền ĐTĐ, hạ đường huyết).</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/ldl" class="hcard" data-page="ldl" data-path="/ldl">
+        <a href="/insulin" class="hcard" data-page="insulin" data-path="/insulin" data-kw="tính liều insulin bút tiêm ui đái tháo đường">
+          <div class="ic">💉</div>
+          <h2>Tính số bút Insulin</h2>
+          <p>Tính số bút Insulin cần cấp theo liều Sáng - Trưa - Chiều và số ngày cấp.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/ldl" class="hcard" data-page="ldl" data-path="/ldl" data-kw="cholesterol mỡ máu ldl-c friedewald sampson lipid">
           <div class="ic">🩸</div>
           <h2>Tính LDL-Cholesterol</h2>
           <p>Ước tính LDL-C theo công thức Friedewald, tự động dùng Sampson khi TG cao.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/egfr" class="hcard" data-page="egfr" data-path="/egfr">
+        <a href="/egfr" class="hcard" data-page="egfr" data-path="/egfr" data-kw="chức năng thận suy thận creatinine ckd-epi mức lọc cầu thận">
           <div class="ic">🧪</div>
           <h2>Tính eGFR</h2>
           <p>Ước tính mức lọc cầu thận theo công thức CKD-EPI 2021.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/tuongtacthuoc" class="hcard" data-page="tuongtac" data-path="/tuongtacthuoc">
+        <a href="/tuongtacthuoc" class="hcard" data-page="tuongtac" data-path="/tuongtacthuoc" data-kw="tương tác thuốc ddi check thuốc kê đơn an toàn">
           <div class="ic">💊</div>
           <h2>Tra cứu tương tác thuốc</h2>
           <p>Kiểm tra tương tác giữa các thuốc trong đơn, cảnh báo mức độ nghiêm trọng.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/ghepcccd" class="hcard" data-page="cccd" data-path="/ghepcccd">
+        <a href="/ghepcccd" class="hcard" data-page="cccd" data-path="/ghepcccd" data-kw="in cccd ghép ảnh căn cước công dân cmnd 2 mặt">
           <div class="ic">🪪</div>
           <h2>In CCCD 2 mặt</h2>
           <p>Ghép ảnh mặt trước/sau CCCD để in vừa 1 mặt giấy, tự căn chỉnh phối cảnh.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/pdf2word" class="hcard" data-page="pdf2word" data-path="/pdf2word">
+        <a href="/pdf2word" class="hcard" data-page="pdf2word" data-path="/pdf2word" data-kw="chuyển đổi pdf sang word word sang pdf excel powerpoint ảnh ocr chuyển đổi tài liệu scan">
           <div class="ic">📄</div>
           <h2>Chuyển đổi tài liệu</h2>
           <p>Chuyển đổi 2 chiều giữa PDF, Word, Excel, PowerPoint, Ảnh (kể cả bản scan) — tự OCR, giữ nguyên bảng biểu, căn lề, tiêu đề.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/pdftools" class="hcard" data-page="pdftools" data-path="/pdftools">
+        <a href="/pdftools" class="hcard" data-page="pdftools" data-path="/pdftools" data-kw="gộp pdf tách trang xoay trang xóa trang nén pdf ocr pdf ghép file">
           <div class="ic">🛠️</div>
           <h2>Công cụ PDF</h2>
           <p>Ghép nhiều PDF, tách trang, xoay trang, xóa trang, nén dung lượng, OCR bản scan thành PDF có thể chọn/copy chữ.</p>
@@ -259,126 +273,126 @@
         <span>👩‍⚕️ CÔNG CỤ CHO ĐIỀU DƯỠNG</span>
       </div>
       <div class="hgrid">
-        <a href="/ward-vitals-sheet" class="hcard" data-page="wardvitals" data-path="/ward-vitals-sheet">
+        <a href="/ward-vitals-sheet" class="hcard" data-page="wardvitals" data-path="/ward-vitals-sheet" data-kw="bảng sinh hiệu đi buồng mạch nhiệt độ huyết áp nhịp thở spo2 danh sách bệnh nhân">
           <div class="ic">📋</div>
           <h2>Bảng sinh hiệu đi buồng</h2>
           <p>Dán danh sách (hoặc tải file PDF/Excel/Word) → tự nhận tên + năm sinh, in bảng đi buồng: Mạch, Nhiệt độ, Huyết áp, Nhịp thở, SpO2.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/bmi" class="hcard" data-page="bmi" data-path="/bmi">
+        <a href="/bmi" class="hcard" data-page="bmi" data-path="/bmi" data-kw="chỉ số khối cơ thể cân nặng chiều cao béo phì thiếu cân">
           <div class="ic">⚖️</div>
           <h2>Tính chỉ số BMI</h2>
           <p>Tính chỉ số khối cơ thể (BMI) theo cân nặng, chiều cao và phân loại theo thang khuyến cáo cho người trưởng thành châu Á.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen">
+        <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen" data-kw="giờ truyền dịch giọt phút tốc độ truyền dây truyền">
           <div class="ic">💧</div>
           <h2>Giờ truyền dịch</h2>
           <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
+        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores" data-kw="thang điểm news2 vas braden morse đau loét tỳ đè té ngã lâm sàng">
           <div class="ic">📊</div>
           <h2>Thang điểm lâm sàng</h2>
           <p>NEWS2, đau VAS, loét tỳ đè Braden, nguy cơ té ngã Morse — sắp bổ sung Glasgow (GCS), thang đau trẻ em (FLACC/Wong-Baker), nguy cơ té ngã trẻ em.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/vitals-chart" class="hcard soon" data-page="soon:vitals-chart" data-path="/vitals-chart">
+        <a href="/vitals-chart" class="hcard soon" data-page="soon:vitals-chart" data-path="/vitals-chart" data-kw="biểu đồ theo dõi sinh hiệu theo giờ mạch nhiệt độ huyết áp spo2">
           <div class="ic">📈</div>
           <h2>Biểu đồ theo dõi sinh hiệu theo giờ</h2>
           <p>Bảng theo dõi mạch, nhiệt độ, huyết áp, SpO2 liên tục nhiều giờ cho 1 bệnh nhân trong ca trực — khác với phiếu bốc số "Tạo phiếu sinh hiệu" (chỉ đánh số + chỗ điền tay 1 lần).</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/ped-dose" class="hcard soon" data-page="soon:ped-dose" data-path="/ped-dose">
+        <a href="/ped-dose" class="hcard soon" data-page="soon:ped-dose" data-path="/ped-dose" data-kw="liều thuốc trẻ em cân nặng mg/kg kháng sinh hạ sốt nhi">
           <div class="ic">🧒</div>
           <h2>Liều thuốc trẻ em theo cân nặng</h2>
           <p>Tính mg/kg → số ml cần lấy, đặc biệt kháng sinh, hạ sốt.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/io-balance" class="hcard soon" data-page="soon:io-balance" data-path="/io-balance">
+        <a href="/io-balance" class="hcard soon" data-page="soon:io-balance" data-path="/io-balance" data-kw="cân bằng dịch vào ra input output 24h">
           <div class="ic">🧮</div>
           <h2>Cân bằng dịch vào - ra (24h)</h2>
           <p>Theo dõi input/output cho bệnh nhân nặng, suy thận, tim mạch.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/wound-care" class="hcard soon" data-page="soon:wound-care" data-path="/wound-care">
+        <a href="/wound-care" class="hcard soon" data-page="soon:wound-care" data-path="/wound-care" data-kw="chăm sóc vết thương loét">
           <div class="ic">🩹</div>
           <h2>Chăm sóc vết thương/loét</h2>
           <p>Tra cứu nhanh hướng dẫn chăm sóc theo từng giai đoạn, kèm ảnh minh hoạ.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/cam-icu" class="hcard soon" data-page="soon:cam-icu" data-path="/cam-icu">
+        <a href="/cam-icu" class="hcard soon" data-page="soon:cam-icu" data-path="/cam-icu" data-kw="sàng lọc mê sảng delirium icu">
           <div class="ic">🧠</div>
           <h2>CAM-ICU</h2>
           <p>Sàng lọc mê sảng (delirium) ở bệnh nhân nặng.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/apgar" class="hcard soon" data-page="soon:apgar" data-path="/apgar">
+        <a href="/apgar" class="hcard soon" data-page="soon:apgar" data-path="/apgar" data-kw="apgar sơ sinh trẻ mới sinh">
           <div class="ic">👶</div>
           <h2>APGAR sơ sinh</h2>
           <p>Đánh giá nhanh trẻ sơ sinh tại phút thứ 1 và thứ 5.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/shock-index" class="hcard soon" data-page="soon:shock-index" data-path="/shock-index">
+        <a href="/shock-index" class="hcard soon" data-page="soon:shock-index" data-path="/shock-index" data-kw="chỉ số sốc shock index mạch huyết áp">
           <div class="ic">🚨</div>
           <h2>Chỉ số sốc (Shock Index)</h2>
           <p>Mạch / Huyết áp tâm thu — cảnh báo sớm nguy cơ sốc.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/padua-score" class="hcard soon" data-page="soon:padua-score" data-path="/padua-score">
+        <a href="/padua-score" class="hcard soon" data-page="soon:padua-score" data-path="/padua-score" data-kw="padua score huyết khối tĩnh mạch vte">
           <div class="ic">🩺</div>
           <h2>Padua Score</h2>
           <p>Đánh giá nguy cơ huyết khối tĩnh mạch (VTE) khi nhập viện nội khoa.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/transfusion-monitor" class="hcard soon" data-page="soon:transfusion-monitor" data-path="/transfusion-monitor">
+        <a href="/transfusion-monitor" class="hcard soon" data-page="soon:transfusion-monitor" data-path="/transfusion-monitor" data-kw="theo dõi truyền máu">
           <div class="ic">🩸</div>
           <h2>Theo dõi truyền máu</h2>
           <p>Ghi sinh hiệu theo mốc thời gian cố định (15p, 30p, 1h...) sau truyền.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/nursing-care-plan" class="hcard soon" data-page="soon:nursing-care-plan" data-path="/nursing-care-plan">
+        <a href="/nursing-care-plan" class="hcard soon" data-page="soon:nursing-care-plan" data-path="/nursing-care-plan" data-kw="kế hoạch chăm sóc điều dưỡng nanda">
           <div class="ic">📔</div>
           <h2>Kế hoạch chăm sóc điều dưỡng</h2>
           <p>Chọn chẩn đoán điều dưỡng (NANDA rút gọn) + mục tiêu + can thiệp, tự sinh văn bản.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/vasopressor-calc" class="hcard soon" data-page="soon:vasopressor-calc" data-path="/vasopressor-calc">
+        <a href="/vasopressor-calc" class="hcard soon" data-page="soon:vasopressor-calc" data-path="/vasopressor-calc" data-kw="bơm tiêm điện thuốc vận mạch norepinephrine dopamine">
           <div class="ic">💉</div>
           <h2>Bơm tiêm điện &amp; thuốc vận mạch</h2>
           <p>Pha loãng, tính tốc độ (µg/kg/phút → ml/h) cho Norepinephrine, Dopamine...</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/drain-tracking" class="hcard soon" data-page="soon:drain-tracking" data-path="/drain-tracking">
+        <a href="/drain-tracking" class="hcard soon" data-page="soon:drain-tracking" data-path="/drain-tracking" data-kw="theo dõi dẫn lưu">
           <div class="ic">📉</div>
           <h2>Theo dõi dẫn lưu</h2>
           <p>Ghi số lượng, màu sắc, tính chất dịch dẫn lưu theo ca trực, biểu đồ xu hướng.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/fluid-nutrition-peds" class="hcard soon" data-page="soon:fluid-nutrition-peds" data-path="/fluid-nutrition-peds">
+        <a href="/fluid-nutrition-peds" class="hcard soon" data-page="soon:fluid-nutrition-peds" data-path="/fluid-nutrition-peds" data-kw="dịch truyền nuôi ăn cân nặng nhi holliday-segar">
           <div class="ic">🍼</div>
           <h2>Dịch truyền/nuôi ăn theo cân nặng (Nhi)</h2>
           <p>Tính theo công thức Holliday-Segar cho bệnh nhi.</p>
           <span class="tag">Sắp ra mắt</span>
         </a>
 
-        <a href="/handoff-checklist" class="hcard soon" data-page="soon:handoff-checklist" data-path="/handoff-checklist">
+        <a href="/handoff-checklist" class="hcard soon" data-page="soon:handoff-checklist" data-path="/handoff-checklist" data-kw="checklist bàn giao ca">
           <div class="ic">✅</div>
           <h2>Checklist bàn giao ca</h2>
           <p>Bàn giao ca / chăm sóc theo quy trình: vết thương, sonde, catheter.</p>
@@ -390,42 +404,42 @@
         <span>NỘI BỘ BVĐK BD CS2</span>
       </div>
       <div class="hgrid">
-        <a href="/thongkekcb-bvdkbdcs2" class="hcard" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2">
+        <a href="/thongkekcb-bvdkbdcs2" class="hcard" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2" data-kw="thống kê tiếp nhận dashboard số liệu khám bệnh his">
           <div class="ic">📈</div>
           <h2>Thống kê tiếp nhận</h2>
           <p>Biểu đồ &amp; bảng chi tiết số lượt khám theo ngày, theo từng phòng khám — đồng bộ tự động từ HIS.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu">
+        <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu" data-kw="in phiếu số thứ tự sinh hiệu bốc số a4 a5">
           <div class="ic">📋</div>
           <h2>In phiếu STT - Sinh hiệu</h2>
           <p>Tạo &amp; in hàng loạt phiếu dấu hiệu sinh tồn (mạch, nhiệt độ, huyết áp...) theo khổ A4/A5, đánh số tự động.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc">
+        <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc" data-kw="kê toa thuốc dịch vụ đơn thuốc biệt dược hoạt chất">
           <div class="ic">💊</div>
           <h2>Kê toa thuốc dịch vụ</h2>
           <p>Soạn toa thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/chuyentuyen" class="hcard" data-page="chuyentuyen" data-path="/chuyentuyen">
+        <a href="/chuyentuyen" class="hcard" data-page="chuyentuyen" data-path="/chuyentuyen" data-kw="phiếu chuyển tuyến chuyển viện bhyt">
           <div class="ic">🚑</div>
           <h2>Phiếu chuyển tuyến</h2>
           <p>Soạn &amp; in Phiếu chuyển cơ sở khám bệnh, chữa bệnh BHYT, tự điền sẵn thông tin, tự chia trang A4.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/nghiviecbhxh" class="hcard" data-page="nghiviecbhxh" data-path="/nghiviecbhxh">
+        <a href="/nghiviecbhxh" class="hcard" data-page="nghiviecbhxh" data-path="/nghiviecbhxh" data-kw="giấy nghỉ việc bhxh nghỉ ốm">
           <div class="ic">📝</div>
           <h2>Giấy nghỉ việc BHXH</h2>
           <p>Soạn &amp; in Giấy chứng nhận nghỉ việc hưởng BHXH theo mẫu quy định, tự điền sẵn thông tin.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/giayravien" class="hcard" data-page="giayravien" data-path="/giayravien">
+        <a href="/giayravien" class="hcard" data-page="giayravien" data-path="/giayravien" data-kw="giấy ra viện xuất viện mẫu 02">
           <div class="ic">🏥</div>
           <h2>Giấy ra viện</h2>
           <p>Soạn &amp; in Giấy ra viện (Mẫu số 02) theo mẫu Bộ Y tế, tự nhận diện thông tin từ file gốc.</p>
@@ -574,26 +588,46 @@
   <script defer src="js/sinh-hieu.js"></script>
 
   <div class="page" id="page-insulin">
-    <style>
-      .ins-split{
-        display:grid;
-        grid-template-columns:1fr 1fr;
-        gap:20px;
-        max-width:980px;
-        margin:0 auto;
-        align-items:stretch;
-      }
-      .ins-split > .wrap{
-        display:flex;
-        height:100%;
-      }
-      .ins-split > .wrap > .panel{
-        display:flex;
-        flex-direction:column;
-        width:100%;
-      }
-      @media (max-width:820px){ .ins-split{grid-template-columns:1fr;} }
+    <div class="wrap">
+      <div class="panel">
+        <h1>💉 Tính số bút Insulin</h1>
+        <div class="sub">Nhập liều Insulin (UI) mỗi mũi tiêm trong ngày để tính tổng liều và số bút cần cấp mỗi tháng.</div>
 
+        <div class="field">
+          <label for="insSang">Sáng (UI)</label>
+          <input type="number" min="0" step="0.5" id="insSang" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="insTrua">Trưa (UI)</label>
+          <input type="number" min="0" step="0.5" id="insTrua" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="insChieu">Chiều (UI)</label>
+          <input type="number" min="0" step="0.5" id="insChieu" placeholder="0" inputmode="decimal">
+        </div>
+        <div class="field">
+          <label for="insSoNgay">Số ngày cấp bút</label>
+          <input type="number" min="1" step="1" id="insSoNgay" placeholder="30" inputmode="numeric">
+        </div>
+
+        <div class="ins-pen-field">
+          <label for="insPenSize">Liều mỗi bút (UI/bút)</label>
+          <input type="number" min="1" step="1" id="insPenSize" value="300">
+        </div>
+
+        <div class="ins-result">
+          <div class="ins-row">Liều: <span class="ins-big" id="insDailyDose">0</span> UI/ngày</div>
+          <div class="ins-breakdown" id="insBreakdown"></div>
+          <div class="ins-row-main" id="insPensPerMonth">Cần cấp cho BN: 0 bút/tháng</div>
+        </div>
+      </div>
+    </div>
+
+    <script defer src="js/insulin-calc.js"></script>
+  </div>
+
+  <div class="page" id="page-glucose">
+    <style>
       /* ---- Glucose converter panel ---- */
       #glucosePanel .gc-block{
         display:grid;
@@ -686,83 +720,45 @@
       #glucosePanel .gc-ref-row .gc-txt b{color:var(--text);}
     </style>
 
-    <div class="ins-split">
-      <div class="wrap" style="margin:0;">
-        <div class="panel">
-          <h1>💉 Tính số bút Insulin</h1>
-          <div class="sub">Nhập liều Insulin (UI) mỗi mũi tiêm trong ngày để tính tổng liều và số bút cần cấp mỗi tháng.</div>
+    <div class="wrap">
+      <div class="panel" id="glucosePanel">
+        <h1>🩸 Đổi đơn vị đường huyết</h1>
+        <div class="sub">Chuyển đổi mg/dL ⇄ mmol/L và cảnh báo phân loại lâm sàng theo ngưỡng chẩn đoán.</div>
 
-          <div class="field">
-            <label for="insSang">Sáng (UI)</label>
-            <input type="number" min="0" step="0.5" id="insSang" placeholder="0" inputmode="decimal">
-          </div>
-          <div class="field">
-            <label for="insTrua">Trưa (UI)</label>
-            <input type="number" min="0" step="0.5" id="insTrua" placeholder="0" inputmode="decimal">
-          </div>
-          <div class="field">
-            <label for="insChieu">Chiều (UI)</label>
-            <input type="number" min="0" step="0.5" id="insChieu" placeholder="0" inputmode="decimal">
-          </div>
-          <div class="field">
-            <label for="insSoNgay">Số ngày cấp bút</label>
-            <input type="number" min="1" step="1" id="insSoNgay" placeholder="30" inputmode="numeric">
-          </div>
-
-          <div class="ins-pen-field">
-            <label for="insPenSize">Liều mỗi bút (UI/bút)</label>
-            <input type="number" min="1" step="1" id="insPenSize" value="300">
-          </div>
-
-          <div class="ins-result">
-            <div class="ins-row">Liều: <span class="ins-big" id="insDailyDose">0</span> UI/ngày</div>
-            <div class="ins-breakdown" id="insBreakdown"></div>
-            <div class="ins-row-main" id="insPensPerMonth">Cần cấp cho BN: 0 bút/tháng</div>
+        <div class="field">
+          <label for="gcInput" id="gcInputLabel">Chỉ số đường huyết (mmol/L)</label>
+          <div class="gc-block">
+            <div class="gc-input-wrap">
+              <input type="number" min="0" step="0.1" id="gcInput" placeholder="VD: 6.6" inputmode="decimal">
+              <span class="gc-unit-badge" id="gcInputUnitBadge">mmol/L</span>
+            </div>
+            <button type="button" class="gc-swap-btn" id="gcSwapBtn" title="Hoán đổi đơn vị">⇄</button>
+            <div class="gc-output" id="gcOutput">
+              <span id="gcOutputValue">—</span>
+              <span class="gc-output-unit" id="gcOutputUnitBadge">mg/dL</span>
+            </div>
           </div>
         </div>
-      </div>
+        <div class="gc-alert neutral" id="gcAlert"><span class="gc-icon">ℹ️</span><span>Nhập chỉ số đường huyết để xem phân loại</span></div>
 
-      <div class="wrap" style="margin:0;">
-        <div class="panel" id="glucosePanel">
-          <h1>🩸 Đổi đơn vị đường huyết</h1>
-          <div class="sub">Chuyển đổi mg/dL ⇄ mmol/L và cảnh báo phân loại lâm sàng theo ngưỡng chẩn đoán.</div>
-
-          <div class="field">
-            <label for="gcInput" id="gcInputLabel">Chỉ số đường huyết (mmol/L)</label>
-            <div class="gc-block">
-              <div class="gc-input-wrap">
-                <input type="number" min="0" step="0.1" id="gcInput" placeholder="VD: 6.6" inputmode="decimal">
-                <span class="gc-unit-badge" id="gcInputUnitBadge">mmol/L</span>
-              </div>
-              <button type="button" class="gc-swap-btn" id="gcSwapBtn" title="Hoán đổi đơn vị">⇄</button>
-              <div class="gc-output" id="gcOutput">
-                <span id="gcOutputValue">—</span>
-                <span class="gc-output-unit" id="gcOutputUnitBadge">mg/dL</span>
-              </div>
-            </div>
+        <div class="gc-ref">
+          <h3>Ngưỡng chẩn đoán tham khảo</h3>
+          <div class="gc-ref-row">
+            <span class="gc-tag high">ĐTĐ</span>
+            <span class="gc-txt">Đường huyết bất kỳ <b>&gt;200 mg/dL (11,1 mmol/L)</b> · Đói (&gt;8h) <b>&gt;126 mg/dL (7,0 mmol/L)</b> · HbA1c <b>&gt;6,5%</b></span>
           </div>
-          <div class="gc-alert neutral" id="gcAlert"><span class="gc-icon">ℹ️</span><span>Nhập chỉ số đường huyết để xem phân loại</span></div>
-
-          <div class="gc-ref">
-            <h3>Ngưỡng chẩn đoán tham khảo</h3>
-            <div class="gc-ref-row">
-              <span class="gc-tag high">ĐTĐ</span>
-              <span class="gc-txt">Đường huyết bất kỳ <b>&gt;200 mg/dL (11,1 mmol/L)</b> · Đói (&gt;8h) <b>&gt;126 mg/dL (7,0 mmol/L)</b> · HbA1c <b>&gt;6,5%</b></span>
-            </div>
-            <div class="gc-ref-row">
-              <span class="gc-tag pre">Tiền ĐTĐ</span>
-              <span class="gc-txt">Rối loạn ĐH đói: <b>100–125 mg/dL (5,6–6,9 mmol/L)</b> · HbA1c <b>5,7–6,4%</b></span>
-            </div>
-            <div class="gc-ref-row">
-              <span class="gc-tag low">Hạ ĐH</span>
-              <span class="gc-txt">Đường huyết <b>&lt;70 mg/dL (&lt;3,9 mmol/L)</b></span>
-            </div>
+          <div class="gc-ref-row">
+            <span class="gc-tag pre">Tiền ĐTĐ</span>
+            <span class="gc-txt">Rối loạn ĐH đói: <b>100–125 mg/dL (5,6–6,9 mmol/L)</b> · HbA1c <b>5,7–6,4%</b></span>
+          </div>
+          <div class="gc-ref-row">
+            <span class="gc-tag low">Hạ ĐH</span>
+            <span class="gc-txt">Đường huyết <b>&lt;70 mg/dL (&lt;3,9 mmol/L)</b></span>
           </div>
         </div>
       </div>
     </div>
 
-    <script defer src="js/insulin-calc.js"></script>
     <script defer src="js/glucose-convert.js"></script>
   </div>
 
@@ -957,6 +953,34 @@
         <h1 class="wv-h1">📋 Bảng sinh hiệu đi buồng</h1>
         <p class="wv-sub">Copy danh sách bệnh nhân dạng text trên danh sách Nội trú (có chứa Họ tên &amp; Năm sinh) trong Phần mềm Helix/VNPT His,... vào ô bên dưới — hệ thống sẽ tự nhận diện <b>Họ &amp; tên</b> và <b>Năm sinh</b>. Nếu không tiện copy, có thể tải lên file PDF / Excel / Word thay thế.</p>
 
+        <div class="wv-blank-card">
+          <div class="wv-blank-head">
+            <div>
+              <div class="wv-h2">🖨️ In bảng đi buồng trắng</div>
+              <p class="wv-sub" style="margin:4px 0 0;">Không cần danh sách bệnh nhân — in sẵn bảng trống để điền tay tại giường.</p>
+            </div>
+            <button type="button" class="wv-btn wv-btn-ghost" id="wvBlankToggleBtn">Tùy chọn in ▾</button>
+          </div>
+          <div class="wv-blank-options" id="wvBlankOptions" hidden>
+            <div class="wv-actions-row">
+              <label class="wv-label-inline">Tiêu đề khoa:
+                <input type="text" id="wvBlankDeptInput" class="wv-date-input" list="wvBlankDeptList" placeholder="VD: CCHS">
+              </label>
+              <datalist id="wvBlankDeptList"></datalist>
+            </div>
+            <div class="wv-actions-row">
+              <span class="wv-label-inline" style="margin-right:2px;">Số trang:</span>
+              <div class="wv-toggle-group" id="wvBlankPageToggle">
+                <button type="button" data-pages="1">1 trang (20 dòng)</button>
+                <button type="button" data-pages="2">2 trang (40 dòng)</button>
+              </div>
+            </div>
+            <div class="wv-actions-row">
+              <button type="button" class="wv-btn wv-btn-primary" id="wvBlankPrintBtn">🖨️ In bảng trắng</button>
+            </div>
+          </div>
+        </div>
+
         <div class="wv-input-card">
           <label class="wv-label" for="wvPasteArea">Dán danh sách tại đây</label>
           <textarea id="wvPasteArea" class="wv-textarea" rows="6" placeholder="Ví dụ:&#10;1. Nguyễn Văn Cấp 1980&#10;2. Trần Thị Cứu 1975&#10;3. Lê Văn Xuyên 1990&#10;4. Phạm Thị Đêm 1985&#10;..."></textarea>
@@ -1000,14 +1024,15 @@
             <table class="wv-sheet-table">
               <colgroup>
                 <col style="width:5%">
-                <col style="width:28%">
-                <col style="width:10%">
-                <col style="width:7%">
-                <col style="width:10%">
-                <col style="width:10%">
-                <col style="width:10%">
-                <col style="width:10%">
-                <col style="width:10%">
+                <col style="width:27%">
+                <col style="width:8%">
+                <col style="width:6%">
+                <col style="width:9%">
+                <col style="width:9%">
+                <col style="width:9%">
+                <col style="width:9%">
+                <col style="width:9%">
+                <col style="width:9%">
               </colgroup>
               <thead>
                 <tr>
@@ -1020,6 +1045,7 @@
                   <th>HUYẾT ÁP</th>
                   <th>NHỊP THỞ</th>
                   <th>SpO2</th>
+                  <th>ĐHMM</th>
                 </tr>
               </thead>
               <tbody id="wvSheetBody"></tbody>
@@ -1027,6 +1053,8 @@
           </div>
         </div>
       </div>
+
+      <div id="wvBlankPrintArea"></div>
     </main>
   </div>
 
@@ -2335,6 +2363,7 @@
 <script defer src="js/prescription.js?v=20260906"></script>
 
 <script defer src="js/nav-customize.js"></script>
+<script defer src="js/tool-search.js"></script>
 <script defer src="js/spa-router.js"></script>
 <script defer src="js/coming-soon.js"></script>
 
