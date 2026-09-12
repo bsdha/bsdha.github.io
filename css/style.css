@@ -3918,22 +3918,25 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   #wvBlankPrintArea.wv-printing { display: block; position: absolute; left: 0; top: 0; width: 100%; }
   .wv-no-print { display: none !important; }
 
-  /* Dãn đều 20 dòng lấp gần hết chiều cao trang A4 thay vì co cụm phía trên,
-     thừa nhiều khoảng trắng bên dưới (chỉ áp dụng cho bảng in trắng, vì bảng
-     có sẵn danh sách bệnh nhân có thể có số dòng ít, không nên bị kéo giãn). */
-  #wvBlankPrintArea.wv-printing .wv-blank-page {
+  /* Dãn đều tối đa 20 dòng/trang lấp gần hết chiều cao A4 thay vì co cụm phía
+     trên, thừa nhiều khoảng trắng bên dưới — áp dụng cho cả bảng có sẵn danh
+     sách bệnh nhân (chia trang 20 người/trang) lẫn bảng in trắng. */
+  #wvSheetPrintArea .wv-print-page,
+  #wvBlankPrintArea.wv-printing .wv-print-page {
     display: flex;
     flex-direction: column;
     min-height: 273mm; /* A4 cao 297mm, trừ @page margin 8mm x 2 phía */
   }
+  #wvSheetPrintArea .wv-sheet-table-wrap,
   #wvBlankPrintArea.wv-printing .wv-sheet-table-wrap {
     flex: 1;
     display: flex;
   }
+  #wvSheetPrintArea .wv-sheet-table,
   #wvBlankPrintArea.wv-printing .wv-sheet-table {
     flex: 1;
     height: 100%;
   }
 }
 #wvBlankPrintArea { display: none; }
-#wvBlankPrintArea .wv-blank-page:last-child { page-break-after: auto; }
+.wv-print-page:not(:last-child) { page-break-after: always; }

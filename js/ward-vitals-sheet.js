@@ -12,8 +12,7 @@
   const dateInput = document.getElementById('wvSheetDate');
 
   const sheetCard = document.getElementById('wvSheetCard');
-  const sheetBody = document.getElementById('wvSheetBody');
-  const sheetDateOut = document.getElementById('wvSheetDateOut');
+  const sheetPrintArea = document.getElementById('wvSheetPrintArea');
   const backBtn = document.getElementById('wvBackBtn');
   const printBtn = document.getElementById('wvPrintBtn');
 
@@ -171,6 +170,22 @@
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
 
+  // ---------- Trang in dùng chung (bảng có dữ liệu lẫn bảng in trắng) ----------
+  // Mỗi trang tối đa 20 dòng, tự giãn đều lấp gần hết chiều cao A4, có tiêu đề riêng.
+  const SHEET_PAGE_SIZE = 20;
+  function buildSheetPageHtml(titleText, dateLabel, rowsHtml) {
+    return '<div class="wv-print-page">' +
+      '<h2 class="wv-sheet-title">' + escapeHtml(titleText) + '</h2>' +
+      '<p class="wv-sheet-date">NGÀY: ' + escapeHtml(dateLabel) + '</p>' +
+      '<div class="wv-sheet-table-wrap"><table class="wv-sheet-table">' +
+      '<colgroup><col style="width:5%"><col style="width:27%"><col style="width:8%"><col style="width:6%">' +
+      '<col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>' +
+      '<thead><tr><th>STT</th><th>HỌ &amp; TÊN</th><th>NĂM SINH</th><th>GIƯỜNG</th><th>MẠCH</th><th>NHIỆT ĐỘ</th><th>HUYẾT ÁP</th><th>NHỊP THỞ</th><th>SpO2</th><th>ĐHMM</th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody>' +
+      '</table></div>' +
+      '</div>';
+  }
+
   editBody.addEventListener('click', (e) => {
     if (e.target.classList.contains('wv-row-del')) {
       const rows = editBody.querySelectorAll('tr');
@@ -305,16 +320,22 @@
       setStatus('Danh sách đang trống, chưa có bệnh nhân nào để tạo bảng.', true);
       return;
     }
-    sheetDateOut.textContent = dateInput.value || todayLabel();
-    sheetBody.innerHTML = rows.map((r, i) =>
-      '<tr>' +
-      '<td>' + (i + 1) + '</td>' +
-      '<td>' + escapeHtml(formatNameForPrint(r.name)) + '</td>' +
-      '<td>' + escapeHtml(r.year) + '</td>' +
-      '<td>' + escapeHtml(r.bed) + '</td>' +
-      '<td></td><td></td><td></td><td></td><td></td><td></td>' +
-      '</tr>'
-    ).join('');
+    const dateLabel = dateInput.value || todayLabel();
+    const pagesHtml = [];
+    for (let p = 0; p < rows.length; p += SHEET_PAGE_SIZE) {
+      const chunk = rows.slice(p, p + SHEET_PAGE_SIZE);
+      const rowsHtml = chunk.map((r, i) =>
+        '<tr>' +
+        '<td>' + (p + i + 1) + '</td>' +
+        '<td>' + escapeHtml(formatNameForPrint(r.name)) + '</td>' +
+        '<td>' + escapeHtml(r.year) + '</td>' +
+        '<td>' + escapeHtml(r.bed) + '</td>' +
+        '<td></td><td></td><td></td><td></td><td></td><td></td>' +
+        '</tr>'
+      ).join('');
+      pagesHtml.push(buildSheetPageHtml('DANH SÁCH BỆNH NHÂN KHOA HSCC', dateLabel, rowsHtml));
+    }
+    sheetPrintArea.innerHTML = pagesHtml.join('');
     previewCard.hidden = true;
     sheetCard.hidden = false;
     sheetCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -393,21 +414,13 @@
       renderDeptOptions(name);
     });
 
-    function buildBlankPageHtml(deptTitle, startNum, count, lastPage) {
+    function buildBlankPageHtml(deptTitle, startNum, count) {
       let rows = '';
       for (let i = 0; i < count; i++) {
         rows += '<tr><td>' + (startNum + i) + '</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>';
       }
-      return '<div class="wv-blank-page"' + (lastPage ? '' : ' style="page-break-after:always;"') + '>' +
-        '<h2 class="wv-sheet-title">DANH SÁCH BỆNH NHÂN KHOA ' + escapeHtml(toVNUpper(deptTitle || 'CCHS')) + '</h2>' +
-        '<p class="wv-sheet-date">NGÀY: .................................................</p>' +
-        '<div class="wv-sheet-table-wrap"><table class="wv-sheet-table">' +
-        '<colgroup><col style="width:5%"><col style="width:27%"><col style="width:8%"><col style="width:6%">' +
-        '<col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"><col style="width:9%"></colgroup>' +
-        '<thead><tr><th>STT</th><th>HỌ &amp; TÊN</th><th>NĂM SINH</th><th>GIƯỜNG</th><th>MẠCH</th><th>NHIỆT ĐỘ</th><th>HUYẾT ÁP</th><th>NHỊP THỞ</th><th>SpO2</th><th>ĐHMM</th></tr></thead>' +
-        '<tbody>' + rows + '</tbody>' +
-        '</table></div>' +
-        '</div>';
+      const title = 'DANH SÁCH BỆNH NHÂN KHOA ' + toVNUpper(deptTitle || 'CCHS');
+      return buildSheetPageHtml(title, '.................................................', rows);
     }
 
     blankPrintBtn.addEventListener('click', () => {
@@ -422,9 +435,9 @@
 
       let html;
       if (pages === '2') {
-        html = buildBlankPageHtml(deptTitle, 1, 20, false) + buildBlankPageHtml(deptTitle, 21, 20, true);
+        html = buildBlankPageHtml(deptTitle, 1, 20) + buildBlankPageHtml(deptTitle, 21, 20);
       } else {
-        html = buildBlankPageHtml(deptTitle, 1, 20, true);
+        html = buildBlankPageHtml(deptTitle, 1, 20);
       }
       blankPrintArea.innerHTML = html;
 
