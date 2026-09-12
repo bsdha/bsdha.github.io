@@ -1503,6 +1503,8 @@
     margin-bottom: 12px;
   }
   .sidebar .home-btn:hover { background: var(--blue-border); }
+  .nav-item.soon { opacity: 0.5; cursor: default; }
+  .nav-item.soon:hover { background: none; }
   .nav-item {
     display: flex;
     align-items: center;
