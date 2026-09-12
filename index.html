@@ -96,8 +96,9 @@
     <div class="nav-group-divider"></div>
     <div class="nav-group-title">👩‍⚕️ Công cụ cho Điều dưỡng</div>
     <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> Bảng sinh hiệu đi buồng</a>
+    <a href="/bmi" class="nav-item" data-page="bmi" data-path="/bmi"><span class="ic">⚖️</span> Tính chỉ số BMI</a>
+    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Giờ truyền dịch</a>
     <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
-    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Giờ truyền dịch &amp; BMI</a>
     <a href="/vitals-chart" class="nav-item soon" data-page="soon:vitals-chart" data-path="/vitals-chart"><span class="ic">📈</span> Biểu đồ theo dõi sinh hiệu theo giờ</a>
     <a href="/ped-dose" class="nav-item soon" data-page="soon:ped-dose" data-path="/ped-dose"><span class="ic">🧒</span> Liều thuốc trẻ em theo cân nặng</a>
     <a href="/io-balance" class="nav-item soon" data-page="soon:io-balance" data-path="/io-balance"><span class="ic">🧮</span> Cân bằng dịch vào - ra (24h)</a>
@@ -135,8 +136,9 @@
 
     <div class="nav-group-divider"></div>
     <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> Bảng sinh hiệu đi buồng</a>
+    <a href="/bmi" class="nav-item" data-page="bmi" data-path="/bmi"><span class="ic">⚖️</span> BMI</a>
+    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Truyền dịch</a>
     <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
-    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Truyền dịch &amp; BMI</a>
     <a href="/vitals-chart" class="nav-item soon" data-page="soon:vitals-chart" data-path="/vitals-chart"><span class="ic">📈</span> Sinh hiệu theo giờ</a>
     <a href="/ped-dose" class="nav-item soon" data-page="soon:ped-dose" data-path="/ped-dose"><span class="ic">🧒</span> Liều thuốc trẻ em</a>
     <a href="/io-balance" class="nav-item soon" data-page="soon:io-balance" data-path="/io-balance"><span class="ic">🧮</span> Cân bằng dịch vào-ra</a>
@@ -264,17 +266,24 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
-          <div class="ic">📊</div>
-          <h2>Thang điểm lâm sàng</h2>
-          <p>NEWS2, đau VAS, loét tỳ đè Braden, nguy cơ té ngã Morse — sắp bổ sung Glasgow (GCS), thang đau trẻ em (FLACC/Wong-Baker), nguy cơ té ngã trẻ em.</p>
+        <a href="/bmi" class="hcard" data-page="bmi" data-path="/bmi">
+          <div class="ic">⚖️</div>
+          <h2>Tính chỉ số BMI</h2>
+          <p>Tính chỉ số khối cơ thể (BMI) theo cân nặng, chiều cao và phân loại theo thang khuyến cáo cho người trưởng thành châu Á.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
         <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen">
           <div class="ic">💧</div>
-          <h2>Giờ truyền dịch &amp; BMI</h2>
-          <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ, và tính chỉ số BMI theo cân nặng, chiều cao.</p>
+          <h2>Giờ truyền dịch</h2>
+          <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
+        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
+          <div class="ic">📊</div>
+          <h2>Thang điểm lâm sàng</h2>
+          <p>NEWS2, đau VAS, loét tỳ đè Braden, nguy cơ té ngã Morse — sắp bổ sung Glasgow (GCS), thang đau trẻ em (FLACC/Wong-Baker), nguy cơ té ngã trẻ em.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -866,7 +875,7 @@
 
   <div class="page" id="page-dichtruyen">
     <main>
-      <div class="panel-wrap dt-two-col">
+      <div class="panel-wrap">
         <div class="card">
           <h1>💧 Tính giờ kết thúc truyền dịch</h1>
           <p class="sub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
@@ -905,8 +914,14 @@
             <div class="dt-result-line"><span class="dt-result-label">Kết thúc lúc: </span><span class="value dt-end-red" id="dtEndTag">--</span></div>
           </div>
         </div>
+      </div>
+    </main>
+  </div>
 
-        <div class="card dt-bmi-card">
+  <div class="page" id="page-bmi">
+    <main>
+      <div class="panel-wrap">
+        <div class="card">
           <h1>⚖️ Tính chỉ số khối cơ thể (BMI)</h1>
           <p class="sub">Nhập cân nặng và chiều cao để tính BMI và phân loại theo thang khuyến cáo cho người trưởng thành châu Á.</p>
 
@@ -2315,7 +2330,8 @@
 
 <script defer src="js/egfr-calc.js"></script>
 
-<script defer src="js/drip-bmi-calc.js"></script>
+<script defer src="js/drip-calc.js"></script>
+<script defer src="js/bmi-calc.js"></script>
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
