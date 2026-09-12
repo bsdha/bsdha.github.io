@@ -325,5 +325,8 @@
     previewCard.hidden = false;
   });
 
-  if (printBtn) printBtn.addEventListener('click', () => window.print());
+  if (printBtn) printBtn.addEventListener('click', () => {
+    if (typeof logUsage === 'function') logUsage('wardvitals_print');
+    window.print();
+  });
 })();
