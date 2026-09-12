@@ -880,7 +880,7 @@
           <h1>💧 Tính giờ kết thúc truyền dịch</h1>
           <p class="sub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
 
-          <div class="row">
+          <div class="row dt-row-3">
             <div class="field">
               <label>Bắt đầu truyền lúc (24h)</label>
               <input type="text" id="dtStart" placeholder="VD: 08:50" inputmode="numeric" maxlength="5" autocomplete="off">
@@ -889,9 +889,6 @@
               <label>Thể tích chai dịch (mL)</label>
               <input type="number" id="dtVolume" value="500" min="1" step="1" inputmode="numeric">
             </div>
-          </div>
-
-          <div class="row" style="grid-template-columns: 1fr;">
             <div class="field">
               <label>Tốc độ truyền (giọt/phút)</label>
               <input type="number" id="dtRate" value="40" min="1" step="1" inputmode="numeric">
@@ -958,7 +955,7 @@
     <main>
       <div class="wv-wrap">
         <h1 class="wv-h1">📋 Bảng sinh hiệu đi buồng</h1>
-        <p class="wv-sub">Dán danh sách bệnh nhân (mỗi bệnh nhân 1 dòng, có kèm năm sinh) vào ô bên dưới — hệ thống sẽ tự nhận diện <b>Họ &amp; tên</b> và <b>Năm sinh</b>. Nếu không tiện copy, có thể tải lên file PDF / Excel / Word thay thế.</p>
+        <p class="wv-sub">Copy danh sách bệnh nhân dạng text trên danh sách Nội trú (có chứa Họ tên &amp; Năm sinh) trong Phần mềm Helix/VNPT His,... vào ô bên dưới — hệ thống sẽ tự nhận diện <b>Họ &amp; tên</b> và <b>Năm sinh</b>. Nếu không tiện copy, có thể tải lên file PDF / Excel / Word thay thế.</p>
 
         <div class="wv-input-card">
           <label class="wv-label" for="wvPasteArea">Dán danh sách tại đây</label>
