@@ -1615,6 +1615,12 @@
     color: #454545;
     white-space: nowrap;
   }
+  .home-group-title.two-line { flex-direction: column; gap: 4px; }
+  .home-group-title.two-line .ggt-eyebrow { font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #9ca3af; }
+  .home-group-title.two-line .ggt-line { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .home-group-title.two-line .ggt-line::before,
+  .home-group-title.two-line .ggt-line::after { content: ""; flex: 1; border-top: 1px dashed var(--border); }
+  .home-group-title.two-line .ggt-main { font-size: 13.5px; font-weight: 800; letter-spacing: .02em; text-transform: none; color: #0f172a; white-space: nowrap; }
 
   /* ================= LDL CALCULATOR ================= */
   .ldl-grid {
@@ -2402,15 +2408,25 @@
       #page-sinhhieu .sh-slip *{color:#000;}
       #page-sinhhieu .sh-slip-head{
         display:flex;
+        flex-direction:column;
         justify-content:center;
-        align-items:baseline;
+        align-items:center;
         border-bottom:1.2px solid #000;
-        padding-bottom:1.3mm;
-        margin-bottom:1.6mm;
+        padding-bottom:1mm;
+        margin-bottom:1.3mm;
+        gap:0.3mm;
+      }
+      #page-sinhhieu .sh-hosp-name{
+        font-size:6.3pt;
+        font-weight:700;
+        letter-spacing:.01em;
+        line-height:1.1;
+        white-space:nowrap;
+        text-align:center;
       }
       #page-sinhhieu .sh-slip-no{
         font-weight:700;
-        font-size:34pt;
+        font-size:28pt;
         line-height:1;
       }
       #page-sinhhieu .sh-row2{

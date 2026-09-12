@@ -7,6 +7,7 @@
       return `
       <div class="sh-slip">
         <div class="sh-slip-head">
+          <span class="sh-hosp-name">BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2</span>
           <span class="sh-slip-no">${numStr}</span>
         </div>
         <div class="sh-field"><span class="sh-label">Họ và tên</span><span class="sh-box"></span></div>

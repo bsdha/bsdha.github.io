@@ -18,7 +18,7 @@
   };
   const LABELS = {
     icd_search: "lượt tra ICD-10", sinhhieu_generate: "phiếu sinh hiệu",
-    donthuoc_save: "lượt kê đơn thuốc", egfr_calc: "lượt tính eGFR",
+    donthuoc_save: "lượt kê toa thuốc", egfr_calc: "lượt tính eGFR",
     insulin_calc: "lượt tính Insulin", ldl_calc: "lượt tính LDL-C",
     pdf2word_convert: "lượt chuyển đổi tài liệu", pdftools_use: "lượt dùng Công cụ PDF",
     ddi_check: "lượt tra tương tác thuốc",

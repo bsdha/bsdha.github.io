@@ -1471,7 +1471,7 @@
         const data = await callExtractApi({ image: base64, mimeType: file.type || 'image/png' });
         const filledCount = fillPatientForm(data);
         if (filledCount > 0) {
-          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
+          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê toa.', 'ok');
         } else {
           setStatus('AI không đọc được thông tin nào từ ảnh này. Thử dán TEXT copy từ HIS thay vì ảnh sẽ chính xác hơn, hoặc nhập tay.', 'err');
         }
@@ -1494,7 +1494,7 @@
         const data = await callExtractApi({ text: trimmed });
         const filledCount = fillPatientForm(data);
         if (filledCount > 0) {
-          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê đơn.', 'ok');
+          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê toa.', 'ok');
         } else {
           setStatus('AI không nhận diện được thông tin nào từ văn bản này. Vui lòng thử lại hoặc nhập tay.', 'err');
         }
@@ -2251,7 +2251,7 @@
     const btn = $('rxPrintBtn');
     const originalLabel = btn.textContent;
     btn.disabled = true;
-    btn.textContent = 'Đang tạo đơn thuốc...';
+    btn.textContent = 'Đang tạo toa thuốc...';
 
     try {
       const org1 = localStorage.getItem(LS_ORG1) || DEFAULT_ORG1;
@@ -2721,7 +2721,7 @@
       rxHistoryLastGroupKey = null;
     }
     if (!rows || !rows.length) {
-      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="8">Chưa có đơn thuốc nào được lưu.</td></tr>';
+      if (!append) rxHistoryList.innerHTML = '<tr class="rx-history-empty"><td colspan="8">Chưa có toa thuốc nào được lưu.</td></tr>';
       return;
     }
     const grouped = rxHistorySort.column === 'created_at';
@@ -2787,7 +2787,7 @@
         <td class="rx-history-td-mode"><span class="rx-history-mode-badge ${rxModeClass(row.mode)}">${escapeHtml(rxModeLabel(row.mode))}</span></td>
         <td class="rx-history-td-drugs"><button type="button" class="rx-history-toggle-btn">${items.length} thuốc ▾</button>${previous.length ? `<span class="rx-history-edited-badge" title="Đã sửa lại ${previous.length} lần trước khi ra bản này">✏️ đã sửa ${previous.length} lần</span>` : ''}${editBadge}</td>
         <td class="rx-history-td-sold">${soldSummary}</td>
-        <td class="rx-history-td-print">${editBtnHtml}<button type="button" class="rx-history-print-btn" title="In lại đơn thuốc">🖨️ In</button></td>
+        <td class="rx-history-td-print">${editBtnHtml}<button type="button" class="rx-history-print-btn" title="In lại toa thuốc">🖨️ In</button></td>
       `;
 
       const printBtn = tr.querySelector('.rx-history-print-btn');
@@ -2798,7 +2798,7 @@
       if (editBtn) {
         editBtn.addEventListener('click', () => {
           const ok = confirm(
-            `Mở đơn của "${row.patient_name || '(không tên)'}" để chỉnh sửa?\n\nSau khi sửa xong, bấm "Xem và in đơn thuốc" để lưu lại — đơn sẽ được cập nhật, không tạo thêm bản mới.\n\nLưu ý: mọi thay đổi đều được ghi nhận (thời gian sửa) trong hệ thống.`
+            `Mở toa của "${row.patient_name || '(không tên)'}" để chỉnh sửa?\n\nSau khi sửa xong, bấm "Xem và in toa thuốc" để lưu lại — toa sẽ được cập nhật, không tạo thêm bản mới.\n\nLưu ý: mọi thay đổi đều được ghi nhận (thời gian sửa) trong hệ thống.`
           );
           if (!ok) return;
           loadRxFromHistory(row);

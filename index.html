@@ -98,7 +98,7 @@
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Tạo phiếu sinh hiệu</a>
-    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê đơn thuốc</a>
+    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê toa thuốc</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Phiếu chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Giấy nghỉ việc BHXH</a>
     <a href="/giayravien" class="nav-item" data-page="giayravien" data-path="/giayravien"><span class="ic">🏥</span> Giấy ra viện</a>
@@ -119,7 +119,7 @@
     <div class="nav-group-divider"></div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> Sinh hiệu</a>
-    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Đơn thuốc</a>
+    <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Toa thuốc</a>
     <a href="/chuyentuyen" class="nav-item" data-page="chuyentuyen" data-path="/chuyentuyen"><span class="ic">🚑</span> Chuyển tuyến</a>
     <a href="/nghiviecbhxh" class="nav-item" data-page="nghiviecbhxh" data-path="/nghiviecbhxh"><span class="ic">📝</span> Nghỉ việc BHXH</a>
     <a href="/giayravien" class="nav-item" data-page="giayravien" data-path="/giayravien"><span class="ic">🏥</span> Ra viện</a>
@@ -157,6 +157,9 @@
         </div>
       </div>
 
+      <div class="home-group-title">
+        <span>CÔNG CỤ CHO KHÁM BỆNH</span>
+      </div>
       <div class="hgrid">
         <a href="/icd10" class="hcard" data-page="icd" data-path="/icd10">
           <div class="ic">🔎</div>
@@ -193,6 +196,13 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
+        <a href="/ghepcccd" class="hcard" data-page="cccd" data-path="/ghepcccd">
+          <div class="ic">🪪</div>
+          <h2>In CCCD 2 mặt</h2>
+          <p>Ghép ảnh mặt trước/sau CCCD để in vừa 1 mặt giấy, tự căn chỉnh phối cảnh.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
         <a href="/pdf2word" class="hcard" data-page="pdf2word" data-path="/pdf2word">
           <div class="ic">📄</div>
           <h2>Chuyển đổi tài liệu</h2>
@@ -206,6 +216,18 @@
           <p>Ghép nhiều PDF, tách trang, xoay trang, xóa trang, nén dung lượng, OCR bản scan thành PDF có thể chọn/copy chữ.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
+      </div>
+
+      <div class="home-group-title">
+        <span>👩‍⚕️ CÔNG CỤ CHO ĐIỀU DƯỠNG</span>
+      </div>
+      <div class="hgrid">
+        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
+          <div class="ic">📊</div>
+          <h2>Thang điểm lâm sàng</h2>
+          <p>NEWS2, đau VAS, loét tỳ đè Braden, nguy cơ té ngã Morse — sắp bổ sung Glasgow (GCS), thang đau trẻ em (FLACC/Wong-Baker), nguy cơ té ngã trẻ em.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
 
         <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen">
           <div class="ic">💧</div>
@@ -214,17 +236,114 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
-          <div class="ic">📊</div>
-          <h2>Thang điểm lâm sàng</h2>
-          <p>Tính nhanh NEWS2, thang điểm đau VAS, nguy cơ loét tỳ đè Braden và nguy cơ té ngã Morse.</p>
-          <span class="tag">Đang hoạt động</span>
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="vitals-chart" data-path="/vitals-chart">
+          <div class="ic">📈</div>
+          <h2>Biểu đồ theo dõi sinh hiệu theo giờ</h2>
+          <p>Bảng theo dõi mạch, nhiệt độ, huyết áp, SpO2 liên tục nhiều giờ cho 1 bệnh nhân trong ca trực — khác với phiếu bốc số "Tạo phiếu sinh hiệu" (chỉ đánh số + chỗ điền tay 1 lần).</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="ped-dose" data-path="/ped-dose">
+          <div class="ic">🧒</div>
+          <h2>Liều thuốc trẻ em theo cân nặng</h2>
+          <p>Tính mg/kg → số ml cần lấy, đặc biệt kháng sinh, hạ sốt.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="io-balance" data-path="/io-balance">
+          <div class="ic">🧮</div>
+          <h2>Cân bằng dịch vào - ra (24h)</h2>
+          <p>Theo dõi input/output cho bệnh nhân nặng, suy thận, tim mạch.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="wound-care" data-path="/wound-care">
+          <div class="ic">🩹</div>
+          <h2>Chăm sóc vết thương/loét</h2>
+          <p>Tra cứu nhanh hướng dẫn chăm sóc theo từng giai đoạn, kèm ảnh minh hoạ.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="cam-icu" data-path="/cam-icu">
+          <div class="ic">🧠</div>
+          <h2>CAM-ICU</h2>
+          <p>Sàng lọc mê sảng (delirium) ở bệnh nhân nặng.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="apgar" data-path="/apgar">
+          <div class="ic">👶</div>
+          <h2>APGAR sơ sinh</h2>
+          <p>Đánh giá nhanh trẻ sơ sinh tại phút thứ 1 và thứ 5.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="shock-index" data-path="/shock-index">
+          <div class="ic">🚨</div>
+          <h2>Chỉ số sốc (Shock Index)</h2>
+          <p>Mạch / Huyết áp tâm thu — cảnh báo sớm nguy cơ sốc.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="padua-score" data-path="/padua-score">
+          <div class="ic">🩺</div>
+          <h2>Padua Score</h2>
+          <p>Đánh giá nguy cơ huyết khối tĩnh mạch (VTE) khi nhập viện nội khoa.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="transfusion-monitor" data-path="/transfusion-monitor">
+          <div class="ic">🩸</div>
+          <h2>Theo dõi truyền máu</h2>
+          <p>Ghi sinh hiệu theo mốc thời gian cố định (15p, 30p, 1h...) sau truyền.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="nursing-care-plan" data-path="/nursing-care-plan">
+          <div class="ic">📔</div>
+          <h2>Kế hoạch chăm sóc điều dưỡng</h2>
+          <p>Chọn chẩn đoán điều dưỡng (NANDA rút gọn) + mục tiêu + can thiệp, tự sinh văn bản.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="ward-vitals-sheet" data-path="/ward-vitals-sheet">
+          <div class="ic">📋</div>
+          <h2>Danh sách bệnh nhân nội trú</h2>
+          <p>In bảng đo mạch, huyết áp, nhiệt độ, nhịp thở, SpO2 theo cột cho cả khoa.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="vasopressor-calc" data-path="/vasopressor-calc">
+          <div class="ic">💉</div>
+          <h2>Bơm tiêm điện &amp; thuốc vận mạch</h2>
+          <p>Pha loãng, tính tốc độ (µg/kg/phút → ml/h) cho Norepinephrine, Dopamine...</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="drain-tracking" data-path="/drain-tracking">
+          <div class="ic">📉</div>
+          <h2>Theo dõi dẫn lưu</h2>
+          <p>Ghi số lượng, màu sắc, tính chất dịch dẫn lưu theo ca trực, biểu đồ xu hướng.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="fluid-nutrition-peds" data-path="/fluid-nutrition-peds">
+          <div class="ic">🍼</div>
+          <h2>Dịch truyền/nuôi ăn theo cân nặng (Nhi)</h2>
+          <p>Tính theo công thức Holliday-Segar cho bệnh nhi.</p>
+          <span class="tag">Sắp ra mắt</span>
+        </a>
+
+        <a href="#" onclick="event.preventDefault()" class="hcard soon" data-page="handoff-checklist" data-path="/handoff-checklist">
+          <div class="ic">✅</div>
+          <h2>Checklist bàn giao ca</h2>
+          <p>Bàn giao ca / chăm sóc theo quy trình: vết thương, sonde, catheter.</p>
+          <span class="tag">Sắp ra mắt</span>
         </a>
       </div>
 
-      <!-- TODO: đặt tên cho nhóm công cụ dùng chung ở trên -->
       <div class="home-group-title">
-        <span>Nội bộ BVĐK Bình Dương CS2</span>
+        <span>NỘI BỘ BVĐK BD CS2</span>
       </div>
       <div class="hgrid">
         <a href="/thongkekcb-bvdkbdcs2" class="hcard" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2">
@@ -236,15 +355,15 @@
 
         <a href="/sinhhieu" class="hcard" data-page="sinhhieu" data-path="/sinhhieu">
           <div class="ic">📋</div>
-          <h2>Tạo phiếu sinh hiệu</h2>
+          <h2>In phiếu STT - Sinh hiệu</h2>
           <p>Tạo &amp; in hàng loạt phiếu dấu hiệu sinh tồn (mạch, nhiệt độ, huyết áp...) theo khổ A4/A5, đánh số tự động.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
         <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc">
           <div class="ic">💊</div>
-          <h2>Kê đơn thuốc dịch vụ</h2>
-          <p>Soạn đơn thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
+          <h2>Kê toa thuốc dịch vụ</h2>
+          <p>Soạn toa thuốc nhanh, tra thuốc theo tên biệt dược/hoạt chất, tự tính số viên, in PDF theo mẫu.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -1188,7 +1307,7 @@
 
       <div class="rx-panel" id="rxDrugPanel">
         <div class="rx-panel-head">
-          <h1>💊 Kê đơn thuốc dịch vụ</h1>
+          <h1>💊 Kê toa thuốc dịch vụ</h1>
           <div class="rx-panel-head-btns">
             <button class="rx-settings-btn rx-history-btn" id="rxHistoryBtn">📜 Đơn đã kê</button>
             <a class="rx-settings-btn rx-history-btn" href="quan-ly-ban-thuoc.html" target="_blank" rel="noopener">📊 Quản lý bán thuốc dịch vụ</a>
@@ -1202,7 +1321,7 @@
           </div>
           <div class="rx-settings-grid">
             <div class="field rx-col-full">
-              <label>Logo bệnh viện (góc trên trái đơn thuốc)</label>
+              <label>Logo bệnh viện (góc trên trái toa thuốc)</label>
               <div class="rx-logo-upload-row">
                 <input type="file" id="rxOrgLogoInput" accept="image/*">
                 <button type="button" class="rx-doctor-btn" id="rxOrgLogoClearBtn" title="Khôi phục logo mặc định">↺</button>
@@ -1241,7 +1360,7 @@
           <div class="rx-upload-box">
             <div class="rx-cloud-title">📥 Nạp danh sách thuốc (Trong &amp; Ngoài Bệnh viện)</div>
             <p class="rx-cloud-desc">
-              Việc nạp/cập nhật danh sách thuốc từ file Excel (cho cả hai chế độ kê đơn) đã được chuyển sang trang
+              Việc nạp/cập nhật danh sách thuốc từ file Excel (cho cả hai chế độ kê toa) đã được chuyển sang trang
               <b>📊 Quản lý bán thuốc dịch vụ</b> để gộp chung với phần quản lý kho thuốc, cho nhất quán.
               Bấm nút bên dưới để mở trang đó (mục "🏬 Kho thuốc").
             </p>
@@ -1253,11 +1372,11 @@
           <div class="rx-mode-row" id="rxModeRow">
             <label class="rx-mode-opt">
               <input type="radio" name="rxPrescribeMode" id="rxModeHospital" value="hospital" checked>
-              <span>Kê đơn trong Bệnh viện</span>
+              <span>Kê toa trong Bệnh viện</span>
             </label>
             <label class="rx-mode-opt">
               <input type="radio" name="rxPrescribeMode" id="rxModeOutside" value="outside">
-              <span>Kê đơn ngoài Bệnh viện</span>
+              <span>Kê toa ngoài Bệnh viện</span>
             </label>
             <label class="rx-mode-opt">
               <input type="radio" name="rxPrescribeMode" id="rxModeHandwritten" value="handwritten">
@@ -1322,7 +1441,7 @@
             </div>
           </div>
           <div class="rx-toast-inline" id="rxDupWarning">⚠ Thuốc này đã có trong toa, không thể thêm trùng.</div>
-          <div class="rx-toast-inline" id="rxLockedWarning">⚠ Thuốc không có trong kho, hãy chọn "Kê đơn ngoài Bệnh viện" để sửa tự do.</div>
+          <div class="rx-toast-inline" id="rxLockedWarning">⚠ Thuốc không có trong kho, hãy chọn "Kê toa ngoài Bệnh viện" để sửa tự do.</div>
 
           <div class="rx-table-wrap">
             <table class="rx-table">
@@ -1388,7 +1507,7 @@
                 <button class="rx-btn rx-btn-edit-rx" id="rxEditRxBtn" style="display:none;">✏️ Chỉnh sửa toa</button>
               </div>
             </div>
-            <button class="rx-btn rx-btn-print" id="rxPrintBtn">🖶 Xem &amp; in đơn thuốc</button>
+            <button class="rx-btn rx-btn-print" id="rxPrintBtn">🖶 Xem &amp; in toa thuốc</button>
           </div>
           </div>
         </div>
@@ -1411,7 +1530,7 @@
       <div class="rx-warn-box rx-history-box">
         <div class="rx-warn-head rx-history-head">
           <span class="ic">📜</span>
-          <h3>Đơn thuốc đã kê (mọi người, mọi nơi)</h3>
+          <h3>Toa thuốc đã kê (mọi người, mọi nơi)</h3>
           <button type="button" class="rx-history-close-x" id="rxHistoryCloseX" title="Đóng">✕</button>
         </div>
         <div class="rx-history-search-row">
