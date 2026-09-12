@@ -95,6 +95,7 @@
 
     <div class="nav-group-divider"></div>
     <div class="nav-group-title">👩‍⚕️ Công cụ cho Điều dưỡng</div>
+    <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> Bảng sinh hiệu đi buồng</a>
     <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
     <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Giờ truyền dịch &amp; BMI</a>
     <a href="/vitals-chart" class="nav-item soon" data-page="soon:vitals-chart" data-path="/vitals-chart"><span class="ic">📈</span> Biểu đồ theo dõi sinh hiệu theo giờ</a>
@@ -107,7 +108,6 @@
     <a href="/padua-score" class="nav-item soon" data-page="soon:padua-score" data-path="/padua-score"><span class="ic">🩺</span> Padua Score</a>
     <a href="/transfusion-monitor" class="nav-item soon" data-page="soon:transfusion-monitor" data-path="/transfusion-monitor"><span class="ic">🩸</span> Theo dõi truyền máu</a>
     <a href="/nursing-care-plan" class="nav-item soon" data-page="soon:nursing-care-plan" data-path="/nursing-care-plan"><span class="ic">📔</span> Kế hoạch chăm sóc điều dưỡng</a>
-    <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> Danh sách bệnh nhân nội trú</a>
     <a href="/vasopressor-calc" class="nav-item soon" data-page="soon:vasopressor-calc" data-path="/vasopressor-calc"><span class="ic">💉</span> Bơm tiêm điện &amp; thuốc vận mạch</a>
     <a href="/drain-tracking" class="nav-item soon" data-page="soon:drain-tracking" data-path="/drain-tracking"><span class="ic">📉</span> Theo dõi dẫn lưu</a>
     <a href="/fluid-nutrition-peds" class="nav-item soon" data-page="soon:fluid-nutrition-peds" data-path="/fluid-nutrition-peds"><span class="ic">🍼</span> Dịch truyền/nuôi ăn theo cân nặng (Nhi)</a>
@@ -134,6 +134,7 @@
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
 
     <div class="nav-group-divider"></div>
+    <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> Bảng sinh hiệu đi buồng</a>
     <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
     <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Truyền dịch &amp; BMI</a>
     <a href="/vitals-chart" class="nav-item soon" data-page="soon:vitals-chart" data-path="/vitals-chart"><span class="ic">📈</span> Sinh hiệu theo giờ</a>
@@ -146,7 +147,6 @@
     <a href="/padua-score" class="nav-item soon" data-page="soon:padua-score" data-path="/padua-score"><span class="ic">🩺</span> Padua Score</a>
     <a href="/transfusion-monitor" class="nav-item soon" data-page="soon:transfusion-monitor" data-path="/transfusion-monitor"><span class="ic">🩸</span> Theo dõi truyền máu</a>
     <a href="/nursing-care-plan" class="nav-item soon" data-page="soon:nursing-care-plan" data-path="/nursing-care-plan"><span class="ic">📔</span> Kế hoạch chăm sóc ĐD</a>
-    <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> DS bệnh nhân nội trú</a>
     <a href="/vasopressor-calc" class="nav-item soon" data-page="soon:vasopressor-calc" data-path="/vasopressor-calc"><span class="ic">💉</span> Bơm tiêm điện</a>
     <a href="/drain-tracking" class="nav-item soon" data-page="soon:drain-tracking" data-path="/drain-tracking"><span class="ic">📉</span> Theo dõi dẫn lưu</a>
     <a href="/fluid-nutrition-peds" class="nav-item soon" data-page="soon:fluid-nutrition-peds" data-path="/fluid-nutrition-peds"><span class="ic">🍼</span> Dịch truyền Nhi</a>
@@ -257,6 +257,13 @@
         <span>👩‍⚕️ CÔNG CỤ CHO ĐIỀU DƯỠNG</span>
       </div>
       <div class="hgrid">
+        <a href="/ward-vitals-sheet" class="hcard" data-page="wardvitals" data-path="/ward-vitals-sheet">
+          <div class="ic">📋</div>
+          <h2>Bảng sinh hiệu đi buồng</h2>
+          <p>Dán danh sách (hoặc tải file PDF/Excel/Word) → tự nhận tên + năm sinh, in bảng đi buồng: Mạch, Nhiệt độ, Huyết áp, Nhịp thở, SpO2.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
         <a href="/clinical-scores" class="hcard" data-page="clinicalscores" data-path="/clinical-scores">
           <div class="ic">📊</div>
           <h2>Thang điểm lâm sàng</h2>
@@ -268,13 +275,6 @@
           <div class="ic">💧</div>
           <h2>Giờ truyền dịch &amp; BMI</h2>
           <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ, và tính chỉ số BMI theo cân nặng, chiều cao.</p>
-          <span class="tag">Đang hoạt động</span>
-        </a>
-
-        <a href="/ward-vitals-sheet" class="hcard" data-page="wardvitals" data-path="/ward-vitals-sheet">
-          <div class="ic">📋</div>
-          <h2>Danh sách bệnh nhân nội trú</h2>
-          <p>Dán danh sách (hoặc tải file PDF/Excel/Word) → tự nhận tên + năm sinh, in bảng đi buồng: Mạch, Nhiệt độ, Huyết áp, Nhịp thở, SpO2.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -942,12 +942,12 @@
   <div class="page" id="page-wardvitals">
     <main>
       <div class="wv-wrap">
-        <h1 class="wv-h1">📋 Danh sách bệnh nhân nội trú — Bảng sinh hiệu đi buồng</h1>
+        <h1 class="wv-h1">📋 Bảng sinh hiệu đi buồng</h1>
         <p class="wv-sub">Dán danh sách bệnh nhân (mỗi bệnh nhân 1 dòng, có kèm năm sinh) vào ô bên dưới — hệ thống sẽ tự nhận diện <b>Họ &amp; tên</b> và <b>Năm sinh</b>. Nếu không tiện copy, có thể tải lên file PDF / Excel / Word thay thế.</p>
 
         <div class="wv-input-card">
           <label class="wv-label" for="wvPasteArea">Dán danh sách tại đây</label>
-          <textarea id="wvPasteArea" class="wv-textarea" rows="6" placeholder="Ví dụ:&#10;1. Hồ Thị Lý 1953&#10;2. Phan Huy Sáng 1965&#10;3. Mai Thị Mừng 1962&#10;..."></textarea>
+          <textarea id="wvPasteArea" class="wv-textarea" rows="6" placeholder="Ví dụ:&#10;1. Nguyễn Văn Cấp 1980&#10;2. Trần Thị Cứu 1975&#10;3. Lê Văn Xuyên 1990&#10;4. Phạm Thị Đêm 1985&#10;..."></textarea>
 
           <div class="wv-actions-row">
             <button type="button" class="wv-btn wv-btn-primary" id="wvParseBtn">🔎 Phân tích danh sách</button>
@@ -966,12 +966,12 @@
             <button type="button" class="wv-btn wv-btn-ghost" id="wvAddRowBtn">+ Thêm dòng</button>
           </div>
           <table class="wv-edit-table">
-            <thead><tr><th style="width:44px">STT</th><th>Họ &amp; tên</th><th style="width:110px">Năm sinh</th><th style="width:44px"></th></tr></thead>
+            <thead><tr><th style="width:30px"></th><th style="width:44px">STT</th><th>Họ &amp; tên</th><th style="width:100px">Năm sinh</th><th style="width:90px">Giường</th><th style="width:44px"></th></tr></thead>
             <tbody id="wvEditBody"></tbody>
           </table>
           <div class="wv-actions-row">
             <label class="wv-label-inline">Ngày:
-              <input type="text" id="wvSheetDate" class="wv-date-input" placeholder="VD: 11 → 12/9">
+              <input type="text" id="wvSheetDate" class="wv-date-input" placeholder="VD: 12/09/2026">
             </label>
             <button type="button" class="wv-btn wv-btn-primary" id="wvBuildBtn">📄 Tạo bảng đi buồng</button>
           </div>
@@ -986,11 +986,23 @@
             <h2 class="wv-sheet-title">DANH SÁCH BỆNH NHÂN KHOA HSCC</h2>
             <p class="wv-sheet-date">NGÀY: <span id="wvSheetDateOut"></span></p>
             <table class="wv-sheet-table">
+              <colgroup>
+                <col style="width:5%">
+                <col style="width:28%">
+                <col style="width:10%">
+                <col style="width:7%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+                <col style="width:10%">
+              </colgroup>
               <thead>
                 <tr>
-                  <th style="width:38px">STT</th>
+                  <th>STT</th>
                   <th>HỌ &amp; TÊN</th>
-                  <th style="width:64px">NĂM SINH</th>
+                  <th>NĂM SINH</th>
+                  <th>GIƯỜNG</th>
                   <th>MẠCH</th>
                   <th>NHIỆT ĐỘ</th>
                   <th>HUYẾT ÁP</th>
