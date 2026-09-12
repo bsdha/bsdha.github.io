@@ -3648,13 +3648,23 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 .wv-preview-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .wv-edit-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .wv-edit-table th, .wv-edit-table td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; }
-.wv-edit-table th { background: var(--surface-2); font-weight: 700; font-size: 12px; }
+.wv-edit-table th { background: var(--surface-2); font-weight: 700; font-size: 12px; text-align: center; }
+.wv-edit-table td.wv-stt { text-align: center; }
 .wv-edit-table input {
   width: 100%; box-sizing: border-box; border: none; background: transparent; font-size: 13px;
   font-family: inherit; color: var(--text); padding: 3px 2px;
 }
 .wv-edit-table input:focus { outline: none; background: var(--surface-2); border-radius: 4px; }
+.wv-edit-table .wv-year-input, .wv-edit-table .wv-bed-input { text-align: center; }
 .wv-row-del { border: none; background: none; color: var(--red, #dc2626); cursor: pointer; font-size: 15px; }
+.wv-drag-handle-cell { text-align: center; padding: 6px 2px !important; }
+.wv-drag-handle {
+  display: inline-block; cursor: grab; color: var(--muted, #999); font-size: 14px;
+  line-height: 1; user-select: none; padding: 2px 4px;
+}
+.wv-drag-handle:hover { color: var(--text); }
+.wv-edit-table tr.wv-dragging { opacity: 0.4; background: var(--surface-2); }
+.wv-edit-table tr.wv-drag-over { border-top: 2px solid var(--blue, #2563eb); }
 .wv-date-input {
   border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px;
   font-family: inherit; color: var(--text);
