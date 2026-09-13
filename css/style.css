@@ -3738,9 +3738,11 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   align-items: center;
   justify-content: center;
   min-height: calc(100vh - 56px);
-  gap: 0;
+  gap: clamp(8px, 3vw, 48px);
   padding: 24px 32px;
   overflow: hidden;
+  max-width: 1320px;
+  margin: 0 auto;
 }
 
 /* ── Cột ảnh nhân vật ── */
@@ -3753,7 +3755,7 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 }
 .soon-photo-wrap {
   position: relative;
-  width: 380px;
+  width: clamp(320px, 38vw, 620px);
   user-select: none;
 }
 .soon-photo {
@@ -3827,7 +3829,7 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 /* ── Cột card nội dung ── */
 .soon-card-col {
   flex: 0 0 auto;
-  width: 380px;
+  width: clamp(320px, 26vw, 420px);
   padding-left: 8px;
 }
 .soon-wrap {
