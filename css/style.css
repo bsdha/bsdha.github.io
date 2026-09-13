@@ -3748,12 +3748,26 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   padding: 24px 48px;
 }
 
-/* ── Ảnh nền phủ toàn màn hình ── */
+/* ── Ảnh nền phủ toàn màn hình, không cắt/tràn viền — giữ nguyên tỉ lệ, mờ bớt cho đỡ "gắt" ── */
 .soon-photo-col {
   position: absolute;
   inset: 0;
   z-index: 0;
   padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Khung này co theo đúng cách ảnh object-fit:contain sẽ hiển thị (giữ nguyên tỉ lệ ảnh,
+   không bị crop) — vừa chứa ảnh, vừa làm mốc % để đặt icon tia chớp/nhãn chữ luôn đúng
+   vị trí trên khuôn mặt dù màn hình to nhỏ. */
+.soon-photo-wrap {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  max-width: calc((100vh - 56px) * (1671 / 941));
+  aspect-ratio: 1671 / 941;
+  user-select: none;
 }
 .soon-photo {
   display: block;
@@ -3761,20 +3775,9 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  object-position: 30% center;
-}
-/* Khung vô hình bám theo đúng vùng khuôn mặt trong ảnh (object-position 30% center),
-   dùng để định vị icon tia chớp/nhãn chữ viết tay bằng % như cũ, bất kể màn hình to nhỏ. */
-.soon-photo-wrap {
-  position: absolute;
-  left: 30%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: clamp(320px, 38vw, 620px);
-  aspect-ratio: 1671 / 941;
+  object-fit: contain;
+  opacity: .5;
   pointer-events: none;
-  user-select: none;
 }
 
 /* ── Nhãn chú thích viết tay ── */
@@ -3957,8 +3960,7 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
     padding: 16px 16px 28px;
     min-height: calc(100vh - 56px);
   }
-  .soon-photo { object-position: center 25%; }
-  .soon-photo-wrap { left: 50%; top: 30%; width: min(80vw, 420px); }
+  .soon-photo-wrap { max-width: min(80vw, 420px); }
   .soon-label-left  { font-size: 13px; left: -6px; }
   .soon-label-right { font-size: 13px; right: -8px; }
   .soon-card-col { width: 100%; max-width: 420px; padding-left: 0; }
