@@ -15,6 +15,10 @@
     egfr_calc: "🧪", insulin_calc: "💉", ldl_calc: "🩸",
     pdf2word_convert: "📄", pdftools_use: "🛠️", ddi_check: "⚠️",
     nghiviec_print: "📝", giayravien_print: "🏥", chuyentuyen_print: "🚑",
+    glucose_convert: "🩸", cccd_print: "🪪", wardvitals_print: "📋",
+    bmi_calc: "⚖️", dichtruyen_calc: "💧",
+    clinicalscores_news2: "📈", clinicalscores_vas: "📈",
+    clinicalscores_braden: "📈", clinicalscores_morse: "📈",
   };
   const LABELS = {
     icd_search: "lượt tra ICD-10", sinhhieu_generate: "phiếu sinh hiệu",
@@ -25,6 +29,15 @@
     nghiviec_print: "lượt in Giấy nghỉ việc BHXH",
     giayravien_print: "lượt in Giấy ra viện",
     chuyentuyen_print: "lượt in Phiếu chuyển tuyến",
+    glucose_convert: "lượt đổi đơn vị đường huyết",
+    cccd_print: "lượt ghép ảnh CCCD",
+    wardvitals_print: "lượt in bảng sinh hiệu đi buồng",
+    bmi_calc: "lượt tính chỉ số BMI",
+    dichtruyen_calc: "lượt tính giờ truyền dịch",
+    clinicalscores_news2: "lượt tính thang điểm NEWS2",
+    clinicalscores_vas: "lượt tính thang điểm VAS",
+    clinicalscores_braden: "lượt tính thang điểm Braden",
+    clinicalscores_morse: "lượt tính thang điểm Morse",
   };
 
   // Nội dung dự phòng khi API lỗi/CORS/rớt mạng — banner không bao giờ trống
