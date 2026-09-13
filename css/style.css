@@ -3732,37 +3732,49 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 }
 
 /* ===== Trang dùng chung "Sắp triển khai" (các tính năng chưa ra mắt) ===== */
-/* ── Bố cục 2 cột: ảnh (trái) + card nội dung (phải) ── */
+/* ── Ảnh nhân vật làm nền full màn hình, card nội dung nổi bên phải ── */
+#page-comingsoon {
+  position: relative;
+  min-height: calc(100vh - 56px);
+  overflow: hidden;
+}
 .soon-scene {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
   min-height: calc(100vh - 56px);
-  gap: clamp(8px, 3vw, 48px);
-  padding: 24px 32px;
-  overflow: hidden;
-  max-width: 1320px;
-  margin: 0 auto;
+  padding: 24px 48px;
 }
 
-/* ── Cột ảnh nhân vật ── */
+/* ── Ảnh nền phủ toàn màn hình ── */
 .soon-photo-col {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 8px;
-}
-.soon-photo-wrap {
-  position: relative;
-  width: clamp(320px, 38vw, 620px);
-  user-select: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 0;
 }
 .soon-photo {
   display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
-  height: auto;
-  /* filter: drop-shadow(0 8px 32px rgba(0,0,0,.12)); */
+  height: 100%;
+  object-fit: cover;
+  object-position: 30% center;
+}
+/* Khung vô hình bám theo đúng vùng khuôn mặt trong ảnh (object-position 30% center),
+   dùng để định vị icon tia chớp/nhãn chữ viết tay bằng % như cũ, bất kể màn hình to nhỏ. */
+.soon-photo-wrap {
+  position: absolute;
+  left: 30%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(320px, 38vw, 620px);
+  aspect-ratio: 1671 / 941;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ── Nhãn chú thích viết tay ── */
@@ -3826,16 +3838,21 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
   100% { opacity: 1;   transform: scale(1.1) rotate(8deg); }
 }
 
-/* ── Cột card nội dung ── */
+/* ── Cột card nội dung, nổi trên ảnh nền ── */
 .soon-card-col {
   flex: 0 0 auto;
-  width: clamp(320px, 26vw, 420px);
+  width: clamp(320px, 30vw, 460px);
   padding-left: 8px;
 }
 .soon-wrap {
   padding: 28px 24px;
   text-align: center;
   font-family: inherit;
+  background: rgba(255, 255, 255, .78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.08);
 }
 .soon-icon { font-size: 52px; margin-bottom: 10px; line-height: 1; }
 .soon-title { margin: 0 0 10px; font-size: 21px; font-weight: 700; color: var(--text); }
@@ -3935,16 +3952,16 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 
 @media (max-width: 760px) {
   .soon-scene {
-    flex-direction: column;
-    padding: 16px 12px 24px;
-    min-height: unset;
-    gap: 0;
+    justify-content: center;
+    align-items: flex-end;
+    padding: 16px 16px 28px;
+    min-height: calc(100vh - 56px);
   }
-  .soon-photo-col { padding-bottom: 0; }
-  .soon-photo-wrap { width: 260px; }
+  .soon-photo { object-position: center 25%; }
+  .soon-photo-wrap { left: 50%; top: 30%; width: min(80vw, 420px); }
   .soon-label-left  { font-size: 13px; left: -6px; }
   .soon-label-right { font-size: 13px; right: -8px; }
-  .soon-card-col { width: 100%; max-width: 400px; padding-left: 0; }
+  .soon-card-col { width: 100%; max-width: 420px; padding-left: 0; }
   .soon-wrap { padding: 20px 14px; }
   .soon-joke-area { height: 170px; flex-direction: column; }
 }
