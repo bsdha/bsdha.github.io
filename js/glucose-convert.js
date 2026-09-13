@@ -83,16 +83,12 @@
   }
 
   function swap() {
-    // Đổi chiều: lấy giá trị output hiện tại (nếu có) làm input mới của đơn vị mới
-    const currentOutput = outputValue.textContent;
+    // Chỉ đổi đơn vị của Ô NHẬP — giữ nguyên số đang gõ trong ô đó (không quy
+    // đổi/di chuyển giá trị), để lỡ chọn nhầm đơn vị thì bấm ⇄ là sửa được
+    // ngay mà không mất số vừa gõ. Ô kết quả bên cạnh sẽ tự tính lại theo
+    // đơn vị mới.
     unit = unit === 'mmol' ? 'mg' : 'mmol';
     updateLabels();
-
-    if (currentOutput !== '—') {
-      input.value = currentOutput.replace(',', '.');
-    } else {
-      input.value = '';
-    }
 
     swapBtn.classList.add('spin');
     setTimeout(() => swapBtn.classList.remove('spin'), 200);

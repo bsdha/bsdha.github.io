@@ -638,6 +638,16 @@
       }
       #glucosePanel .gc-input-wrap{ position:relative; }
       #glucosePanel .gc-input-wrap input{ padding-right:62px; width:100%; }
+      /* Ẩn nút tăng/giảm mặc định của input số — nút này đè lên chữ đơn vị
+         (mmol/L) bên phải ô nhập, đã có nút ⇄ để đổi đơn vị nên không cần nữa. */
+      #glucosePanel .gc-input-wrap input[type="number"]::-webkit-outer-spin-button,
+      #glucosePanel .gc-input-wrap input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      #glucosePanel .gc-input-wrap input[type="number"] {
+        -moz-appearance: textfield;
+      }
       #glucosePanel .gc-unit-badge{
         position:absolute;
         right:10px; top:50%; transform:translateY(-50%);
