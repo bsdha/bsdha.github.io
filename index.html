@@ -631,13 +631,20 @@
       /* ---- Glucose converter panel ---- */
       #glucosePanel .gc-block{
         display:grid;
-        grid-template-columns:1fr 40px 1fr;
+        grid-template-columns:1fr 48px 1fr;
         align-items:center;
-        gap:8px;
-        margin-bottom:6px;
+        gap:10px;
+        margin-bottom:8px;
       }
       #glucosePanel .gc-input-wrap{ position:relative; }
-      #glucosePanel .gc-input-wrap input{ padding-right:62px; width:100%; }
+      #glucosePanel .gc-input-wrap input{
+        padding-right:78px;
+        width:100%;
+        font-size:19px;
+        font-weight:700;
+        padding-top:14px;
+        padding-bottom:14px;
+      }
       /* Ẩn nút tăng/giảm mặc định của input số — nút này đè lên chữ đơn vị
          (mmol/L) bên phải ô nhập, đã có nút ⇄ để đổi đơn vị nên không cần nữa. */
       #glucosePanel .gc-input-wrap input[type="number"]::-webkit-outer-spin-button,
@@ -650,18 +657,18 @@
       }
       #glucosePanel .gc-unit-badge{
         position:absolute;
-        right:10px; top:50%; transform:translateY(-50%);
-        font-size:12px; font-weight:700; color:var(--muted);
+        right:12px; top:50%; transform:translateY(-50%);
+        font-size:14px; font-weight:700; color:var(--muted);
         pointer-events:none;
       }
       #glucosePanel .gc-swap-btn{
         display:flex;align-items:center;justify-content:center;
-        width:36px;height:36px;
+        width:44px;height:44px;
         border-radius:50%;
         border:1px solid var(--border);
         background:var(--surface-2);
         color:var(--blue,#0066FF);
-        font-size:16px;
+        font-size:19px;
         cursor:pointer;
         transition:transform .18s ease, filter .15s;
         flex-shrink:0;
@@ -669,32 +676,32 @@
       #glucosePanel .gc-swap-btn:hover{ filter:brightness(1.1); }
       #glucosePanel .gc-swap-btn.spin{ transform:rotate(180deg); }
       #glucosePanel .gc-output{
-        padding:9px 10px;
-        border-radius:8px;
+        padding:14px 14px;
+        border-radius:10px;
         background:var(--surface-2);
         border:1px solid var(--border);
         font-weight:800;
-        font-size:14.5px;
+        font-size:19px;
         color:var(--blue,#0066FF);
-        min-height:38px;
+        min-height:52px;
         display:flex;align-items:center;justify-content:space-between;gap:6px;
         white-space:nowrap;
         overflow:hidden;
         text-overflow:ellipsis;
       }
       #glucosePanel .gc-output .gc-output-unit{
-        font-size:11.5px;font-weight:700;color:var(--muted);flex-shrink:0;
+        font-size:13.5px;font-weight:700;color:var(--muted);flex-shrink:0;
       }
       #glucosePanel .gc-alert{
-        border-radius:9px;
-        padding:9px 11px;
-        font-size:12.5px;
-        line-height:1.5;
+        border-radius:10px;
+        padding:12px 14px;
+        font-size:14.5px;
+        line-height:1.55;
         font-weight:600;
         display:flex;gap:8px;align-items:flex-start;
-        margin-top:6px;
+        margin-top:8px;
       }
-      #glucosePanel .gc-alert .gc-icon{font-size:14px;line-height:1.4;}
+      #glucosePanel .gc-alert .gc-icon{font-size:16px;line-height:1.4;}
       #glucosePanel .gc-alert.normal{ background:rgba(26,158,92,.12); color:var(--green,#1a9e5c); }
       #glucosePanel .gc-alert.pre{ background:rgba(201,138,31,.14); color:#c98a1f; }
       #glucosePanel .gc-alert.high{ background:rgba(224,69,61,.12); color:var(--red,#e0453d); }
@@ -702,24 +709,24 @@
       #glucosePanel .gc-alert.neutral{ background:var(--surface-2); color:var(--muted); font-weight:500; }
 
       #glucosePanel .gc-ref{
-        margin-top:16px;
+        margin-top:20px;
         border-top:1px solid var(--border);
-        padding-top:12px;
+        padding-top:14px;
       }
       #glucosePanel .gc-ref h3{
-        font-size:11px;text-transform:uppercase;letter-spacing:.4px;
-        color:var(--muted);margin:0 0 8px;
+        font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;
+        color:var(--muted);margin:0 0 10px;
       }
       #glucosePanel .gc-ref-row{
-        display:flex;gap:8px;align-items:flex-start;
-        font-size:11.8px;padding:6px 0;
+        display:flex;gap:10px;align-items:flex-start;
+        font-size:14px;padding:9px 0;
         border-bottom:1px dashed var(--border);
       }
       #glucosePanel .gc-ref-row:last-child{border-bottom:none;}
       #glucosePanel .gc-tag{
         flex-shrink:0;
-        padding:2px 8px;border-radius:20px;
-        font-size:10px;font-weight:800;
+        padding:3px 10px;border-radius:20px;
+        font-size:11.5px;font-weight:800;
         text-transform:uppercase;letter-spacing:.3px;
         white-space:nowrap;
       }
