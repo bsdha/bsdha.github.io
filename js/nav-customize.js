@@ -66,11 +66,17 @@
       if (!raw) return null;
       const data = JSON.parse(raw);
       if (!data || !Array.isArray(data.order)) return null;
-      return { order: data.order, hidden: Array.isArray(data.hidden) ? data.hidden : [] };
+      return {
+        order: data.order,
+        hidden: Array.isArray(data.hidden) ? data.hidden : [],
+        pinned: Array.isArray(data.pinned) ? data.pinned : [],
+      };
     } catch (e) { return null; }
   }
-  function savePrefs(order, hidden) {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ order: order, hidden: hidden })); } catch (e) {}
+  function savePrefs(order, hidden, pinned) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ order: order, hidden: hidden, pinned: pinned || [] }));
+    } catch (e) {}
   }
   function clearPrefs() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
@@ -86,13 +92,24 @@
     const idx = order.indexOf(key);
     return (idx === -1 ? order.length : idx) * ORDER_STEP;
   }
+  // Mục đã "ghim" luôn được xếp lên đầu toàn bộ sidebar (trước mọi nhóm),
+  // theo đúng thứ tự ghim trước/sau. Mục không ghim giữ nguyên logic cũ.
+  const PIN_BASE = -100000;
+  function finalOrderValue(order, pinned, key) {
+    const pIdx = pinned.indexOf(key);
+    if (pIdx !== -1) return PIN_BASE + pIdx;
+    return orderValueOf(order, key);
+  }
 
   // ---------- Đặt lại vị trí tiêu đề/đường kẻ nhóm theo order hiện tại ----------
   // Luôn hiển thị (không bao giờ ẩn), chỉ dịch chuyển theo đúng nhóm của mình.
-  function positionGroupMarkers(order) {
+  function positionGroupMarkers(order, pinned) {
+    pinned = pinned || [];
     SIDEBAR_GROUPS.forEach(function (g) {
-      const minVal = g.members.length
-        ? Math.min.apply(null, g.members.map(function (k) { return orderValueOf(order, k); }))
+      const unpinnedMembers = g.members.filter(function (k) { return pinned.indexOf(k) === -1; });
+      const refMembers = unpinnedMembers.length ? unpinnedMembers : g.members;
+      const minVal = refMembers.length
+        ? Math.min.apply(null, refMembers.map(function (k) { return orderValueOf(order, k); }))
         : orderValueOf(order, '__end__');
       if (g.titleEl) g.titleEl.style.order = String(minVal - 5);
       if (g.dividerEl) g.dividerEl.style.order = String(minVal - 6);
@@ -100,29 +117,34 @@
     GROUPS_WITH_DIVIDER.forEach(function (g, i) {
       const dividerEl = TOPBAR_DIVIDERS[i];
       if (!dividerEl) return;
-      const minVal = g.members.length
-        ? Math.min.apply(null, g.members.map(function (k) { return orderValueOf(order, k); }))
+      const unpinnedMembers = g.members.filter(function (k) { return pinned.indexOf(k) === -1; });
+      const refMembers = unpinnedMembers.length ? unpinnedMembers : g.members;
+      const minVal = refMembers.length
+        ? Math.min.apply(null, refMembers.map(function (k) { return orderValueOf(order, k); }))
         : 0;
       dividerEl.style.order = String(minVal - 6);
     });
   }
 
   // ---------- Áp dụng cấu hình (thứ tự + ẩn/hiện) lên giao diện ----------
-  function applyOrderTo(root, order, hidden) {
+  function applyOrderTo(root, order, hidden, pinned) {
     itemsOf(root).forEach(function (el) {
-      el.style.order = String(orderValueOf(order, el.dataset.page));
-      el.style.display = hidden.indexOf(el.dataset.page) !== -1 ? 'none' : '';
+      const key = el.dataset.page;
+      el.style.order = String(finalOrderValue(order, pinned, key));
+      el.style.display = hidden.indexOf(key) !== -1 ? 'none' : '';
+      el.classList.toggle('nav-pinned', pinned.indexOf(key) !== -1);
     });
   }
 
-  function applyHomeCards(order, hidden) {
+  function applyHomeCards(order, hidden, pinned) {
     const hgrids = document.querySelectorAll('#page-home .hgrid');
     hgrids.forEach(function (grid) {
       const cards = Array.prototype.slice.call(grid.querySelectorAll('.hcard'));
       let visibleCount = 0;
       cards.forEach(function (el) {
-        el.style.order = String(orderValueOf(order, el.dataset.page));
-        const isHidden = hidden.indexOf(el.dataset.page) !== -1;
+        const key = el.dataset.page;
+        el.style.order = String(finalOrderValue(order, pinned, key));
+        const isHidden = hidden.indexOf(key) !== -1;
         el.style.display = isHidden ? 'none' : '';
         if (!isHidden) visibleCount++;
       });
@@ -131,7 +153,7 @@
   }
 
   function restoreDefaults(root) {
-    itemsOf(root).forEach(function (el) { el.style.order = ''; el.style.display = ''; });
+    itemsOf(root).forEach(function (el) { el.style.order = ''; el.style.display = ''; el.classList.remove('nav-pinned'); });
   }
   function restoreGroupMarkers() {
     SIDEBAR_GROUPS.forEach(function (g) {
@@ -143,7 +165,7 @@
   function restoreHomeDefaults() {
     document.querySelectorAll('#page-home .hgrid').forEach(function (grid) {
       grid.classList.remove('hgrid-compact-few');
-      grid.querySelectorAll('.hcard').forEach(function (el) { el.style.order = ''; el.style.display = ''; });
+      grid.querySelectorAll('.hcard').forEach(function (el) { el.style.order = ''; el.style.display = ''; el.classList.remove('nav-pinned'); });
     });
   }
 
@@ -158,10 +180,11 @@
     }
     const order = fullOrder(prefs.order);
     const hidden = prefs.hidden || [];
-    applyOrderTo(sidebar, order, hidden);
-    if (topbar) applyOrderTo(topbar, order, hidden);
-    positionGroupMarkers(order);
-    applyHomeCards(order, hidden);
+    const pinned = prefs.pinned || [];
+    applyOrderTo(sidebar, order, hidden, pinned);
+    if (topbar) applyOrderTo(topbar, order, hidden, pinned);
+    positionGroupMarkers(order, pinned);
+    applyHomeCards(order, hidden, pinned);
   }
 
   applyAll(); // áp dụng ngay khi tải trang (nếu người dùng đã từng tùy chỉnh trước đó)
@@ -266,7 +289,8 @@
       '<button type="button" class="net-save" title="Lưu thay đổi (OK)">✓</button>';
     bar.querySelector('.net-save').addEventListener('click', function (e) {
       e.preventDefault(); e.stopPropagation();
-      savePrefs(workingOrder, workingHidden);
+      const prefsNow = loadPrefs();
+      savePrefs(workingOrder, workingHidden, prefsNow ? prefsNow.pinned : []);
       exitEditMode();
       applyAll();
     });
@@ -371,6 +395,86 @@
 
   document.addEventListener('keydown', function (e) {
     if (editMode && e.key === 'Escape') { exitEditMode(); applyAll(); }
+  });
+
+  // ---------- Chuột phải vào 1 mục -> menu ngắn: Ẩn / Ghim / Tùy chọn hiển thị ----------
+  function currentPrefsOrDefault() {
+    const prefs = loadPrefs();
+    return {
+      order: prefs ? fullOrder(prefs.order) : DEFAULT_ORDER.slice(),
+      hidden: prefs ? prefs.hidden.slice() : [],
+      pinned: prefs ? prefs.pinned.slice() : [],
+    };
+  }
+
+  function hideItem(key) {
+    const p = currentPrefsOrDefault();
+    if (p.hidden.indexOf(key) === -1) p.hidden.push(key);
+    const pinIdx = p.pinned.indexOf(key);
+    if (pinIdx !== -1) p.pinned.splice(pinIdx, 1);
+    savePrefs(p.order, p.hidden, p.pinned);
+    applyAll();
+  }
+
+  function togglePinItem(key) {
+    const p = currentPrefsOrDefault();
+    const idx = p.pinned.indexOf(key);
+    if (idx !== -1) p.pinned.splice(idx, 1);
+    else p.pinned.push(key);
+    savePrefs(p.order, p.hidden, p.pinned);
+    applyAll();
+  }
+
+  let ctxMenuEl = null;
+  function closeCtxMenu() {
+    if (ctxMenuEl && ctxMenuEl.parentNode) ctxMenuEl.parentNode.removeChild(ctxMenuEl);
+    ctxMenuEl = null;
+  }
+  document.addEventListener('click', closeCtxMenu);
+  document.addEventListener('scroll', closeCtxMenu, true);
+  window.addEventListener('resize', closeCtxMenu);
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCtxMenu(); });
+
+  function openCtxMenu(x, y, key) {
+    closeCtxMenu();
+    const isPinned = currentPrefsOrDefault().pinned.indexOf(key) !== -1;
+    const menu = document.createElement('div');
+    menu.className = 'nav-ctx-menu';
+    menu.innerHTML =
+      '<button type="button" class="nav-ctx-item" data-act="hide">🙈 Ẩn mục này</button>' +
+      '<button type="button" class="nav-ctx-item" data-act="pin">' + (isPinned ? '📌 Bỏ ghim mục này' : '📌 Ghim mục này') + '</button>' +
+      '<button type="button" class="nav-ctx-item" data-act="options">⚙️ Tùy chọn hiển thị</button>';
+    document.body.appendChild(menu);
+
+    // Đặt vị trí, tránh tràn ra ngoài màn hình
+    const menuRect = menu.getBoundingClientRect();
+    const maxX = window.innerWidth - menuRect.width - 6;
+    const maxY = window.innerHeight - menuRect.height - 6;
+    menu.style.left = Math.max(6, Math.min(x, maxX)) + 'px';
+    menu.style.top = Math.max(6, Math.min(y, maxY)) + 'px';
+
+    menu.addEventListener('click', function (e) {
+      const btn = e.target.closest('.nav-ctx-item');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const act = btn.dataset.act;
+      closeCtxMenu();
+      if (act === 'hide') hideItem(key);
+      else if (act === 'pin') togglePinItem(key);
+      else if (act === 'options') enterEditMode();
+    });
+
+    ctxMenuEl = menu;
+  }
+
+  itemsOf(sidebar).forEach(function (el) {
+    if (isHomeBtn(el)) return;
+    el.addEventListener('contextmenu', function (e) {
+      if (editMode) return; // đang ở chế độ chỉnh sửa thì không mở thêm menu chuột phải
+      e.preventDefault();
+      openCtxMenu(e.clientX, e.clientY, el.dataset.page);
+    });
   });
 
   // ---------- Giữ chuột/chạm ~3 giây trên 1 mục (trừ Trang chủ) để vào chỉnh sửa ----------
