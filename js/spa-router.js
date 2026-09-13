@@ -22,7 +22,11 @@
     'vitals-chart', 'ped-dose', 'io-balance', 'wound-care', 'cam-icu', 'apgar',
     'shock-index', 'padua-score', 'transfusion-monitor', 'nursing-care-plan',
     'vasopressor-calc', 'drain-tracking', 'fluid-nutrition-peds',
-    'handoff-checklist'
+    'handoff-checklist', 'gcs-score', 'ped-pain-scale', 'ped-fall-risk',
+    'antibiotic-renal-dose', 'insulin-sliding-scale', 'postop-pain-tracking',
+    'cvc-care-checklist', 'tube-feeding-tracker', 'fever-dose-calc',
+    'ventilator-monitor', 'pressure-ulcer-prevention', 'immunization-tracker',
+    'seizure-log', 'sofa-score', 'bp-trend-chart'
   ];
   SOON_KEYS.forEach(k => {
     const path = '/' + k;
