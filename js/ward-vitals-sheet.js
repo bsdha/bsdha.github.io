@@ -324,15 +324,20 @@
     const pagesHtml = [];
     for (let p = 0; p < rows.length; p += SHEET_PAGE_SIZE) {
       const chunk = rows.slice(p, p + SHEET_PAGE_SIZE);
-      const rowsHtml = chunk.map((r, i) =>
-        '<tr>' +
-        '<td>' + (p + i + 1) + '</td>' +
-        '<td>' + escapeHtml(formatNameForPrint(r.name)) + '</td>' +
-        '<td>' + escapeHtml(r.year) + '</td>' +
-        '<td>' + escapeHtml(r.bed) + '</td>' +
-        '<td></td><td></td><td></td><td></td><td></td><td></td>' +
-        '</tr>'
-      ).join('');
+      let rowsHtml = '';
+      // Luôn xuất đủ 20 dòng mỗi trang (kể cả trang cuối chưa đủ người) để
+      // trang in luôn đầy như nhau — các dòng dư (chưa có bệnh nhân) vẫn giữ
+      // số thứ tự liên tục, để trống, dùng làm chỗ ghi thêm nếu có BN mới.
+      for (let i = 0; i < SHEET_PAGE_SIZE; i++) {
+        const r = chunk[i];
+        rowsHtml += '<tr>' +
+          '<td>' + (p + i + 1) + '</td>' +
+          '<td>' + (r ? escapeHtml(formatNameForPrint(r.name)) : '') + '</td>' +
+          '<td>' + (r ? escapeHtml(r.year) : '') + '</td>' +
+          '<td>' + (r ? escapeHtml(r.bed) : '') + '</td>' +
+          '<td></td><td></td><td></td><td></td><td></td><td></td>' +
+          '</tr>';
+      }
       pagesHtml.push(buildSheetPageHtml('DANH SÁCH BỆNH NHÂN KHOA HSCC', dateLabel, rowsHtml));
     }
     sheetPrintArea.innerHTML = pagesHtml.join('');
