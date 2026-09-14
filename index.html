@@ -294,10 +294,10 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/helix" class="hcard" data-page="helix" data-path="/helix" data-kw="tiện ích helix tampermonkey userscript his vnpt his tự động điền bệnh án icd">
+        <a href="/helix" class="hcard" data-page="helix" data-path="/helix" data-kw="tiện ích helix tampermonkey userscript tự động điền bệnh án icd">
           <div class="ic">🧬</div>
           <h2>Tiện ích Helix</h2>
-          <p>Userscript Tampermonkey tự động hoá thao tác nhập bệnh án trên phần mềm Helix/VNPT HIS, tự cập nhật bản mới.</p>
+          <p>Userscript Tampermonkey tự động hoá thao tác nhập bệnh án trên phần mềm Helix, tự cập nhật bản mới.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
       </div>
@@ -2461,14 +2461,14 @@
           <div class="hlx-icon">🧬</div>
           <div>
             <h1>Tiện ích Helix</h1>
-            <p class="hlx-sub">Userscript Tampermonkey cho phần mềm Helix / VNPT HIS</p>
+            <p class="hlx-sub">Userscript Tampermonkey cho phần mềm Helix</p>
           </div>
           <span class="hlx-badge" id="hlxVersionBadge">⏳ Đang tải phiên bản…</span>
         </div>
-        <p class="hlx-hero-desc">Cài một lần, dùng mãi: tiện ích tự động hoá các thao tác lặp đi lặp lại khi khám bệnh trên Helix/VNPT HIS — đỡ bớt vài cú click, vài giây chờ mỗi lượt khám, để dồn thời gian cho bệnh nhân nhiều hơn là cho bàn phím.</p>
+        <p class="hlx-hero-desc">Cài một lần, dùng mãi: tiện ích tự động hoá các thao tác lặp đi lặp lại khi khám bệnh trên Helix — đỡ bớt vài cú click, vài giây chờ mỗi lượt khám, để dồn thời gian cho bệnh nhân nhiều hơn là cho bàn phím.</p>
         <div class="hlx-cta-row">
           <a href="https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helix_utilities.user.js" id="hlxDownloadBtn" class="hlx-btn hlx-btn-primary">⬇️ Cài đặt tiện ích</a>
-          <a href="#" id="hlxSourceBtn" class="hlx-btn hlx-btn-ghost" target="_blank" rel="noopener">👀 Xem mã nguồn</a>
+          <a href="https://bsdha.github.io/helix/helix_utilities.js" id="hlxSourceBtn" class="hlx-btn hlx-btn-ghost" target="_blank" rel="noopener">👀 Xem mã nguồn</a>
         </div>
       </div>
 
@@ -2476,13 +2476,18 @@
         <h2>✨ Tự động hoá những gì?</h2>
         <div class="hlx-grid">
           <div class="hlx-feat"><b>🔁 Đồng bộ Triệu chứng ↔ Diễn biến</b><p>Gõ 1 lần ở ô Triệu chứng, ô Diễn biến bệnh tự điền theo — khỏi gõ hai lần cùng một nội dung.</p></div>
+          <div class="hlx-feat"><b>⏎ Enter ở ô Triệu chứng mở ngay ô tìm ICD</b><p>Gõ xong triệu chứng, nhấn Enter là con trỏ nhảy thẳng vào ô tìm ICD-10, khỏi cần bấm chuột.</p></div>
           <div class="hlx-feat"><b>🔎 Mở rộng ô tìm ICD-10</b><p>Khung tìm kiếm mã ICD-10 hiển thị rộng, dễ đọc, dễ chọn đúng mã hơn.</p></div>
           <div class="hlx-feat"><b>⚠️ Cảnh báo trùng mã ICD</b><p>Tự phát hiện và cảnh báo khi lỡ chọn trùng mã bệnh trong cùng một lượt khám.</p></div>
           <div class="hlx-feat"><b>🩺 Kiểm tra đủ sinh hiệu</b><p>Nhắc nếu thiếu sinh hiệu trước khi bắt đầu khám, tránh phải quay lại bổ sung.</p></div>
           <div class="hlx-feat"><b>▶️ Tự bắt đầu khám &amp; focus ô triệu chứng</b><p>Tự bấm "Bắt đầu khám" và đưa con trỏ thẳng vào ô Triệu chứng, sẵn sàng gõ ngay.</p></div>
           <div class="hlx-feat"><b>💊 Tự chọn thuốc đầu danh sách</b><p>Ở khung nhà thuốc, tự chọn sẵn dòng thuốc đầu tiên hiển thị để thao tác nhanh hơn.</p></div>
+          <div class="hlx-feat"><b>⬆️ Mũi tên lên nhảy vòng cuối danh sách thuốc</b><p>Đang ở dòng đầu danh sách thuốc, bấm mũi tên lên (↑) sẽ nhảy vòng xuống thẳng dòng cuối cùng thay vì đứng yên.</p></div>
           <div class="hlx-feat"><b>📝 Nút xử lý nhanh ô y lệnh/điều trị</b><p>Thêm nút tiện lợi ngay trong ô y lệnh để thao tác nhanh, đỡ gõ lặp.</p></div>
           <div class="hlx-feat"><b>⌨️ Điều hướng Tab thông minh &amp; tự bấm "Nạp"/lưu</b><p>Chuyển ô nhập liệu mượt hơn bằng Tab, tự bấm nút "Nạp" và tự chạy các bước trong hộp thoại lưu.</p></div>
+          <div class="hlx-feat"><b>⏎ Enter nhảy ô ICD thay vì Tab</b><p>Ở ô nhập ICD, nhấn Enter là nhảy thẳng sang ô ICD tiếp theo theo đúng thứ tự đã định sẵn, khỏi phải bấm Tab nhiều lần.</p></div>
+          <div class="hlx-feat"><b>🖨️ Tạo bản in bảng kê nhanh hơn</b><p>Bỏ qua popup trung gian không cần thiết khi tạo bản in bảng kê, rút ngắn thao tác.</p></div>
+          <div class="hlx-feat"><b>👆 Tooltip xem đầy đủ nội dung bị cắt chữ</b><p>Di chuột hoặc focus vào ô đang hiển thị "..." do quá dài, tiện ích tự hiện tooltip đầy đủ nội dung, khỏi phải bấm vào mới đọc được.</p></div>
         </div>
       </div>
 
@@ -2494,7 +2499,7 @@
           <li><b>Bấm nút "Cài đặt tiện ích"</b> phía trên — Tampermonkey sẽ tự mở tab cài đặt, hiển thị nội dung script, chỉ cần bấm <b>Install</b> (Cài đặt) là xong.</li>
           <li><b>Trình duyệt nào đã cài sẵn Tampermonkey và đã cài tiện ích này rồi</b> thì lần sau chỉ cần bấm lại đúng link này là hệ thống nhận ra bản đã có, không cài lại — và Tampermonkey sẽ tự kiểm tra, báo khi có bản mới.</li>
         </ol>
-        <div class="hlx-note">💡 Tiện ích chỉ chạy trên đúng địa chỉ phần mềm Helix/VNPT HIS của bệnh viện — không thu thập hay gửi dữ liệu đi đâu khác, chỉ thao tác trực tiếp trên giao diện đang mở.</div>
+        <div class="hlx-note">💡 Tiện ích chỉ chạy trên đúng địa chỉ phần mềm Helix (<a href="https://his.benhvienbinhduong.org.vn/" target="_blank" rel="noopener">his.benhvienbinhduong.org.vn</a>) — không thu thập hay gửi dữ liệu đi đâu khác, chỉ thao tác trực tiếp trên giao diện đang mở.</div>
       </div>
 
       <div class="hlx-section">
