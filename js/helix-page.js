@@ -3,7 +3,7 @@
 // => Mỗi lần upload bản helix_utilities.js mới (có cập nhật số version + thêm
 //    dòng ChangeLog), trang này TỰ ĐỘNG nhận diện, không cần sửa index.html.
 (function () {
-  const SOURCE_PATH = '/helix/helix_utilities.js';
+  const SOURCE_PATH = '/helix/helix_utilities.user.js';
 
   const versionBadge = document.getElementById('hlxVersionBadge');
   const sourceBtn = document.getElementById('hlxSourceBtn');
