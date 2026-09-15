@@ -1,9 +1,9 @@
 // Trang "Tiện ích Helix": đọc trực tiếp phiên bản (@version) và khối ChangeLog
-// nhúng ngay trong file helix/helix_utilities.js để hiển thị lên trang.
-// => Mỗi lần upload bản helix_utilities.js mới (có cập nhật số version + thêm
+// nhúng ngay trong file helix/helixfast.user.js để hiển thị lên trang.
+// => Mỗi lần upload bản helixfast.user.js mới (có cập nhật số version + thêm
 //    dòng ChangeLog), trang này TỰ ĐỘNG nhận diện, không cần sửa index.html.
 (function () {
-  const SOURCE_PATH = '/helix/helix_utilities.user.js';
+  const SOURCE_PATH = '/helix/helixfast.user.js';
 
   const versionBadge = document.getElementById('hlxVersionBadge');
   const sourceBtn = document.getElementById('hlxSourceBtn');
