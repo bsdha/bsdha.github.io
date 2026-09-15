@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HIS Bình Dương - Tiện ích Helix
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.0
+// @version      1.6
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,10 +11,6 @@
 // ==/UserScript==
 
 /* ==ChangeLog==
-2.0 | 2026-09-15 | Sau khi đã tạo bệnh sử (nhanh khi Enter, hoặc từ popup nâng cao), cơ chế đồng bộ Triệu chứng → Diễn biến sẽ tự khoá lại, để gõ thêm vào ô Triệu chứng không ghi đè mất câu bệnh sử vừa tạo. Khoá tự mở lại khi ô Diễn biến trống trở lại.
-1.9 | 2026-09-15 | (1) Khi Enter từ ô "Lý do khám", ngoài việc nhảy xuống ô tìm ICD như cũ, script tự sinh 1 câu bệnh sử ngắn từ đúng nội dung đã gõ và điền vào ô Diễn biến/Bệnh sử (không tự bịa thêm chi tiết y khoa nào). Thêm nút "Đổi cách diễn đạt bệnh sử" để tạo lại câu khác từ cùng nội dung đã gõ. (2) Ở "Tạo bệnh sử nâng cao", khi bấm "Chèn vào bệnh sử", ô "Lý do khám" giờ luôn được thay bằng từ khoá ngắn phù hợp với lý do đã chọn (trước đây chỉ điền khi ô đang trống).
-1.8 | 2026-09-15 | Sửa lỗi kiểm tra sinh hiệu báo thiếu "Cân nặng" dù đã điền đủ: trước đây script đọc giá trị bằng textContent nên bỏ sót các ô sinh hiệu hiển thị dưới dạng input (rỗng khi đọc bằng textContent); giờ đọc đúng value của input/select nếu có.
-1.7 | 2026-09-15 | Sửa "Tạo bệnh sử nâng cao": nút Chèn giờ chỉ điền vào ô Bệnh sử (giữ nguyên Lý do khám nếu đã gõ tay, tự điền ngắn gọn 1-2 từ khoá triệu chứng nếu ô đang trống); sửa lỗi popup bị nhảy sang trái khi bấm nút đóng lần đầu.
 1.6 | 2026-09-15 | Thêm "Tạo bệnh sử nâng cao": popup kéo-thả cạnh ô Triệu chứng với thư viện 17 lý do vào viện, mỗi lý do có bộ trường khai thác riêng; script chỉ ghép câu từ dữ liệu đã chọn (không tự bịa triệu chứng/xử trí), có nút tạo lại để đổi cách diễn đạt và chèn thẳng vào ô Triệu chứng.
 1.5 | 2026-09-14 | Bổ sung cơ chế tự động cập nhật qua Tampermonkey (script tự kiểm tra và báo/cài bản mới, không cần tải lại thủ công).
 1.4 |  | Hoàn thiện bộ tự động hoá thao tác nhập bệnh án trên Helix: đồng bộ Triệu chứng ↔ Diễn biến, mở rộng ô tìm ICD-10, cảnh báo trùng mã ICD, kiểm tra đủ sinh hiệu trước khi bắt đầu khám, tự bấm "Bắt đầu khám" và focus ô triệu chứng, tự chọn sẵn thuốc đầu tiên trong danh sách nhà thuốc, nút xử lý nhanh trong ô y lệnh/điều trị, điều hướng Tab thông minh, tự bấm nút "Nạp", tự chạy các bước trong hộp thoại lưu.
