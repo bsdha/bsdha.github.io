@@ -10,6 +10,7 @@
   const addRowBtn = document.getElementById('wvAddRowBtn');
   const buildBtn = document.getElementById('wvBuildBtn');
   const dateInput = document.getElementById('wvSheetDate');
+  const sheetDeptSelect = document.getElementById('wvSheetDeptSelect');
 
   const sheetCard = document.getElementById('wvSheetCard');
   const sheetPrintArea = document.getElementById('wvSheetPrintArea');
@@ -28,6 +29,64 @@
     return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear();
   }
   if (dateInput) dateInput.value = todayLabel();
+
+  // ---------- Danh sách khoa dùng chung (bảng có DS bệnh nhân & bảng trắng) ----------
+  // Lưu trong trình duyệt (localStorage) nên còn nguyên dù tắt/mở lại máy,
+  // và chọn ở nơi nào cũng nhớ chung một khoa đang trực gần nhất.
+  const DEPTS_KEY = 'bsdha_wv_blank_depts_v1';
+  const LAST_DEPT_KEY = 'bsdha_wv_blank_last_dept_v1';
+  const DEPT_ADD_NEW_VALUE = '__add_new__';
+  const DEFAULT_DEPTS = ['CCHS', 'Nội tổng hợp', 'Ngoại tổng hợp', 'Sản', 'Nhi', 'Cấp cứu', 'Hồi sức tích cực (ICU)', 'YHCT - PHCN'];
+
+  function loadDepts() {
+    try {
+      const raw = localStorage.getItem(DEPTS_KEY);
+      const arr = raw ? JSON.parse(raw) : null;
+      if (Array.isArray(arr) && arr.length) return arr;
+    } catch (e) {}
+    return DEFAULT_DEPTS.slice();
+  }
+  function saveDepts(list) {
+    try { localStorage.setItem(DEPTS_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) {}
+  }
+  function rememberDept(name) {
+    const list = loadDepts();
+    const idx = list.findIndex(d => d.toLowerCase() === name.toLowerCase());
+    if (idx !== -1) list.splice(idx, 1);
+    list.unshift(name);
+    saveDepts(list);
+  }
+  function lastDeptChosen() {
+    try { return localStorage.getItem(LAST_DEPT_KEY) || ''; } catch (e) { return ''; }
+  }
+  function rememberLastDept(name) {
+    try { localStorage.setItem(LAST_DEPT_KEY, name); } catch (e) {}
+  }
+  // Vẽ danh sách khoa vào một thẻ <select>, có sẵn mục "+ Thêm khoa mới..."
+  // và tự xử lý việc thêm khoa mới khi người dùng chọn mục đó.
+  function wireDeptSelect(selectEl, initialValue) {
+    function render(selectedValue) {
+      const list = loadDepts();
+      selectEl.innerHTML = list.map(d => '<option value="' + escapeAttr(d) + '">' + escapeHtml(d) + '</option>').join('') +
+        '<option value="' + DEPT_ADD_NEW_VALUE + '">+ Thêm khoa mới...</option>';
+      if (selectedValue && list.some(d => d.toLowerCase() === selectedValue.toLowerCase())) {
+        selectEl.value = list.find(d => d.toLowerCase() === selectedValue.toLowerCase());
+      } else {
+        selectEl.selectedIndex = 0;
+      }
+    }
+    render(initialValue);
+    selectEl.addEventListener('change', () => {
+      if (selectEl.value !== DEPT_ADD_NEW_VALUE) { rememberLastDept(selectEl.value); return; }
+      const name = (window.prompt('Nhập tên khoa mới:') || '').trim();
+      if (!name) { render(lastDeptChosen() || initialValue); return; }
+      rememberDept(name);
+      rememberLastDept(name);
+      render(name);
+    });
+    return { render, get value() { return selectEl.value === DEPT_ADD_NEW_VALUE ? (initialValue || 'CCHS') : selectEl.value; } };
+  }
+  const sheetDeptApi = sheetDeptSelect ? wireDeptSelect(sheetDeptSelect, lastDeptChosen() || 'CCHS') : null;
 
   // ---------- Chữ hoa tiếng Việt (kể cả khi người dùng dán/gõ chữ thường) ----------
   function toVNUpper(s) {
@@ -369,6 +428,8 @@
       return;
     }
     const dateLabel = dateInput.value || todayLabel();
+    const buildDeptTitle = sheetDeptApi ? sheetDeptApi.value : 'CCHS';
+    rememberLastDept(buildDeptTitle);
     const pagesHtml = [];
     for (let p = 0; p < rows.length; p += SHEET_PAGE_SIZE) {
       const chunk = rows.slice(p, p + SHEET_PAGE_SIZE);
@@ -386,7 +447,7 @@
           '<td></td><td></td><td></td><td></td><td></td><td></td>' +
           '</tr>';
       }
-      pagesHtml.push(buildSheetPageHtml('DANH SÁCH BỆNH NHÂN KHOA HSCC', dateLabel, rowsHtml));
+      pagesHtml.push(buildSheetPageHtml('DANH SÁCH BỆNH NHÂN KHOA ' + toVNUpper(buildDeptTitle || 'CCHS'), dateLabel, rowsHtml));
     }
     sheetPrintArea.innerHTML = pagesHtml.join('');
     previewCard.hidden = true;
@@ -413,59 +474,13 @@
   const blankPrintArea = document.getElementById('wvBlankPrintArea');
 
   if (blankDeptSelect && blankPrintBtn) {
-    const DEPTS_KEY = 'bsdha_wv_blank_depts_v1';
-    const LAST_DEPT_KEY = 'bsdha_wv_blank_last_dept_v1';
     const LAST_PAGES_KEY = 'bsdha_wv_blank_last_pages_v1';
-    const ADD_NEW_VALUE = '__add_new__';
-    const DEFAULT_DEPTS = ['CCHS', 'Nội tổng hợp', 'Ngoại tổng hợp', 'Sản', 'Nhi', 'Cấp cứu', 'Hồi sức tích cực (ICU)', 'YHCT - PHCN'];
 
-    function loadDepts() {
-      try {
-        const raw = localStorage.getItem(DEPTS_KEY);
-        const arr = raw ? JSON.parse(raw) : null;
-        if (Array.isArray(arr) && arr.length) return arr;
-      } catch (e) {}
-      return DEFAULT_DEPTS.slice();
-    }
-    function saveDepts(list) {
-      try { localStorage.setItem(DEPTS_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) {}
-    }
-    function rememberDept(name) {
-      const list = loadDepts();
-      const idx = list.findIndex(d => d.toLowerCase() === name.toLowerCase());
-      if (idx !== -1) list.splice(idx, 1);
-      list.unshift(name);
-      saveDepts(list);
-    }
-
-    function renderDeptOptions(selectedValue) {
-      const list = loadDepts();
-      blankDeptSelect.innerHTML = list.map(d => '<option value="' + escapeAttr(d) + '">' + escapeHtml(d) + '</option>').join('') +
-        '<option value="' + ADD_NEW_VALUE + '">+ Thêm khoa mới...</option>';
-      if (selectedValue && list.some(d => d.toLowerCase() === selectedValue.toLowerCase())) {
-        blankDeptSelect.value = list.find(d => d.toLowerCase() === selectedValue.toLowerCase());
-      } else {
-        blankDeptSelect.selectedIndex = 0;
-      }
-    }
-
-    // Khôi phục lựa chọn lần in gần nhất (lưu trong trình duyệt — còn nguyên dù tắt/mở lại máy)
-    let lastDept = '';
-    try { lastDept = localStorage.getItem(LAST_DEPT_KEY) || ''; } catch (e) {}
-    renderDeptOptions(lastDept || 'CCHS');
+    const blankDeptApi = wireDeptSelect(blankDeptSelect, lastDeptChosen() || 'CCHS');
 
     let lastPages = '1';
     try { lastPages = localStorage.getItem(LAST_PAGES_KEY) || '1'; } catch (e) {}
     blankPagesSelect.value = lastPages === '2' ? '2' : '1';
-
-    blankDeptSelect.addEventListener('change', () => {
-      if (blankDeptSelect.value !== ADD_NEW_VALUE) return;
-      const name = (window.prompt('Nhập tên khoa mới:') || '').trim();
-      if (!name) { renderDeptOptions(lastDept || 'CCHS'); return; }
-      rememberDept(name);
-      lastDept = name;
-      renderDeptOptions(name);
-    });
 
     function buildBlankPageHtml(deptTitle, startNum, count) {
       let rows = '';
@@ -477,13 +492,15 @@
     }
 
     blankPrintBtn.addEventListener('click', () => {
-      if (blankDeptSelect.value === ADD_NEW_VALUE) return; // đang mở prompt thêm khoa, chưa có gì để in
-      const deptTitle = blankDeptSelect.value || 'CCHS';
+      if (blankDeptSelect.value === DEPT_ADD_NEW_VALUE) return; // đang mở prompt thêm khoa, chưa có gì để in
+      const deptTitle = blankDeptApi.value || 'CCHS';
       const pages = blankPagesSelect.value === '2' ? '2' : '1';
 
-      try { localStorage.setItem(LAST_DEPT_KEY, deptTitle); } catch (e) {}
+      // Khoa vừa in ở bảng trắng cũng được nhớ chung cho ô "Tiêu đề khoa"
+      // ở bảng dán danh sách, và ngược lại.
+      rememberLastDept(deptTitle);
+      if (sheetDeptApi) sheetDeptApi.render(deptTitle);
       try { localStorage.setItem(LAST_PAGES_KEY, pages); } catch (e) {}
-      lastDept = deptTitle;
       lastPages = pages;
 
       let html;
