@@ -36,7 +36,7 @@
   const DEPTS_KEY = 'bsdha_wv_blank_depts_v1';
   const LAST_DEPT_KEY = 'bsdha_wv_blank_last_dept_v1';
   const DEPT_ADD_NEW_VALUE = '__add_new__';
-  const DEFAULT_DEPTS = ['CCHS', 'Nội tổng hợp', 'Ngoại tổng hợp', 'Sản', 'Nhi', 'Cấp cứu', 'Hồi sức tích cực (ICU)', 'YHCT - PHCN'];
+  const DEFAULT_DEPTS = ['CCHS', 'Nội tổng hợp', 'Ngoại tổng hợp', 'Sản', 'Nhi', 'Nội - Nhi - Nhiễm', 'Hồi sức tích cực (ICU)', 'YHCT - PHCN'];
 
   function loadDepts() {
     try {
