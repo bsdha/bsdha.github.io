@@ -19,6 +19,32 @@
 
   if (!pasteArea) return; // trang chưa được mở / phần tử chưa tồn tại
 
+  // ---------- Ẩn/hiện "Ví dụ:" (overlay giả placeholder, có thể hover từng chữ) ----------
+  // Dùng div overlay thay cho placeholder gốc vì placeholder thật của trình
+  // duyệt không cho phép tô màu/hover từng chữ riêng lẻ bên trong.
+  const exampleOverlay = document.getElementById('wvExampleOverlay');
+  if (exampleOverlay) {
+    const wrap = pasteArea.closest('.wv-textarea-wrap') || exampleOverlay.parentElement;
+    function syncExampleOverlay() {
+      wrap.classList.toggle('wv-has-value', pasteArea.value.length > 0);
+    }
+    syncExampleOverlay();
+    pasteArea.addEventListener('input', syncExampleOverlay);
+
+    // Tự động chạy hiệu ứng lần lượt qua từng chữ (không cần rê chuột) —
+    // dừng khi ô đã có nội dung (overlay đang ẩn) để đỡ tốn tài nguyên.
+    const funWords = Array.from(exampleOverlay.querySelectorAll('.wv-fun-word'));
+    if (funWords.length) {
+      let idx = 0;
+      setInterval(() => {
+        if (wrap.classList.contains('wv-has-value')) return;
+        funWords.forEach(el => el.classList.remove('wv-fun-active'));
+        funWords[idx].classList.add('wv-fun-active');
+        idx = (idx + 1) % funWords.length;
+      }, 1200);
+    }
+  }
+
   function setStatus(msg, isError) {
     statusEl.textContent = msg || '';
     statusEl.classList.toggle('wv-error', !!isError);
@@ -336,6 +362,7 @@
         return;
       }
       pasteArea.value = text;
+      pasteArea.dispatchEvent(new Event('input'));
       const rows = parseListText(text);
       if (!rows.length) {
         setStatus('Đọc được file nhưng không nhận ra tên/năm sinh nào. Bạn có thể sửa trực tiếp trong ô dán ở trên rồi bấm "Phân tích danh sách".', true);
