@@ -151,6 +151,31 @@
   // Các nhãn trạng thái / cột không phải tên hay xuất hiện khi dán nguyên bảng
   // từ danh sách khám bệnh (HIS): "17", "Chờ thực hiện", "[TT] Hoàn thành"...
   const STATUS_CELL_RE = /^(\[?TT\]?|CHỜ(\s+\S+)*|HOÀN\s*THÀNH|THỰC\s*HIỆN|KẾT\s*QUẢ)$/i;
+  // Cột "Giới tính" (Nam/Nữ) hay đứng ngay trước cột Ngày sinh trong các
+  // báo cáo xuất từ HIS (PDF/Excel danh sách nội trú) — không phải tên.
+  const GENDER_CELL_RE = /^(NAM|N[ỮU])$/i;
+  // Một số báo cáo (PDF) chỉ in "Năm sinh" (4 chữ số) thay vì ngày/tháng/năm
+  // đầy đủ — vẫn cần coi đây là ranh giới cột để tách đúng tên.
+  const YEAR_ONLY_CELL_RE = /^(19[0-9]{2}|20[0-2][0-9])$/;
+  // Các từ tiêu đề cột hay lọt vào khi dòng tiêu đề bảng/PDF bị đọc lệch cột
+  // (VD mỗi từ tiêu đề rơi vào một dòng riêng khi đọc PDF nhiều cột).
+  const HEADER_NOISE_WORDS = ['stt', 'họ tên', 'giới tính', 'năm sinh', 'ngày sinh', 'địa chỉ',
+    'số thẻ', 'bảo hiểm', 'y tế', 'mã', 'bệnh án', 'khoa', 'phòng', 'giường', 'số',
+    'ngày vào', 'ngày vào khoa', 'nam nữ', 'nam', 'nữ', 'chẩn đoán'];
+
+  // Loại các dòng "nhiễu" không phải tên người: dòng tiêu đề bảng, địa chỉ
+  // bệnh viện, số điện thoại/fax, tiêu đề cột PDF bị tách lẻ từng chữ...
+  // — những dòng này thường có số/dấu ':' hoặc quá nhiều từ so với một họ tên.
+  function isLikelyNoiseLine(name) {
+    const n = String(name || '').trim();
+    if (!n) return true;
+    if (/\d/.test(n)) return true; // có số (địa chỉ, SĐT, ngày tháng còn sót...) -> không phải tên
+    if (/[:;@#]/.test(n)) return true;
+    if (HEADER_NOISE_WORDS.includes(n.toLowerCase())) return true;
+    const words = n.split(/\s+/).filter(Boolean);
+    if (words.length > 5) return true; // họ tên người Việt hiếm khi quá 5 từ
+    return false;
+  }
 
   // Bỏ mã hồ sơ kiểu "[26NT00121]" ở đầu ô tên, và ghi chú kiểu
   // "Ghi chú: Sốt n2" bác sĩ/điều dưỡng gõ thêm ở cuối tên trên HIS —
@@ -166,25 +191,34 @@
   // nhiều khoảng trắng liên tiếp (STT | Trạng thái | Họ tên | Ngày sinh
   // dd/mm/yyyy | Số thẻ BHYT | Chẩn đoán | Giới tính | Địa chỉ...; hoặc
   // PID | [Mã HS] Họ tên | Ngày sinh | Số thẻ BHYT | ... như danh sách
-  // "Quản lý nội trú"). Cách này xác định đúng cột "Họ & tên" thay vì chỉ
-  // dò năm sinh trong cả dòng, nên không bị lẫn STT/PID/trạng thái/mã thẻ
-  // hay ghi chú thêm vào tên.
+  // "Quản lý nội trú"; hoặc STT | Mã LK | Mã BN | Họ tên | Giới tính |
+  // Ngày sinh | ... như file Excel/PDF "Danh sách bệnh nhân nội trú").
+  // Cách này xác định đúng cột "Họ & tên" thay vì chỉ dò năm sinh trong cả
+  // dòng, nên không bị lẫn STT/PID/mã liên kết/giới tính/mã thẻ vào tên.
   function parseTableRow(line) {
     const cells = line.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== '');
     if (cells.length < 2) return null;
-    const dateIdx = cells.findIndex(c => FULL_DATE_RE.test(c));
-    if (dateIdx <= 0) return null;
-    const dm = cells[dateIdx].match(FULL_DATE_RE);
-    for (let i = dateIdx - 1; i >= 0; i--) {
+    let idx = cells.findIndex(c => FULL_DATE_RE.test(c));
+    let year;
+    if (idx > 0) {
+      year = cells[idx].match(FULL_DATE_RE)[3];
+    } else {
+      // Không có ngày/tháng đầy đủ -> thử tìm cột chỉ ghi Năm sinh (4 chữ số)
+      idx = cells.findIndex(c => YEAR_ONLY_CELL_RE.test(c));
+      if (idx <= 0) return null;
+      year = cells[idx];
+    }
+    for (let i = idx - 1; i >= 0; i--) {
       const c = cells[i];
-      if (/^\d+$/.test(c)) continue; // STT / PID
+      if (/^\d+$/.test(c)) continue; // STT / PID / Mã BN (toàn số)
       if (STATUS_CELL_RE.test(c)) continue; // nhãn trạng thái
+      if (GENDER_CELL_RE.test(c)) continue; // cột Giới tính (Nam/Nữ)
       if (/[A-Za-zÀ-ỹ]/.test(c)) {
         const name = cleanNameCell(c);
-        if (!name) break;
-        return { name: toVNUpper(name), year: dm[3] };
+        if (!name || isLikelyNoiseLine(name)) break;
+        return { name: toVNUpper(name), year };
       }
-      break; // ô không có chữ cái và không phải STT/trạng thái -> dừng, không đoán bừa
+      break; // ô không có chữ cái và không phải STT/trạng thái/giới tính -> dừng, không đoán bừa
     }
     return null;
   }
@@ -217,8 +251,9 @@
       } else {
         name = line.trim();
       }
-      // Bỏ hẳn các dòng không còn chữ cái nào (VD dòng chỉ có số phòng...)
+      // Bỏ các dòng nhiễu: không còn chữ cái, hoặc là tiêu đề/địa chỉ/SĐT...
       if (!/[A-Za-zÀ-ỹ]/.test(name)) return;
+      if (isLikelyNoiseLine(name)) return;
       rows.push({ name: toVNUpper(name), year });
     });
     return rows;
@@ -383,10 +418,15 @@
       reader.onload = () => {
         try {
           const data = new Uint8Array(reader.result);
-          const wb = XLSX.read(data, { type: 'array' });
+          const wb = XLSX.read(data, { type: 'array', cellDates: true });
           const sheet = wb.Sheets[wb.SheetNames[0]];
-          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-          const lines = rows.map(r => (r || []).map(c => (c === undefined || c === null) ? '' : String(c)).join(' ').trim());
+          // raw:false để Excel tự format ngày tháng thành chuỗi dd/mm/yyyy
+          // (giống hiển thị trên file) thay vì trả về số serial ngày của Excel.
+          const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, dateNF: 'dd/mm/yyyy' });
+          // Nối các ô bằng Tab (không phải khoảng trắng) để giữ đúng ranh giới
+          // cột — nhờ đó bước phân tích ở trên (parseTableRow) xác định đúng
+          // cột "Họ tên" / "Ngày sinh" thay vì gộp lẫn STT, Mã LK, Mã BN...
+          const lines = rows.map(r => (r || []).map(c => (c === undefined || c === null) ? '' : String(c)).join('\t').trim());
           resolve(lines.join('\n'));
         } catch (e) { reject(e); }
       };
@@ -421,17 +461,42 @@
           for (let p = 1; p <= doc.numPages; p++) {
             const page = await doc.getPage(p);
             const content = await page.getTextContent();
-            let lastY = null, line = '';
+
+            // Gom các mảnh chữ (text item) cùng hàng (Y gần nhau) lại thành
+            // một dòng, và chèn dấu Tab vào chỗ có khoảng cách ngang lớn
+            // (ranh giới cột trong bảng) — nhờ đó bước phân tích ở trên
+            // (parseTableRow) tách đúng cột "Họ tên" / "Ngày sinh" thay vì
+            // dính chung STT, mã BN, giới tính... như văn bản thuần trước đây.
+            const COLUMN_GAP_PT = 8; // khoảng trắng lớn hơn mức này giữa 2 chữ -> coi là ranh giới cột
+            let lastY = null;
+            let lineItems = [];
+            const lines = [];
+            function flushLine() {
+              if (!lineItems.length) return;
+              lineItems.sort((a, b) => a.x - b.x);
+              let out = '';
+              let prevRight = null;
+              lineItems.forEach(it => {
+                if (prevRight !== null) {
+                  const gap = it.x - prevRight;
+                  out += gap > COLUMN_GAP_PT ? '\t' : (/\s$/.test(out) ? '' : ' ');
+                }
+                out += it.str;
+                prevRight = it.x + (it.width || 0);
+              });
+              lines.push(out.trim());
+              lineItems = [];
+            }
             content.items.forEach(item => {
+              if (!item.str || !item.str.trim()) return; // bỏ khoảng trắng rời rạc pdf.js hay tách riêng
               const y = Math.round(item.transform[5]);
-              if (lastY !== null && Math.abs(y - lastY) > 3) {
-                fullText += line.trim() + '\n';
-                line = '';
-              }
-              line += item.str + ' ';
+              const x = item.transform[4];
+              if (lastY !== null && Math.abs(y - lastY) > 3) flushLine();
+              lineItems.push({ str: item.str, x, width: item.width || 0 });
               lastY = y;
             });
-            fullText += line.trim() + '\n';
+            flushLine();
+            fullText += lines.join('\n') + '\n';
           }
           resolve(fullText);
         } catch (e) { reject(e); }
