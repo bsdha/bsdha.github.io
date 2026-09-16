@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HIS Bình Dương - Tiện ích Helix
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.6
+// @version      1.15
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
