@@ -62,12 +62,44 @@
   }
 
   // ---------- Phân tích văn bản: mỗi dòng cố nhận ra "Họ & tên" + "Năm sinh" ----------
+  const FULL_DATE_RE = /\b(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19[0-9]{2}|20[0-2][0-9])\b/;
+  // Các nhãn trạng thái / cột không phải tên hay xuất hiện khi dán nguyên bảng
+  // từ danh sách khám bệnh (HIS): "17", "Chờ thực hiện", "[TT] Hoàn thành"...
+  const STATUS_CELL_RE = /^(\[?TT\]?|CHỜ(\s+\S+)*|HOÀN\s*THÀNH|THỰC\s*HIỆN|KẾT\s*QUẢ)$/i;
+
+  // Cố nhận ra dòng dạng bảng dán từ HIS: các cột phân tách bằng Tab hoặc
+  // nhiều khoảng trắng liên tiếp (STT | Trạng thái | Họ tên | Ngày sinh
+  // dd/mm/yyyy | Số thẻ BHYT | Chẩn đoán | Giới tính | Địa chỉ...). Cách này
+  // xác định đúng cột "Họ & tên" thay vì chỉ dò năm sinh trong cả dòng, nên
+  // không bị lẫn STT/trạng thái/mã thẻ vào tên.
+  function parseTableRow(line) {
+    const cells = line.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== '');
+    if (cells.length < 2) return null;
+    const dateIdx = cells.findIndex(c => FULL_DATE_RE.test(c));
+    if (dateIdx <= 0) return null;
+    const dm = cells[dateIdx].match(FULL_DATE_RE);
+    for (let i = dateIdx - 1; i >= 0; i--) {
+      const c = cells[i];
+      if (/^\d+$/.test(c)) continue; // STT
+      if (STATUS_CELL_RE.test(c)) continue; // nhãn trạng thái
+      if (/[A-Za-zÀ-ỹ]/.test(c)) return { name: toVNUpper(c), year: dm[3] };
+      break; // ô không có chữ cái và không phải STT/trạng thái -> dừng, không đoán bừa
+    }
+    return null;
+  }
+
   function parseListText(text) {
     const lines = String(text || '').split(/\r?\n/);
     const rows = [];
     const yearRe = /(19[0-9]{2}|20[0-2][0-9])/;
 
     lines.forEach(raw => {
+      if (!raw.trim()) return;
+
+      // Ưu tiên nhận diện theo cột (xem parseTableRow ở trên)
+      const tableRow = parseTableRow(raw);
+      if (tableRow) { rows.push(tableRow); return; }
+
       let line = raw.trim();
       if (!line) return;
       // Bỏ số thứ tự / gạch đầu dòng: "1.", "1)", "-", "•"...
