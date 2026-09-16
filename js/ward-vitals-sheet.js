@@ -75,6 +75,26 @@
   function saveDepts(list) {
     try { localStorage.setItem(DEPTS_KEY, JSON.stringify(list.slice(0, 40))); } catch (e) {}
   }
+  // Đổi tên khoa cũ đã lưu trong máy người dùng sang tên mới, để những máy
+  // đã dùng công cụ từ trước cũng tự cập nhật mà không cần xoá dữ liệu trình duyệt.
+  const RENAMED_DEPTS = { 'cấp cứu': 'Nội - Nhi - Nhiễm' };
+  (function migrateRenamedDepts() {
+    const list = loadDepts();
+    let changed = false;
+    const newList = list.map(d => {
+      const renamed = RENAMED_DEPTS[String(d).trim().toLowerCase()];
+      if (renamed && renamed !== d) { changed = true; return renamed; }
+      return d;
+    });
+    if (changed) {
+      saveDepts(newList);
+      try {
+        const last = localStorage.getItem(LAST_DEPT_KEY);
+        const renamedLast = last && RENAMED_DEPTS[last.trim().toLowerCase()];
+        if (renamedLast) localStorage.setItem(LAST_DEPT_KEY, renamedLast);
+      } catch (e) {}
+    }
+  })();
   function rememberDept(name) {
     const list = loadDepts();
     const idx = list.findIndex(d => d.toLowerCase() === name.toLowerCase());
