@@ -67,11 +67,23 @@
   // từ danh sách khám bệnh (HIS): "17", "Chờ thực hiện", "[TT] Hoàn thành"...
   const STATUS_CELL_RE = /^(\[?TT\]?|CHỜ(\s+\S+)*|HOÀN\s*THÀNH|THỰC\s*HIỆN|KẾT\s*QUẢ)$/i;
 
+  // Bỏ mã hồ sơ kiểu "[26NT00121]" ở đầu ô tên, và ghi chú kiểu
+  // "Ghi chú: Sốt n2" bác sĩ/điều dưỡng gõ thêm ở cuối tên trên HIS —
+  // đây không phải là một phần họ & tên.
+  function cleanNameCell(raw) {
+    let n = String(raw || '');
+    n = n.replace(/^\[[^\]]*\]\s*/, '');
+    n = n.replace(/\s*ghi\s*ch[uú]\s*:.*$/i, '');
+    return n.trim();
+  }
+
   // Cố nhận ra dòng dạng bảng dán từ HIS: các cột phân tách bằng Tab hoặc
   // nhiều khoảng trắng liên tiếp (STT | Trạng thái | Họ tên | Ngày sinh
-  // dd/mm/yyyy | Số thẻ BHYT | Chẩn đoán | Giới tính | Địa chỉ...). Cách này
-  // xác định đúng cột "Họ & tên" thay vì chỉ dò năm sinh trong cả dòng, nên
-  // không bị lẫn STT/trạng thái/mã thẻ vào tên.
+  // dd/mm/yyyy | Số thẻ BHYT | Chẩn đoán | Giới tính | Địa chỉ...; hoặc
+  // PID | [Mã HS] Họ tên | Ngày sinh | Số thẻ BHYT | ... như danh sách
+  // "Quản lý nội trú"). Cách này xác định đúng cột "Họ & tên" thay vì chỉ
+  // dò năm sinh trong cả dòng, nên không bị lẫn STT/PID/trạng thái/mã thẻ
+  // hay ghi chú thêm vào tên.
   function parseTableRow(line) {
     const cells = line.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== '');
     if (cells.length < 2) return null;
@@ -80,9 +92,13 @@
     const dm = cells[dateIdx].match(FULL_DATE_RE);
     for (let i = dateIdx - 1; i >= 0; i--) {
       const c = cells[i];
-      if (/^\d+$/.test(c)) continue; // STT
+      if (/^\d+$/.test(c)) continue; // STT / PID
       if (STATUS_CELL_RE.test(c)) continue; // nhãn trạng thái
-      if (/[A-Za-zÀ-ỹ]/.test(c)) return { name: toVNUpper(c), year: dm[3] };
+      if (/[A-Za-zÀ-ỹ]/.test(c)) {
+        const name = cleanNameCell(c);
+        if (!name) break;
+        return { name: toVNUpper(name), year: dm[3] };
+      }
       break; // ô không có chữ cái và không phải STT/trạng thái -> dừng, không đoán bừa
     }
     return null;
