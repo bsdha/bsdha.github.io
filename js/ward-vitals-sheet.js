@@ -41,7 +41,7 @@
         funWords.forEach(el => el.classList.remove('wv-fun-active'));
         funWords[idx].classList.add('wv-fun-active');
         idx = (idx + 1) % funWords.length;
-      }, 1200);
+      }, 1000);
     }
   }
 
