@@ -3998,18 +3998,30 @@ input[type="range"]#csVasSlider { accent-color: var(--cs-teal, var(--blue)); }
 }
 .wv-textarea-wrap.wv-has-value .wv-example-overlay { display: none; }
 .wv-fun-word {
-  position: relative; pointer-events: auto; cursor: help;
-  border-bottom: 1px dashed currentColor; transition: color .15s ease;
+  position: relative; display: inline-block; color: inherit;
 }
-.wv-fun-word:hover, .wv-fun-word.wv-fun-active { color: var(--blue, #2563eb); }
-.wv-fun-word::after {
-  content: attr(data-tip); position: absolute; left: 50%; bottom: 125%;
-  transform: translateX(-50%) translateY(4px);
-  background: #111827; color: #fff; padding: 4px 9px; border-radius: 6px;
-  font-size: 11.5px; white-space: nowrap; opacity: 0; z-index: 5;
-  pointer-events: none; transition: opacity .15s ease, transform .15s ease;
+.wv-fun-word.wv-fun-active {
+  animation: wvFunPop .9s ease;
+  color: var(--blue, #2563eb);
 }
-.wv-fun-word:hover::after, .wv-fun-word.wv-fun-active::after { opacity: 1; transform: translateX(-50%) translateY(0); }
+@keyframes wvFunPop {
+  0%   { transform: scale(1);    color: inherit; }
+  30%  { transform: scale(1.7);  color: var(--blue, #2563eb); text-shadow: 0 0 10px rgba(37,99,235,.45); }
+  60%  { transform: scale(1.15); }
+  100% { transform: scale(1);    color: inherit; }
+}
+.wv-fun-word.wv-fun-active::before,
+.wv-fun-word.wv-fun-active::after {
+  content: '✨'; position: absolute; top: 50%; left: 50%; font-size: 12px;
+  opacity: 0; animation: wvFunSpark .9s ease forwards; pointer-events: none;
+}
+.wv-fun-word.wv-fun-active::before { animation-delay: .05s; --tx: -16px; --ty: -14px; }
+.wv-fun-word.wv-fun-active::after  { animation-delay: .1s;  --tx: 16px;  --ty: -14px; }
+@keyframes wvFunSpark {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(.3); }
+  35%  { opacity: 1; transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(1); }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--tx) * 1.6), calc(-50% + var(--ty) * 1.6)) scale(.4); }
+}
 
 .wv-actions-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
 .wv-or { font-size: 12.5px; color: var(--muted, #999); }
