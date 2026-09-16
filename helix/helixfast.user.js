@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HIS Bình Dương - Tiện ích Helix
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.6
+// @version      1.15
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,7 +11,16 @@
 // ==/UserScript==
 
 /* ==ChangeLog==
-1.6 | 2026-09-15 | Thêm "Tạo bệnh sử nâng cao": popup kéo-thả cạnh ô Triệu chứng với thư viện 17 lý do vào viện, mỗi lý do có bộ trường khai thác riêng; script chỉ ghép câu từ dữ liệu đã chọn (không tự bịa triệu chứng/xử trí), có nút tạo lại để đổi cách diễn đạt và chèn thẳng vào ô Triệu chứng.
+1.15 | 2026-09-15 | Sửa lỗi không bỏ tích được checkbox "Đã hoàn thành": trước đây script tự tích lại checkbox này mỗi khi DOM trang thay đổi (xảy ra liên tục), khiến người dùng vừa bỏ tích là bị tích lại ngay. Nay chỉ tự động tích 1 lần duy nhất khi vừa vào trang/tải lại danh sách; sau đó không còn can thiệp nữa, người dùng tự tích/bỏ tích thoải mái.
+1.14 | 2026-09-15 | Khi chọn từ 2 "Lý do vào viện" trở lên: gộp toàn bộ "Kèm theo" của các lý do vào 1 câu duy nhất (không lặp lại theo từng lý do), và chỉ còn 1 câu "Bệnh nhân đến khám tại Bệnh viện Đa khoa Bình Dương - Cơ sở 2." ở cuối cùng thay vì lặp lại cho mỗi lý do. Nội dung sau khi "Chèn vào bệnh sử" vẫn là ô nhập liệu bình thường của form, gõ sửa lại bình thường được.
+1.13 | 2026-09-15 | Popup "Tạo bệnh sử nâng cao": cho phép chọn tối đa 2 "Lý do vào viện" cùng lúc (mỗi lý do hiện khối trường riêng, câu bệnh sử được ghép từ các lý do đã chọn); đổi "Kèm theo" từ chọn 1 sang chọn nhiều (checkbox) vì thực tế có thể kèm nhiều triệu chứng (nôn ói, tiêu chảy, chóng mặt...); chọn "không kèm triệu chứng khác" sẽ tự loại trừ các lựa chọn kèm theo khác và ngược lại.
+1.12 | 2026-09-15 | Bỏ hoàn toàn kiểm tra DHST (dấu hiệu sinh tồn) khi nhấp đôi vào tên bệnh nhân — không còn hiện thông báo "Chưa điền đủ DHST..."; chỉ còn tự động focus ô Triệu chứng.
+1.11 | 2026-09-15 | Tự động tích checkbox "Đã hoàn thành" (danh sách thăm khám ngoại trú) ngay sau khi tải trang, nếu chưa được tích sẵn; bỏ qua nếu đang có dropdown mở để tránh xung đột.
+1.10 | 2026-09-15 | Bỏ tự động bấm nút "Bắt đầu khám" khi nhấp đôi vào tên bệnh nhân — vẫn giữ kiểm tra sinh hiệu (cảnh báo nếu thiếu DHST) và tự focus ô Triệu chứng, nhưng người dùng tự bấm "Bắt đầu khám".
+1.9 | 2026-09-15 | Sửa lỗi nghiêm trọng: danh sách gợi ý thuốc (ô "Thuốc") tự đóng ngay sau mỗi ký tự gõ, không chọn được thuốc — do tính năng tự sắp xếp lại hàng "Số ngày/Cách dùng" thao tác DOM trong lúc dropdown gợi ý đang mở, khiến Angular đóng dropdown. Nay hàm này luôn kiểm tra và bỏ qua hoàn toàn nếu đang có bất kỳ dropdown nào mở (tìm thuốc, chọn kho, ICD...).
+1.8 | 2026-09-15 | Sửa lỗi tự động chọn "100" bản ghi/trang bị kẹt (không xổ được dropdown): thêm cờ chống gọi chồng khi MutationObserver toàn trang kích hoạt lại hàm trong lúc panel đang mở/đang xử lý; không bấm lại trigger nếu panel đã đang mở; sửa lệnh đóng dropdown khi hết thời gian chờ (dispatch Escape lên document thay vì lên phần tử dropdown, đúng nơi PrimeNG lắng nghe).
+1.7 | 2026-09-15 | Sửa thứ tự hàng đơn thuốc: dời cả nhãn "Cách dùng" vào đúng sau ô Số ngày (thay vì để nhãn đứng đầu hàng). Thêm tự động chọn "100" bản ghi/trang trong danh sách bệnh nhân sau khi tải trang. Sửa cảnh báo DHST sai do "Nhịp thở" load chậm hơn các trường khác — thay logic chờ-đủ bằng logic chờ-ổn-định (không đổi trong 600ms) trước khi kiểm tra.
+1.6 | 2026-09-15 | Thêm "Tạo bệnh sử nâng cao": popup kéo-thả cạnh ô Triệu chứng với thư viện 17 lý do vào viện, mỗi lý do có bộ trường khai thác riêng; script chỉ ghép câu từ dữ liệu đã chọn (không tự bịa triệu chứng/xử trí), có nút tạo lại để đổi cách diễn đạt và chèn thẳng vào ô Triệu chứng. | Bỏ nút "🔁 Đổi cách diễn đạt bệnh sử" (không còn cần thiết); popup "Tạo bệnh sử nâng cao" giờ tự đóng khi bấm ra ngoài, không chỉ khi bấm nút "✕"; sửa lỗi danh sách ICD chớp nháy rồi biến mất khi bấm vào ô Chẩn đoán ICD trống — không còn hiện tượng nháy nữa. | Tự viết hoa ký tự đầu tiên của "Lý do khám"; danh sách bệnh nhân hiển thị gọn hơn — mỗi bệnh nhân 1 hàng, cột dài (Chẩn đoán, Địa chỉ...) cắt bớt bằng "...", rê chuột để xem đầy đủ; bỏ thanh cuộn riêng của vùng danh sách để hiển thị đủ luôn (kể cả 50 bệnh nhân), cuộn bằng thanh cuộn của trang như bình thường. | Đổi tên "S/Tr/C/T" thành "Cách dùng" trong đơn thuốc; dời ô "Số ngày" ra trước ô "Sáng" cùng hàng — Enter vẫn nhảy Tên thuốc → Số ngày → Tổng S.Lg như cũ, còn Tab từ ô Số ngày đi tiếp theo đúng thứ tự Sáng/Trưa/Chiều/Tối. | Danh sách bệnh nhân hiển thị khít hơn nữa (giảm thêm khoảng cách dòng); sửa lại cách "dời ô Số ngày" — bỏ cách canh bằng CSS (chỉ dời được ô nhập, không dời được nhãn chữ), chuyển sang tự kiểm tra và sửa vị trí liên tục mỗi 0.3 giây nên luôn đúng chỗ ngay khi vào thẻ Đơn thuốc, không cần thao tác gì thêm.
 1.5 | 2026-09-14 | Bổ sung cơ chế tự động cập nhật qua Tampermonkey (script tự kiểm tra và báo/cài bản mới, không cần tải lại thủ công).
 1.4 |  | Hoàn thiện bộ tự động hoá thao tác nhập bệnh án trên Helix: đồng bộ Triệu chứng ↔ Diễn biến, mở rộng ô tìm ICD-10, cảnh báo trùng mã ICD, kiểm tra đủ sinh hiệu trước khi bắt đầu khám, tự bấm "Bắt đầu khám" và focus ô triệu chứng, tự chọn sẵn thuốc đầu tiên trong danh sách nhà thuốc, nút xử lý nhanh trong ô y lệnh/điều trị, điều hướng Tab thông minh, tự bấm nút "Nạp", tự chạy các bước trong hộp thoại lưu.
 ==/ChangeLog== */
@@ -41,7 +50,6 @@
   let boundSymptomEl = null;
 
   // ---- Bệnh sử nhanh từ nội dung gõ tay ở "Lý do khám" ----
-  // Chỉ bọc câu quanh đúng nội dung người dùng đã gõ, không tự thêm chi tiết y khoa nào.
   let hsQuickVariantIndex = 0;
   let hsQuickLastText = '';
 
@@ -53,9 +61,6 @@
     ];
   }
 
-  // Khi ô Diễn biến đang chứa 1 bệnh sử đã được tạo (nhanh hoặc nâng cao), khoá
-  // đồng bộ Triệu chứng → Diễn biến lại để gõ thêm ở Triệu chứng không ghi đè mất
-  // câu bệnh sử đó. Khoá tự mở lại khi ô Diễn biến trống trở lại.
   let hsProgressionLocked = false;
 
   function hsApplyQuickVariant(text, index) {
@@ -91,12 +96,23 @@
     inputEl.dispatchEvent(escEvent);
   }
 
+  function suppressIcdFlicker(inputEl) {
+    if (!inputEl || inputEl.value.trim() !== '') return;
+    document.body.classList.add('icd-flicker-guard');
+    setTimeout(() => {
+      closeIcdDropdownIfEmpty(inputEl);
+      setTimeout(() => {
+        document.body.classList.remove('icd-flicker-guard');
+      }, 120);
+    }, 0);
+  }
+
   function focusIcdInput() {
     const tryFocus = (attemptsLeft) => {
       const icdInput = document.querySelector(ICD_INPUT_SELECTOR);
       if (icdInput) {
         icdInput.focus();
-        setTimeout(() => closeIcdDropdownIfEmpty(icdInput), 0);
+        suppressIcdFlicker(icdInput);
         return;
       }
       if (attemptsLeft > 0) {
@@ -107,7 +123,27 @@
   }
 
   function onSymptomInput(e) {
+    capitalizeFirstChar(e.target);
     syncToProgression(e.target);
+  }
+
+  function capitalizeFirstChar(el) {
+    const val = el.value;
+    const match = val.match(/^(\s*)(\S)/);
+    if (!match) return;
+    const idx = match[1].length;
+    const ch = match[2];
+    const upperCh = ch.toLocaleUpperCase('vi-VN');
+    if (ch === upperCh) return;
+    const selStart = el.selectionStart;
+    const selEnd = el.selectionEnd;
+    const newVal = val.slice(0, idx) + upperCh + val.slice(idx + 1);
+    setNativeValue(el, newVal);
+    try {
+      el.setSelectionRange(selStart, selEnd);
+    } catch (err) {
+      /* ignore */
+    }
   }
 
   function onSymptomKeydown(e) {
@@ -150,9 +186,23 @@
     }
   }
 
+  function updateTableCellOverflowTitle(td) {
+    if (!td) return;
+    const text = td.textContent.replace(/\s+/g, ' ').trim();
+    if (td.scrollWidth > td.clientWidth + 1) {
+      if (td.title !== text) td.title = text;
+    } else if (td.title) {
+      td.removeAttribute('title');
+    }
+  }
+
   document.addEventListener(
     'mouseover',
-    (e) => updateOverflowTitle(e.target),
+    (e) => {
+      updateOverflowTitle(e.target);
+      const td = e.target.closest && e.target.closest('.p-datatable-tbody td');
+      if (td) updateTableCellOverflowTitle(td);
+    },
     true
   );
   document.addEventListener(
@@ -238,6 +288,26 @@
       .icd-search-container.icd-row-focused .ng-value {
         font-weight: 800 !important;
         color: #0b3d91 !important;
+      }
+      body.icd-flicker-guard .ng-dropdown-panel {
+        visibility: hidden !important;
+      }
+
+      .p-datatable-tbody > tr > td {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        padding-top: 2px !important;
+        padding-bottom: 2px !important;
+        line-height: 1.15 !important;
+      }
+      .p-datatable-thead > tr > th {
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
+      }
+      .p-datatable-wrapper {
+        max-height: none !important;
+        overflow: visible !important;
       }
 
       .ui.dropdown .menu .item.selected {
@@ -362,7 +432,7 @@
     'focus',
     (e) => {
       if (e.target && e.target.matches && e.target.matches(ICD_INPUT_SELECTOR)) {
-        setTimeout(() => closeIcdDropdownIfEmpty(e.target), 0);
+        suppressIcdFlicker(e.target);
       }
     },
     true
@@ -374,7 +444,7 @@
       const container = e.target.closest && e.target.closest(ICD_CONTAINER_SELECTOR);
       if (!container) return;
       const input = container.querySelector(ICD_INPUT_SELECTOR);
-      if (input) setTimeout(() => closeIcdDropdownIfEmpty(input), 0);
+      if (input) suppressIcdFlicker(input);
     },
     true
   );
@@ -423,7 +493,7 @@
         if (idx + 1 < icdInputs.length) {
           const nextInput = icdInputs[idx + 1];
           nextInput.focus();
-          setTimeout(() => closeIcdDropdownIfEmpty(nextInput), 0);
+          suppressIcdFlicker(nextInput);
         } else {
           const addBtn = findAddIcdRowButton();
           if (addBtn) {
@@ -431,7 +501,7 @@
             addBtn.click();
             waitForNewIcdInput(countBefore, (newInput) => {
               newInput.focus();
-              setTimeout(() => closeIcdDropdownIfEmpty(newInput), 0);
+              suppressIcdFlicker(newInput);
             });
           }
         }
@@ -528,9 +598,7 @@
   });
   dropdownWatchObserver.observe(document.body, { childList: true, subtree: true });
 
-  const START_EXAM_BUTTON_SELECTOR = 'button[data-sk="control.T"]';
   const START_EXAM_MIN_DELAY_MS = 800;
-  const VITALS_WAIT_TIMEOUT_MS = 3000;
 
   function focusSymptomFieldOnly(attemptsLeft) {
     if (attemptsLeft === undefined) attemptsLeft = 30;
@@ -544,81 +612,10 @@
     }
   }
 
-  const REQUIRED_VITAL_LABELS = ['Huyết áp', 'Mạch', 'Cân nặng', 'Nhiệt độ', 'Nhịp thở'];
-
-  function getVitalCellText(td) {
-    if (!td) return '';
-    const control = td.querySelector('input, select, textarea');
-    if (control) return (control.value || '').replace(/\s+/g, ' ').trim();
-    return td.textContent.replace(/\s+/g, ' ').trim();
-  }
-
-  function getVitalSignsMap() {
-    const table = document.querySelector('app-vital-sign table.vital-sign');
-    const map = {};
-    if (!table) return map;
-    table.querySelectorAll('tr').forEach((tr) => {
-      const tds = Array.from(tr.children);
-      for (let i = 0; i < tds.length; i += 2) {
-        const label = getVitalCellText(tds[i]);
-        const value = getVitalCellText(tds[i + 1]);
-        if (label) map[label] = value;
-      }
-    });
-    return map;
-  }
-
-  function getMissingVitalFields() {
-    const map = getVitalSignsMap();
-    return REQUIRED_VITAL_LABELS.filter((label) => {
-      const value = map[label];
-      return !value || !/\d/.test(value);
-    });
-  }
-
-  function showVitalsWarning(missingFields) {
-    alert(
-      'Chưa điền đủ DHST (dấu hiệu sinh tồn), còn thiếu: ' +
-        missingFields.join(', ') +
-        '.\nVẫn tiến hành bấm "Bắt đầu khám", vui lòng bổ sung sau.'
-    );
-  }
-
-  function waitForVitalsLoaded(onLoaded, onTimeout, elapsed) {
-    if (elapsed === undefined) elapsed = 0;
-    const missing = getMissingVitalFields();
-    if (missing.length === 0) {
-      onLoaded();
-      return;
-    }
-    if (elapsed >= VITALS_WAIT_TIMEOUT_MS) {
-      onTimeout(missing);
-      return;
-    }
-    setTimeout(() => waitForVitalsLoaded(onLoaded, onTimeout, elapsed + 150), 150);
-  }
-
-  function clickStartExamIfPresent() {
-    const btn = document.querySelector(START_EXAM_BUTTON_SELECTOR);
-    if (btn && !btn.disabled) {
-      const label = btn.textContent.replace(/\s+/g, ' ').trim();
-      if (label === 'Bắt đầu khám') {
-        btn.click();
-        setTimeout(() => focusSymptomFieldOnly(), 500);
-        return;
-      }
-    }
-    focusSymptomFieldOnly();
-  }
-
+  // Đã bỏ tự động bấm nút "Bắt đầu khám" (v1.10) và bỏ luôn kiểm tra DHST (v1.12) —
+  // chỉ còn tự focus ô triệu chứng, người dùng tự bấm "Bắt đầu khám" khi sẵn sàng.
   function tryClickStartExamThenFocusSymptom() {
-    waitForVitalsLoaded(
-      () => clickStartExamIfPresent(),
-      (missingFields) => {
-        showVitalsWarning(missingFields);
-        clickStartExamIfPresent();
-      }
-    );
+    focusSymptomFieldOnly();
   }
 
   document.addEventListener(
@@ -741,9 +738,6 @@
   }
 
   // ===================== TẠO BỆNH SỬ NÂNG CAO =====================
-  // Thư viện lý do vào viện, mỗi lý do có bộ trường khai thác riêng.
-  // Nguyên tắc: chỉ ghép câu từ dữ liệu người dùng đã chọn — không tự
-  // suy diễn/khẳng định triệu chứng, dấu hiệu hay xử trí nào chưa được chọn.
   const HS_BLANK = '— chưa chọn —';
 
   const HS_COMMON = {
@@ -758,7 +752,6 @@
     ],
   };
 
-  // key: nhãn hiển thị + các trường đặc thù (vitri/tinhchat/lan/kemtheo)
   const HS_REASONS = {
     dau_bung: { label: 'đau bụng', vitri: ['vùng thượng vị', 'quanh rốn', 'vùng hạ vị', 'hố chậu phải', 'hố chậu trái', 'khắp bụng'], tinhchat: ['âm ỉ', 'quặn từng cơn', 'dữ dội'], lan: ['không lan', 'lan ra sau lưng', 'lan xuống hạ vị'], kemtheo: ['đầy bụng', 'buồn nôn/nôn', 'tiêu chảy', 'táo bón', 'chán ăn', 'không kèm triệu chứng khác'] },
     dau_dau: { label: 'đau đầu', vitri: ['hai bên đầu', 'nửa đầu một bên', 'vùng trán', 'vùng chẩm', 'lan tỏa toàn đầu'], tinhchat: ['âm ỉ', 'giật theo nhịp mạch', 'căng tức'], kemtheo: ['chóng mặt', 'buồn nôn/nôn', 'sợ ánh sáng/tiếng động', 'nhìn mờ', 'không kèm triệu chứng khác'] },
@@ -793,7 +786,14 @@
     return parts.filter((p) => p && p.trim()).join(' ');
   }
 
-  // Sinh câu từ dữ liệu đã chọn — bỏ qua hoàn toàn phần nào chưa chọn (không suy diễn).
+  // Nối danh sách kiểu tiếng Việt: 1 mục -> "a"; 2 mục -> "a và b"; 3+ mục -> "a, b và c".
+  function hsJoinList(items) {
+    const list = (items || []).filter((x) => x && x.trim());
+    if (list.length === 0) return '';
+    if (list.length === 1) return list[0];
+    return list.slice(0, -1).join(', ') + ' và ' + list[list.length - 1];
+  }
+
   function hsBuildSentence(reasonKey, values, variant) {
     if (reasonKey === 'khac') return values.freetext || '';
 
@@ -815,9 +815,15 @@
     const vitriClause = values.vitri ? ` ${values.vitri}` : '';
     const tinhchatClause = values.tinhchat ? `, tính chất ${values.tinhchat}` : '';
     const lanClause = values.lan ? `, ${values.lan}` : '';
-    const kemtheoClause = values.kemtheo && values.kemtheo !== 'không kèm triệu chứng khác'
-      ? ` Kèm theo ${values.kemtheo}.`
-      : (values.kemtheo === 'không kèm triệu chứng khác' ? ' Không ghi nhận triệu chứng kèm theo khác.' : '');
+    const kemtheoList = Array.isArray(values.kemtheo)
+      ? values.kemtheo.filter((x) => x && x !== 'không kèm triệu chứng khác')
+      : (values.kemtheo && values.kemtheo !== 'không kèm triệu chứng khác' ? [values.kemtheo] : []);
+    const kemtheoNone = Array.isArray(values.kemtheo)
+      ? values.kemtheo.indexOf('không kèm triệu chứng khác') !== -1
+      : values.kemtheo === 'không kèm triệu chứng khác';
+    const kemtheoClause = kemtheoList.length
+      ? ` Kèm theo ${hsJoinList(kemtheoList)}.`
+      : (kemtheoNone ? ' Không ghi nhận triệu chứng kèm theo khác.' : '');
     const mucdoClause = values.mucdo ? `, mức độ ${values.mucdo}` : '';
     const dienbienClause = values.dienbien ? ` Triệu chứng ${values.dienbien}` : '';
     const xutriClause = values.xutri ? `, bệnh nhân ${values.xutri}` : '';
@@ -845,6 +851,58 @@
     return variants[variant % variants.length].replace(/\s+/g, ' ').replace(/\s([.,])/g, '$1').trim();
   }
 
+  // Giống hsBuildSentence nhưng KHÔNG gồm "Kèm theo..." và KHÔNG gồm câu đến khám tại bệnh viện —
+  // dùng khi có từ 2 lý do vào viện trở lên, để gộp triệu chứng kèm theo và câu đến khám vào 1 chỗ duy nhất.
+  function hsBuildCore(reasonKey, values, variant) {
+    const def = HS_REASONS[reasonKey];
+    if (!def) return '';
+
+    const vitriClause = values.vitri ? ` ${values.vitri}` : '';
+    const tinhchatClause = values.tinhchat ? `, tính chất ${values.tinhchat}` : '';
+    const lanClause = values.lan ? `, ${values.lan}` : '';
+    const mucdoClause = values.mucdo ? `, mức độ ${values.mucdo}` : '';
+    const dienbienClause = values.dienbien ? ` Triệu chứng ${values.dienbien}` : '';
+    const xutriClause = values.xutri ? `, bệnh nhân ${values.xutri}` : '';
+
+    const variants = [
+      hsJoin([
+        values.thoigian ? `Cách nhập viện ${values.thoigian}, bệnh nhân xuất hiện ${def.label}${vitriClause}${tinhchatClause}${mucdoClause}${lanClause}.` : `Bệnh nhân xuất hiện ${def.label}${vitriClause}${tinhchatClause}${mucdoClause}${lanClause}.`,
+        dienbienClause ? `${dienbienClause.trim()}${xutriClause ? xutriClause + '.' : '.'}` : (xutriClause ? `Bệnh nhân${xutriClause}.` : ''),
+      ]),
+      hsJoin([
+        values.thoigian ? `Khoảng ${values.thoigian} trước khi vào viện, bệnh nhân bắt đầu ${def.label}${vitriClause}${tinhchatClause}${mucdoClause}${lanClause}.` : `Bệnh nhân bắt đầu ${def.label}${vitriClause}${tinhchatClause}${mucdoClause}${lanClause}.`,
+        dienbienClause ? `Diễn tiến${dienbienClause.replace(' Triệu chứng', '')}${xutriClause ? xutriClause + '.' : '.'}` : (xutriClause ? `Bệnh nhân${xutriClause}.` : ''),
+      ]),
+      hsJoin([
+        `Bệnh nhân ${def.label}${vitriClause}${values.thoigian ? ` khoảng ${values.thoigian} nay` : ''}${tinhchatClause}${mucdoClause}${lanClause}.`,
+        dienbienClause ? `Triệu chứng${dienbienClause.replace(' Triệu chứng', '')}${xutriClause ? ', ' + values.xutri : ''}.` : (xutriClause ? `Bệnh nhân${xutriClause}.` : ''),
+      ]),
+    ];
+    return variants[variant % variants.length].replace(/\s+/g, ' ').replace(/\s([.,])/g, '$1').trim();
+  }
+
+  // Bản "tái khám" không kèm câu đến khám tại bệnh viện — dùng khi tái khám được chọn
+  // kèm theo lý do khác (để câu đến khám chỉ xuất hiện 1 lần ở cuối).
+  function hsBuildTaiKhamCore(values, variant) {
+    const benhnen = values.benhnen ? `theo dõi ${values.benhnen}` : 'theo dõi bệnh mạn tính';
+    const tinhtrang = values.tinhtrang ? `, tình trạng hiện tại ${values.tinhtrang}` : '';
+    const dapung = values.dapung ? `, ${values.dapung}` : '';
+    const variants = [
+      `Bệnh nhân đến tái khám theo lịch hẹn để ${benhnen}${tinhtrang}${dapung}, tiếp tục điều trị theo hướng dẫn trước đó.`,
+      `Bệnh nhân tái khám định kỳ, ${benhnen}${tinhtrang}${dapung}.`,
+      `Theo lịch hẹn, bệnh nhân tái khám để ${benhnen}${tinhtrang}${dapung}.`,
+    ];
+    return variants[variant % variants.length];
+  }
+
+  const HS_DEST_VARIANTS = [
+    `Bệnh nhân đến khám tại ${HS_DEST}.`,
+    `Bệnh nhân đến ${HS_DEST} để được thăm khám.`,
+    `Bệnh nhân vào viện tại ${HS_DEST}.`,
+  ];
+
+  const HS_MAX_REASONS = 2;
+
   function hsMakeSelect(id, options, withBlank) {
     const sel = document.createElement('select');
     sel.className = 'his-hs-field';
@@ -864,6 +922,78 @@
     return sel;
   }
 
+  // Nhóm checkbox cho phép chọn nhiều mục cùng lúc. Nếu exclusiveValue được chỉ định
+  // (vd. "không kèm triệu chứng khác"), chọn mục đó sẽ tự bỏ chọn các mục khác và ngược lại.
+  function hsMakeCheckboxGroup(idPrefix, options, exclusiveValue) {
+    const wrap = document.createElement('div');
+    wrap.className = 'his-hs-checkbox-group';
+    wrap.id = idPrefix;
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.gap = '3px';
+    wrap.style.background = '#262b35';
+    wrap.style.border = '1px solid #3a4150';
+    wrap.style.borderRadius = '4px';
+    wrap.style.padding = '6px';
+
+    const checkboxes = [];
+    options.forEach((opt, i) => {
+      const row = document.createElement('label');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '6px';
+      row.style.fontSize = '12px';
+      row.style.cursor = 'pointer';
+      row.style.fontWeight = 'normal';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = opt;
+      cb.id = `${idPrefix}-${i}`;
+
+      row.appendChild(cb);
+      row.appendChild(document.createTextNode(opt));
+      wrap.appendChild(row);
+      checkboxes.push(cb);
+    });
+
+    if (exclusiveValue) {
+      checkboxes.forEach((cb) => {
+        cb.addEventListener('change', () => {
+          if (cb.value === exclusiveValue && cb.checked) {
+            checkboxes.forEach((other) => {
+              if (other !== cb) {
+                other.checked = false;
+                other.disabled = true;
+              }
+            });
+          } else if (cb.value === exclusiveValue && !cb.checked) {
+            checkboxes.forEach((other) => {
+              other.disabled = false;
+            });
+          } else if (cb.checked) {
+            const exclusiveCb = checkboxes.find((c) => c.value === exclusiveValue);
+            if (exclusiveCb) {
+              exclusiveCb.checked = false;
+              exclusiveCb.disabled = true;
+            }
+          } else if (!checkboxes.some((c) => c.value !== exclusiveValue && c.checked)) {
+            const exclusiveCb = checkboxes.find((c) => c.value === exclusiveValue);
+            if (exclusiveCb) exclusiveCb.disabled = false;
+          }
+        });
+      });
+    }
+
+    return wrap;
+  }
+
+  function hsGetCheckedValues(idPrefix) {
+    const wrap = document.getElementById(idPrefix);
+    if (!wrap) return [];
+    return Array.from(wrap.querySelectorAll('input[type="checkbox"]:checked')).map((cb) => cb.value);
+  }
+
   function setupHistoryPopup(symptomEl) {
     if (document.getElementById('his-hs-toggle-btn')) return;
 
@@ -874,31 +1004,6 @@
     toggleBtn.textContent = '🩺 Tạo bệnh sử nâng cao';
     symptomEl.insertAdjacentElement('afterend', toggleBtn);
 
-    // Nút đổi cách diễn đạt cho "bệnh sử nhanh" (sinh tự động khi Enter ở Lý do khám)
-    const quickBtn = document.createElement('button');
-    quickBtn.type = 'button';
-    quickBtn.id = 'his-hs-quick-btn';
-    quickBtn.className = 'his-hs-toggle-btn';
-    quickBtn.style.marginLeft = '6px';
-    quickBtn.style.borderColor = '#1a56db';
-    quickBtn.style.color = '#1a56db';
-    quickBtn.textContent = '🔁 Đổi cách diễn đạt bệnh sử';
-    toggleBtn.insertAdjacentElement('afterend', quickBtn);
-
-    quickBtn.addEventListener('click', () => {
-      const text = symptomEl.value.trim();
-      if (!text) {
-        alert('Vui lòng gõ nội dung ở ô Lý do khám trước.');
-        return;
-      }
-      if (text !== hsQuickLastText) {
-        hsQuickLastText = text;
-        hsQuickVariantIndex = 0;
-      }
-      hsApplyQuickVariant(text, hsQuickVariantIndex);
-      hsQuickVariantIndex++;
-    });
-
     const panel = document.createElement('div');
     panel.id = 'his-hs-panel';
     panel.className = 'his-hs-panel';
@@ -906,8 +1011,8 @@
     panel.innerHTML =
       '<div class="his-hs-header" id="his-hs-drag-handle">🩺 Tạo bệnh sử nâng cao <span class="his-hs-close" id="his-hs-close-btn">✕</span></div>' +
       '<div class="his-hs-body">' +
-      '<label class="his-hs-label">Lý do vào viện</label>' +
-      '<select id="his-hs-reason" class="his-hs-field"></select>' +
+      '<label class="his-hs-label">Lý do vào viện (chọn tối đa 2)</label>' +
+      '<div id="his-hs-reason-group"></div>' +
       '<div id="his-hs-fields"></div>' +
       '<label class="his-hs-label">Xem trước</label>' +
       '<textarea id="his-hs-preview" class="his-hs-preview" rows="4" readonly></textarea>' +
@@ -919,102 +1024,228 @@
       '</div>';
     document.body.appendChild(panel);
 
-    const reasonSel = panel.querySelector('#his-hs-reason');
+    const reasonGroupEl = panel.querySelector('#his-hs-reason-group');
+    const reasonCheckboxes = [];
+    let selectedReasons = []; // giữ thứ tự chọn
+
     HS_REASON_ORDER.forEach((key) => {
-      const o = document.createElement('option');
-      o.value = key;
-      o.textContent = HS_REASON_LABELS[key];
-      reasonSel.appendChild(o);
+      const row = document.createElement('label');
+      row.style.display = 'flex';
+      row.style.alignItems = 'center';
+      row.style.gap = '6px';
+      row.style.fontSize = '12px';
+      row.style.cursor = 'pointer';
+      row.style.fontWeight = 'normal';
+      row.style.padding = '2px 0';
+
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.value = key;
+      cb.id = `hs-reason-${key}`;
+
+      row.appendChild(cb);
+      row.appendChild(document.createTextNode(HS_REASON_LABELS[key]));
+      reasonGroupEl.appendChild(row);
+      reasonCheckboxes.push(cb);
+
+      cb.addEventListener('change', () => {
+        if (cb.checked) {
+          if (selectedReasons.length >= HS_MAX_REASONS) {
+            cb.checked = false;
+            return;
+          }
+          selectedReasons.push(key);
+        } else {
+          selectedReasons = selectedReasons.filter((k) => k !== key);
+        }
+        updateReasonCheckboxAvailability();
+        renderFields();
+      });
     });
+
+    function updateReasonCheckboxAvailability() {
+      const atMax = selectedReasons.length >= HS_MAX_REASONS;
+      reasonCheckboxes.forEach((cb) => {
+        if (!cb.checked) cb.disabled = atMax;
+      });
+    }
 
     const fieldsWrap = panel.querySelector('#his-hs-fields');
     const preview = panel.querySelector('#his-hs-preview');
     let variantCounter = 0;
 
-    function fieldRow(labelText, selectEl) {
+    function fieldRow(labelText, fieldEl) {
       const row = document.createElement('div');
       row.className = 'his-hs-row';
       const lbl = document.createElement('label');
       lbl.className = 'his-hs-label';
       lbl.textContent = labelText;
       row.appendChild(lbl);
-      row.appendChild(selectEl);
+      row.appendChild(fieldEl);
       return row;
     }
 
-    function renderFields() {
-      fieldsWrap.innerHTML = '';
-      const key = reasonSel.value;
-      variantCounter = 0;
+    function renderReasonBlock(key) {
+      const block = document.createElement('div');
+      block.className = 'hs-reason-block';
+      block.dataset.reasonKey = key;
+      block.style.borderTop = '1px dashed #3a4150';
+      block.style.marginTop = '6px';
+      block.style.paddingTop = '6px';
+
+      const heading = document.createElement('div');
+      heading.textContent = HS_REASON_LABELS[key];
+      heading.style.color = '#0f9d78';
+      heading.style.fontWeight = '600';
+      heading.style.fontSize = '12.5px';
+      heading.style.marginBottom = '4px';
+      block.appendChild(heading);
 
       if (key === 'khac') {
         const ta = document.createElement('textarea');
         ta.className = 'his-hs-field';
-        ta.id = 'hs-f-freetext';
+        ta.id = `hs-f-${key}-freetext`;
         ta.rows = 3;
         ta.placeholder = 'Nhập lý do vào viện...';
-        fieldsWrap.appendChild(fieldRow('Nội dung', ta));
-        return;
+        block.appendChild(fieldRow('Nội dung', ta));
+        return block;
       }
 
       if (key === 'tai_kham') {
-        fieldsWrap.appendChild(fieldRow('Bệnh nền đang theo dõi', hsMakeSelect('hs-f-benhnen', HS_TAIKHAM.benhnen)));
-        fieldsWrap.appendChild(fieldRow('Tình trạng hiện tại', hsMakeSelect('hs-f-tinhtrang', HS_TAIKHAM.tinhtrang)));
-        fieldsWrap.appendChild(fieldRow('Đáp ứng điều trị', hsMakeSelect('hs-f-dapung', HS_TAIKHAM.dapung)));
-        return;
+        block.appendChild(fieldRow('Bệnh nền đang theo dõi', hsMakeSelect(`hs-f-${key}-benhnen`, HS_TAIKHAM.benhnen)));
+        block.appendChild(fieldRow('Tình trạng hiện tại', hsMakeSelect(`hs-f-${key}-tinhtrang`, HS_TAIKHAM.tinhtrang)));
+        block.appendChild(fieldRow('Đáp ứng điều trị', hsMakeSelect(`hs-f-${key}-dapung`, HS_TAIKHAM.dapung)));
+        return block;
       }
 
       const def = HS_REASONS[key];
-      fieldsWrap.appendChild(fieldRow('Thời gian', hsMakeSelect('hs-f-thoigian', HS_COMMON.thoigian)));
-      if (def.vitri) fieldsWrap.appendChild(fieldRow('Vị trí / hoàn cảnh', hsMakeSelect('hs-f-vitri', def.vitri)));
-      if (def.tinhchat) fieldsWrap.appendChild(fieldRow('Tính chất', hsMakeSelect('hs-f-tinhchat', def.tinhchat)));
-      fieldsWrap.appendChild(fieldRow('Mức độ', hsMakeSelect('hs-f-mucdo', HS_COMMON.mucdo)));
-      if (def.lan) fieldsWrap.appendChild(fieldRow('Đặc điểm thêm', hsMakeSelect('hs-f-lan', def.lan)));
-      if (def.kemtheo) fieldsWrap.appendChild(fieldRow('Kèm theo', hsMakeSelect('hs-f-kemtheo', def.kemtheo)));
-      fieldsWrap.appendChild(fieldRow('Diễn tiến', hsMakeSelect('hs-f-dienbien', HS_COMMON.dienbien)));
-      fieldsWrap.appendChild(fieldRow('Xử trí trước viện', hsMakeSelect('hs-f-xutri', HS_COMMON.xutri)));
+      block.appendChild(fieldRow('Thời gian', hsMakeSelect(`hs-f-${key}-thoigian`, HS_COMMON.thoigian)));
+      if (def.vitri) block.appendChild(fieldRow('Vị trí / hoàn cảnh', hsMakeSelect(`hs-f-${key}-vitri`, def.vitri)));
+      if (def.tinhchat) block.appendChild(fieldRow('Tính chất', hsMakeSelect(`hs-f-${key}-tinhchat`, def.tinhchat)));
+      block.appendChild(fieldRow('Mức độ', hsMakeSelect(`hs-f-${key}-mucdo`, HS_COMMON.mucdo)));
+      if (def.lan) block.appendChild(fieldRow('Đặc điểm thêm', hsMakeSelect(`hs-f-${key}-lan`, def.lan)));
+      if (def.kemtheo) {
+        block.appendChild(
+          fieldRow(
+            'Kèm theo (chọn nhiều)',
+            hsMakeCheckboxGroup(`hs-f-${key}-kemtheo`, def.kemtheo, 'không kèm triệu chứng khác')
+          )
+        );
+      }
+      block.appendChild(fieldRow('Diễn tiến', hsMakeSelect(`hs-f-${key}-dienbien`, HS_COMMON.dienbien)));
+      block.appendChild(fieldRow('Xử trí trước viện', hsMakeSelect(`hs-f-${key}-xutri`, HS_COMMON.xutri)));
+      return block;
     }
 
-    function collectValues() {
-      const values = {};
-      panel.querySelectorAll('#his-hs-fields [id^="hs-f-"]').forEach((el) => {
-        values[el.id.replace('hs-f-', '')] = el.value;
+    function renderFields() {
+      fieldsWrap.innerHTML = '';
+      variantCounter = 0;
+
+      if (selectedReasons.length === 0) {
+        const hint = document.createElement('div');
+        hint.className = 'his-hs-label';
+        hint.textContent = 'Chọn ít nhất 1 lý do vào viện ở trên.';
+        fieldsWrap.appendChild(hint);
+        return;
+      }
+
+      selectedReasons.forEach((key) => {
+        fieldsWrap.appendChild(renderReasonBlock(key));
       });
+    }
+
+    function collectValuesForReason(key) {
+      const values = {};
+      const prefix = `hs-f-${key}-`;
+      fieldsWrap.querySelectorAll(`select[id^="${prefix}"], textarea[id^="${prefix}"]`).forEach((el) => {
+        values[el.id.replace(prefix, '')] = el.value;
+      });
+      const kemtheoId = `${prefix}kemtheo`;
+      if (document.getElementById(kemtheoId)) {
+        values.kemtheo = hsGetCheckedValues(kemtheoId);
+      }
       return values;
     }
 
     function generate() {
-      const key = reasonSel.value;
-      const values = collectValues();
-      const text = hsBuildSentence(key, values, variantCounter);
-      preview.value = text;
+      if (selectedReasons.length === 0) {
+        preview.value = '';
+        return;
+      }
+
+      // Chỉ 1 lý do được chọn: dùng câu đầy đủ như cũ (đã có đích đến, hoặc freetext).
+      if (selectedReasons.length === 1) {
+        const key = selectedReasons[0];
+        const values = collectValuesForReason(key);
+        preview.value = hsBuildSentence(key, values, variantCounter);
+        variantCounter++;
+        return;
+      }
+
+      // Từ 2 lý do trở lên: ghép các câu "core" (không có Kèm theo, không có câu đến khám),
+      // gộp toàn bộ "Kèm theo" của các lý do lại 1 chỗ, và chỉ có 1 câu đến khám ở cuối cùng.
+      const parts = [];
+      let allKem = [];
+      let hasNoneKem = false;
+      let hasKemField = false;
+
+      selectedReasons.forEach((key) => {
+        const values = collectValuesForReason(key);
+        if (key === 'khac') {
+          if (values.freetext) parts.push(values.freetext);
+          return;
+        }
+        if (key === 'tai_kham') {
+          parts.push(hsBuildTaiKhamCore(values, variantCounter));
+          return;
+        }
+        parts.push(hsBuildCore(key, values, variantCounter));
+        if (Array.isArray(values.kemtheo)) {
+          hasKemField = true;
+          const nonExclusive = values.kemtheo.filter((x) => x && x !== 'không kèm triệu chứng khác');
+          allKem = allKem.concat(nonExclusive);
+          if (values.kemtheo.indexOf('không kèm triệu chứng khác') !== -1) hasNoneKem = true;
+        }
+      });
+
+      const seen = new Set();
+      const dedupKem = allKem.filter((x) => {
+        if (seen.has(x)) return false;
+        seen.add(x);
+        return true;
+      });
+      if (dedupKem.length) {
+        parts.push(`Kèm theo ${hsJoinList(dedupKem)}.`);
+      } else if (hasKemField && hasNoneKem) {
+        parts.push('Không ghi nhận triệu chứng kèm theo khác.');
+      }
+
+      parts.push(HS_DEST_VARIANTS[variantCounter % HS_DEST_VARIANTS.length]);
+
+      preview.value = parts.filter((p) => p && p.trim()).join(' ');
       variantCounter++;
     }
 
-    reasonSel.addEventListener('change', renderFields);
     panel.querySelector('#his-hs-gen').addEventListener('click', generate);
     panel.querySelector('#his-hs-insert').addEventListener('click', () => {
       const text = preview.value.trim();
       if (!text) return;
 
-      // Luôn thay "Lý do khám" (ô symptom) bằng từ khoá ngắn phù hợp với lý do đã chọn,
-      // dù ô đó đã có nội dung hay chưa.
       if (symptomEl) {
-        const key = reasonSel.value;
-        let shortLabel = '';
-        if (key === 'khac') {
-          const ft = document.getElementById('hs-f-freetext');
-          shortLabel = ft && ft.value ? ft.value.trim().split(/\s+/).slice(0, 2).join(' ') : '';
-        } else if (key === 'tai_kham') {
-          shortLabel = 'tái khám';
-        } else if (HS_REASONS[key]) {
-          shortLabel = HS_REASONS[key].label;
-        }
-        if (shortLabel) setNativeValue(symptomEl, shortLabel);
+        const shortLabels = selectedReasons.map((key) => {
+          if (key === 'khac') {
+            const ft = document.getElementById(`hs-f-${key}-freetext`);
+            return ft && ft.value ? ft.value.trim().split(/\s+/).slice(0, 2).join(' ') : '';
+          } else if (key === 'tai_kham') {
+            return 'tái khám';
+          } else if (HS_REASONS[key]) {
+            return HS_REASONS[key].label;
+          }
+          return '';
+        }).filter((s) => s);
+        if (shortLabels.length) setNativeValue(symptomEl, shortLabels.join(', '));
       }
 
-      // Bệnh sử luôn nhận câu đầy đủ vừa tạo — chèn sau cùng để không bị ghi đè
-      // bởi cơ chế đồng bộ Triệu chứng → Diễn biến ở trên.
       const progressionEl = document.querySelector(PROGRESSION_SELECTOR);
       if (progressionEl) {
         setNativeValue(progressionEl, text);
@@ -1024,6 +1255,11 @@
       }
     });
     panel.querySelector('#his-hs-reset').addEventListener('click', () => {
+      reasonCheckboxes.forEach((cb) => {
+        cb.checked = false;
+        cb.disabled = false;
+      });
+      selectedReasons = [];
       renderFields();
       preview.value = '';
     });
@@ -1035,23 +1271,31 @@
     toggleBtn.addEventListener('click', () => {
       const showing = panel.style.display !== 'none';
       panel.style.display = showing ? 'none' : 'flex';
-      if (!showing && !reasonSel.dataset.hsInit) {
-        reasonSel.dataset.hsInit = '1';
+      if (!showing && !panel.dataset.hsInit) {
+        panel.dataset.hsInit = '1';
         renderFields();
       }
     });
 
-    // Kéo thả popup
+    document.addEventListener(
+      'mousedown',
+      (e) => {
+        if (panel.style.display === 'none') return;
+        if (panel.contains(e.target)) return;
+        if (e.target === toggleBtn || toggleBtn.contains(e.target)) return;
+        panel.style.display = 'none';
+      },
+      true
+    );
+
     const handle = panel.querySelector('#his-hs-drag-handle');
     let dragging = false, offX = 0, offY = 0;
     handle.addEventListener('mousedown', (e) => {
-      if (e.target.closest('#his-hs-close-btn')) return; // đừng bắt đầu kéo khi bấm nút đóng
+      if (e.target.closest('#his-hs-close-btn')) return;
       dragging = true;
       const rect = panel.getBoundingClientRect();
       offX = e.clientX - rect.left;
       offY = e.clientY - rect.top;
-      // Giữ nguyên vị trí hiện tại khi chuyển từ neo "right" sang "left",
-      // tránh popup bị nhảy giật sang trái ngay khi vừa nhấn chuột.
       panel.style.left = `${rect.left}px`;
       panel.style.top = `${rect.top}px`;
       panel.style.right = 'auto';
@@ -1071,6 +1315,219 @@
   const SUPPLY_QTY_SELECTOR = 'input[formcontrolname="immediate_dispense_qty"]';
   const QUANTITY_UNIT_SELECTOR =
     'input[formcontrolname="quantity_unit_s"], input[formcontrolname="quantity_unit_tr"], input[formcontrolname="quantity_unit_c"], input[formcontrolname="quantity_unit_t"]';
+
+  // Sửa thứ tự hàng đơn thuốc:
+  // Mong muốn: [Số ngày label] [Số ngày input] [Cách dùng label] [Sáng/Trưa/Chiều/Tối...]
+  function findExactTextElement(root, text) {
+    const attrMatch = root.querySelector(`[title="${text}"]`);
+    if (attrMatch) return attrMatch;
+    const candidates = root.querySelectorAll('span, div, label');
+    for (const el of candidates) {
+      if (el.children.length === 0 && el.textContent.trim() === text) return el;
+    }
+    return null;
+  }
+
+  function findSharedAncestor(a, b) {
+    let p = a;
+    while (p) {
+      if (p.contains(b)) return p;
+      p = p.parentElement;
+    }
+    return null;
+  }
+
+  function directChildContaining(parent, descendant) {
+    let el = descendant;
+    while (el && el.parentElement !== parent) el = el.parentElement;
+    return el;
+  }
+
+  // Bất kỳ dropdown/gợi ý nào đang mở (tìm thuốc, chọn kho, ICD...) đều dùng
+  // kiểu ".menu.visible" (Semantic UI) hoặc ".ng-dropdown-panel" (ng-select).
+  // Không được thao tác DOM trong lúc dropdown đang mở, nếu không Angular sẽ
+  // đóng dropdown ngay khi phát hiện DOM bị chỉnh sửa từ bên ngoài (gây hiện
+  // tượng danh sách thuốc xổ ra rồi thu vào ngay khi gõ ký tự).
+  function isAnyDropdownMenuOpen() {
+    return !!document.querySelector(
+      '.ui.dropdown .menu.visible, .ng-dropdown-panel, .p-dropdown-panel, .p-autocomplete-panel'
+    );
+  }
+
+  function fixPharmacyDosageRow() {
+    if (isAnyDropdownMenuOpen()) return;
+
+    const pharmacyTab = document.getElementById('pharmacy');
+    if (!pharmacyTab) return;
+
+    // Đổi tên nhãn S/Tr/C/T → Cách dùng
+    const dosageLabelRaw = findExactTextElement(pharmacyTab, 'S/Tr/C/T');
+    if (dosageLabelRaw) dosageLabelRaw.textContent = 'Cách dùng';
+    const dosageLabelEl = dosageLabelRaw || findExactTextElement(pharmacyTab, 'Cách dùng');
+
+    const dayLabel = findExactTextElement(pharmacyTab, 'Số ngày');
+    const dayInput = pharmacyTab.querySelector(SUPPLY_DAY_SELECTOR);
+    const sangInput = pharmacyTab.querySelector('input[formcontrolname="quantity_unit_s"]');
+    if (!dayLabel || !dayInput || !sangInput) return;
+
+    const row = findSharedAncestor(dayLabel, sangInput);
+    if (!row || row === dayLabel || row === sangInput) return;
+
+    const anchor = directChildContaining(row, sangInput);
+    const dayLabelChild = directChildContaining(row, dayLabel);
+    const dayInputChild = directChildContaining(row, dayInput);
+    const dosageLabelChild = dosageLabelEl ? directChildContaining(row, dosageLabelEl) : null;
+
+    if (!anchor || !dayLabelChild || !dayInputChild) return;
+    if (anchor === dayLabelChild || anchor === dayInputChild) return;
+
+    // Thứ tự mong muốn: [Số ngày label] [Số ngày input] [Cách dùng label] [Sáng input...]
+    const nextAfterDayInput = dosageLabelChild || anchor;
+    const alreadyInPlace =
+      dayLabelChild.nextElementSibling === dayInputChild &&
+      dayInputChild.nextElementSibling === nextAfterDayInput &&
+      (!dosageLabelChild || dosageLabelChild.nextElementSibling === anchor);
+    if (alreadyInPlace) return;
+
+    row.insertBefore(dayLabelChild, anchor);
+    row.insertBefore(dayInputChild, anchor);
+    if (
+      dosageLabelChild &&
+      dosageLabelChild !== anchor &&
+      dosageLabelChild !== dayLabelChild &&
+      dosageLabelChild !== dayInputChild
+    ) {
+      row.insertBefore(dosageLabelChild, anchor);
+    }
+  }
+
+  fixPharmacyDosageRow();
+  setInterval(fixPharmacyDosageRow, 300);
+  new MutationObserver(() => fixPharmacyDosageRow()).observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+
+  // ---- Tự tích checkbox "Đã hoàn thành" sau khi tải trang (chỉ 1 lần, không ép lại nếu người dùng tự bỏ tích) ----
+  function findCompletedCheckbox() {
+    const checkboxes = Array.from(document.querySelectorAll('p-checkbox'));
+    return checkboxes.find((cb) => {
+      const labelEl = cb.querySelector('.p-checkbox-label');
+      return labelEl && labelEl.textContent.replace(/\s+/g, ' ').trim() === 'Đã hoàn thành';
+    }) || null;
+  }
+
+  let completedCheckboxHandled = false;
+  let lastCompletedCheckboxEl = null;
+
+  function tryCheckCompletedCheckbox() {
+    if (isAnyDropdownMenuOpen()) return; // tránh thao tác DOM khi đang có dropdown mở
+    const cb = findCompletedCheckbox();
+    if (!cb) {
+      // Rời khỏi trang có checkbox này (chuyển trang trong SPA) -> reset để lần tới vào lại vẫn tự tích 1 lần.
+      completedCheckboxHandled = false;
+      lastCompletedCheckboxEl = null;
+      return;
+    }
+    if (cb !== lastCompletedCheckboxEl) {
+      // Phần tử checkbox mới (vừa vào trang/tải lại danh sách) -> cho phép tự tích lại 1 lần.
+      lastCompletedCheckboxEl = cb;
+      completedCheckboxHandled = false;
+    }
+    if (completedCheckboxHandled) return; // đã xử lý rồi, không can thiệp nữa dù người dùng tự tích/bỏ tích
+    const box = cb.querySelector('.p-checkbox-box');
+    if (!box) return;
+    if (!box.classList.contains('p-highlight')) {
+      box.click();
+    }
+    completedCheckboxHandled = true;
+  }
+
+  // ---- Tự chọn "100" bản ghi/trang trong danh sách bệnh nhân ----
+  let paginatorAutoSet = false;
+  let paginatorAttemptInProgress = false;
+  let paginatorPanelObserver = null;
+
+  function trySetPaginatorTo100(attemptsLeft) {
+    if (attemptsLeft === undefined) attemptsLeft = 0;
+    if (paginatorAttemptInProgress) return; // chống gọi chồng khi observer toàn trang kích hoạt lại
+
+    const dropdown = document.querySelector('.p-paginator-rpp-options');
+    if (!dropdown) {
+      if (attemptsLeft < 50) setTimeout(() => trySetPaginatorTo100(attemptsLeft + 1), 300);
+      return;
+    }
+
+    // Đã chọn 100 rồi thì thôi
+    const label = dropdown.querySelector('.p-dropdown-label');
+    if (label && label.textContent.trim() === '100') {
+      paginatorAutoSet = true;
+      return;
+    }
+
+    // Nếu panel đang mở sẵn (do người dùng thao tác hoặc lần gọi trước chưa đóng),
+    // đừng bấm trigger nữa — bấm lại sẽ đóng panel đang mở, gây cảm giác "bị khóa".
+    if (document.querySelector('.p-dropdown-panel')) return;
+
+    paginatorAttemptInProgress = true;
+
+    // Huỷ observer cũ nếu còn
+    if (paginatorPanelObserver) {
+      paginatorPanelObserver.disconnect();
+      paginatorPanelObserver = null;
+    }
+
+    // Dùng MutationObserver để bắt đúng thời điểm panel xuất hiện trong DOM
+    // (PrimeNG appendTo="body" → panel được thêm vào body bất đồng bộ)
+    let guardTimeout = null;
+
+    paginatorPanelObserver = new MutationObserver((mutations, obs) => {
+      for (const m of mutations) {
+        for (const node of m.addedNodes) {
+          if (!node.querySelector) continue;
+          // Tìm panel dropdown vừa xuất hiện chứa mục "100"
+          const candidates = [
+            ...(node.matches && node.matches('.p-dropdown-panel') ? [node] : []),
+            ...Array.from(node.querySelectorAll('.p-dropdown-panel')),
+          ];
+          for (const panel of candidates) {
+            const items = Array.from(
+              panel.querySelectorAll('li[role="option"], li.p-dropdown-item, .p-dropdown-item')
+            );
+            const item100 = items.find((it) => it.textContent.trim() === '100');
+            if (item100) {
+              obs.disconnect();
+              paginatorPanelObserver = null;
+              clearTimeout(guardTimeout);
+              item100.click();
+              paginatorAutoSet = true;
+              paginatorAttemptInProgress = false;
+              return;
+            }
+          }
+        }
+      }
+    });
+
+    paginatorPanelObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Bảo vệ: sau 2 giây nếu vẫn chưa chọn được thì đóng dropdown và bỏ observer
+    guardTimeout = setTimeout(() => {
+      if (paginatorPanelObserver) {
+        paginatorPanelObserver.disconnect();
+        paginatorPanelObserver = null;
+      }
+      // Đóng overlay: PrimeNG lắng nghe Escape trên document, không phải trên phần tử dropdown.
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+      );
+      paginatorAttemptInProgress = false;
+    }, 2000);
+
+    // Bấm mở dropdown
+    const trigger = dropdown.querySelector('.p-dropdown-trigger');
+    (trigger || dropdown).click();
+  }
 
   function focusFieldBySelector(selector, attemptsLeft) {
     if (attemptsLeft === undefined) attemptsLeft = 10;
@@ -1160,7 +1617,6 @@
         setTimeout(() => tryClickNapButton(), SUPPLY_QTY_RECALC_DELAY_MS);
         return;
       }
-
 
       if (target.matches(QUANTITY_UNIT_SELECTOR)) {
         e.preventDefault();
@@ -1258,10 +1714,18 @@
   const observer = new MutationObserver(() => {
     bindSymptomEl();
     scanForTreatmentTextareas();
+    // Reset cờ khi paginator biến mất (chuyển trang trong SPA)
+    if (paginatorAutoSet && !document.querySelector('.p-paginator-rpp-options')) {
+      paginatorAutoSet = false;
+    }
+    if (!paginatorAutoSet) trySetPaginatorTo100();
+    tryCheckCompletedCheckbox();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
 
   bindSymptomEl();
   scanForTreatmentTextareas();
+  trySetPaginatorTo100();
+  tryCheckCompletedCheckbox();
 })();
