@@ -532,8 +532,17 @@
   // dòng cho từng bệnh nhân, dựa vào việc mỗi dòng bắt đầu một bệnh nhân
   // mới luôn mở đầu bằng số thứ tự (STT) đứng riêng hoặc theo sau là Tab.
   function mergeWrappedTableLines(lines) {
-    const STT_ONLY_RE = /^\d{1,4}$/;
-    const STT_START_RE = /^\d{1,4}(\t|\s{2,}|$)/;
+    // Chỉ tối đa 3 chữ số (danh sách bệnh nhân/ngày khó vượt 999 dòng) — để
+    // KHÔNG trùng với năm sinh 4 chữ số (VD "1954") khi năm sinh vô tình rơi
+    // xuống đầu một dòng bị ngắt riêng, tránh hiểu nhầm thành STT bệnh nhân
+    // mới và cắt đứt dòng đang gộp giữa chừng (làm rớt mất tên).
+    const STT_ONLY_RE = /^\d{1,3}$/;
+    const STT_START_RE = /^\d{1,3}(\t|\s{2,}|$)/;
+    // Khi năm sinh (hoặc ngày sinh đầy đủ) rơi xuống đầu một dòng bị ngắt
+    // riêng (không phải STT bệnh nhân mới) — vẫn phải nối vào dòng đang gộp
+    // bằng Tab (không phải khoảng trắng), nếu không năm sinh sẽ dính chung ô
+    // với họ tên phía trước, mất ranh giới cột và không nhận diện được nữa.
+    const YEAR_OR_DATE_START_RE = /^((19[0-9]{2}|20[0-2][0-9])|(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/(19[0-9]{2}|20[0-2][0-9]))(\t|\s{2,}|$)/;
     const merged = [];
     let inDataRow = false;
     // Khi STT đứng một mình trên cả dòng riêng (không kèm gì khác), lần gộp
@@ -549,7 +558,8 @@
         inDataRow = true;
         pendingTabJoin = STT_ONLY_RE.test(line);
       } else if (inDataRow && merged.length) {
-        merged[merged.length - 1] += (pendingTabJoin ? '\t' : ' ') + line;
+        const joinTab = pendingTabJoin || YEAR_OR_DATE_START_RE.test(line);
+        merged[merged.length - 1] += (joinTab ? '\t' : ' ') + line;
         pendingTabJoin = false;
       }
       // Dòng trước bệnh nhân đầu tiên (tiêu đề bảng, địa chỉ BV, tên cột bị
