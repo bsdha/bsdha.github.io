@@ -516,13 +516,46 @@
               lastY = y;
             });
             flushLine();
-            fullText += lines.join('\n') + '\n';
+            fullText += mergeWrappedTableLines(lines).join('\n') + '\n';
           }
           resolve(fullText);
         } catch (e) { reject(e); }
       };
       reader.readAsArrayBuffer(file);
     });
+  }
+
+  // Trong bảng PDF, các ô nhiều chữ (họ tên dài, khoa, phòng, địa chỉ...)
+  // thường bị ngắt xuống 2-3 dòng vật lý trong file — nếu để nguyên, mỗi
+  // dòng ngắt đó (VD "Khoa Khám", "Cứu", "Phòng Lưu"...) sẽ bị hiểu nhầm là
+  // một bệnh nhân riêng. Hàm này gộp các dòng bị ngắt đó về lại đúng một
+  // dòng cho từng bệnh nhân, dựa vào việc mỗi dòng bắt đầu một bệnh nhân
+  // mới luôn mở đầu bằng số thứ tự (STT) đứng riêng hoặc theo sau là Tab.
+  function mergeWrappedTableLines(lines) {
+    const STT_ONLY_RE = /^\d{1,4}$/;
+    const STT_START_RE = /^\d{1,4}(\t|\s{2,}|$)/;
+    const merged = [];
+    let inDataRow = false;
+    // Khi STT đứng một mình trên cả dòng riêng (không kèm gì khác), lần gộp
+    // kế tiếp phải nối bằng Tab để STT tách hẳn thành một cột riêng — nếu nối
+    // bằng khoảng trắng, số STT sẽ dính liền vào tên (VD "4 DƯƠNG VĂN") và bị
+    // hiểu nhầm là "tên có số" rồi bị loại bỏ.
+    let pendingTabJoin = false;
+    lines.forEach(raw => {
+      const line = raw.trim();
+      if (!line) return;
+      if (STT_START_RE.test(line)) {
+        merged.push(line);
+        inDataRow = true;
+        pendingTabJoin = STT_ONLY_RE.test(line);
+      } else if (inDataRow && merged.length) {
+        merged[merged.length - 1] += (pendingTabJoin ? '\t' : ' ') + line;
+        pendingTabJoin = false;
+      }
+      // Dòng trước bệnh nhân đầu tiên (tiêu đề bảng, địa chỉ BV, tên cột bị
+      // tách lẻ...) không giữ lại — chỉ là phần đầu trang, không phải bệnh nhân.
+    });
+    return merged;
   }
 
   // ---------- Tạo bảng in cuối cùng ----------
