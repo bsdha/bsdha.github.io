@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HIS Bình Dương - Tiện ích Helix
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.15
+// @version      1.32
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,6 +11,20 @@
 // ==/UserScript==
 
 /* ==ChangeLog==
+1.32 | 2026-09-17 | Sửa lỗi nút "In nhanh BK toa về" không hiện lại sau khi tắt rồi bật lại "Helixfast": trước đây chỉ thử đặt lại nút đúng 1 lần ngay khi bấm bật — nếu đúng lúc đó nút "Hoàn thành khám"/"Lưu lại" gốc của trang chưa kịp render (đang chuyển tab, Angular đang vẽ lại) thì lần thử đó thất bại và không có gì kích hoạt thử lại. Nay thử lại liên tục trong vài giây cho tới khi đặt được nút thành công.
+1.31 | 2026-09-17 | Sửa lại cách neo vị trí nút "In nhanh BK toa về": trước đây neo theo "sau nút Hoàn thành khám", nên khi các nút khác trên thanh (Hủy khám, Làm mới...) xuất hiện/biến mất hoặc đổi trạng thái khả dụng tuỳ tình huống, nút có thể bị lệch khỏi vị trí sát "Lưu lại". Nay neo trực tiếp theo "ngay trước Lưu lại", nên luôn cố định đúng vị trí đó dù các nút khác thay đổi thế nào, kể cả khi "Lưu lại" hay các nút khác đang bị mờ/khoá.
+1.30 | 2026-09-17 | Khoá luôn popup "Tạo bệnh sử nâng cao" theo công tắc "Helixfast": khi tắt, nút "🩺 Tạo bệnh sử nâng cao" bị ẩn ngay và popup (nếu đang mở) tự đóng ngay lập tức; các nút bên trong popup (Tạo bệnh sử, Chèn vào bệnh sử, Xóa) cũng ngừng hoạt động. Bật lại Helixfast thì nút hiện trở lại và dùng bình thường.
+1.29 | 2026-09-17 | Công tắc "Helixfast" giờ tắt/bật NGAY LẬP TỨC, không cần F5: gắn thêm kiểm tra trạng thái bật/tắt vào bên trong từng tính năng tự động (không chỉ ở lớp quét DOM bên ngoài) — gồm đồng bộ Triệu chứng↔Diễn biến, câu bệnh sử nhanh khi Enter, focus/nhảy ô ICD khi Enter, cảnh báo trùng mã ICD, tự chọn thuốc đầu danh sách nhà thuốc + phím mũi tên vòng lại, các nút xử lý nhanh "Nội khoa/Ngoại khoa/Nội-Ngoại khoa", sắp xếp lại hàng Số ngày/Cách dùng, tự tích "Đã hoàn thành", tự set 100 dòng/trang, điều hướng Tab/Enter thông minh trong đơn thuốc + tự bấm "Nạp", và luồng tự Lưu lại/In/Thoát sau khi bấm "Đồng ý". Nhờ vậy dù các phần tử này đã được gắn sẵn từ trước khi tắt, chúng cũng ngừng hoạt động ngay khi bấm tắt (không phải chỉ ngừng gắn thêm cái mới). Riêng popup "Tạo bệnh sử nâng cao" vẫn hoạt động độc lập vì đây là công cụ người dùng chủ động bấm dùng, không phải hành vi tự động ngầm.
+1.28 | 2026-09-17 | Sửa tiếp lỗi nút "Helixfast" đè lên nút "Thiết lập": CSS gốc của trang quy định chiều rộng cố định/hẹp cho các nút icon-only trên thanh menu (dành cho 1 icon duy nhất), trong khi nút Helixfast có thêm chữ và công tắc nên bị tràn ra ngoài khung hẹp đó, nhìn như đè lên nút bên cạnh. Nay ép chiều rộng của riêng nút Helixfast về "auto" (không giới hạn) bằng !important nên nút tự giãn đủ chỗ chứa icon + chữ + công tắc, không còn tràn/đè lên nút "Thiết lập" nữa.
+1.27 | 2026-09-17 | Sửa lỗi nút "Helixfast" bị đè/vỡ layout lên các nút khác trên thanh menu trên cùng: trước đây tự tạo <li> từ đầu với CSS !important riêng nên không khớp kích thước/canh giữa với các nút gốc của trang. Nay nhân bản (clone) đúng <li> của nút "Thiết lập" có sẵn rồi chỉ đổi icon/nhãn/công tắc bên trong, nên thừa hưởng đúng CSS gốc, không còn chồng/lệch với nút bên cạnh.
+1.26 | 2026-09-17 | Thêm nút "Helixfast" (icon tia sét + công tắc bật/tắt) trên thanh menu trên cùng, nằm ngay trước nút "Thiết lập" (bánh răng). Đây là công tắc tổng: mặc định BẬT, bấm vào để TẮT/BẬT lại toàn bộ tự động hoá của tiện ích (tự bấm Bắt đầu khám khi nhấp đôi bệnh nhân, tự focus ô Lý do khám, tự check hoàn thành, tự set 100 dòng/trang, tự chèn nút "In nhanh BK toa về"...). Trạng thái được nhớ lại qua localStorage, giữ nguyên giữa các lần tải trang.
+1.22 | 2026-09-17 | Sửa lỗi focus "Lý do khám" không hoạt động khi mở trang: trước đây chỉ thử focus vài lần trong 4.5 giây đầu nên nếu Angular chưa kịp vẽ xong tab Khám bệnh thì bị bỏ lỡ. Nay theo dõi liên tục qua MutationObserver — hễ ô này xuất hiện lần đầu (mở trang, đổi tab, đổi bệnh nhân, Angular vẽ lại) là tự động focus ngay, không giới hạn thời gian chờ.
+1.21 | 2026-09-16 | Tự động focus vào ô "Lý do khám" ngay khi mở trang (không chỉ khi nhấp đôi vào bệnh nhân), có thử lại liên tục cho đến khi ô xuất hiện trên trang.
+1.20 | 2026-09-16 | Bỏ khoảng chờ 2 giây khi nhấp đôi vào bệnh nhân: giờ tự bấm "Bắt đầu khám" ngay khi nút vừa xuất hiện, và focus vào ô Lý do khám ngay từ đầu (không còn chờ 0.8 giây).
+1.19 | 2026-09-16 | Sửa tiếp con trỏ chuột ở các checkbox trong popup "Tạo bệnh sử nâng cao": CSS "cursor: pointer" trước đó bị style !important của trang đè mất nên vẫn hiện con trỏ văn bản; nay gán cursor: pointer !important trực tiếp lên từng checkbox nên luôn hiện đúng hình bàn tay.
+1.18 | 2026-09-16 | Popup "Tạo bệnh sử nâng cao": đổi nền tối sang nền trắng/chữ đen cho dễ đọc (trước đây chữ màu nhạt trên nền tối, khó tương phản); các checkbox trong popup giờ hiện đúng con trỏ bàn tay khi rê chuột thay vì con trỏ văn bản.
+1.17 | 2026-09-16 | Nhấp đôi vào một bệnh nhân trong danh sách: sau 2 giây (đủ thời gian hệ thống chuyển qua tab khám bệnh), tự động bấm nút "Bắt đầu khám" giúp người dùng (có thử lại vài lần nếu tab/nút chưa kịp tải xong).
+1.16 | 2026-09-16 | Thêm nút "In nhanh BK toa về" trên thanh công cụ, nằm cố định ngay sau nút "Hoàn thành khám" và trước nút "Lưu lại" (tự chèn lại đúng vị trí mỗi khi Angular vẽ lại DOM). Bấm nút này sẽ tự bấm "Hoàn thành khám" giúp bạn, rồi tự bấm luôn "Đồng ý" trong hộp thoại hiện ra; sau đó luồng tự động Lưu lại/In/Thoát đã có sẵn sẽ tự chạy tiếp như bình thường.
 1.15 | 2026-09-15 | Sửa lỗi không bỏ tích được checkbox "Đã hoàn thành": trước đây script tự tích lại checkbox này mỗi khi DOM trang thay đổi (xảy ra liên tục), khiến người dùng vừa bỏ tích là bị tích lại ngay. Nay chỉ tự động tích 1 lần duy nhất khi vừa vào trang/tải lại danh sách; sau đó không còn can thiệp nữa, người dùng tự tích/bỏ tích thoải mái.
 1.14 | 2026-09-15 | Khi chọn từ 2 "Lý do vào viện" trở lên: gộp toàn bộ "Kèm theo" của các lý do vào 1 câu duy nhất (không lặp lại theo từng lý do), và chỉ còn 1 câu "Bệnh nhân đến khám tại Bệnh viện Đa khoa Bình Dương - Cơ sở 2." ở cuối cùng thay vì lặp lại cho mỗi lý do. Nội dung sau khi "Chèn vào bệnh sử" vẫn là ô nhập liệu bình thường của form, gõ sửa lại bình thường được.
 1.13 | 2026-09-15 | Popup "Tạo bệnh sử nâng cao": cho phép chọn tối đa 2 "Lý do vào viện" cùng lúc (mỗi lý do hiện khối trường riêng, câu bệnh sử được ghép từ các lý do đã chọn); đổi "Kèm theo" từ chọn 1 sang chọn nhiều (checkbox) vì thực tế có thể kèm nhiều triệu chứng (nôn ói, tiêu chảy, chóng mặt...); chọn "không kèm triệu chứng khác" sẽ tự loại trừ các lựa chọn kèm theo khác và ngược lại.
@@ -123,6 +137,7 @@
   }
 
   function onSymptomInput(e) {
+    if (!isHelixfastEnabled()) return;
     capitalizeFirstChar(e.target);
     syncToProgression(e.target);
   }
@@ -147,6 +162,7 @@
   }
 
   function onSymptomKeydown(e) {
+    if (!isHelixfastEnabled()) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       const text = e.target.value.trim();
@@ -361,10 +377,11 @@
         width: 320px;
         max-height: 80vh;
         overflow-y: auto;
-        background: #1c1f26;
-        color: #eafffb;
+        background: #ffffff;
+        color: #1c1f26;
+        border: 1px solid #d8dce2;
         border-radius: 8px;
-        box-shadow: 0 6px 24px rgba(0,0,0,.35);
+        box-shadow: 0 6px 24px rgba(0,0,0,.25);
         z-index: 99999;
         flex-direction: column;
         font-size: 12.5px;
@@ -382,14 +399,14 @@
       }
       .his-hs-close { cursor: pointer; padding: 0 4px; }
       .his-hs-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
-      .his-hs-label { font-size: 11px; color: #9fd8c9; margin-top: 4px; }
+      .his-hs-label { font-size: 11px; color: #0f9d78; font-weight: 600; margin-top: 4px; }
       .his-hs-row { display: flex; flex-direction: column; gap: 2px; }
       .his-hs-field {
         width: 100%;
         box-sizing: border-box;
-        background: #262b35;
-        color: #eafffb;
-        border: 1px solid #3a4150;
+        background: #fff;
+        color: #1c1f26;
+        border: 1px solid #c7cdd6;
         border-radius: 4px;
         padding: 5px 6px;
         font-size: 12px;
@@ -397,9 +414,9 @@
       .his-hs-preview {
         width: 100%;
         box-sizing: border-box;
-        background: #262b35;
-        color: #eafffb;
-        border: 1px solid #3a4150;
+        background: #f7f9fa;
+        color: #1c1f26;
+        border: 1px solid #c7cdd6;
         border-radius: 4px;
         padding: 6px;
         font-size: 12px;
@@ -411,16 +428,29 @@
         font-size: 11px;
         padding: 6px 8px;
         border-radius: 4px;
-        border: 1px solid #3a4150;
-        background: #262b35;
-        color: #eafffb;
+        border: 1px solid #c7cdd6;
+        background: #fff;
+        color: #1c1f26;
         cursor: pointer;
+      }
+      .his-hs-btn:hover {
+        background: #eef1f4;
       }
       .his-hs-btn-primary {
         border-color: #0f9d78;
         background: #0f9d78;
         color: #fff;
         font-weight: 600;
+      }
+      .his-hs-btn-primary:hover {
+        background: #0c8265;
+      }
+      .his-hs-panel input[type="checkbox"] {
+        cursor: pointer !important;
+      }
+      .his-hs-checkbox-group label,
+      .his-hs-panel #his-hs-reason-group label {
+        color: #1c1f26;
       }
     `;
     document.head.appendChild(style);
@@ -470,6 +500,7 @@
     function (e) {
       if (e.key !== 'Enter') return;
       if (!e.target || !e.target.matches || !e.target.matches(ICD_INPUT_SELECTOR)) return;
+      if (!isHelixfastEnabled()) return;
 
       const currentInput = e.target;
 
@@ -544,6 +575,7 @@
   }
 
   function markDuplicateIcdOptions(panel) {
+    if (!isHelixfastEnabled()) return;
     const activeInput = document.activeElement;
     let currentContainer = null;
     if (activeInput && activeInput.matches && activeInput.matches(ICD_INPUT_SELECTOR)) {
@@ -598,9 +630,8 @@
   });
   dropdownWatchObserver.observe(document.body, { childList: true, subtree: true });
 
-  const START_EXAM_MIN_DELAY_MS = 800;
-
   function focusSymptomFieldOnly(attemptsLeft) {
+    if (!isHelixfastEnabled()) return;
     if (attemptsLeft === undefined) attemptsLeft = 30;
     const el = document.querySelector(SYMPTOM_SELECTOR);
     if (el) {
@@ -612,10 +643,37 @@
     }
   }
 
-  // Đã bỏ tự động bấm nút "Bắt đầu khám" (v1.10) và bỏ luôn kiểm tra DHST (v1.12) —
-  // chỉ còn tự focus ô triệu chứng, người dùng tự bấm "Bắt đầu khám" khi sẵn sàng.
-  function tryClickStartExamThenFocusSymptom() {
-    focusSymptomFieldOnly();
+  // v1.22: mỗi khi ô "Lý do khám" (textarea[formcontrolname="symptom"]) xuất hiện lần đầu
+  // trên trang — dù là lúc mở trang, chuyển tab, hay Angular vẽ lại — tự động focus vào đó
+  // đúng 1 lần cho tới khi bệnh nhân đổi (tránh cướp focus liên tục khi người dùng đang gõ).
+  let lastAutoFocusedSymptomEl = null;
+  function autoFocusSymptomFieldIfNew() {
+    if (!isHelixfastEnabled()) return;
+    const el = document.querySelector(SYMPTOM_SELECTOR);
+    if (el && el !== lastAutoFocusedSymptomEl) {
+      lastAutoFocusedSymptomEl = el;
+      el.focus();
+    } else if (!el) {
+      lastAutoFocusedSymptomEl = null;
+    }
+  }
+
+  const START_EXAM_BUTTON_SELECTOR = 'button[data-sk="control.T"]';
+  const START_EXAM_AUTO_CLICK_RETRY_GAP_MS = 150;
+
+  // v1.20: bấm ngay khi nút "Bắt đầu khám" vừa xuất hiện (không chờ 2 giây nữa),
+  // và focus vào ô Lý do khám ngay từ đầu (không chờ 0.8 giây nữa).
+  function tryAutoClickStartExamButton(attemptsLeft) {
+    if (!isHelixfastEnabled()) return;
+    if (attemptsLeft === undefined) attemptsLeft = 40;
+    const btn = document.querySelector(START_EXAM_BUTTON_SELECTOR);
+    if (btn) {
+      if (!btn.disabled) btn.click();
+      return;
+    }
+    if (attemptsLeft > 1) {
+      setTimeout(() => tryAutoClickStartExamButton(attemptsLeft - 1), START_EXAM_AUTO_CLICK_RETRY_GAP_MS);
+    }
   }
 
   document.addEventListener(
@@ -623,7 +681,9 @@
     (e) => {
       const row = e.target.closest && e.target.closest('tr.cur-pointer');
       if (!row) return;
-      setTimeout(() => tryClickStartExamThenFocusSymptom(), START_EXAM_MIN_DELAY_MS);
+      if (!isHelixfastEnabled()) return;
+      focusSymptomFieldOnly();
+      tryAutoClickStartExamButton();
     },
     true
   );
@@ -635,6 +695,7 @@
   }
 
   function ensureFirstPharmacyItemSelected(menuEl) {
+    if (!isHelixfastEnabled()) return;
     if (!menuEl) return;
     if (menuEl.querySelector(':scope > .item.selected')) return;
     const items = getVisiblePharmacyItems(menuEl);
@@ -661,6 +722,7 @@
     'keydown',
     (e) => {
       if (e.key !== 'ArrowUp') return;
+      if (!isHelixfastEnabled()) return;
       const dropdownRoot =
         e.target.closest && e.target.closest('.ui.dropdown.search, .ui.search.dropdown, .ui.dropdown');
       if (!dropdownRoot) return;
@@ -720,6 +782,7 @@
       btn.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
+        if (!isHelixfastEnabled()) return;
         setNativeValue(textarea, label);
       });
       wrapper.appendChild(btn);
@@ -729,6 +792,7 @@
   }
 
   function scanForTreatmentTextareas() {
+    if (!isHelixfastEnabled()) return;
     findTreatmentTextareas().forEach((textarea) => {
       setupTreatmentButtons(textarea);
       if (!textarea.value || textarea.value.trim() === '') {
@@ -931,8 +995,8 @@
     wrap.style.display = 'flex';
     wrap.style.flexDirection = 'column';
     wrap.style.gap = '3px';
-    wrap.style.background = '#262b35';
-    wrap.style.border = '1px solid #3a4150';
+    wrap.style.background = '#f7f9fa';
+    wrap.style.border = '1px solid #c7cdd6';
     wrap.style.borderRadius = '4px';
     wrap.style.padding = '6px';
 
@@ -950,6 +1014,7 @@
       cb.type = 'checkbox';
       cb.value = opt;
       cb.id = `${idPrefix}-${i}`;
+      cb.style.setProperty('cursor', 'pointer', 'important');
 
       row.appendChild(cb);
       row.appendChild(document.createTextNode(opt));
@@ -1042,6 +1107,7 @@
       cb.type = 'checkbox';
       cb.value = key;
       cb.id = `hs-reason-${key}`;
+      cb.style.setProperty('cursor', 'pointer', 'important');
 
       row.appendChild(cb);
       row.appendChild(document.createTextNode(HS_REASON_LABELS[key]));
@@ -1089,7 +1155,7 @@
       const block = document.createElement('div');
       block.className = 'hs-reason-block';
       block.dataset.reasonKey = key;
-      block.style.borderTop = '1px dashed #3a4150';
+      block.style.borderTop = '1px dashed #c7cdd6';
       block.style.marginTop = '6px';
       block.style.paddingTop = '6px';
 
@@ -1226,8 +1292,12 @@
       variantCounter++;
     }
 
-    panel.querySelector('#his-hs-gen').addEventListener('click', generate);
+    panel.querySelector('#his-hs-gen').addEventListener('click', () => {
+      if (!isHelixfastEnabled()) return;
+      generate();
+    });
     panel.querySelector('#his-hs-insert').addEventListener('click', () => {
+      if (!isHelixfastEnabled()) return;
       const text = preview.value.trim();
       if (!text) return;
 
@@ -1255,6 +1325,7 @@
       }
     });
     panel.querySelector('#his-hs-reset').addEventListener('click', () => {
+      if (!isHelixfastEnabled()) return;
       reasonCheckboxes.forEach((cb) => {
         cb.checked = false;
         cb.disabled = false;
@@ -1269,6 +1340,7 @@
     });
 
     toggleBtn.addEventListener('click', () => {
+      if (!isHelixfastEnabled()) return;
       const showing = panel.style.display !== 'none';
       panel.style.display = showing ? 'none' : 'flex';
       if (!showing && !panel.dataset.hsInit) {
@@ -1355,6 +1427,7 @@
   }
 
   function fixPharmacyDosageRow() {
+    if (!isHelixfastEnabled()) return;
     if (isAnyDropdownMenuOpen()) return;
 
     const pharmacyTab = document.getElementById('pharmacy');
@@ -1421,6 +1494,7 @@
   let lastCompletedCheckboxEl = null;
 
   function tryCheckCompletedCheckbox() {
+    if (!isHelixfastEnabled()) return;
     if (isAnyDropdownMenuOpen()) return; // tránh thao tác DOM khi đang có dropdown mở
     const cb = findCompletedCheckbox();
     if (!cb) {
@@ -1449,6 +1523,7 @@
   let paginatorPanelObserver = null;
 
   function trySetPaginatorTo100(attemptsLeft) {
+    if (!isHelixfastEnabled()) return;
     if (attemptsLeft === undefined) attemptsLeft = 0;
     if (paginatorAttemptInProgress) return; // chống gọi chồng khi observer toàn trang kích hoạt lại
 
@@ -1602,6 +1677,7 @@
     'keydown',
     (e) => {
       if (e.key !== 'Enter') return;
+      if (!isHelixfastEnabled()) return;
       const target = e.target;
       if (!target || !target.matches) return;
 
@@ -1676,6 +1752,7 @@
       const titleEl = dialog.querySelector('.p-dialog-title');
       const titleText = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
       if (titleText !== COMPLETE_EXAM_DIALOG_TITLE) return;
+      if (!isHelixfastEnabled()) return;
 
       awaitingCompleteExamDialog = true;
       clearTimeout(awaitingCompleteExamTimeoutId);
@@ -1711,7 +1788,316 @@
   });
   autoSaveDialogObserver.observe(document.body, { childList: true, subtree: true });
 
+  // ===================== NÚT "IN BẢNG KÊ NGOẠI TRÚ" =====================
+  // Nút này giống hệt bấm "Hoàn thành khám", nhưng tự bấm luôn "Đồng ý" trong
+  // hộp thoại hiện ra, sau đó luồng tự động lưu/in đã có ở trên sẽ chạy tiếp như bình thường.
+
+  const TOOLBAR_COMPLETE_BTN_SELECTOR = 'button[data-sk="control.Q"]';
+  const TOOLBAR_SAVE_BTN_SELECTOR = 'button[data-sk="control.S"]';
+  const PRINT_OUTPATIENT_BTN_ID = 'his-print-outpatient-btn';
+  const PRINT_OUTPATIENT_WAIT_RETRY_GAP_MS = 150;
+
+  let printOutpatientPending = false;
+  let printOutpatientTimeoutId = null;
+  let printOutpatientDialogObserver = null;
+
+  function findToolbarButton(selector) {
+    return document.querySelector(selector);
+  }
+
+  function findOpenCompleteExamDialog() {
+    return (
+      Array.from(document.querySelectorAll('.p-dialog')).find((dialog) => {
+        const titleEl = dialog.querySelector('.p-dialog-title');
+        const titleText = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
+        return titleText === COMPLETE_EXAM_DIALOG_TITLE;
+      }) || null
+    );
+  }
+
+  function stopWaitingForCompleteExamDialog() {
+    printOutpatientPending = false;
+    clearTimeout(printOutpatientTimeoutId);
+    if (printOutpatientDialogObserver) {
+      printOutpatientDialogObserver.disconnect();
+      printOutpatientDialogObserver = null;
+    }
+  }
+
+  function tryAutoConfirmCompleteExamDialog() {
+    const dialog = findOpenCompleteExamDialog();
+    if (!dialog) return false;
+    const confirmBtn = findDialogFooterButtonByLabel(dialog, 'Đồng ý');
+    if (!confirmBtn || confirmBtn.disabled) return false;
+    confirmBtn.click();
+    return true;
+  }
+
+  function startWaitingForCompleteExamDialogThenConfirm() {
+    stopWaitingForCompleteExamDialog();
+    printOutpatientPending = true;
+
+    if (tryAutoConfirmCompleteExamDialog()) {
+      stopWaitingForCompleteExamDialog();
+      return;
+    }
+
+    printOutpatientDialogObserver = new MutationObserver(() => {
+      if (!printOutpatientPending) return;
+      if (tryAutoConfirmCompleteExamDialog()) {
+        stopWaitingForCompleteExamDialog();
+      }
+    });
+    printOutpatientDialogObserver.observe(document.body, { childList: true, subtree: true });
+
+    printOutpatientTimeoutId = setTimeout(() => {
+      stopWaitingForCompleteExamDialog();
+    }, AUTO_SAVE_WAIT_WINDOW_MS);
+  }
+
+  function tryClickCompleteExamToolbarButton(attemptsLeft) {
+    if (attemptsLeft === undefined) attemptsLeft = 10;
+    const completeBtn = findToolbarButton(TOOLBAR_COMPLETE_BTN_SELECTOR);
+    if (completeBtn) {
+      if (completeBtn.disabled) return;
+      completeBtn.click();
+      startWaitingForCompleteExamDialogThenConfirm();
+      return;
+    }
+    if (attemptsLeft > 1) {
+      setTimeout(() => tryClickCompleteExamToolbarButton(attemptsLeft - 1), PRINT_OUTPATIENT_WAIT_RETRY_GAP_MS);
+    }
+  }
+
+  function handlePrintOutpatientClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    tryClickCompleteExamToolbarButton();
+  }
+
+  function createPrintOutpatientButton() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = PRINT_OUTPATIENT_BTN_ID;
+    btn.className = 'btn btn-info btn-xs';
+    btn.innerHTML = '<i class="fa fa-print"></i> In nhanh BK toa về';
+    btn.addEventListener('click', handlePrintOutpatientClick);
+    return btn;
+  }
+
+  function removePrintOutpatientButton() {
+    const btn = document.getElementById(PRINT_OUTPATIENT_BTN_ID);
+    if (btn) btn.remove();
+  }
+
+  function ensurePrintOutpatientButtonPlacement() {
+    const completeBtn = findToolbarButton(TOOLBAR_COMPLETE_BTN_SELECTOR);
+    const saveBtn = findToolbarButton(TOOLBAR_SAVE_BTN_SELECTOR);
+    if (!completeBtn || !saveBtn) return;
+
+    let btn = document.getElementById(PRINT_OUTPATIENT_BTN_ID);
+    if (!btn) {
+      btn = createPrintOutpatientButton();
+    }
+
+    // Luôn ép nút này đứng ngay trước "Lưu lại" — neo theo "Lưu lại" thay vì theo
+    // "Hoàn thành khám", vì các nút khác trên thanh có thể xuất hiện/biến mất hoặc
+    // đổi trạng thái khả dụng tuỳ tình huống; chỉ có vị trí ngay trước "Lưu lại" là ổn định.
+    if (saveBtn.previousElementSibling !== btn) {
+      saveBtn.insertAdjacentElement('beforebegin', btn);
+    }
+  }
+
+  // ===================== NÚT BẬT/TẮT "HELIXFAST" =====================
+  // Công tắc tổng cho toàn bộ tự động hoá của tiện ích (tự bấm Bắt đầu khám, tự focus,
+  // tự check hoàn thành, tự set 100 dòng/trang, tự chèn nút "In nhanh BK toa về"...).
+  // Mặc định BẬT, người dùng có thể bấm để TẮT tạm thời, trạng thái được nhớ qua localStorage.
+  const HELIXFAST_STORAGE_KEY = 'helixfast_enabled';
+  const HELIXFAST_TOGGLE_LI_ID = 'helixfast-toggle-li';
+  const HELIXFAST_SETTINGS_LINK_SELECTOR = 'a[title="Thiết lập"]';
+
+  function isHelixfastEnabled() {
+    try {
+      const v = localStorage.getItem(HELIXFAST_STORAGE_KEY);
+      return v === null ? true : v === '1';
+    } catch (err) {
+      return true;
+    }
+  }
+
+  function setHelixfastEnabled(enabled) {
+    try {
+      localStorage.setItem(HELIXFAST_STORAGE_KEY, enabled ? '1' : '0');
+    } catch (err) {
+      /* bỏ qua nếu trình duyệt chặn localStorage */
+    }
+  }
+
+  function injectHelixfastToggleCss() {
+    if (document.getElementById('helixfast-toggle-style')) return;
+    const style = document.createElement('style');
+    style.id = 'helixfast-toggle-style';
+    style.textContent = `
+      #${HELIXFAST_TOGGLE_LI_ID} {
+        display: inline-flex !important;
+        align-items: center;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      #${HELIXFAST_TOGGLE_LI_ID} > a {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+        cursor: pointer;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+      }
+      .helixfast-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #16c79a, #0f9d78);
+        color: #fff;
+        font-size: 9px;
+        flex-shrink: 0;
+      }
+      .helixfast-label {
+        font-size: 12px;
+        font-weight: 600;
+        color: inherit;
+        white-space: nowrap;
+      }
+      .helixfast-switch {
+        position: relative;
+        display: inline-block;
+        width: 26px;
+        height: 14px;
+        border-radius: 9px;
+        background: #ccc;
+        transition: background .15s ease;
+        flex-shrink: 0;
+        vertical-align: middle;
+      }
+      .helixfast-switch.on {
+        background: #0f9d78;
+      }
+      .helixfast-switch-knob {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        background: #fff;
+        transition: left .15s ease;
+        box-shadow: 0 1px 2px rgba(0,0,0,.3);
+      }
+      .helixfast-switch.on .helixfast-switch-knob {
+        left: 14px;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function applyHelixfastToggleVisual(li) {
+    const sw = li.querySelector('.helixfast-switch');
+    const link = li.querySelector('a');
+    if (!sw || !link) return;
+    const enabled = isHelixfastEnabled();
+    sw.classList.toggle('on', enabled);
+    link.title = enabled ? 'Helixfast đang BẬT — bấm để tắt' : 'Helixfast đang TẮT — bấm để bật';
+  }
+
+  // v1.32: sau khi bật lại Helixfast, thử đặt lại nút "In nhanh BK toa về" nhiều lần
+  // trong ít giây (chứ không chỉ 1 lần) — vì nếu đúng lúc bấm bật, nút "Hoàn thành khám"
+  // / "Lưu lại" gốc của trang chưa kịp render (đang chuyển tab, Angular đang vẽ lại...),
+  // gọi 1 lần duy nhất có thể thất bại và không có gì kích hoạt gọi lại về sau.
+  function retryEnsurePrintOutpatientButtonPlacement(attemptsLeft) {
+    if (attemptsLeft === undefined) attemptsLeft = 20;
+    ensurePrintOutpatientButtonPlacement();
+    if (document.getElementById(PRINT_OUTPATIENT_BTN_ID)) return;
+    if (attemptsLeft > 0) {
+      setTimeout(() => retryEnsurePrintOutpatientButtonPlacement(attemptsLeft - 1), 150);
+    }
+  }
+
+  function handleHelixfastToggleClick(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const nowEnabled = !isHelixfastEnabled();
+    setHelixfastEnabled(nowEnabled);
+    const li = document.getElementById(HELIXFAST_TOGGLE_LI_ID);
+    if (li) applyHelixfastToggleVisual(li);
+    if (nowEnabled) {
+      retryEnsurePrintOutpatientButtonPlacement();
+      const hsBtn = document.getElementById('his-hs-toggle-btn');
+      if (hsBtn) hsBtn.style.display = '';
+    } else {
+      removePrintOutpatientButton();
+      // Đóng ngay popup "Tạo bệnh sử nâng cao" nếu đang mở, và ẩn luôn nút mở popup
+      // cho tới khi bật lại Helixfast.
+      const hsPanel = document.getElementById('his-hs-panel') || document.querySelector('.his-hs-panel');
+      if (hsPanel) hsPanel.style.display = 'none';
+      const hsBtn = document.getElementById('his-hs-toggle-btn');
+      if (hsBtn) hsBtn.style.display = 'none';
+    }
+  }
+
+  // Nhân bản đúng cấu trúc/li của nút "Thiết lập" có sẵn (thay vì tự tạo li mới từ đầu)
+  // để nút Helixfast thừa hưởng chính xác CSS/kích thước/canh giữa của thanh menu,
+  // tránh bị lệch, đè hay vỡ layout so với các nút khác trên thanh.
+  function createHelixfastToggleLi(settingsLi) {
+    const li = settingsLi.cloneNode(true);
+    li.removeAttribute('id');
+    li.id = HELIXFAST_TOGGLE_LI_ID;
+    li.classList.remove('open');
+
+    const link = li.querySelector('a') || li;
+    link.removeAttribute('title');
+    link.removeAttribute('data-toggle');
+    link.innerHTML =
+      '<span class="helixfast-logo"><i class="fa-solid fa-bolt"></i></span>' +
+      '<span class="helixfast-label">Helixfast</span>' +
+      '<span class="helixfast-switch"><span class="helixfast-switch-knob"></span></span>';
+    link.addEventListener('click', handleHelixfastToggleClick);
+
+    applyHelixfastToggleVisual(li);
+    return li;
+  }
+
+  function ensureHelixfastToggleButton() {
+    const settingsLink = document.querySelector(HELIXFAST_SETTINGS_LINK_SELECTOR);
+    if (!settingsLink) return;
+    const settingsLi = settingsLink.closest('li');
+    if (!settingsLi) return;
+
+    injectHelixfastToggleCss();
+
+    let li = document.getElementById(HELIXFAST_TOGGLE_LI_ID);
+    if (!li) {
+      li = createHelixfastToggleLi(settingsLi);
+    } else {
+      applyHelixfastToggleVisual(li);
+    }
+
+    // Luôn ép nút này đứng ngay trước nút "Thiết lập", bất kể Angular vẽ lại DOM thế nào.
+    if (settingsLi.previousElementSibling !== li) {
+      settingsLi.insertAdjacentElement('beforebegin', li);
+    }
+  }
+
   const observer = new MutationObserver(() => {
+    ensureHelixfastToggleButton();
+    if (!isHelixfastEnabled()) return;
     bindSymptomEl();
     scanForTreatmentTextareas();
     // Reset cờ khi paginator biến mất (chuyển trang trong SPA)
@@ -1720,12 +2106,20 @@
     }
     if (!paginatorAutoSet) trySetPaginatorTo100();
     tryCheckCompletedCheckbox();
+    ensurePrintOutpatientButtonPlacement();
+    autoFocusSymptomFieldIfNew();
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
 
-  bindSymptomEl();
-  scanForTreatmentTextareas();
-  trySetPaginatorTo100();
-  tryCheckCompletedCheckbox();
+  ensureHelixfastToggleButton();
+  if (isHelixfastEnabled()) {
+    bindSymptomEl();
+    scanForTreatmentTextareas();
+    trySetPaginatorTo100();
+    tryCheckCompletedCheckbox();
+    ensurePrintOutpatientButtonPlacement();
+    focusSymptomFieldOnly();
+    autoFocusSymptomFieldIfNew();
+  }
 })();
