@@ -847,10 +847,15 @@
     // Ưu tiên tên cột rõ ràng, không mập mờ theo ngày tháng
     const explicit = pickDrugCol(headers, ['ton kho', 'so luong ton']);
     if (explicit !== -1) return explicit;
-    // Nếu có nhiều cột dạng "tồn ..." theo mốc thời gian, lấy cột cuối cùng (mới nhất)
+    // Nếu có nhiều cột dạng "tồn ..." hoặc "thực tế ..." theo mốc thời gian
+    // (VD: "TỒN 24/08", "THỰC TẾ 17/09"...), lấy cột cuối cùng (mới nhất) —
+    // trừ "Tồn đầu" (đầu kỳ, luôn lỗi thời).
     let lastTonIdx = -1;
     for (let i = 0; i < norm.length; i++) {
-      if (norm[i].startsWith('ton') && !norm[i].startsWith('ton dau')) lastTonIdx = i;
+      const h = norm[i];
+      const isTon = h.startsWith('ton') && !h.startsWith('ton dau');
+      const isThucTe = h.startsWith('thuc te');
+      if (isTon || isThucTe) lastTonIdx = i;
     }
     if (lastTonIdx !== -1) return lastTonIdx;
     return pickDrugCol(headers, ['so luong']);
