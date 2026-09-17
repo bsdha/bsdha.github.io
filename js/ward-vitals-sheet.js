@@ -215,19 +215,14 @@
   // Ngày sinh | ... như file Excel/PDF "Danh sách bệnh nhân nội trú").
   // Cách này xác định đúng cột "Họ & tên" thay vì chỉ dò năm sinh trong cả
   // dòng, nên không bị lẫn STT/PID/mã liên kết/giới tính/mã thẻ vào tên.
-  function parseTableRow(line) {
-    const cells = line.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== '');
-    if (cells.length < 2) return null;
-    let idx = cells.findIndex(c => FULL_DATE_RE.test(c));
-    let year;
-    if (idx > 0) {
-      year = cells[idx].match(FULL_DATE_RE)[3];
-    } else {
-      // Không có ngày/tháng đầy đủ -> thử tìm cột chỉ ghi Năm sinh (4 chữ số)
-      idx = cells.findIndex(c => YEAR_ONLY_CELL_RE.test(c));
-      if (idx <= 0) return null;
-      year = cells[idx];
-    }
+  // Lùi từ vị trí cột ngày (idx) về đầu dòng để tìm ô "Họ & tên" gần nhất.
+  // Bỏ qua các ô STT/PID/mã (toàn số), nhãn trạng thái, giới tính — và CẢ
+  // những ô có chữ nhưng rõ ràng không phải tên (VD ô "Chẩn đoán" chứa mã
+  // ICD như "R50.9-Sốt...") thay vì dừng lại ngay khi gặp, vì một số danh
+  // sách (VD "Quản lý nội trú") có thêm cột Chẩn đoán xen giữa Họ tên và
+  // Ngày sinh. Chỉ thực sự dừng khi gặp ô "trơ" — không số, không chữ,
+  // không khớp trạng thái/giới tính (dấu hiệu đã đi lệch khỏi hàng dữ liệu).
+  function findNameBeforeIndex(cells, idx) {
     for (let i = idx - 1; i >= 0; i--) {
       const c = cells[i];
       if (/^\d+$/.test(c)) continue; // STT / PID / Mã BN (toàn số)
@@ -235,10 +230,37 @@
       if (GENDER_CELL_RE.test(c)) continue; // cột Giới tính (Nam/Nữ)
       if (/[A-Za-zÀ-ỹ]/.test(c)) {
         const name = cleanNameCell(c);
-        if (!name || isLikelyNoiseLine(name)) break;
-        return { name: toVNUpper(name), year };
+        if (name && !isLikelyNoiseLine(name)) return name;
+        continue; // có chữ nhưng không phải tên hợp lệ (VD cột Chẩn đoán) -> lùi tiếp
       }
       break; // ô không có chữ cái và không phải STT/trạng thái/giới tính -> dừng, không đoán bừa
+    }
+    return null;
+  }
+
+  function parseTableRow(line) {
+    const cells = line.split(/\t|\s{2,}/).map(c => c.trim()).filter(c => c !== '');
+    if (cells.length < 2) return null;
+
+    // Một dòng có thể có NHIỀU cột dạng ngày (VD "Ngày vào viện" kèm giờ đứng
+    // TRƯỚC cả tên, còn "Ngày sinh" — cột thực sự cần lấy — lại đứng SAU tên,
+    // như trong danh sách "Quản lý nội trú"). Trước đây chỉ lấy cột ngày ĐẦU
+    // TIÊN gặp trong dòng nên bị nhầm sang "Ngày vào viện" (không có gì phía
+    // trước để lùi tìm tên) và bỏ sót toàn bộ dòng. Nay thử lần lượt từng cột
+    // ngày/năm sinh theo thứ tự xuất hiện, ưu tiên dạng ngày đầy đủ trước rồi
+    // mới đến năm-sinh-4-chữ-số — cột nào lùi tìm ra tên hợp lệ thì dùng cột đó.
+    const fullDateIdx = [];
+    cells.forEach((c, i) => { if (FULL_DATE_RE.test(c)) fullDateIdx.push(i); });
+    for (const idx of fullDateIdx) {
+      const name = findNameBeforeIndex(cells, idx);
+      if (name) return { name: toVNUpper(name), year: cells[idx].match(FULL_DATE_RE)[3] };
+    }
+
+    const yearIdx = [];
+    cells.forEach((c, i) => { if (YEAR_ONLY_CELL_RE.test(c)) yearIdx.push(i); });
+    for (const idx of yearIdx) {
+      const name = findNameBeforeIndex(cells, idx);
+      if (name) return { name: toVNUpper(name), year: cells[idx] };
     }
     return null;
   }
