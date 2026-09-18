@@ -1,5 +1,21 @@
 (function () {
   // ======================================================================
+  // PHẦN 0: CHỈ HIỆN WIDGET NHẠC (24/7 + bảng mixer) Ở TRANG CHỦ
+  // Nhạc vẫn tiếp tục phát khi chuyển sang trang khác — vì đây là SPA (điều
+  // hướng không tải lại trang), nên các đối tượng Audio()/iframe YouTube
+  // không bị huỷ, chỉ là widget bị ẩn khỏi giao diện bằng CSS display:none.
+  // ======================================================================
+  function applyAudioWidgetVisibility(key) {
+    document.body.classList.toggle('audio-widget-hidden', key !== 'home');
+  }
+  window.addEventListener('spa:navigate', function (e) {
+    applyAudioWidgetVisibility(e.detail && e.detail.key);
+  });
+  // Trạng thái ban đầu (trước khi spa-router.js kịp phát sự kiện đầu tiên):
+  // suy ra trực tiếp từ URL hiện tại để tránh nhấp nháy hiện rồi ẩn.
+  applyAudioWidgetVisibility(location.pathname === '/' ? 'home' : 'other');
+
+  // ======================================================================
   // PHẦN 1: ĐÀI RADIO 24/7 + ÂM THANH THIÊN NHIÊN (kênh, âm thanh nền, mixer)
   // ======================================================================
   const CHANNELS = [
