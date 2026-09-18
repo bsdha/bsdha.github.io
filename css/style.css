@@ -3000,11 +3000,11 @@
   background: var(--cs-card);
   border: 1px solid var(--cs-line);
   border-radius: 16px;
-  padding: 18px 20px;
+  padding: 14px 18px;
   box-shadow: 0 1px 2px rgba(8, 40, 35, .04);
 }
-#page-clinicalscores .card h1 { margin: 0 0 4px; font-size: 17px; font-weight: 800; color: var(--cs-ink); }
-#page-clinicalscores .card .sub { margin: 0 0 12px; font-size: 12.5px; color: var(--cs-ink-soft); line-height: 1.45; }
+#page-clinicalscores .card h1 { margin: 0 0 3px; font-size: 16px; font-weight: 800; color: var(--cs-ink); }
+#page-clinicalscores .card .sub { margin: 0 0 10px; font-size: 12px; color: var(--cs-ink-soft); line-height: 1.4; }
 /* Bỏ tiêu đề H1 lặp lại trong khối kết quả (đã có "monitor-label" bên trong) để thu gọn thanh kết quả */
 #page-clinicalscores .cs-result-card > h1 { display: none; }
 #page-clinicalscores .cs-result-card { padding: 10px 16px; }
@@ -3072,12 +3072,19 @@
   gap: 10px;
   margin-bottom: 10px;
 }
-#page-clinicalscores .field { margin-bottom: 10px; }
+/* 5 chỉ số sinh tồn NEWS2 gói gọn trong 1 hàng trên màn hình rộng, nhường
+   chỗ dọc cho 3 nhóm lựa chọn bên dưới; tự thu về ít cột hơn khi hẹp. */
+#page-clinicalscores .row.cs-row5 { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+#page-clinicalscores .row.cs-row5 .field label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#page-clinicalscores .row.cs-row5 .field input[type="number"] { padding: 8px 8px; font-size: 13px; }
+@media (max-width: 760px) { #page-clinicalscores .row.cs-row5 { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 480px) { #page-clinicalscores .row.cs-row5 { grid-template-columns: repeat(2, 1fr); } }
+#page-clinicalscores .field { margin-bottom: 7px; }
 #page-clinicalscores .field label {
   display: block;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--cs-ink);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   font-weight: 600;
 }
 #page-clinicalscores .field input[type="number"] {
@@ -3098,7 +3105,7 @@
 }
 
 /* Dot-style radio options (chấm tròn) */
-#page-clinicalscores .cs-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px 8px; }
+#page-clinicalscores .cs-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 5px 6px; }
 #page-clinicalscores .cs-options.cs-row2 { display: flex; flex-direction: row; flex-wrap: wrap; }
 #page-clinicalscores .cs-options.cs-row2 .cs-radio-row { flex: 1 1 190px; }
 #page-clinicalscores .cs-options.cs-row3 { display: flex; flex-direction: row; flex-wrap: wrap; }
@@ -3109,12 +3116,12 @@
 #page-clinicalscores .cs-radio-row {
   display: flex;
   align-items: center;
-  padding: 7px 10px;
+  padding: 5px 8px;
   border: 1px solid var(--cs-line);
-  border-radius: 9px;
+  border-radius: 8px;
   cursor: pointer;
   background: var(--cs-paper);
-  font-size: 12.5px;
+  font-size: 11.5px;
   color: var(--cs-ink);
   transition: border-color .15s ease, background .15s ease, color .15s ease, transform .1s ease;
 }
@@ -3128,9 +3135,9 @@
 #page-clinicalscores .cs-radio-row input[type="radio"] {
   appearance: none;
   -webkit-appearance: none;
-  width: 18px;
-  height: 18px;
-  margin: 0 12px 0 0;
+  width: 15px;
+  height: 15px;
+  margin: 0 8px 0 0;
   flex: none;
   border: 1.5px solid var(--cs-line);
   border-radius: 50%;
@@ -3142,17 +3149,17 @@
 #page-clinicalscores .cs-radio-row input[type="radio"]:checked::after {
   content: "";
   position: absolute;
-  left: 3px;
-  top: 3px;
-  width: 9px;
-  height: 9px;
+  left: 2.5px;
+  top: 2.5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: var(--cs-teal);
 }
 #page-clinicalscores .cs-radio-row .score {
-  margin-left: 4px;
+  margin-left: 3px;
   font-family: var(--cs-mono);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--cs-ink-soft);
   flex: none;
