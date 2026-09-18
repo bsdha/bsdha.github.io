@@ -11,9 +11,9 @@
 
   if (!input) return;
 
-  // unit === 'mmol' -> nhập mmol/L, ra mg/dL (mặc định)
-  // unit === 'mg'   -> nhập mg/dL, ra mmol/L
-  let unit = 'mmol';
+  // unit === 'mmol' -> nhập mmol/L, ra mg/dL
+  // unit === 'mg'   -> nhập mg/dL, ra mmol/L (mặc định)
+  let unit = 'mg';
 
   function classify(mgdl) {
     if (mgdl < 70) {
