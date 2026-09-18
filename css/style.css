@@ -1406,6 +1406,14 @@
   }
   #goToBottom:hover { background: #1d4ed8; }
 
+  /* Widget 24/7 + bảng mixer chỉ hiện ở Trang chủ; ẩn bằng display:none khi
+     sang trang khác — không tắt phát nhạc, vì <audio>/iframe YouTube vẫn tồn
+     tại trong DOM và tiếp tục chạy nền dù không hiển thị. */
+  body.audio-widget-hidden #radioWidget,
+  body.audio-widget-hidden #radioMixer {
+    display: none !important;
+  }
+
   /* --- Widget radio góc trên bên phải --- */
   .radio-widget {
     position: fixed;
