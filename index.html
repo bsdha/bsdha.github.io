@@ -1183,19 +1183,23 @@
   <div class="page" id="page-clinicalscores">
     <main>
       <div class="panel-wrap cs-wrap">
-        <div class="card">
-          <div class="cs-eyebrow">Công cụ điều dưỡng · bên giường bệnh</div>
-          <h1>📊 Thang điểm lâm sàng</h1>
-          <p class="sub">NEWS2 · VAS · Braden · Morse — 4 thang điểm dùng nhanh khi thăm khám và theo dõi người bệnh. Kết quả tính tự động khi nhập.</p>
+        <div class="card cs-header-card">
+          <div class="cs-header-row">
+            <div class="cs-header-text">
+              <div class="cs-eyebrow">Công cụ điều dưỡng · bên giường bệnh</div>
+              <h1>📊 Thang điểm lâm sàng</h1>
+              <p class="sub">NEWS2 · VAS · Braden · Morse — 4 thang điểm dùng nhanh khi thăm khám và theo dõi người bệnh. Kết quả tính tự động khi nhập.</p>
+            </div>
+            <div class="toggle-group cs-tabs" id="csTabs">
+              <button type="button" class="active" data-tool="news2">NEWS2</button>
+              <button type="button" data-tool="vas">VAS</button>
+              <button type="button" data-tool="braden">Braden</button>
+              <button type="button" data-tool="morse">Morse</button>
+            </div>
+          </div>
           <svg class="cs-pulse-line" viewBox="0 0 600 26" preserveAspectRatio="none" aria-hidden="true">
             <path d="M0 13 L180 13 L200 4 L215 22 L232 13 L420 13 L438 6 L452 20 L468 13 L600 13" />
           </svg>
-          <div class="toggle-group cs-tabs" id="csTabs" style="margin-top:18px;">
-            <button type="button" class="active" data-tool="news2">NEWS2</button>
-            <button type="button" data-tool="vas">VAS</button>
-            <button type="button" data-tool="braden">Braden</button>
-            <button type="button" data-tool="morse">Morse</button>
-          </div>
         </div>
       </div>
 
