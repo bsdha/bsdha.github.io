@@ -3160,24 +3160,26 @@
 #page-clinicalscores .cs-radio-row .score::after { content: ")"; }
 #page-clinicalscores .cs-radio-row:has(input:checked) .score { color: var(--cs-teal); }
 
-/* ---- Monitor readout (signature dark ECG-style panel) ---- */
+/* ---- Monitor readout (nền sáng trùng nền trang, viền tối, viền/nét neon) ---- */
 #page-clinicalscores .monitor {
-  background: var(--cs-monitor);
+  background: var(--cs-paper);
+  border: 1.5px solid var(--cs-monitor);
   border-radius: 10px;
   padding: 8px 14px;
-  color: #EAFBF5;
+  color: var(--cs-ink);
   position: relative;
   overflow: hidden;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 6px 16px;
+  box-shadow: 0 0 0 1px rgba(91, 230, 200, .12), 0 0 14px rgba(12, 107, 96, .16), inset 0 0 10px rgba(12, 107, 96, .05);
 }
 #page-clinicalscores .monitor::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(91, 230, 200, .035) 0px, rgba(91, 230, 200, .035) 1px, transparent 1px, transparent 22px);
+  background: repeating-linear-gradient(0deg, rgba(12, 107, 96, .05) 0px, rgba(12, 107, 96, .05) 1px, transparent 1px, transparent 22px);
   pointer-events: none;
 }
 #page-clinicalscores .monitor-label {
@@ -3185,8 +3187,9 @@
   font-size: 10.5px;
   letter-spacing: .12em;
   text-transform: uppercase;
-  color: var(--cs-phosphor);
-  opacity: .85;
+  color: var(--cs-teal);
+  text-shadow: 0 0 8px rgba(12, 107, 96, .35);
+  opacity: .9;
   position: relative;
   flex: 0 0 auto;
 }
@@ -3207,13 +3210,13 @@
   font-size: 22px;
   font-weight: 700;
   line-height: 1;
-  color: #F2FFFA;
-  text-shadow: 0 0 12px rgba(91, 230, 200, .35);
+  color: var(--cs-teal-deep);
+  text-shadow: 0 0 10px rgba(91, 230, 200, .55);
 }
 #page-clinicalscores .result .unit {
   font-family: var(--cs-mono);
   font-size: 12px;
-  color: #9FE9D6;
+  color: var(--cs-teal);
   margin-left: 2px;
   font-weight: 600;
 }
@@ -3228,7 +3231,8 @@
   font-size: 11px;
   font-weight: 700;
   letter-spacing: .02em;
-  background: rgba(255, 255, 255, .08);
+  background: rgba(12, 107, 96, .08);
+  border: 1px solid rgba(12, 107, 96, .18);
   color: var(--cs-low);
   flex: 0 0 auto;
 }
@@ -3247,7 +3251,7 @@
 #page-clinicalscores .result .desc {
   margin: 0;
   font-size: 11.5px;
-  color: #B7D9CE;
+  color: var(--cs-ink-soft);
   line-height: 1.4;
   position: relative;
   flex: 1 1 220px;
