@@ -11,7 +11,7 @@
       btn.classList.add('active');
       var key = btn.dataset.tool;
       toolPanels.forEach(function (p) {
-        p.style.display = (p.dataset.toolPanel === key) ? 'grid' : 'none';
+        p.style.display = (p.dataset.toolPanel === key) ? '' : 'none';
       });
     });
   });
