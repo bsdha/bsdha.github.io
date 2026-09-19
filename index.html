@@ -1034,55 +1034,41 @@
   <div class="page" id="page-dichtruyen">
     <main>
       <div class="panel-wrap">
-        <div class="card">
-          <h1>💧 Tính giờ kết thúc truyền dịch</h1>
-          <p class="sub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
-
-          <div class="row dt-row-3">
-            <div class="field">
-              <label>Bắt đầu truyền lúc (24h)</label>
-              <input type="text" id="dtStart" placeholder="VD: 08:50" inputmode="numeric" maxlength="5" autocomplete="off">
-            </div>
-            <div class="field">
-              <label>Thể tích chai dịch (mL)</label>
-              <input type="number" id="dtVolume" value="500" min="1" step="1" inputmode="numeric">
-            </div>
-            <div class="field">
-              <label>Tốc độ truyền (giọt/phút)</label>
-              <input type="number" id="dtRate" value="40" min="1" step="1" inputmode="numeric">
-            </div>
-          </div>
-
-          <div class="dt-label-sm">Hệ số giọt (dây truyền)</div>
-          <div class="toggle-group" id="dtFactorToggle">
-            <button type="button" data-factor="15">15 gtt/mL</button>
-            <button type="button" data-factor="20" class="active">20 gtt/mL (chuẩn)</button>
-            <button type="button" data-factor="60">60 gtt/mL (vi giọt)</button>
-          </div>
-
-          <div class="err" id="dtErr">Vui lòng nhập đầy đủ và hợp lệ: thể tích và tốc độ truyền phải lớn hơn 0.</div>
-
-          <button class="calc-btn" id="dtCalcBtn">Tính giờ kết thúc</button>
-
-          <div class="result" id="dtResult">
-            <div class="dt-result-line"><span class="dt-result-label">Thời gian truyền: </span><span class="value" id="dtDuration">--</span></div>
-            <div class="dt-result-line"><span class="dt-result-label">Kết thúc lúc: </span><span class="value dt-end-red" id="dtEndTag">--</span></div>
-          </div>
-        </div>
-
-        <div class="card" id="dxCard">
+        <div class="card" id="dtCard">
           <div class="dx-head">
             <div>
-              <h1>🦟 Bù dịch sốt xuất huyết Dengue có dấu hiệu cảnh báo</h1>
-              <p class="sub">Tính tốc độ truyền (mL/kg/giờ) theo cân nặng, gộp thể tích tối đa 2 chai dịch, suy ra thời gian hết dịch ở từng mức liều theo phác đồ Quyết định 2760/QĐ-BYT (2023). Áp dụng cho SXHD <b>có dấu hiệu cảnh báo, chưa sốc</b>.</p>
+              <h1 id="dtTitle">💧 Tính giờ kết thúc truyền dịch</h1>
+              <p class="sub" id="dtSub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
             </div>
             <label class="dx-switch">
               <input type="checkbox" id="dxToggle">
               <span class="dx-switch-track"><span class="dx-switch-thumb"></span></span>
             </label>
           </div>
+          <div class="dx-switch-label">🦟 Bù dịch sốt xuất huyết Dengue có dấu hiệu cảnh báo (2760/QĐ-BYT)</div>
 
-          <div id="dxBody" class="dx-body">
+          <!-- Chế độ đơn thuần: chỉ tính giờ kết thúc -->
+          <div id="dtSimpleBody" class="dt-mode-only">
+            <div class="row dt-row-3">
+              <div class="field">
+                <label>Bắt đầu truyền lúc (24h)</label>
+                <input type="text" id="dtStart" placeholder="VD: 08:50" inputmode="numeric" maxlength="5" autocomplete="off">
+              </div>
+              <div class="field">
+                <label>Thể tích chai dịch (mL)</label>
+                <input type="number" id="dtVolume" value="500" min="1" step="1" inputmode="numeric">
+              </div>
+              <div class="field">
+                <label>Tốc độ truyền (giọt/phút)</label>
+                <input type="number" id="dtRate" value="40" min="1" step="1" inputmode="numeric">
+              </div>
+            </div>
+          </div>
+
+          <!-- Chế độ SXHD cảnh báo: tính theo cân nặng và mức phác đồ -->
+          <div id="dxBody" class="dx-mode-only mode-hidden">
+            <p class="dx-intro">Chọn nhóm tuổi, cân nặng và thể tích dịch để tính tốc độ, giọt/phút và thời gian hết dịch theo từng mức của phác đồ Bộ Y tế. Áp dụng cho SXHD <b>có dấu hiệu cảnh báo, chưa sốc</b>.</p>
+
             <div class="dt-label-sm">Nhóm tuổi</div>
             <div class="toggle-group" id="dxAgeToggle">
               <button type="button" data-age="child" class="active">Trẻ em (&lt; 16 tuổi)</button>
@@ -1129,25 +1115,39 @@
                 <input type="text" id="dxStart" placeholder="VD: 08:50" inputmode="numeric" maxlength="5" autocomplete="off">
               </div>
             </div>
+          </div>
 
-            <div class="err" id="dxErr">Vui lòng nhập cân nặng và ít nhất thể tích chai 1 (đều phải lớn hơn 0).</div>
+          <div class="dt-label-sm">Hệ số giọt (dây truyền)</div>
+          <div class="toggle-group" id="dtFactorToggle">
+            <button type="button" data-factor="15">15 gtt/mL</button>
+            <button type="button" data-factor="20" class="active">20 gtt/mL (chuẩn)</button>
+            <button type="button" data-factor="60">60 gtt/mL (vi giọt)</button>
+          </div>
 
-            <button class="calc-btn" id="dxCalcBtn">Tính tốc độ &amp; thời gian</button>
+          <div class="err dt-mode-only" id="dtErr">Vui lòng nhập đầy đủ và hợp lệ: thể tích và tốc độ truyền phải lớn hơn 0.</div>
+          <div class="err dx-mode-only mode-hidden" id="dxErr">Vui lòng nhập cân nặng và ít nhất thể tích chai 1 (đều phải lớn hơn 0).</div>
 
-            <div class="result" id="dxResult">
-              <div class="dt-result-line"><span class="dt-result-label">Tốc độ truyền: </span><span class="value" id="dxRateMlH">--</span><span class="unit">mL/giờ</span></div>
-              <div class="dt-result-line"><span class="dt-result-label">Tương đương: </span><span class="value" id="dxRateGtt">--</span><span class="unit">giọt/phút</span></div>
-              <div class="dt-result-line"><span class="dt-result-label">Còn lại: </span><span class="value" id="dxVolLeft">--</span><span class="unit">mL</span></div>
-              <div class="dt-result-line"><span class="dt-result-label">Truyền hết trong: </span><span class="value" id="dxDurLeft">--</span></div>
-              <div class="dt-result-line"><span class="dt-result-label">Dự kiến hết lúc: </span><span class="value dt-end-red" id="dxEndTag">--</span></div>
-              <p class="dx-note" id="dxDurationNote"></p>
-            </div>
+          <button class="calc-btn dt-mode-only" id="dtCalcBtn">Tính giờ kết thúc</button>
+          <button class="calc-btn dx-mode-only mode-hidden" id="dxCalcBtn">Tính tốc độ &amp; thời gian</button>
 
-            <div class="formula-note dx-protocol-note" id="dxProtocolNote"></div>
+          <div class="result dt-mode-only" id="dtResult">
+            <div class="dt-result-line"><span class="dt-result-label">Thời gian truyền: </span><span class="value" id="dtDuration">--</span></div>
+            <div class="dt-result-line"><span class="dt-result-label">Kết thúc lúc: </span><span class="value dt-end-red" id="dtEndTag">--</span></div>
+          </div>
 
-            <div class="formula-note dx-warn-note">
-              ⚠️ Công cụ chỉ hỗ trợ tính toán tốc độ/thời gian theo mức liều đã chọn, <b>không tự động chuyển mức</b> — bác sĩ/điều dưỡng cần đánh giá lại mạch, huyết áp, nước tiểu, Hct mỗi 2-6 giờ để quyết định giữ nguyên, giảm tốc độ hay ngưng dịch. Nếu người bệnh có dấu hiệu sốc (mạch nhanh nhẹ, huyết áp kẹt/tụt, chi lạnh, Hct tăng cao), phải chuyển sang phác đồ chống sốc SXHD, ngoài phạm vi công cụ này.
-            </div>
+          <div class="result dx-mode-only mode-hidden" id="dxResult">
+            <div class="dt-result-line"><span class="dt-result-label">Tốc độ truyền: </span><span class="value" id="dxRateMlH">--</span><span class="unit">mL/giờ</span></div>
+            <div class="dt-result-line"><span class="dt-result-label">Tương đương: </span><span class="value" id="dxRateGtt">--</span><span class="unit">giọt/phút</span></div>
+            <div class="dt-result-line"><span class="dt-result-label">Còn lại: </span><span class="value" id="dxVolLeft">--</span><span class="unit">mL</span></div>
+            <div class="dt-result-line"><span class="dt-result-label">Truyền hết trong: </span><span class="value" id="dxDurLeft">--</span></div>
+            <div class="dt-result-line"><span class="dt-result-label">Dự kiến hết lúc: </span><span class="value dt-end-red" id="dxEndTag">--</span></div>
+            <p class="dx-note" id="dxDurationNote"></p>
+          </div>
+
+          <div class="formula-note dx-protocol-note dx-mode-only mode-hidden" id="dxProtocolNote"></div>
+
+          <div class="formula-note dx-warn-note dx-mode-only mode-hidden">
+            ⚠️ Công cụ chỉ hỗ trợ tính toán tốc độ/thời gian theo mức liều đã chọn, <b>không tự động chuyển mức</b> — bác sĩ/điều dưỡng cần đánh giá lại mạch, huyết áp, nước tiểu, Hct mỗi 2-6 giờ để quyết định giữ nguyên, giảm tốc độ hay ngưng dịch. Nếu người bệnh có dấu hiệu sốc (mạch nhanh nhẹ, huyết áp kẹt/tụt, chi lạnh, Hct tăng cao), phải chuyển sang phác đồ chống sốc SXHD, ngoài phạm vi công cụ này.
           </div>
         </div>
       </div>
