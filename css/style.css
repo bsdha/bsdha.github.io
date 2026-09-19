@@ -884,7 +884,7 @@
     align-items: flex-start;
     justify-content: space-between;
     gap: 16px;
-    margin-bottom: 4px;
+    margin-bottom: 2px;
   }
 #page-dichtruyen .dx-head h1 { margin-bottom: 4px; }
 #page-dichtruyen .dx-head .sub { margin-bottom: 0; }
@@ -893,6 +893,7 @@
     position: relative;
     display: inline-block;
     cursor: pointer;
+    margin-top: 2px;
   }
 #page-dichtruyen .dx-switch input {
     position: absolute;
@@ -928,13 +929,25 @@
     transform: translateX(20px);
     background: var(--green);
   }
-#page-dichtruyen .dx-body {
-    margin-top: 18px;
-    padding-top: 18px;
-    border-top: 1px dashed var(--border);
-    display: none;
+#page-dichtruyen .dx-switch-label {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--muted);
+    margin: 0 0 18px;
   }
-#page-dichtruyen .dx-body.show { display: block; }
+#page-dichtruyen.dx-mode .dx-switch-label {
+    color: var(--green);
+  }
+#page-dichtruyen .dx-intro {
+    margin: 0 0 18px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+/* Ẩn/hiện theo chế độ (điều khiển bằng JS qua class .mode-hidden) */
+.mode-hidden { display: none !important; }
+
 #page-dichtruyen input#dxVolTotal {
     background: var(--surface-2);
     color: var(--muted);
@@ -970,6 +983,39 @@
 @media (max-width: 480px) {
   #page-dichtruyen .dx-head { flex-direction: column; }
 }
+
+#page-dichtruyen .result {
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+#page-dichtruyen #dtResultBadge,
+#page-dichtruyen #dxResultBadge {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+#page-dichtruyen .result.border-green {
+    border-color: var(--green);
+    box-shadow: inset 0 0 0 1px var(--green);
+  }
+#page-dichtruyen .result.border-amber {
+    border-color: var(--amber);
+    box-shadow: inset 0 0 0 1px var(--amber);
+  }
+#page-dichtruyen .result.border-red {
+    border-color: var(--red);
+    box-shadow: inset 0 0 0 1px var(--red);
+  }
+#page-dichtruyen .result .stage.badge-green {
+    background: var(--green-light);
+    color: var(--green);
+  }
+#page-dichtruyen .result .stage.badge-amber {
+    background: var(--amber-light);
+    color: var(--amber-dark);
+  }
+#page-dichtruyen .result .stage.badge-red {
+    background: var(--red-light);
+    color: var(--red-dark);
+  }
 
 #page-bmi main {
     flex: 1;
