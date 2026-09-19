@@ -1,10 +1,18 @@
 (function () {
   const toggle = document.getElementById('dxToggle');
+  const dtCard = document.getElementById('dtCard');
+  const dtTitle = document.getElementById('dtTitle');
+  const dtSub = document.getElementById('dtSub');
+  const dtSimpleBody = document.getElementById('dtSimpleBody');
+  const dtErr = document.getElementById('dtErr');
+  const dtCalcBtn = document.getElementById('dtCalcBtn');
+  const dtResult = document.getElementById('dtResult');
   const body = document.getElementById('dxBody');
   const ageToggle = document.getElementById('dxAgeToggle');
   const stageToggle = document.getElementById('dxStageToggle');
   const stageHint = document.getElementById('dxStageHint');
   const protocolNote = document.getElementById('dxProtocolNote');
+  const warnNote = document.querySelector('#dtCard .dx-warn-note');
   const weightInput = document.getElementById('dxWeight');
   const vol1Input = document.getElementById('dxVol1');
   const vol2Input = document.getElementById('dxVol2');
@@ -23,6 +31,11 @@
   const durationNoteEl = document.getElementById('dxDurationNote');
 
   if (!toggle) return; // Trang chưa render
+
+  const TITLE_SIMPLE = '💧 Tính giờ kết thúc truyền dịch';
+  const SUB_SIMPLE = 'Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.';
+  const TITLE_DX = '🦟 Bù dịch sốt xuất huyết Dengue có dấu hiệu cảnh báo';
+  const SUB_DX = 'Tính tốc độ truyền theo cân nặng, gộp thể tích tối đa 2 chai dịch, suy ra thời gian hết dịch ở từng mức liều theo phác đồ Quyết định 2760/QĐ-BYT (2023).';
 
   // Phác đồ truyền dịch SXHD có dấu hiệu cảnh báo (Quyết định 2760/QĐ-BYT, 2023)
   // B1 (trẻ em < 16 tuổi) và B2 (người lớn ≥ 16 tuổi), giai đoạn CHƯA SỐC.
@@ -95,9 +108,31 @@
     applyStage();
   });
 
-  toggle.addEventListener('change', () => {
-    body.classList.toggle('show', toggle.checked);
-  });
+  function setMode(isDx) {
+    dtCard.classList.toggle('dx-mode', isDx);
+    dtTitle.textContent = isDx ? TITLE_DX : TITLE_SIMPLE;
+    dtSub.textContent = isDx ? SUB_DX : SUB_SIMPLE;
+
+    dtSimpleBody.classList.toggle('mode-hidden', isDx);
+    dtErr.classList.toggle('mode-hidden', isDx);
+    dtCalcBtn.classList.toggle('mode-hidden', isDx);
+    dtResult.classList.toggle('mode-hidden', isDx);
+
+    body.classList.toggle('mode-hidden', !isDx);
+    errEl.classList.toggle('mode-hidden', !isDx);
+    calcBtn.classList.toggle('mode-hidden', !isDx);
+    resultEl.classList.toggle('mode-hidden', !isDx);
+    protocolNote.classList.toggle('mode-hidden', !isDx);
+    if (warnNote) warnNote.classList.toggle('mode-hidden', !isDx);
+
+    // Ẩn kết quả cũ và lỗi khi đổi chế độ, tránh nhầm lẫn
+    dtErr.classList.remove('show');
+    dtResult.classList.remove('show');
+    errEl.classList.remove('show');
+    resultEl.classList.remove('show');
+  }
+
+  toggle.addEventListener('change', () => setMode(toggle.checked));
 
   function reuseDropFactor() {
     const active = document.querySelector('#dtFactorToggle button.active');
@@ -171,6 +206,7 @@
 
   calcBtn.addEventListener('click', calc);
 
+  setMode(false);
   renderStages();
   recalcTotal();
 })();
