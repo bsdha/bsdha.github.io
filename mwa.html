@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>💰 Medinet Wallet Admin</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: linear-gradient(135deg, #0d1b2a 0%, #12294a 50%, #0d1b2a 100%);
+  min-height: 100vh; display: flex; align-items: flex-start;
+  justify-content: center; padding: 32px 16px;
+}
+.card {
+  background: #fff; border-radius: 20px; padding: 36px 36px 30px;
+  width: 100%; max-width: 560px;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+}
+h1 { text-align:center; font-size:22px; color:#0d47a1; margin-bottom:4px; }
+.subtitle { text-align:center; font-size:13px; color:#999; margin-bottom:26px; }
+.logo { text-align:center; font-size:44px; margin-bottom:6px; }
+
+label { font-size:13px; font-weight:700; color:#444; display:block; margin-bottom:6px; }
+input[type=text], input[type=password], input[type=number] {
+  width:100%; padding:11px 14px; border:2px solid #e0e4ea;
+  border-radius:10px; font-size:15px; outline:none; transition:border-color .2s;
+  font-family:monospace; letter-spacing:.5px;
+}
+input:focus { border-color:#1565c0; }
+.field { margin-bottom:18px; }
+.divider { height:1px; background:#eee; margin:20px 0; }
+
+/* Gate mat khau Admin - phai vao truoc khi thay bat ky chuc nang nao */
+.gate {
+  text-align:center; padding:20px 0;
+}
+.gate input { text-align:center; margin-bottom:12px; }
+.gate button {
+  padding:12px 28px; border:none; border-radius:10px; background:#0d47a1;
+  color:#fff; font-weight:800; font-size:14px; cursor:pointer;
+}
+.gate-err { color:#c62828; font-size:12.5px; margin-top:10px; display:none; }
+
+.main-panel { display:none; }
+.main-panel.open { display:block; }
+
+/* Tab chon hanh dong */
+.tab-row { display:flex; gap:8px; margin-bottom:20px; }
+.tab-btn {
+  flex:1; padding:11px; border:2px solid #ddd; border-radius:10px;
+  background:#fafafa; cursor:pointer; font-size:13px; font-weight:700; color:#666;
+  text-align:center; transition:all .15s;
+}
+.tab-btn.active { border-color:#0d47a1; background:#e8eeff; color:#0d47a1; }
+
+.panel-section { display:none; }
+.panel-section.active { display:block; }
+
+.amount-chips { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.chip {
+  padding:8px 14px; border:1.5px solid #ddd; border-radius:999px;
+  font-size:12.5px; font-weight:700; cursor:pointer; color:#555; background:#fafafa;
+}
+.chip:hover { border-color:#90caf9; }
+.chip.active { border-color:#0d47a1; background:#e8eeff; color:#0d47a1; }
+
+.btn {
+  width:100%; padding:14px; color:#fff; border:none;
+  border-radius:12px; font-size:15px; font-weight:800; cursor:pointer;
+  transition:opacity .2s, transform .1s; margin-top:4px;
+}
+.btn:hover { opacity:.92; } .btn:active { transform:scale(.98); }
+.btn:disabled { opacity:.5; cursor:not-allowed; }
+.btn-topup { background:linear-gradient(135deg,#1565c0,#0d47a1); }
+.btn-adjust { background:linear-gradient(135deg,#6a1b9a,#4a148c); }
+.btn-balance { background:linear-gradient(135deg,#546e7a,#37474f); }
+
+.result-box {
+  display:none; margin-top:16px; border-radius:12px;
+  padding:18px; text-align:center; background:#e8eeff; border:2px solid #90caf9;
+}
+.result-box.error { background:#fce4ec; border-color:#f48fb1; }
+.result-box.show { display:block; }
+.result-label { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; }
+.result-num { font-size:28px; font-weight:900; color:#0d47a1; margin-bottom:4px; }
+.result-box.error .result-num { color:#c62828; font-size:16px; }
+.result-info { font-size:12.5px; color:#888; }
+
+.info-box {
+  margin-top:20px; background:#fff8e1; border-radius:10px;
+  padding:13px 16px; font-size:12.5px; color:#6d4c00; line-height:1.7;
+  border:1px solid #ffe082;
+}
+.info-box b { color:#e65100; }
+.warning {
+  background:#fce4ec; border:1px solid #f48fb1; border-radius:10px;
+  padding:11px 15px; font-size:12px; color:#880e4f;
+  margin-top:14px; line-height:1.6;
+}
+
+@media (max-width: 420px) {
+  .card { padding:22px 18px 20px; }
+}
+
+/* Card rong hon cho Dashboard + Danh sach khach hang */
+.card-wide { max-width: 980px; }
+
+/* Top-level nav (Vi Medi / Dashboard / Khach hang) */
+.top-nav { display:flex; gap:8px; margin-bottom:22px; }
+.top-nav-btn {
+  flex:1; padding:12px; border:2px solid #ddd; border-radius:10px;
+  background:#fafafa; cursor:pointer; font-size:13.5px; font-weight:800; color:#666;
+  text-align:center; transition:all .15s;
+}
+.top-nav-btn.active { border-color:#0d47a1; background:#e8eeff; color:#0d47a1; }
+.top-view { display:none; }
+.top-view.active { display:block; }
+
+/* Dashboard */
+.stat-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:22px; }
+.stat-card { background:#f7f9fc; border:1px solid #e3e8f0; border-radius:12px; padding:14px 16px; }
+.stat-card .lbl { font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.4px; font-weight:700; margin-bottom:6px; }
+.stat-card .val { font-size:20px; font-weight:900; color:#0d47a1; }
+.stat-section-title { font-size:13px; font-weight:800; color:#444; margin:18px 0 10px; }
+.refresh-btn { background:#37474f; color:#fff; border:none; border-radius:10px; padding:10px 16px; font-weight:700; font-size:13px; cursor:pointer; margin-bottom:16px; }
+
+/* Dung luong D1 (Dashboard) */
+.usage-box { background:#0b1f2b; color:#fff; border-radius:14px; padding:18px 20px; }
+.usage-row { margin-bottom:6px; }
+.usage-label { display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px; }
+.usage-bar-track { background:rgba(255,255,255,.14); border-radius:999px; height:12px; overflow:hidden; }
+.usage-bar-fill { height:100%; background:linear-gradient(90deg,#0f6659,#1fae94); border-radius:999px; transition:width .3s; }
+.usage-bar-fill.warn { background:linear-gradient(90deg,#c9713f,#e0954f); }
+.usage-note { font-size:11.5px; color:#9fb3ac; margin-top:10px; line-height:1.6; }
+
+/* Customer directory */
+.search-row { display:flex; gap:8px; margin-bottom:16px; }
+.search-row input { flex:1; }
+.search-row button { padding:0 18px; border:none; border-radius:10px; background:#0d47a1; color:#fff; font-weight:800; cursor:pointer; }
+.cust-table { width:100%; border-collapse:collapse; font-size:12.5px; }
+.cust-table th { text-align:left; color:#888; font-size:11px; text-transform:uppercase; padding:8px 10px; border-bottom:2px solid #eee; }
+.cust-table td { padding:10px; border-bottom:1px solid #f0f0f0; vertical-align:top; }
+.cust-table tr:hover { background:#f7f9fc; cursor:pointer; }
+.badge { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:800; }
+.badge-active { background:#e8f5e9; color:#2e7d32; }
+.badge-empty { background:#fce4ec; color:#c62828; }
+.badge-trial { background:#fff8e1; color:#e65100; }
+.badge-none { background:#f0f0f0; color:#999; }
+
+/* Customer detail overlay */
+.overlay { display:none; position:fixed; inset:0; background:rgba(13,27,42,.6); z-index:100; align-items:flex-start; justify-content:center; padding:30px 16px; overflow:auto; }
+.overlay.show { display:flex; }
+.detail-card { background:#fff; border-radius:16px; padding:26px; width:100%; max-width:640px; }
+.detail-card h3 { color:#0d47a1; margin-bottom:14px; font-size:18px; }
+.detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px 16px; margin-bottom:16px; font-size:13px; }
+.detail-grid .k { color:#888; font-size:11px; text-transform:uppercase; font-weight:700; }
+.detail-grid .v { font-weight:700; color:#222; }
+.close-btn { float:right; background:none; border:none; font-size:20px; cursor:pointer; color:#999; }
+.hist-list { max-height:220px; overflow:auto; border:1px solid #eee; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:14px; }
+.hist-row { padding:6px 0; border-bottom:1px dashed #eee; display:flex; justify-content:space-between; gap:10px; align-items:center; }
+.mini-refund-btn {
+  margin-left:8px; padding:3px 9px; border:1px solid #f48fb1; border-radius:999px;
+  background:#fce4ec; color:#c62828; font-size:10.5px; font-weight:800; cursor:pointer;
+}
+.mini-refund-btn:hover { background:#f8bbd0; }
+.edit-form input, .edit-form select { margin-bottom:10px; }
+.edit-form label { margin-top:0; }
+</style>
+</head>
+<body>
+<div class="card card-wide">
+  <div class="logo">💰</div>
+  <h1>Medinet Wallet Admin</h1>
+  <p class="subtitle">Console nội bộ — nạp/chỉnh số dư Medi qua Cloudflare Worker</p>
+
+  <div class="gate" id="gate">
+    <label>Admin Key</label>
+    <div style="position:relative">
+      <input type="password" id="adminKeyInput" placeholder="Nhập Admin Key" autocomplete="off" style="width:100%;box-sizing:border-box;padding-right:42px">
+      <button type="button" id="toggleKeyVisBtn" onclick="toggleKeyVisibility()" title="Hiện/ẩn Admin Key"
+        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:4px 6px;color:#888">👁️</button>
+    </div>
+    <button onclick="unlockGate()">Đăng nhập</button>
+    <div class="gate-err" id="gateErr">Sai Admin Key hoặc không kết nối được Worker</div>
+  </div>
+
+  <div class="main-panel" id="mainPanel">
+
+    <div class="top-nav">
+      <div class="top-nav-btn active" id="navWallet" onclick="switchView('wallet')">💳 Ví Medi</div>
+      <div class="top-nav-btn" id="navDashboard" onclick="switchView('dashboard')">📊 Dashboard</div>
+      <div class="top-nav-btn" id="navCustomers" onclick="switchView('customers')">👥 Khách hàng</div>
+      <div class="top-nav-btn" id="navLogout" onclick="logoutAdmin()" style="flex:0 0 auto;padding:12px 16px;color:#c62828;border-color:#f3c2c2;background:#fff5f5">🚪 Đăng xuất</div>
+    </div>
+
+    <!-- ============ VIEW: DASHBOARD ============ -->
+    <div class="top-view" id="viewDashboard">
+      <button class="refresh-btn" onclick="loadDashboard()">🔄 Làm mới số liệu</button>
+
+      <div class="stat-section-title">💵 Doanh thu</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="lbl">Hôm nay</div><div class="val" id="dRevToday">—</div></div>
+        <div class="stat-card"><div class="lbl">7 ngày</div><div class="val" id="dRev7d">—</div></div>
+        <div class="stat-card"><div class="lbl">Tháng này</div><div class="val" id="dRevMonth">—</div></div>
+      </div>
+
+      <div class="stat-section-title">👥 Khách hàng</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="lbl">Tổng</div><div class="val" id="dCustTotal">—</div></div>
+        <div class="stat-card"><div class="lbl">Đang sử dụng</div><div class="val" id="dCustActive">—</div></div>
+        <div class="stat-card"><div class="lbl">Hết Medi</div><div class="val" id="dCustDepleted">—</div></div>
+        <div class="stat-card"><div class="lbl">Đã trial</div><div class="val" id="dCustTrial">—</div></div>
+      </div>
+
+      <div class="stat-section-title">🪙 Medi</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="lbl">Đã bán</div><div class="val" id="dMediSold">—</div></div>
+        <div class="stat-card"><div class="lbl">Đã sử dụng</div><div class="val" id="dMediUsed">—</div></div>
+        <div class="stat-card"><div class="lbl">Còn trong tài khoản</div><div class="val" id="dMediRemaining">—</div></div>
+      </div>
+
+      <div class="stat-section-title">🧾 Đơn hàng</div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="lbl">Chờ thanh toán</div><div class="val" id="dOrdPending">—</div></div>
+        <div class="stat-card"><div class="lbl">Đã thanh toán (30 ngày)</div><div class="val" id="dOrdPaid">—</div></div>
+        <div class="stat-card"><div class="lbl">Hoàn tiền</div><div class="val" id="dOrdRefunded">—</div></div>
+      </div>
+
+      <div class="stat-section-title">☁️ Dung lượng D1 (Cloudflare)</div>
+      <div class="usage-box">
+        <div class="usage-row">
+          <div class="usage-label"><span>Lưu trữ (Storage)</span><span id="dUsagePct">—</span></div>
+          <div class="usage-bar-track"><div class="usage-bar-fill" id="dUsageBar" style="width:0%"></div></div>
+        </div>
+        <div class="usage-note" id="dUsageDetail">Bấm "Làm mới số liệu" ở trên để tải.</div>
+
+        <div class="usage-row" style="margin-top:16px">
+          <div class="usage-label"><span>Lượt đọc hôm nay (ước lượng)</span><span id="dReadPct">—</span></div>
+          <div class="usage-bar-track"><div class="usage-bar-fill" id="dReadBar" style="width:0%"></div></div>
+        </div>
+        <div class="usage-row" style="margin-top:14px">
+          <div class="usage-label"><span>Lượt ghi hôm nay (ước lượng)</span><span id="dWritePct">—</span></div>
+          <div class="usage-bar-track"><div class="usage-bar-fill" id="dWriteBar" style="width:0%"></div></div>
+        </div>
+        <div class="usage-note" id="dDailyDetail"></div>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: CUSTOMERS ============ -->
+    <div class="top-view" id="viewCustomers">
+      <div class="search-row">
+        <input type="text" id="custSearchInput" placeholder="🔎 Tìm Machine ID / SĐT / Tên" onkeydown="if(event.key==='Enter')loadCustomers()">
+        <button onclick="loadCustomers()">Tìm</button>
+      </div>
+      <div style="overflow:auto">
+        <table class="cust-table">
+          <thead>
+            <tr><th>Machine ID</th><th>Tên / SĐT</th><th>Đơn vị</th><th>Còn lại</th><th>Trạng thái</th><th>Bảo hành</th></tr>
+          </thead>
+          <tbody id="custTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ============ VIEW: WALLET (form gốc) ============ -->
+    <div class="top-view active" id="viewWallet">
+
+    <div class="field">
+      <label>Mã máy khách hàng (Machine ID)</label>
+      <input type="text" id="midInput" placeholder="VD: MID-A1B2C3D4" spellcheck="false" autocomplete="off">
+    </div>
+
+    <div class="tab-row">
+      <div class="tab-btn active" id="tabTopup" onclick="switchTab('topup')">💳 Nạp Medi</div>
+      <div class="tab-btn" id="tabAdjust" onclick="switchTab('adjust')">🛠️ Bù sự cố</div>
+      <div class="tab-btn" id="tabBalance" onclick="switchTab('balance')">🔍 Tra số dư</div>
+    </div>
+
+    <!-- TAB: Nap Medi theo so tien VND, tu dong tinh bonus -->
+    <div class="panel-section active" id="panelTopup">
+      <label>Số tiền đã nhận (VNĐ)</label>
+      <div class="amount-chips">
+        <div class="chip" onclick="setAmount(100000)">100.000đ</div>
+        <div class="chip" onclick="setAmount(500000)">500.000đ (+5%)</div>
+        <div class="chip" onclick="setAmount(1000000)">1.000.000đ (+10%)</div>
+        <div class="chip" onclick="setAmount(2000000)">2.000.000đ (+15%)</div>
+      </div>
+      <input type="number" id="amountInput" placeholder="Hoặc nhập số tiền khác (tối thiểu 100.000đ)" oninput="clearChipSelection()">
+      <button class="btn btn-topup" onclick="doTopup()">💳 Cộng Medi vào Ví</button>
+    </div>
+
+    <!-- TAB: Bu su co - Admin tu do cong/tru so Medi bat ky -->
+    <div class="panel-section" id="panelAdjust">
+      <label>Số Medi cần cộng (âm để trừ)</label>
+      <input type="number" id="mediDeltaInput" placeholder="VD: 5 (cộng) hoặc -5 (trừ)" style="margin-bottom:12px">
+      <label>Ghi chú (bắt buộc, để đối soát sau này)</label>
+      <input type="text" id="adjustNoteInput" placeholder="VD: Bù lỗi kỹ thuật ngày 28/08" style="margin-bottom:12px">
+      <button class="btn btn-adjust" onclick="doAdjust()">🛠️ Áp dụng điều chỉnh</button>
+      <div class="divider"></div>
+      <label>Gỡ khoá thiết bị (khi khách bị khoá nhầm)</label>
+      <div style="font-size:12px;color:#888;margin-bottom:10px;line-height:1.6">
+        Dùng khi khách báo lỗi "Không xác nhận được thiết bị" — thường do đổi máy/cài lại trình duyệt khiến dữ liệu cũ bị mất. Gỡ khoá xong, script của khách sẽ tự nhận lại vào lần thao tác kế tiếp.
+      </div>
+      <button class="btn" style="background:linear-gradient(135deg,#78909c,#546e7a)" onclick="doResetDevice()">🔓 Gỡ khoá thiết bị cho mã máy này</button>
+    </div>
+
+    <!-- TAB: Tra so du hien tai -->
+    <div class="panel-section" id="panelBalance">
+      <button class="btn btn-balance" onclick="doCheckBalance()">🔍 Xem số dư hiện tại</button>
+    </div>
+
+    <div class="result-box" id="resultBox">
+      <div class="result-label" id="resultLabel">Kết quả</div>
+      <div class="result-num" id="resultNum">—</div>
+      <div class="result-info" id="resultInfo"></div>
+    </div>
+
+    <div class="info-box">
+      <b>ℹ️ Lưu ý:</b> Giao dịch chuyển khoản đúng nội dung Mã máy giờ đã được <b>tự động cộng Medi qua webhook SePay</b> (thường trong vài giây–vài phút), không cần thao tác tay ở đây nữa. Tab <b>"Nạp Medi"</b> chỉ dùng khi cần <b>bù thủ công</b> cho các trường hợp đặc biệt:<br>
+      1. Khách chuyển khoản nhưng ghi <b>sai/thiếu Mã máy</b> nên webhook không nhận diện được<br>
+      2. Khách chuyển tiền mặt, ví điện tử khác, hoặc ngoài tài khoản đã liên kết SePay<br>
+      3. Xem đúng số tiền đã nhận, chọn đúng mức tiền (hoặc nhập tay) → "Cộng Medi vào Ví" — hệ thống tự tính khuyến mãi giống công thức tự động<br>
+      4. Báo khách mở popup <b>Ví Medi</b> trong script và bấm "Làm mới số dư"
+    </div>
+    </div><!-- /viewWallet -->
+  </div>
+
+  <!-- ============ Overlay: chi tiet + sua thong tin khach hang ============ -->
+  <div class="overlay" id="custOverlay">
+    <div class="detail-card">
+      <button class="close-btn" onclick="closeCustDetail()">✕</button>
+      <h3 id="custDetailTitle">Chi tiết khách hàng</h3>
+      <div class="detail-grid" id="custDetailGrid"></div>
+
+      <div class="stat-section-title">Lịch sử thanh toán</div>
+      <div class="hist-list" id="custOrderHist">—</div>
+
+      <div class="stat-section-title">Lịch sử giao dịch Medi</div>
+      <div class="hist-list" id="custTxHist">—</div>
+
+      <div class="stat-section-title">✏️ Sửa thông tin khách hàng</div>
+      <div class="edit-form">
+        <label>Số điện thoại (bắt buộc)</label>
+        <input type="text" id="custEditPhone">
+        <label>Tên (không bắt buộc)</label>
+        <input type="text" id="custEditName">
+        <label>Zalo</label>
+        <input type="text" id="custEditZalo">
+        <label>Đơn vị / cơ sở</label>
+        <input type="text" id="custEditOrg">
+        <label>Trạng thái bảo hành</label>
+        <select id="custEditWarranty">
+          <option value="active">Còn bảo hành</option>
+          <option value="expired">Hết bảo hành</option>
+          <option value="void">Không áp dụng</option>
+        </select>
+        <label>Ghi chú Admin</label>
+        <input type="text" id="custEditNote" placeholder="VD: đã đổi máy 20/08, hỗ trợ gỡ khoá 1 lần">
+        <button class="btn btn-topup" onclick="saveCustDetail()">💾 Lưu thông tin</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="warning">
+    ⚠️ Không chia sẻ Admin Key. Mọi thao tác nạp/điều chỉnh đều được Worker ghi log lại (bảng <code>transactions</code>) để đối soát.
+  </div>
+</div>
+
+<script>
+// ĐỔI URL NÀY thành đúng URL Worker đã deploy (khớp với WALLET_API trong Medinet.user.js)
+var WALLET_API = 'https://medinet-wallet.dha-medinet.workers.dev';
+var adminKey = '';
+
+// Dinh dang so du Medi LUON DUNG 2 CHU SO THAP PHAN (vd "4.99", "5.00"),
+// khong bao gio hien so le dai ngoang do sai so dau phay dong.
+function fmtMedi(n) {
+  var v = Math.round((typeof n === 'number' ? n : 0) * 100) / 100;
+  if (v < 0) v = 0;
+  return v.toFixed(2);
+}
+
+function toggleKeyVisibility() {
+  var inp = document.getElementById('adminKeyInput');
+  var btn = document.getElementById('toggleKeyVisBtn');
+  if (inp.type === 'password') {
+    inp.type = 'text';
+    btn.textContent = '🙈';
+  } else {
+    inp.type = 'password';
+    btn.textContent = '👁️';
+  }
+}
+
+function logoutAdmin() {
+  adminKey = '';
+  document.getElementById('mainPanel').classList.remove('open');
+  document.getElementById('gate').style.display = 'block';
+  document.getElementById('adminKeyInput').value = '';
+  document.getElementById('adminKeyInput').type = 'password';
+  document.getElementById('toggleKeyVisBtn').textContent = '👁️';
+  document.getElementById('gateErr').style.display = 'none';
+  switchView('wallet');
+  document.getElementById('adminKeyInput').focus();
+}
+
+function unlockGate() {
+  var key = document.getElementById('adminKeyInput').value.trim();
+  if (!key) return;
+  // Xac thuc bang cach thu goi 1 endpoint admin voi mid gia (se tra ve loi
+  // khac 401 neu key dung, hoac 401 neu sai) - dung /admin/adjust voi
+  // mediDelta=0 se bi tu choi o buoc validate nhung van vuot qua check key truoc.
+  fetch(WALLET_API + '/admin/adjust', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
+    body: JSON.stringify({ mid: 'MID-00000000', mediDelta: 0, note: 'ping' }),
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    if (res.status === 401) {
+      var remaining = res.data && res.data.attemptsRemaining;
+      var msg = 'Sai Admin Key.';
+      if (typeof remaining === 'number') {
+        msg += remaining > 0
+          ? ' Còn <b>' + remaining + '</b> lần thử trước khi bị khoá tạm 30 phút.'
+          : ' Đã hết lượt thử — mạng này đang bị khoá tạm, thử lại sau 30 phút.';
+      }
+      document.getElementById('gateErr').innerHTML = msg;
+      document.getElementById('gateErr').style.display = 'block';
+      return;
+    }
+    if (res.status === 429) {
+      document.getElementById('gateErr').textContent = 'Nhập sai quá nhiều lần — mạng này đang bị khoá tạm, thử lại sau 30 phút';
+      document.getElementById('gateErr').style.display = 'block';
+      return;
+    }
+    adminKey = key;
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('mainPanel').classList.add('open');
+  })
+  .catch(function() {
+    document.getElementById('gateErr').textContent = 'Không kết nối được Worker — kiểm tra WALLET_API trong file này';
+    document.getElementById('gateErr').style.display = 'block';
+  });
+}
+
+function switchTab(tab) {
+  ['topup','adjust','balance'].forEach(function(t) {
+    document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    document.getElementById('panel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+  });
+  document.getElementById('resultBox').classList.remove('show');
+}
+
+function setAmount(v) {
+  document.getElementById('amountInput').value = v;
+  document.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('active'); });
+  event.target.classList.add('active');
+}
+function clearChipSelection() {
+  document.querySelectorAll('.chip').forEach(function(c) { c.classList.remove('active'); });
+}
+
+function getMid() {
+  var mid = document.getElementById('midInput').value.trim().toUpperCase();
+  if (!/^MID-[0-9A-F]{8}$/.test(mid)) {
+    alert('Mã máy không đúng định dạng!\nPhải là: MID-XXXXXXXX');
+    return null;
+  }
+  return mid;
+}
+
+function showResult(ok, label, num, info) {
+  var box = document.getElementById('resultBox');
+  box.className = 'result-box show' + (ok ? '' : ' error');
+  document.getElementById('resultLabel').textContent = label;
+  document.getElementById('resultNum').textContent = num;
+  document.getElementById('resultInfo').textContent = info || '';
+}
+
+function doTopup() {
+  var mid = getMid();
+  if (!mid) return;
+  var amount = parseInt(document.getElementById('amountInput').value, 10);
+  if (!amount || amount < 100000) { alert('Số tiền tối thiểu 100.000đ'); return; }
+
+  fetch(WALLET_API + '/admin/topup', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
+    body: JSON.stringify({ mid: mid, amountVnd: amount }),
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    if (res.status === 200) {
+      showResult(true, 'Đã cộng Medi', '+' + res.data.mediAdded + ' Medi',
+        'Số dư mới: ' + fmtMedi(res.data.balance) + ' Medi (≈' + Math.round(res.data.balance * 100) + ' lượt)');
+    } else {
+      showResult(false, 'Lỗi', res.data.error || 'Không xác định', '');
+    }
+  })
+  .catch(function() { showResult(false, 'Lỗi mạng', 'Không gọi được Worker', ''); });
+}
+
+function doAdjust() {
+  var mid = getMid();
+  if (!mid) return;
+  var delta = parseInt(document.getElementById('mediDeltaInput').value, 10);
+  var note = document.getElementById('adjustNoteInput').value.trim();
+  if (!delta) { alert('Nhập số Medi cần cộng/trừ (khác 0)'); return; }
+  if (!note) { alert('Vui lòng ghi chú lý do điều chỉnh'); return; }
+
+  fetch(WALLET_API + '/admin/adjust', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
+    body: JSON.stringify({ mid: mid, mediDelta: delta, note: note }),
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    if (res.status === 200) {
+      showResult(true, (delta > 0 ? 'Đã cộng bù' : 'Đã trừ'), (delta > 0 ? '+' : '') + delta + ' Medi',
+        'Số dư mới: ' + fmtMedi(res.data.balance) + ' Medi');
+    } else {
+      showResult(false, 'Lỗi', res.data.error || 'Không xác định', '');
+    }
+  })
+  .catch(function() { showResult(false, 'Lỗi mạng', 'Không gọi được Worker', ''); });
+}
+
+function doResetDevice() {
+  var mid = getMid();
+  if (!mid) return;
+  if (!confirm('Gỡ khoá thiết bị cho ' + mid + '?\nChỉ làm khi chắc chắn khách bị khoá nhầm.')) return;
+
+  fetch(WALLET_API + '/admin/reset-device', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
+    body: JSON.stringify({ mid: mid }),
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    if (res.status === 200) {
+      showResult(true, 'Đã gỡ khoá thiết bị', mid, 'Khách thao tác lại là tự nhận thiết bị mới');
+    } else {
+      showResult(false, 'Lỗi', res.data.error || 'Không xác định', '');
+    }
+  })
+  .catch(function() { showResult(false, 'Lỗi mạng', 'Không gọi được Worker', ''); });
+}
+
+function doCheckBalance() {
+  var mid = getMid();
+  if (!mid) return;
+  fetch(WALLET_API + '/balance?mid=' + encodeURIComponent(mid))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      // Luon hien SO DU THAT (estimatedBalance - da tru phan dang dung do
+      // NGAY CA KHI chua du 100 luot de tru chinh thuc ben D1) - khong
+      // con hien 2 con so lech nhau kieu "chinh thuc" vs "uoc tinh" gay
+      // hieu lam nua, chi 1 con so duy nhat, dung voi thuc te khach dang
+      // dung.
+      var realBalance = (typeof data.estimatedBalance === 'number') ? data.estimatedBalance : data.balance;
+      showResult(true, 'S\u1ed1 d\u01b0 hi\u1ec7n t\u1ea1i', fmtMedi(realBalance) + ' Medi',
+        (data.trialUsed ? '\u0110\u00e3 d\u00f9ng th\u1eed' : 'Ch\u01b0a d\u00f9ng th\u1eed') + ' \u00b7 \u2248' + Math.round(realBalance * 100) + ' l\u01b0\u1ee3t');
+    })
+    .catch(function() { showResult(false, 'L\u1ed7i m\u1ea1ng', 'Kh\u00f4ng g\u1ecdi \u0111\u01b0\u1ee3c Worker', ''); });
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'adminKeyInput') {
+    unlockGate();
+  }
+});
+
+// ================= Dinh dang tien / helper chung =================
+function fmtVnd(n) {
+  return (typeof n === 'number' ? n : 0).toLocaleString('vi-VN') + 'đ';
+}
+function fmtDate(s) {
+  if (!s) return '—';
+  // D1 tra ve "YYYY-MM-DD HH:MM:SS" (UTC) - hien theo gio VN cho de doc.
+  var d = new Date(s.replace(' ', 'T') + 'Z');
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+// ================= Chuyen View (Vi Medi / Dashboard / Khach hang) =================
+function switchView(view) {
+  ['wallet','dashboard','customers'].forEach(function(v) {
+    document.getElementById('nav' + v.charAt(0).toUpperCase() + v.slice(1)).classList.toggle('active', v === view);
+    document.getElementById('view' + v.charAt(0).toUpperCase() + v.slice(1)).classList.toggle('active', v === view);
+  });
+  if (view === 'dashboard') loadDashboard();
+  if (view === 'customers') loadCustomers();
+}
+
+// ================= Dashboard =================
+function loadDashboard() {
+  fetch(WALLET_API + '/admin/dashboard', { headers: { 'X-Admin-Key': adminKey } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { alert('Lỗi tải dashboard: ' + d.error); return; }
+      document.getElementById('dRevToday').textContent = fmtVnd(d.revenue.today);
+      document.getElementById('dRev7d').textContent = fmtVnd(d.revenue.last7d);
+      document.getElementById('dRevMonth').textContent = fmtVnd(d.revenue.month);
+      document.getElementById('dCustTotal').textContent = d.customers.total;
+      document.getElementById('dCustActive').textContent = d.customers.active;
+      document.getElementById('dCustDepleted').textContent = d.customers.depleted;
+      document.getElementById('dCustTrial').textContent = d.customers.trial;
+      document.getElementById('dMediSold').textContent = fmtMedi(d.medi.sold);
+      document.getElementById('dMediUsed').textContent = fmtMedi(d.medi.used);
+      document.getElementById('dMediRemaining').textContent = fmtMedi(d.medi.remaining);
+      document.getElementById('dOrdPending').textContent = d.orders.pending;
+      document.getElementById('dOrdPaid').textContent = d.orders.paidLast30d;
+      document.getElementById('dOrdRefunded').textContent = d.orders.refunded;
+    })
+    .catch(function() { alert('Không tải được số liệu dashboard — kiểm tra kết nối Worker'); });
+
+  fetch(WALLET_API + '/admin/d1-usage', { headers: { 'X-Admin-Key': adminKey } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { document.getElementById('dUsageDetail').textContent = 'Lỗi tải dung lượng D1: ' + d.error; return; }
+      var pct = Math.min(100, (d.estimatedBytes / d.storageLimitBytes) * 100);
+      var bar = document.getElementById('dUsageBar');
+      bar.style.width = pct.toFixed(2) + '%';
+      bar.className = 'usage-bar-fill' + (pct > 75 ? ' warn' : '');
+      document.getElementById('dUsagePct').textContent = pct.toFixed(2) + '%';
+      var usedMB = (d.estimatedBytes / 1024 / 1024).toFixed(2);
+      var limitGB = (d.storageLimitBytes / 1024 / 1024 / 1024).toFixed(0);
+      var remainMB = ((d.storageLimitBytes - d.estimatedBytes) / 1024 / 1024).toFixed(2);
+      document.getElementById('dUsageDetail').innerHTML =
+        'Đã dùng ước tính: <b>' + usedMB + ' MB</b> / ' + limitGB + ' GB — còn lại ≈ <b>' + remainMB + ' MB</b><br>' +
+        'Tổng số dòng dữ liệu: ' + d.totalRows.toLocaleString('vi-VN') + '<br>' +
+        '<span style="opacity:.75">' + d.note + '</span>';
+
+      var du = d.dailyUsage || {};
+      var readPct = Math.min(100, ((du.requestsRead || 0) / (du.readLimit || 1)) * 100);
+      var writePct = Math.min(100, ((du.requestsWrite || 0) / (du.writeLimit || 1)) * 100);
+      var readBar = document.getElementById('dReadBar');
+      readBar.style.width = readPct.toFixed(4) + '%';
+      readBar.className = 'usage-bar-fill' + (readPct > 75 ? ' warn' : '');
+      document.getElementById('dReadPct').textContent = readPct.toFixed(4) + '%';
+      var writeBar = document.getElementById('dWriteBar');
+      writeBar.style.width = writePct.toFixed(2) + '%';
+      writeBar.className = 'usage-bar-fill' + (writePct > 75 ? ' warn' : '');
+      document.getElementById('dWritePct').textContent = writePct.toFixed(2) + '%';
+      document.getElementById('dDailyDetail').innerHTML =
+        'Ngày ' + (du.date || '—') + ' (UTC) — Đọc: <b>' + (du.requestsRead || 0).toLocaleString('vi-VN') + '</b> / ' + (du.readLimit || 0).toLocaleString('vi-VN') +
+        ' &nbsp;·&nbsp; Ghi: <b>' + (du.requestsWrite || 0).toLocaleString('vi-VN') + '</b> / ' + (du.writeLimit || 0).toLocaleString('vi-VN') + '<br>' +
+        '<span style="opacity:.75">Ước lượng theo số request gọi tới Worker, không phải số dòng SQL thật bên trong D1 — reset lúc 00:00 UTC (~7h sáng giờ VN) mỗi ngày.</span>';
+    })
+    .catch(function() { document.getElementById('dUsageDetail').textContent = 'Không tải được dung lượng D1 — kiểm tra kết nối Worker'; });
+}
+
+// ================= Danh sach khach hang =================
+function loadCustomers() {
+  var search = document.getElementById('custSearchInput').value.trim();
+  var url = WALLET_API + '/admin/customers' + (search ? ('?search=' + encodeURIComponent(search)) : '');
+  fetch(url, { headers: { 'X-Admin-Key': adminKey } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { alert('Lỗi tải danh sách: ' + d.error); return; }
+      var tbody = document.getElementById('custTableBody');
+      tbody.innerHTML = '';
+      (d.customers || []).forEach(function(c) {
+        var tr = document.createElement('tr');
+        tr.onclick = function() { openCustDetail(c.machine_id); };
+        var statusBadge = c.balance_medi > 0
+          ? '<span class="badge badge-active">Đang dùng</span>'
+          : (c.trial_used ? '<span class="badge badge-empty">Hết Medi</span>' : '<span class="badge badge-trial">Chưa dùng thử</span>');
+        var warrantyMap = { active: 'Còn BH', expired: 'Hết BH', void: 'Không áp dụng' };
+        var warrantyBadge = c.warranty_status
+          ? '<span class="badge badge-trial">' + (warrantyMap[c.warranty_status] || c.warranty_status) + '</span>'
+          : '<span class="badge badge-none">Chưa có TT</span>';
+        tr.innerHTML =
+          '<td><code>' + c.machine_id + '</code></td>' +
+          '<td>' + (c.name || '<span style="color:#bbb">(chưa có tên)</span>') + '<br><span style="color:#888">' + (c.phone || '(chưa có SĐT)') + '</span></td>' +
+          '<td>' + (c.org || '—') + '</td>' +
+          '<td>' + fmtMedi(c.balance_medi) + ' Medi</td>' +
+          '<td>' + statusBadge + '</td>' +
+          '<td>' + warrantyBadge + '</td>';
+        tbody.appendChild(tr);
+      });
+      if (!(d.customers || []).length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Không tìm thấy khách hàng nào</td></tr>';
+      }
+    })
+    .catch(function() { alert('Không tải được danh sách khách hàng — kiểm tra kết nối Worker'); });
+}
+
+// ================= Chi tiet 1 khach hang =================
+var custDetailMid = null;
+function openCustDetail(mid) {
+  custDetailMid = mid;
+  fetch(WALLET_API + '/admin/customer?mid=' + encodeURIComponent(mid), { headers: { 'X-Admin-Key': adminKey } })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.error) { alert('Lỗi tải chi tiết: ' + d.error); return; }
+      var w = d.wallet, c = d.customer || {};
+      document.getElementById('custDetailTitle').textContent = 'Chi tiết — ' + mid;
+      var totalBought = (d.transactions || []).filter(function(t){return t.type==='topup';}).reduce(function(s,t){return s+t.medi_delta;},0);
+      var totalUsed = (d.transactions || []).filter(function(t){return t.type==='spend';}).reduce(function(s,t){return s-t.medi_delta;},0);
+      document.getElementById('custDetailGrid').innerHTML =
+        '<div><div class="k">Còn lại</div><div class="v">' + fmtMedi(w.balance_medi) + ' Medi</div></div>' +
+        '<div><div class="k">Đã mua (tổng)</div><div class="v">' + fmtMedi(totalBought) + ' Medi</div></div>' +
+        '<div><div class="k">Đã sử dụng</div><div class="v">' + fmtMedi(totalUsed) + ' Medi</div></div>' +
+        '<div><div class="k">Trạng thái trial</div><div class="v">' + (w.trial_used ? 'Đã dùng thử' : 'Chưa dùng thử') + '</div></div>' +
+        '<div><div class="k">Ngày đăng ký (ví)</div><div class="v">' + fmtDate(w.created_at) + '</div></div>' +
+        '<div><div class="k">Zalo</div><div class="v">' + (c.zalo || '—') + '</div></div>';
+
+      var orderHtml = (d.orders || []).map(function(o) {
+        var statusMap = { pending: 'Chờ TT', paid: 'Đã TT', refunded: 'Hoàn tiền', cancelled: 'Đã huỷ' };
+        var refundBtn = o.status === 'paid'
+          ? '<button class="mini-refund-btn" onclick="doRefundOrder(' + o.id + ', event)">Hoàn tiền</button>'
+          : '';
+        return '<div class="hist-row"><span>' + fmtDate(o.created_at) + ' · ' + fmtVnd(o.amount_vnd) + '</span><span>' + (statusMap[o.status] || o.status) + refundBtn + '</span></div>';
+      }).join('');
+      document.getElementById('custOrderHist').innerHTML = orderHtml || '<span style="color:#999">Chưa có đơn hàng nào</span>';
+
+      var txHtml = (d.transactions || []).map(function(t) {
+        var typeMap = { topup: 'Nạp', trial: 'Dùng thử', spend: 'Sử dụng', admin_adjust: 'Admin chỉnh' };
+        return '<div class="hist-row"><span>' + fmtDate(t.created_at) + ' · ' + (typeMap[t.type] || t.type) + '</span><span>' + (t.medi_delta > 0 ? '+' : '') + t.medi_delta + ' Medi</span></div>';
+      }).join('');
+      document.getElementById('custTxHist').innerHTML = txHtml || '<span style="color:#999">Chưa có giao dịch nào</span>';
+
+      document.getElementById('custEditPhone').value = c.phone || '';
+      document.getElementById('custEditName').value = c.name || '';
+      document.getElementById('custEditZalo').value = c.zalo || '';
+      document.getElementById('custEditOrg').value = c.org || '';
+      document.getElementById('custEditWarranty').value = c.warranty_status || 'active';
+      document.getElementById('custEditNote').value = c.admin_note || '';
+
+      document.getElementById('custOverlay').classList.add('show');
+    })
+    .catch(function() { alert('Không tải được chi tiết khách hàng — kiểm tra kết nối Worker'); });
+}
+function closeCustDetail() {
+  document.getElementById('custOverlay').classList.remove('show');
+  custDetailMid = null;
+}
+function doRefundOrder(orderId, evt) {
+  if (evt) evt.stopPropagation();
+  if (!confirm('Đánh dấu đơn #' + orderId + ' là ĐÃ HOÀN TIỀN?\n\nLưu ý: thao tác này CHỈ đổi trạng thái đơn hàng để ghi nhận/đối soát — KHÔNG tự động trừ lại Medi đã cộng vào ví. Nếu cần trừ lại Medi, dùng tab "🛠️ Bù sự cố" ở màn Ví Medi.')) return;
+  var note = prompt('Ghi chú hoàn tiền (không bắt buộc):', '') || '';
+  fetch(WALLET_API + '/admin/order/refund', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
+    body: JSON.stringify({ orderId: orderId, note: note })
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    if (res.status === 200) {
+      alert('Đã đánh dấu hoàn tiền cho đơn #' + orderId);
+      if (custDetailMid) openCustDetail(custDetailMid);
+    } else {
+      alert('Lỗi: ' + (res.data.error || 'Không xác định'));
+    }
+  })
+  .catch(function() { alert('Không gọi được Worker — kiểm tra kết nối'); });
+}
+function saveCustDetail() {
+  if (!custDetailMid) return;
+  var phone = document.getElementById('custEditPhone').value.trim();
+  if (!phone) { alert('Vui lòng nhập Số điện thoại (bắt buộc)'); return; }
+  var payload = {
+    mid: custDetailMid,
+    phone: phone,
+    name: document.getElementById('custEditName').value.trim(),
+    zalo: document.getElementById('custEditZalo').value.trim(),
+    org: document.getElementById('custEditOrg').value.trim(),
+    warrantyStatus: document.getElementById('custEditWarranty').value,
+    adminNote: document.getElementById('custEditNote').value.trim()
+  };
+  fetch(WALLET_API + '/admin/customer/upsert', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
+    body: JSON.stringify(payload)
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
+  .then(function(res) {
+    if (res.status === 200) {
+      alert('Đã lưu thông tin khách hàng');
+      closeCustDetail();
+      loadCustomers();
+    } else {
+      alert('Lỗi: ' + (res.data.error || 'Không xác định'));
+    }
+  })
+  .catch(function() { alert('Không lưu được — kiểm tra kết nối Worker'); });
+}
+</script>
+</body>
+</html>
