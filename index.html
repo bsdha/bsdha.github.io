@@ -96,7 +96,7 @@
     <div class="nav-group-title">👩‍⚕️ Công cụ cho Điều dưỡng</div>
     <a href="/ward-vitals-sheet" class="nav-item" data-page="wardvitals" data-path="/ward-vitals-sheet"><span class="ic">📋</span> Bảng sinh hiệu đi buồng</a>
     <a href="/bmi" class="nav-item" data-page="bmi" data-path="/bmi"><span class="ic">⚖️</span> Tính chỉ số BMI</a>
-    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Giờ truyền dịch</a>
+    <a href="/dichtruyen" class="nav-item" data-page="dichtruyen" data-path="/dichtruyen"><span class="ic">💧</span> Tính thời gian kết thúc dịch truyền</a>
     <a href="/clinical-scores" class="nav-item" data-page="clinicalscores" data-path="/clinical-scores"><span class="ic">📊</span> Thang điểm lâm sàng</a>
     <a href="/vitals-chart" class="nav-item soon" data-page="soon:vitals-chart" data-path="/vitals-chart"><span class="ic">📈</span> Biểu đồ theo dõi sinh hiệu theo giờ</a>
     <a href="/ped-dose" class="nav-item soon" data-page="soon:ped-dose" data-path="/ped-dose"><span class="ic">🧒</span> Liều thuốc trẻ em theo cân nặng</a>
@@ -320,10 +320,10 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen" data-kw="giờ truyền dịch giọt phút tốc độ truyền dây truyền">
+        <a href="/dichtruyen" class="hcard" data-page="dichtruyen" data-path="/dichtruyen" data-kw="giờ truyền dịch tính thời gian kết thúc dịch truyền giọt phút tốc độ truyền dây truyền sxhd sốt xuất huyết">
           <div class="ic">💧</div>
-          <h2>Giờ truyền dịch</h2>
-          <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút để ghi hồ sơ.</p>
+          <h2>Tính thời gian kết thúc dịch truyền</h2>
+          <p>Tính giờ kết thúc truyền dịch theo thể tích, tốc độ giọt/phút; hoặc tốc độ bù dịch SXHD theo cân nặng, để ghi hồ sơ.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -1040,12 +1040,26 @@
               <h1 id="dtTitle">💧 Tính giờ kết thúc truyền dịch</h1>
               <p class="sub" id="dtSub">Nhập thời điểm bắt đầu, thể tích chai dịch và tốc độ truyền (giọt/phút) để tính giờ truyền xong, tiện ghi hồ sơ.</p>
             </div>
-            <label class="dx-switch">
-              <input type="checkbox" id="dxToggle">
-              <span class="dx-switch-track"><span class="dx-switch-thumb"></span></span>
-            </label>
           </div>
-          <div class="dx-switch-label">🦟 Bù dịch sốt xuất huyết Dengue có dấu hiệu cảnh báo (2760/QĐ-BYT)</div>
+
+          <div class="dt-mode-switch" id="dtModeSwitch" role="tablist" aria-label="Chọn chế độ tính">
+            <button type="button" class="dt-mode-btn active" data-mode="simple" id="dtModeSimpleBtn" role="tab" aria-selected="true">
+              <span class="dt-mode-ic">💧</span>
+              <span class="dt-mode-txt">
+                <span class="dt-mode-title">Truyền dịch thường quy</span>
+                <span class="dt-mode-desc">Tính giờ kết thúc theo giọt/phút</span>
+              </span>
+            </button>
+            <button type="button" class="dt-mode-btn" data-mode="dengue" id="dtModeDengueBtn" role="tab" aria-selected="false">
+              <span class="dt-mode-ic">🦟</span>
+              <span class="dt-mode-txt">
+                <span class="dt-mode-title">SXHD có dấu hiệu cảnh báo</span>
+                <span class="dt-mode-desc">Theo phác đồ 2760/QĐ-BYT (2023)</span>
+              </span>
+            </button>
+            <input type="checkbox" id="dxToggle" class="dt-mode-hidden-input" tabindex="-1" aria-hidden="true">
+          </div>
+          <div class="dx-switch-label mode-hidden" id="dxSwitchLabel">🦟 Đang áp dụng phác đồ bù dịch sốt xuất huyết Dengue có dấu hiệu cảnh báo — Quyết định 2760/QĐ-BYT (2023)</div>
 
           <!-- Chế độ đơn thuần: chỉ tính giờ kết thúc -->
           <div id="dtSimpleBody" class="dt-mode-only">
@@ -1067,7 +1081,7 @@
 
           <!-- Chế độ SXHD cảnh báo: tính theo cân nặng và mức phác đồ -->
           <div id="dxBody" class="dx-mode-only mode-hidden">
-            <p class="dx-intro">Chọn nhóm tuổi, cân nặng và thể tích dịch để tính tốc độ, giọt/phút và thời gian hết dịch theo từng mức của phác đồ Bộ Y tế. Áp dụng cho SXHD <b>có dấu hiệu cảnh báo, chưa sốc</b>.</p>
+            <p class="dx-intro">Chọn nhóm tuổi, cân nặng và thể tích dịch để tính tốc độ, giọt/phút và thời gian kết thúc dịch theo từng mức của phác đồ Bộ Y tế. Áp dụng cho SXHD <b>có dấu hiệu cảnh báo, chưa sốc</b>.</p>
 
             <div class="dt-label-sm">Nhóm tuổi</div>
             <div class="toggle-group" id="dxAgeToggle">
