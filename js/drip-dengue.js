@@ -108,10 +108,24 @@
     applyStage();
   });
 
+  const modeSimpleBtn = document.getElementById('dtModeSimpleBtn');
+  const modeDengueBtn = document.getElementById('dtModeDengueBtn');
+  const switchLabel = document.getElementById('dxSwitchLabel');
+
   function setMode(isDx) {
+    toggle.checked = isDx;
     dtCard.classList.toggle('dx-mode', isDx);
     dtTitle.textContent = isDx ? TITLE_DX : TITLE_SIMPLE;
     dtSub.textContent = isDx ? SUB_DX : SUB_SIMPLE;
+
+    if (modeSimpleBtn && modeDengueBtn) {
+      modeSimpleBtn.classList.toggle('active', !isDx);
+      modeSimpleBtn.setAttribute('aria-selected', String(!isDx));
+      modeDengueBtn.classList.toggle('active', isDx);
+      modeDengueBtn.setAttribute('aria-selected', String(isDx));
+    }
+    // Ghi chú phác đồ chỉ hiển thị ở chế độ SXHD, tránh gây nhầm là đang áp dụng cho mọi trường hợp
+    if (switchLabel) switchLabel.classList.toggle('mode-hidden', !isDx);
 
     dtSimpleBody.classList.toggle('mode-hidden', isDx);
     dtErr.classList.toggle('mode-hidden', isDx);
@@ -133,6 +147,8 @@
   }
 
   toggle.addEventListener('change', () => setMode(toggle.checked));
+  if (modeSimpleBtn) modeSimpleBtn.addEventListener('click', () => setMode(false));
+  if (modeDengueBtn) modeDengueBtn.addEventListener('click', () => setMode(true));
 
   function reuseDropFactor() {
     const active = document.querySelector('#dtFactorToggle button.active');
