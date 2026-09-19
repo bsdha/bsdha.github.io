@@ -19,6 +19,12 @@
   function setStage(el, level, text) {
     el.className = 'stage' + (level ? ' cs-' + level : '');
     el.textContent = text; // dấu chấm màu được vẽ bằng CSS ::before, không cần chèn thẻ con
+    // Đồng bộ màu viền khung kết quả (.monitor) theo màu kết quả của badge
+    var monitor = el.closest('.monitor');
+    if (monitor) {
+      monitor.classList.remove('cs-mid', 'cs-high', 'cs-crit');
+      if (level) monitor.classList.add('cs-' + level);
+    }
   }
   function num(id) {
     var v = parseFloat(document.getElementById(id).value);
