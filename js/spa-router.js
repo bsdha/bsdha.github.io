@@ -59,46 +59,72 @@
     });
   }
 
-  // --- Khoá "chỉ dành cho nội bộ" cho 3 trang: Phiếu chuyển tuyến, Giấy nghỉ
-  // việc BHXH, Giấy ra viện. Yêu cầu nhập mật khẩu cố định 1 lần mỗi phiên trình duyệt (sessionStorage — tự
-  // yêu cầu lại khi tắt hẳn trình duyệt rồi mở lại, không hỏi lại khi chỉ chuyển tab/trang).
-  const GUARDED_PAGES = ['thongke', 'chuyentuyen', 'nghiviecbhxh', 'giayravien'];
-  const INTERNAL_PASSWORD = 'cs2';
-  const UNLOCK_FLAG = 'bsdha_internal_unlocked';
-  let lockModalEl = null;
+  // --- Khoá mật khẩu cho một số trang. Mỗi "nhóm" có mật khẩu và trạng thái
+  // mở-khoá (sessionStorage) riêng, không ảnh hưởng lẫn nhau. Yêu cầu nhập mật
+  // khẩu cố định 1 lần mỗi phiên trình duyệt (tự yêu cầu lại khi tắt hẳn trình
+  // duyệt rồi mở lại, không hỏi lại khi chỉ chuyển tab/trang).
+  const GUARD_GROUPS = [
+    {
+      // Thống kê tiếp nhận, Phiếu chuyển tuyến, Giấy nghỉ việc BHXH, Giấy ra viện
+      keys: ['thongke', 'chuyentuyen', 'nghiviecbhxh', 'giayravien'],
+      password: 'cs2',
+      flag: 'bsdha_internal_unlocked',
+      title: 'Chỉ dành cho Admin, vui lòng nhập mật&nbsp;khẩu!'
+    },
+    {
+      // Tiện ích Helix
+      keys: ['helix'],
+      password: 'helix2026',
+      flag: 'bsdha_helix_unlocked',
+      title: 'Trang Tiện ích Helix, vui lòng nhập mật&nbsp;khẩu!'
+    }
+  ];
+  const GUARDED_PAGES = GUARD_GROUPS.reduce((acc, g) => acc.concat(g.keys), []);
+  const lockModalEls = {};
 
-  function isUnlocked() {
-    return sessionStorage.getItem(UNLOCK_FLAG) === '1';
+  function findGuardGroup(key) {
+    return GUARD_GROUPS.find(g => g.keys.indexOf(key) !== -1) || null;
   }
 
-  function ensureLockModal() {
-    if (lockModalEl) return lockModalEl;
+  function isGroupUnlocked(group) {
+    return sessionStorage.getItem(group.flag) === '1';
+  }
+
+  // Giữ tương thích ngược: isUnlocked()/requestUnlock() mặc định thao tác trên
+  // nhóm mật khẩu nội bộ "cs2" (dùng bởi các script khác như widget số liệu KCB).
+  const internalGroup = GUARD_GROUPS[0];
+  function isUnlocked() {
+    return isGroupUnlocked(internalGroup);
+  }
+
+  function ensureLockModal(group) {
+    if (lockModalEls[group.flag]) return lockModalEls[group.flag];
     const overlay = document.createElement('div');
     overlay.className = 'ilock-overlay';
     overlay.innerHTML =
-      '<div class="ilock-box" role="dialog" aria-modal="true" aria-labelledby="ilockTitle">' +
+      '<div class="ilock-box" role="dialog" aria-modal="true" aria-labelledby="ilockTitle-' + group.flag + '">' +
         '<div class="ilock-icon">🔒</div>' +
-        '<div id="ilockTitle" class="ilock-title">Chỉ dành cho Admin, vui lòng nhập mật&nbsp;khẩu!</div>' +
-        '<form class="ilock-form" id="ilockForm" autocomplete="off">' +
-          '<input type="password" id="ilockInput" class="ilock-input" placeholder="Mật khẩu" autocomplete="off">' +
-          '<div class="ilock-err" id="ilockErr" hidden>Mật khẩu không đúng, vui lòng thử lại.</div>' +
+        '<div id="ilockTitle-' + group.flag + '" class="ilock-title">' + group.title + '</div>' +
+        '<form class="ilock-form" autocomplete="off">' +
+          '<input type="password" class="ilock-input" placeholder="Mật khẩu" autocomplete="off">' +
+          '<div class="ilock-err" hidden>Mật khẩu không đúng, vui lòng thử lại.</div>' +
           '<div class="ilock-actions">' +
-            '<button type="button" class="ilock-cancel" id="ilockCancel">Huỷ</button>' +
+            '<button type="button" class="ilock-cancel">Huỷ</button>' +
             '<button type="submit" class="ilock-submit">Xác nhận</button>' +
           '</div>' +
         '</form>' +
       '</div>';
     document.body.appendChild(overlay);
-    lockModalEl = overlay;
+    lockModalEls[group.flag] = overlay;
     return overlay;
   }
 
-  function requestUnlock(onSuccess, onCancel) {
-    const overlay = ensureLockModal();
-    const form = overlay.querySelector('#ilockForm');
-    const input = overlay.querySelector('#ilockInput');
-    const err = overlay.querySelector('#ilockErr');
-    const cancelBtn = overlay.querySelector('#ilockCancel');
+  function requestUnlockForGroup(group, onSuccess, onCancel) {
+    const overlay = ensureLockModal(group);
+    const form = overlay.querySelector('.ilock-form');
+    const input = overlay.querySelector('.ilock-input');
+    const err = overlay.querySelector('.ilock-err');
+    const cancelBtn = overlay.querySelector('.ilock-cancel');
     let failCount = 0;
     const MAX_FAILS = 3;
 
@@ -116,15 +142,15 @@
     }
     function onSubmit(e) {
       e.preventDefault();
-      if (input.value === INTERNAL_PASSWORD) {
-        sessionStorage.setItem(UNLOCK_FLAG, '1');
+      if (input.value === group.password) {
+        sessionStorage.setItem(group.flag, '1');
         cleanup();
         if (onSuccess) onSuccess();
         return;
       }
       failCount++;
       if (failCount >= MAX_FAILS) {
-        sessionStorage.setItem(UNLOCK_FLAG, '1');
+        sessionStorage.setItem(group.flag, '1');
         cleanup();
         if (onSuccess) onSuccess();
         return;
@@ -142,6 +168,10 @@
     }
     form.addEventListener('submit', onSubmit);
     cancelBtn.addEventListener('click', onCancelClick);
+  }
+
+  function requestUnlock(onSuccess, onCancel) {
+    requestUnlockForGroup(internalGroup, onSuccess, onCancel);
   }
 
   // Cho phép các script khác (VD widget số liệu KCB) dùng chung cơ chế khoá mật
@@ -169,8 +199,9 @@
   }
 
   function showPage(key, push) {
-    if (GUARDED_PAGES.indexOf(key) !== -1 && !isUnlocked()) {
-      requestUnlock(() => actuallyShowPage(key, push));
+    const group = findGuardGroup(key);
+    if (group && !isGroupUnlocked(group)) {
+      requestUnlockForGroup(group, () => actuallyShowPage(key, push));
       return;
     }
     actuallyShowPage(key, push);
