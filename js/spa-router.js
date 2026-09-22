@@ -13,8 +13,8 @@
   const pages = document.querySelectorAll('.page');
   const navEls = document.querySelectorAll('[data-page]');
 
-  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/thongkekcb-bvdkbdcs2': 'thongke', '/thongkekcb-bvdkbdcs2/': 'thongke', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/duonghuyet': 'glucose', '/duonghuyet/': 'glucose', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/dichtruyen': 'dichtruyen', '/dichtruyen/': 'dichtruyen', '/bmi': 'bmi', '/bmi/': 'bmi', '/tuongtacthuoc': 'tuongtac', '/tuongtacthuoc/': 'tuongtac', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word', '/pdftools': 'pdftools', '/pdftools/': 'pdftools', '/chuyentuyen': 'chuyentuyen', '/chuyentuyen/': 'chuyentuyen', '/nghiviecbhxh': 'nghiviecbhxh', '/nghiviecbhxh/': 'nghiviecbhxh', '/giayravien': 'giayravien', '/giayravien/': 'giayravien', '/ghepcccd': 'cccd', '/ghepcccd/': 'cccd', '/clinical-scores': 'clinicalscores', '/clinical-scores/': 'clinicalscores', '/helix': 'helix', '/helix/': 'helix' };
-  const KEY_PATH = { home: '/', icd: '/icd10', thongke: '/thongkekcb-bvdkbdcs2', sinhhieu: '/sinhhieu', insulin: '/insulin', glucose: '/duonghuyet', ldl: '/ldl', egfr: '/egfr', dichtruyen: '/dichtruyen', bmi: '/bmi', tuongtac: '/tuongtacthuoc', donthuoc: '/donthuoc', pdf2word: '/pdf2word', pdftools: '/pdftools', chuyentuyen: '/chuyentuyen', nghiviecbhxh: '/nghiviecbhxh', giayravien: '/giayravien', cccd: '/ghepcccd', clinicalscores: '/clinical-scores', helix: '/helix' };
+  const PATH_MAP = { '/': 'home', '/icd10': 'icd', '/icd10/': 'icd', '/thongkekcb-bvdkbdcs2': 'thongke', '/thongkekcb-bvdkbdcs2/': 'thongke', '/sinhhieu': 'sinhhieu', '/sinhhieu/': 'sinhhieu', '/insulin': 'insulin', '/insulin/': 'insulin', '/duonghuyet': 'glucose', '/duonghuyet/': 'glucose', '/ldl': 'ldl', '/ldl/': 'ldl', '/egfr': 'egfr', '/egfr/': 'egfr', '/dichtruyen': 'dichtruyen', '/dichtruyen/': 'dichtruyen', '/bmi': 'bmi', '/bmi/': 'bmi', '/tuongtacthuoc': 'tuongtac', '/tuongtacthuoc/': 'tuongtac', '/donthuoc': 'donthuoc', '/donthuoc/': 'donthuoc', '/pdf2word': 'pdf2word', '/pdf2word/': 'pdf2word', '/pdftools': 'pdftools', '/pdftools/': 'pdftools', '/ghepcccd': 'cccd', '/ghepcccd/': 'cccd', '/clinical-scores': 'clinicalscores', '/clinical-scores/': 'clinicalscores', '/helix': 'helix', '/helix/': 'helix' };
+  const KEY_PATH = { home: '/', icd: '/icd10', thongke: '/thongkekcb-bvdkbdcs2', sinhhieu: '/sinhhieu', insulin: '/insulin', glucose: '/duonghuyet', ldl: '/ldl', egfr: '/egfr', dichtruyen: '/dichtruyen', bmi: '/bmi', tuongtac: '/tuongtacthuoc', donthuoc: '/donthuoc', pdf2word: '/pdf2word', pdftools: '/pdftools', cccd: '/ghepcccd', clinicalscores: '/clinical-scores', helix: '/helix' };
 
   // --- Các tính năng "Sắp ra mắt": mỗi mục có đường dẫn riêng, nhưng cùng dùng chung
   // 1 trang nội dung "page-comingsoon" (xem actuallyShowPage bên dưới). ---
@@ -66,7 +66,7 @@
   const GUARD_GROUPS = [
     {
       // Thống kê tiếp nhận, Phiếu chuyển tuyến, Giấy nghỉ việc BHXH, Giấy ra viện
-      keys: ['thongke', 'chuyentuyen', 'nghiviecbhxh', 'giayravien'],
+      keys: ['thongke'],
       password: 'cs2',
       flag: 'bsdha_internal_unlocked',
       title: 'Chỉ dành cho Admin, vui lòng nhập mật&nbsp;khẩu!'
