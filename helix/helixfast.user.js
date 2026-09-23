@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         HIS Bình Dương - Tiện ích Helix
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.65
+// @version      1.73
 // @description  Tiện ích Helix + Quick Select Cận lâm sàng
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -17,7 +17,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '1.65';
+  const HELIXFAST_VERSION = '1.73';
   const SYMPTOM_SELECTOR = 'textarea[formcontrolname="symptom"]';
   const PROGRESSION_SELECTOR = 'textarea[formcontrolname="progression"]';
   const NOTE_TEXTAREA_SELECTOR = '.width-per88 textarea.form-control';
@@ -36,6 +36,192 @@
     }
     element.dispatchEvent(new Event('input', { bubbles: true }));
     element.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // ===== Bản quyền theo máy =====
+  // Mỗi máy tự sinh 1 mã máy cố định (localStorage). Admin ký mã kích hoạt
+  // bằng file helixfast-license-generator.html (offline, HMAC-SHA256).
+  // Chuỗi bí mật dưới đây phải khớp với chuỗi trong file generator đó.
+  const HELIXFAST_LICENSE_SECRET = '3780ca6bca82cf7389f693dfc26a3ff69dde2433c2649c9e122598af5d7be435';
+  const HELIXFAST_MACHINE_CODE_KEY = 'helixfast_machine_code';
+  const HELIXFAST_LICENSE_TOKEN_KEY = 'helixfast_license_token';
+
+  // --- SHA-256 / HMAC-SHA256 thuần JS (FIPS 180-4), chạy đồng bộ, dùng
+  // chung cho cả script này lẫn file
+  // HTML tạo mã kích hoạt để đảm bảo ra cùng 1 kết quả chữ ký. ---
+  function hlxSha256Bytes(messageBytes) {
+    const K = new Uint32Array([
+      0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+      0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+      0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+      0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+      0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+      0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+      0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+      0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+    ]);
+    let H = new Uint32Array([
+      0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19,
+    ]);
+    const bitLen = messageBytes.length * 8;
+    const withOne = new Uint8Array(((messageBytes.length + 9 + 63) >> 6) << 6);
+    withOne.set(messageBytes);
+    withOne[messageBytes.length] = 0x80;
+    const dv = new DataView(withOne.buffer);
+    dv.setUint32(withOne.length - 4, bitLen >>> 0, false);
+    dv.setUint32(withOne.length - 8, Math.floor(bitLen / 4294967296), false);
+
+    function rotr(x, n) {
+      return (x >>> n) | (x << (32 - n));
+    }
+
+    for (let offset = 0; offset < withOne.length; offset += 64) {
+      const w = new Uint32Array(64);
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(offset + i * 4, false);
+      for (let i = 16; i < 64; i++) {
+        const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+        const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+        w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+      }
+      let a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (let i = 0; i < 64; i++) {
+        const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        const ch = (e & f) ^ (~e & g);
+        const temp1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+        const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        const maj = (a & b) ^ (a & c) ^ (b & c);
+        const temp2 = (S0 + maj) >>> 0;
+        h = g; g = f; f = e; e = (d + temp1) >>> 0;
+        d = c; c = b; b = a; a = (temp1 + temp2) >>> 0;
+      }
+      H[0] = (H[0] + a) >>> 0; H[1] = (H[1] + b) >>> 0; H[2] = (H[2] + c) >>> 0; H[3] = (H[3] + d) >>> 0;
+      H[4] = (H[4] + e) >>> 0; H[5] = (H[5] + f) >>> 0; H[6] = (H[6] + g) >>> 0; H[7] = (H[7] + h) >>> 0;
+    }
+
+    const out = new Uint8Array(32);
+    const outDv = new DataView(out.buffer);
+    for (let i = 0; i < 8; i++) outDv.setUint32(i * 4, H[i], false);
+    return out;
+  }
+
+  function hlxConcatBytes(a, b) {
+    const out = new Uint8Array(a.length + b.length);
+    out.set(a, 0);
+    out.set(b, a.length);
+    return out;
+  }
+
+  function hlxHmacSha256Hex(secretStr, messageStr) {
+    const blockSize = 64;
+    let key = new TextEncoder().encode(secretStr);
+    if (key.length > blockSize) key = hlxSha256Bytes(key);
+    if (key.length < blockSize) {
+      const padded = new Uint8Array(blockSize);
+      padded.set(key);
+      key = padded;
+    }
+    const oKeyPad = new Uint8Array(blockSize);
+    const iKeyPad = new Uint8Array(blockSize);
+    for (let i = 0; i < blockSize; i++) {
+      oKeyPad[i] = key[i] ^ 0x5c;
+      iKeyPad[i] = key[i] ^ 0x36;
+    }
+    const msgBytes = new TextEncoder().encode(messageStr);
+    const inner = hlxSha256Bytes(hlxConcatBytes(iKeyPad, msgBytes));
+    const digest = hlxSha256Bytes(hlxConcatBytes(oKeyPad, inner));
+    return Array.from(digest).map((b) => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  function hlxBase64UrlEncode(str) {
+    const b64 = btoa(unescape(encodeURIComponent(str)));
+    return b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+
+  function hlxBase64UrlDecode(b64url) {
+    let b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    return decodeURIComponent(escape(atob(b64)));
+  }
+
+  // Sinh/lấy mã máy cố định cho trình duyệt này (giữ nguyên qua các lần mở
+  // lại vì lưu trong localStorage, chỉ mất nếu người dùng tự xoá dữ liệu
+  // trình duyệt).
+  function hlxGetMachineCode() {
+    try {
+      let code = localStorage.getItem(HELIXFAST_MACHINE_CODE_KEY);
+      if (code) return code;
+      const rnd =
+        window.crypto && window.crypto.randomUUID
+          ? window.crypto.randomUUID().replace(/-/g, '')
+          : Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
+      code = 'HLF-' + rnd.slice(0, 20).toUpperCase();
+      localStorage.setItem(HELIXFAST_MACHINE_CODE_KEY, code);
+      return code;
+    } catch (err) {
+      return 'HLF-TAM-THOI-KHONG-LUU-DUOC';
+    }
+  }
+
+  // Kiểm tra 1 chuỗi mã kích hoạt (payloadB64.chữKýHex) có hợp lệ với mã máy
+  // hiện tại hay không. Trả về { ok, exp, reason }.
+  function hlxParseLicenseToken(token) {
+    if (!token || typeof token !== 'string' || token.indexOf('.') === -1) {
+      return { ok: false, reason: 'Mã kích hoạt không đúng định dạng.' };
+    }
+    const dot = token.lastIndexOf('.');
+    const payloadB64 = token.slice(0, dot);
+    const sig = token.slice(dot + 1);
+    let expectedSig;
+    try {
+      expectedSig = hlxHmacSha256Hex(HELIXFAST_LICENSE_SECRET, payloadB64);
+    } catch (err) {
+      return { ok: false, reason: 'Không tính được chữ ký (trình duyệt không hỗ trợ).' };
+    }
+    if (sig !== expectedSig) {
+      return { ok: false, reason: 'Chữ ký không khớp — mã kích hoạt sai hoặc bị sửa.' };
+    }
+    let payload;
+    try {
+      payload = JSON.parse(hlxBase64UrlDecode(payloadB64));
+    } catch (err) {
+      return { ok: false, reason: 'Không đọc được nội dung mã kích hoạt.' };
+    }
+    if (!payload || typeof payload.m !== 'string' || typeof payload.exp !== 'number') {
+      return { ok: false, reason: 'Nội dung mã kích hoạt thiếu dữ liệu.' };
+    }
+    if (payload.m !== hlxGetMachineCode()) {
+      return { ok: false, reason: 'Mã kích hoạt này dành cho MÁY KHÁC, không phải máy hiện tại.' };
+    }
+    const nowSec = Math.floor(Date.now() / 1000);
+    if (nowSec > payload.exp) {
+      return { ok: false, reason: 'Mã kích hoạt đã HẾT HẠN.', exp: payload.exp };
+    }
+    return { ok: true, exp: payload.exp };
+  }
+
+  function hlxGetLicenseStatus() {
+    let token = null;
+    try {
+      token = localStorage.getItem(HELIXFAST_LICENSE_TOKEN_KEY);
+    } catch (err) {
+      /* ignore */
+    }
+    if (!token) return { valid: false, expired: false, reason: 'Chưa kích hoạt bản quyền cho máy này.' };
+    const res = hlxParseLicenseToken(token);
+    if (!res.ok) return { valid: false, expired: !!res.exp, exp: res.exp, reason: res.reason };
+    const daysLeft = Math.ceil((res.exp - Date.now() / 1000) / 86400);
+    return { valid: true, exp: res.exp, daysLeft };
+  }
+
+  function hlxActivateLicense(token) {
+    const res = hlxParseLicenseToken((token || '').trim());
+    if (!res.ok) return { ok: false, reason: res.reason };
+    try {
+      localStorage.setItem(HELIXFAST_LICENSE_TOKEN_KEY, (token || '').trim());
+    } catch (err) {
+      return { ok: false, reason: 'Không lưu được vào localStorage của trình duyệt.' };
+    }
+    return { ok: true, exp: res.exp };
   }
 
   let boundSymptomEl = null;
@@ -3216,6 +3402,7 @@
   const HELIXFAST_SETTINGS_LINK_SELECTOR = 'a[title="Thiết lập"]';
 
   function isHelixfastEnabled() {
+    if (!hlxGetLicenseStatus().valid) return false;
     try {
       const v = localStorage.getItem(HELIXFAST_STORAGE_KEY);
       return v === null ? true : v === '1';
@@ -3315,10 +3502,273 @@
   function applyHelixfastToggleVisual(li) {
     const sw = li.querySelector('.helixfast-switch');
     const link = li.querySelector('a');
+    const labelEl = li.querySelector('.helixfast-label');
     if (!sw || !link) return;
     const enabled = isHelixfastEnabled();
     sw.classList.toggle('on', enabled);
-    link.title = enabled ? 'Helixfast đang BẬT — bấm để tắt' : 'Helixfast đang TẮT — bấm để bật';
+    const lic = hlxGetLicenseStatus();
+    const nearExpiry = lic.valid && lic.daysLeft <= 14;
+    const isExpired = !lic.valid && lic.expired;
+    if (labelEl) {
+      let label = 'Helixfast v' + HELIXFAST_VERSION;
+      if (isExpired) label += ' — Đã hết hạn';
+      else if (!lic.valid) label += ' (Chưa kích hoạt)';
+      else if (nearExpiry) label += ' — Sắp hết hạn';
+      labelEl.textContent = label;
+    }
+    if (isExpired) {
+      link.title = 'Bản quyền đã hết hạn — bấm 🔑 để kích hoạt lại';
+    } else if (!lic.valid) {
+      link.title = 'Chưa kích hoạt bản quyền — bấm 🔑 để kích hoạt';
+    } else if (nearExpiry) {
+      link.title = 'Còn ' + lic.daysLeft + ' ngày — sắp hết hạn, bấm 🔑 để gia hạn';
+    } else {
+      link.title = enabled ? 'Helixfast đang BẬT — bấm để tắt' : 'Helixfast đang TẮT — bấm để bật';
+    }
+    // Đổi màu nút Helixfast: cam khi sắp hết hạn, đỏ khi đã hết hạn.
+    if (isExpired) {
+      link.style.background = '#fdecea';
+      link.style.color = '#c0392b';
+    } else if (nearExpiry) {
+      link.style.background = '#fff4e5';
+      link.style.color = '#b45309';
+    } else {
+      link.style.background = '';
+      link.style.color = '';
+    }
+    const licBtn = li.querySelector('#helixfast-license-btn');
+    if (licBtn) {
+      if (isExpired) {
+        licBtn.textContent = '🔒';
+        licBtn.title = 'Bản quyền đã hết hạn — bấm để kích hoạt lại';
+        licBtn.style.color = '#c0392b';
+      } else if (!lic.valid) {
+        licBtn.textContent = '🔒';
+        licBtn.title = 'Kích hoạt bản quyền';
+        licBtn.style.color = '#e53935';
+      } else if (nearExpiry) {
+        licBtn.textContent = '🔑';
+        licBtn.title = 'Còn ' + lic.daysLeft + ' ngày — sắp hết hạn';
+        licBtn.style.color = '#f39c12';
+      } else {
+        licBtn.textContent = '🔑';
+        licBtn.title = 'Còn ' + lic.daysLeft + ' ngày';
+        licBtn.style.color = '#0f9d78';
+      }
+    }
+  }
+
+  function hlxFormatDate(epochSeconds) {
+    const d = new Date(epochSeconds * 1000);
+    const pad = (n) => String(n).padStart(2, '0');
+    return pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear();
+  }
+
+  let mainObserverDebounceTimer = null;
+
+  function closeLicenseDialog() {
+    const existing = document.getElementById('helixfast-license-dialog');
+    if (existing) existing.remove();
+    const overlay = document.getElementById('helixfast-license-overlay');
+    if (overlay) overlay.remove();
+  }
+
+  // Dán vào 1 ô input/textarea. Ưu tiên Clipboard API (không hiện lỗi nếu bị
+  // trình duyệt/Permissions-Policy chặn — khi đó chỉ focus + chọn sẵn nội
+  // dung để người dùng tự bấm Ctrl+V, giống thao tác dán bình thường).
+  async function hlxTryPaste(targetEl, btn) {
+    if (!targetEl) return;
+    targetEl.focus();
+    if (targetEl.select) targetEl.select();
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          targetEl.value = text.trim();
+          if (btn) {
+            const old = btn.textContent;
+            btn.textContent = 'Đã dán';
+            setTimeout(() => (btn.textContent = old), 1200);
+          }
+          return;
+        }
+      }
+    } catch (err) {
+      /* Bị chặn quyền đọc clipboard — bỏ qua, để người dùng tự Ctrl+V vào ô đã chọn sẵn. */
+    }
+  }
+
+  function injectLicenseDialogCss() {
+    if (document.getElementById('helixfast-license-css')) return;
+    const style = document.createElement('style');
+    style.id = 'helixfast-license-css';
+    style.textContent = `
+      .hlx-lic-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);z-index:999998;animation:hlxFadeIn .15s ease-out;}
+      .hlx-lic-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;max-width:92vw;
+        background:#fff;border-radius:14px;overflow:hidden;z-index:999999;zoom:1.5;
+        box-shadow:0 24px 64px rgba(15,23,42,.35),0 2px 8px rgba(15,23,42,.12);
+        font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1e293b;font-size:12.5px;
+        animation:hlxPopIn .18s cubic-bezier(.2,.9,.3,1.2);}
+      @keyframes hlxFadeIn{from{opacity:0}to{opacity:1}}
+      @keyframes hlxPopIn{from{opacity:0;transform:translate(-50%,-46%) scale(.96)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+      .hlx-lic-head{position:relative;overflow:hidden;padding:20px 22px 18px;color:#fff;
+        background:linear-gradient(135deg,#1e3a8a 0%,#1d4ed8 45%,#3b82f6 100%);}
+      .hlx-lic-head::before{content:"";position:absolute;top:-40px;right:-30px;width:160px;height:160px;
+        border-radius:50%;background:rgba(255,255,255,.10);}
+      .hlx-lic-head::after{content:"";position:absolute;bottom:-50px;right:40px;width:110px;height:110px;
+        border-radius:50%;background:rgba(255,255,255,.07);}
+      .hlx-lic-head-row{position:relative;display:flex;align-items:center;justify-content:space-between;}
+      .hlx-lic-title{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;letter-spacing:.2px;}
+      .hlx-lic-title .ico{font-size:17px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
+      .hlx-lic-pill{position:relative;display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:11px;
+        padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px);white-space:nowrap;}
+      .hlx-lic-pill.ok{background:rgba(16,185,129,.18);color:#d1fae5;border:1px solid rgba(16,185,129,.4);}
+      .hlx-lic-pill.warn{background:rgba(245,158,11,.18);color:#fde68a;border:1px solid rgba(245,158,11,.45);}
+      .hlx-lic-pill.bad{background:rgba(248,113,113,.18);color:#fee2e2;border:1px solid rgba(248,113,113,.4);}
+      .hlx-lic-sub{position:relative;font-size:11px;color:rgba(255,255,255,.75);margin-top:5px;}
+      .hlx-lic-body{padding:18px 22px 6px;}
+      .hlx-lic-label{display:block;font-weight:600;font-size:11px;color:#64748b;text-transform:uppercase;
+        letter-spacing:.4px;margin-bottom:6px;}
+      .hlx-lic-field{margin-bottom:15px;}
+      .hlx-lic-inputrow{display:flex;gap:7px;}
+      .hlx-lic-input, .hlx-lic-textarea{width:100%;padding:8px 10px;border:1.5px solid #e2e8f0;border-radius:8px;
+        font-size:12.5px;font-family:ui-monospace,Menlo,Consolas,monospace;color:#1e293b;
+        background:#f8fafc;transition:border-color .15s,box-shadow .15s;}
+      .hlx-lic-input:focus, .hlx-lic-textarea:focus{outline:none;border-color:#2563eb;
+        box-shadow:0 0 0 3px rgba(37,99,235,.15);background:#fff;}
+      .hlx-lic-textarea{resize:vertical;min-height:64px;}
+      .hlx-lic-copybtn{padding:8px 12px;border:1.5px solid #e2e8f0;border-radius:8px;background:#fff;
+        cursor:pointer;font-size:12px;font-weight:600;color:#334155;transition:.15s;white-space:nowrap;}
+      .hlx-lic-copybtn:hover{background:#f1f5f9;border-color:#cbd5e1;}
+      .hlx-lic-msg{margin-top:2px;font-size:12px;min-height:16px;font-weight:600;}
+      .hlx-lic-contact{margin:2px 0 14px;padding:9px 11px;background:#f8fafc;border:1px solid #eef1f5;
+        border-radius:8px;font-size:11.5px;color:#64748b;}
+      .hlx-lic-contact b{color:#334155;}
+      .hlx-lic-contact-zalo{display:flex;align-items:center;gap:6px;margin-top:5px;}
+      .hlx-lic-contact-zalo svg{flex:none;}
+      .hlx-lic-foot{padding:14px 22px;border-top:1px solid #eef1f5;display:flex;justify-content:flex-end;gap:8px;
+        background:#fafbfc;}
+      .hlx-lic-btn{padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:700;cursor:pointer;
+        border:none;transition:.15s;}
+      .hlx-lic-btn.secondary{background:#fff;color:#475569;border:1.5px solid #e2e8f0;}
+      .hlx-lic-btn.secondary:hover{background:#f1f5f9;}
+      .hlx-lic-btn.primary{background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;
+        box-shadow:0 2px 8px rgba(37,99,235,.35);}
+      .hlx-lic-btn.primary:hover{box-shadow:0 4px 14px rgba(37,99,235,.45);transform:translateY(-1px);}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function openLicenseDialog() {
+    closeLicenseDialog();
+    injectLicenseDialogCss();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'helixfast-license-overlay';
+    overlay.className = 'hlx-lic-overlay';
+    overlay.addEventListener('click', closeLicenseDialog);
+
+    const box = document.createElement('div');
+    box.id = 'helixfast-license-dialog';
+    box.className = 'hlx-lic-box';
+    box.addEventListener('click', (e) => e.stopPropagation());
+
+    const machineCode = hlxGetMachineCode();
+    const lic = hlxGetLicenseStatus();
+    const nearExpiryDlg = lic.valid && lic.daysLeft <= 14;
+    let pill;
+    let subText;
+    if (lic.valid && !nearExpiryDlg) {
+      pill = '<span class="hlx-lic-pill ok">● Đã kích hoạt</span>';
+      subText = 'Còn ' + lic.daysLeft + ' ngày · Hết hạn: ' + hlxFormatDate(lic.exp);
+    } else if (lic.valid && nearExpiryDlg) {
+      pill = '<span class="hlx-lic-pill warn">● Sắp hết hạn</span>';
+      subText = 'Còn ' + lic.daysLeft + ' ngày · Hết hạn: ' + hlxFormatDate(lic.exp);
+    } else if (lic.expired) {
+      pill = '<span class="hlx-lic-pill bad">● Đã hết hạn</span>';
+      subText = 'Đã hết hạn ngày ' + hlxFormatDate(lic.exp) + ' — vui lòng kích hoạt lại';
+    } else {
+      pill = '<span class="hlx-lic-pill bad">● Chưa kích hoạt</span>';
+      subText = 'Kích hoạt theo máy';
+    }
+
+    box.innerHTML =
+      '<div class="hlx-lic-head">' +
+      '<div class="hlx-lic-head-row">' +
+      '<div class="hlx-lic-title"><span class="ico">🔑</span>Bản quyền Helixfast</div>' +
+      pill +
+      '</div>' +
+      '<div class="hlx-lic-sub">' + subText + '</div>' +
+      '</div>' +
+      '<div class="hlx-lic-body">' +
+      '<div class="hlx-lic-field">' +
+      '<label class="hlx-lic-label">Mã máy</label>' +
+      '<div class="hlx-lic-inputrow">' +
+      '<input id="helixfast-machine-code-input" class="hlx-lic-input" type="text" readonly value="' + machineCode + '">' +
+      '<button id="helixfast-copy-machine-btn" type="button" class="hlx-lic-copybtn">Copy</button>' +
+      '</div></div>' +
+      '<div class="hlx-lic-field">' +
+      '<div style="display:flex;align-items:center;justify-content:space-between;">' +
+      '<label class="hlx-lic-label" style="margin-bottom:0;">Mã kích hoạt</label>' +
+      '<button id="helixfast-paste-license-btn" type="button" class="hlx-lic-copybtn" style="padding:4px 10px;font-size:11px;">Paste</button>' +
+      '</div>' +
+      '<textarea id="helixfast-license-input" class="hlx-lic-textarea" rows="3" placeholder="Dán mã kích hoạt..." style="margin-top:6px;"></textarea>' +
+      '<div id="helixfast-license-msg" class="hlx-lic-msg"></div>' +
+      '</div>' +
+      '<div class="hlx-lic-contact">💬&nbsp;Liên hệ kích hoạt: <b>Hoàng Anh Jupiter</b>' +
+      '<div class="hlx-lic-contact-zalo"><img src="data:image/png;base64,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" width="15" height="15" alt="Zalo" style="flex:none;border-radius:3px;">0868.91.97.90</div>' +
+      '</div>' +
+      '</div>' +
+      '<div class="hlx-lic-foot">' +
+      '<button id="helixfast-license-close-btn" type="button" class="hlx-lic-btn secondary">Đóng</button>' +
+      '<button id="helixfast-license-activate-btn" type="button" class="hlx-lic-btn primary">Kích hoạt</button>' +
+      '</div>';
+
+    document.body.appendChild(overlay);
+    document.body.appendChild(box);
+
+    const copyBtn = box.querySelector('#helixfast-copy-machine-btn');
+    copyBtn.addEventListener('click', () => {
+      const input = box.querySelector('#helixfast-machine-code-input');
+      input.select();
+      try {
+        navigator.clipboard.writeText(machineCode);
+      } catch (err) {
+        document.execCommand('copy');
+      }
+      copyBtn.textContent = 'Đã copy';
+      setTimeout(() => (copyBtn.textContent = 'Copy'), 1200);
+    });
+
+    const pasteMachineBtn = box.querySelector('#helixfast-paste-machine-btn');
+    if (pasteMachineBtn) {
+      pasteMachineBtn.addEventListener('click', () => {
+        hlxTryPaste(box.querySelector('#helixfast-machine-code-input'), pasteMachineBtn);
+      });
+    }
+
+    const pasteLicenseBtn = box.querySelector('#helixfast-paste-license-btn');
+    pasteLicenseBtn.addEventListener('click', () => {
+      hlxTryPaste(box.querySelector('#helixfast-license-input'), pasteLicenseBtn);
+    });
+
+    box.querySelector('#helixfast-license-close-btn').addEventListener('click', closeLicenseDialog);
+
+    box.querySelector('#helixfast-license-activate-btn').addEventListener('click', () => {
+      const input = box.querySelector('#helixfast-license-input');
+      const msgEl = box.querySelector('#helixfast-license-msg');
+      const res = hlxActivateLicense(input.value);
+      if (res.ok) {
+        msgEl.style.color = '#0f9d78';
+        msgEl.textContent = '✅ Kích hoạt thành công — hiệu lực đến ' + hlxFormatDate(res.exp) + '.';
+        const li = document.getElementById(HELIXFAST_TOGGLE_LI_ID);
+        if (li) applyHelixfastToggleVisual(li);
+        setTimeout(() => window.location.reload(), 1000);
+      } else {
+        msgEl.style.color = '#e53935';
+        msgEl.textContent = '⛔ ' + res.reason;
+      }
+    });
   }
 
   function retryEnsureCustomPrintButtonsPlacement(attemptsLeft) {
@@ -3361,6 +3811,7 @@
     li.removeAttribute('id');
     li.id = HELIXFAST_TOGGLE_LI_ID;
     li.classList.remove('open');
+    li.style.position = 'relative';
 
     const link = li.querySelector('a') || li;
     link.removeAttribute('title');
@@ -3370,6 +3821,20 @@
       '<span class="helixfast-label">Helixfast v' + HELIXFAST_VERSION + '</span>' +
       '<span class="helixfast-switch"><span class="helixfast-switch-knob"></span></span>';
     link.addEventListener('click', handleHelixfastToggleClick);
+
+    const licBtn = document.createElement('button');
+    licBtn.type = 'button';
+    licBtn.id = 'helixfast-license-btn';
+    Object.assign(licBtn.style, {
+      marginLeft: '4px', background: 'transparent', border: 'none', cursor: 'pointer',
+      fontSize: '13px', verticalAlign: 'middle', padding: '0 2px',
+    });
+    licBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openLicenseDialog();
+    });
+    link.appendChild(licBtn);
 
     applyHelixfastToggleVisual(li);
     return li;
@@ -3396,18 +3861,28 @@
   }
 
   const observer = new MutationObserver(() => {
-    ensureHelixfastToggleButton();
-    if (!isHelixfastEnabled()) return;
-    bindSymptomEl();
-    scanForTreatmentTextareas();
-    if (paginatorAutoSet && !document.querySelector('.p-paginator-rpp-options')) {
-      paginatorAutoSet = false;
-    }
-    if (!paginatorAutoSet) trySetPaginatorTo100();
-    tryCheckCompletedCheckbox();
-    ensureCustomPrintButtonsPlacement();
-    autoFocusSymptomFieldIfNew();
-    setupRxReorder();
+    // v1.67: DEBOUNCE lại — trước đây hàm này chạy lại trên MỌI thay đổi DOM
+    // (không giới hạn tần suất). Khi trang HIS đang tải nặng (nhiều DOM thay
+    // đổi liên tục trong vài trăm ms), việc gọi lại toàn bộ các hàm quét bên
+    // dưới hàng chục/hàng trăm lần mỗi giây khiến trình duyệt bị đơ tạm thời.
+    // Giờ gộp lại: nếu đã có 1 lần chạy đang chờ thì bỏ qua, chỉ chạy tối đa
+    // 1 lần mỗi ~200ms.
+    if (mainObserverDebounceTimer) return;
+    mainObserverDebounceTimer = setTimeout(() => {
+      mainObserverDebounceTimer = null;
+      ensureHelixfastToggleButton();
+      if (!isHelixfastEnabled()) return;
+      bindSymptomEl();
+      scanForTreatmentTextareas();
+      if (paginatorAutoSet && !document.querySelector('.p-paginator-rpp-options')) {
+        paginatorAutoSet = false;
+      }
+      if (!paginatorAutoSet) trySetPaginatorTo100();
+      tryCheckCompletedCheckbox();
+      ensureCustomPrintButtonsPlacement();
+      autoFocusSymptomFieldIfNew();
+      setupRxReorder();
+    }, 200);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
