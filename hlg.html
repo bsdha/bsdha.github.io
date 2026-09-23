@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Helixfast License</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    margin: 0; min-height: 100vh; color: #1e293b;
+    display: flex; align-items: center; justify-content: center; padding: 32px 16px;
+    background: radial-gradient(1100px 600px at 15% -10%, #dbeafe 0%, transparent 60%),
+                radial-gradient(900px 500px at 110% 10%, #e0e7ff 0%, transparent 55%),
+                #f1f5f9;
+  }
+  .wrap { width: 100%; max-width: 420px; zoom: 1.5; }
+  .card {
+    background: #fff; border-radius: 16px; overflow: hidden;
+    box-shadow: 0 24px 64px rgba(30,64,175,.14), 0 2px 8px rgba(15,23,42,.06);
+    border: 1px solid rgba(148,163,184,.15);
+  }
+  .head {
+    position: relative; overflow: hidden; color: #fff; padding: 22px 24px 20px;
+    background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 45%, #3b82f6 100%);
+  }
+  .head::before {
+    content: ""; position: absolute; top: -46px; right: -30px; width: 170px; height: 170px;
+    border-radius: 50%; background: rgba(255,255,255,.10);
+  }
+  .head::after {
+    content: ""; position: absolute; bottom: -55px; right: 46px; width: 120px; height: 120px;
+    border-radius: 50%; background: rgba(255,255,255,.07);
+  }
+  .head-title {
+    position: relative; font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 9px;
+    letter-spacing: .2px;
+  }
+  .head-title .ico {
+    display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+    border-radius: 9px; background: rgba(255,255,255,.16); font-size: 15px;
+  }
+  .head-sub { position: relative; font-size: 11.5px; color: rgba(255,255,255,.78); margin-top: 6px; margin-left: 39px; }
+  .body { padding: 22px 24px 24px; }
+  label {
+    display: block; font-weight: 700; font-size: 12.5px; color: #1e293b; margin-bottom: 6px;
+    letter-spacing: .2px;
+  }
+  .field { margin-bottom: 16px; }
+  input[type=text], input[type=date], input[type=number], textarea {
+    width: 100%; padding: 9px 11px; border: 2px solid #cbd5e1; border-radius: 8px;
+    font-size: 13px; font-family: inherit; background: #fff; color: #1e293b;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  input[readonly] { background: #f1f5f9; color: #475569; }
+  input[type=text]:focus, input[type=date]:focus, input[type=number]:focus, textarea:focus {
+    outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); background: #fff;
+  }
+  textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; resize: vertical; }
+  textarea#tokenOut { min-height: 84px; }
+  .row { display: flex; gap: 10px; }
+  .row > div { flex: 1; }
+  .btnrow { display: flex; gap: 8px; margin-top: 4px; }
+  button {
+    border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700;
+    cursor: pointer; transition: .15s;
+  }
+  button#genBtn {
+    background: linear-gradient(135deg,#1d4ed8,#2563eb); color: #fff;
+    box-shadow: 0 2px 10px rgba(37,99,235,.35);
+  }
+  button#genBtn:hover { box-shadow: 0 4px 16px rgba(37,99,235,.45); transform: translateY(-1px); }
+  button.secondary { background: #fff; color: #475569; border: 1.5px solid #e2e8f0; }
+  button.secondary:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .result { margin-top: 18px; padding-top: 18px; border-top: 1px dashed #e2e8f0; display: none; }
+  .result.show { display: block; }
+  .muted { color: #94a3b8; font-size: 11.5px; margin-top: 8px; }
+  .footer-contact { text-align: center; margin-top: 18px; font-size: 12px; color: #64748b; }
+  .footer-contact .zalo-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; }
+  .footer-contact .zalo-row svg { flex: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="head">
+      <div class="head-title"><span class="ico">🔑</span>Helixfast License</div>
+      <div class="head-sub">Tạo mã kích hoạt bản quyền theo máy</div>
+    </div>
+    <div class="body">
+      <input type="hidden" id="secret" value="3780ca6bca82cf7389f693dfc26a3ff69dde2433c2649c9e122598af5d7be435">
+
+      <div class="field">
+        <label>Mã máy</label>
+        <input type="text" id="machineCode" placeholder="HLF-...">
+      </div>
+
+      <div class="row field">
+        <div>
+          <label>Ngày kích hoạt</label>
+          <input type="date" id="activateDate">
+        </div>
+        <div>
+          <label>Số năm</label>
+          <input type="number" id="years" value="1" min="1" max="20" step="1">
+        </div>
+      </div>
+
+      <div class="btnrow">
+        <button id="genBtn" type="button">Tạo mã kích hoạt</button>
+        <button id="clearBtn" type="button" class="secondary">Xoá</button>
+      </div>
+
+      <div class="result" id="result">
+        <label>Mã kích hoạt</label>
+        <textarea id="tokenOut" readonly></textarea>
+        <div class="btnrow">
+          <button id="copyBtn" type="button" class="secondary">Copy</button>
+        </div>
+        <div class="muted" id="expInfo"></div>
+      </div>
+    </div>
+  </div>
+  <div class="footer-contact">💬 Liên hệ: <b>Hoàng Anh Jupiter</b>
+    <div class="zalo-row"><img src="data:image/png;base64,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" width="15" height="15" alt="Zalo" style="flex:none;border-radius:3px;">0868.91.97.90</div>
+  </div>
+</div>
+
+<script>
+// ===== SHA-256 / HMAC-SHA256 thuần JS — PHẢI giống hệt bản trong script
+// Helixfast (.user.js) để ra cùng chữ ký. Nếu sửa 1 bên thì phải sửa cả 2. =====
+function sha256Bytes(messageBytes) {
+  const K = new Uint32Array([
+
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2,
+  ]);
+  let H = new Uint32Array([
+    0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19,
+  ]);
+  const bitLen = messageBytes.length * 8;
+  const withOne = new Uint8Array(((messageBytes.length + 9 + 63) >> 6) << 6);
+  withOne.set(messageBytes);
+  withOne[messageBytes.length] = 0x80;
+  const dv = new DataView(withOne.buffer);
+  dv.setUint32(withOne.length - 4, bitLen >>> 0, false);
+  dv.setUint32(withOne.length - 8, Math.floor(bitLen / 4294967296), false);
+
+  function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+
+  for (let offset = 0; offset < withOne.length; offset += 64) {
+    const w = new Uint32Array(64);
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(offset + i * 4, false);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i-15],7) ^ rotr(w[i-15],18) ^ (w[i-15] >>> 3);
+      const s1 = rotr(w[i-2],17) ^ rotr(w[i-2],19) ^ (w[i-2] >>> 10);
+      w[i] = (w[i-16] + s0 + w[i-7] + s1) >>> 0;
+    }
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e,6) ^ rotr(e,11) ^ rotr(e,25);
+      const ch = (e & f) ^ (~e & g);
+      const temp1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a,2) ^ rotr(a,13) ^ rotr(a,22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const temp2 = (S0 + maj) >>> 0;
+      h=g; g=f; f=e; e=(d+temp1)>>>0;
+      d=c; c=b; b=a; a=(temp1+temp2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0; H[1]=(H[1]+b)>>>0; H[2]=(H[2]+c)>>>0; H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0; H[5]=(H[5]+f)>>>0; H[6]=(H[6]+g)>>>0; H[7]=(H[7]+h)>>>0;
+  }
+  const out = new Uint8Array(32);
+  const outDv = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) outDv.setUint32(i*4, H[i], false);
+  return out;
+}
+function concatBytes(a, b) {
+  const out = new Uint8Array(a.length + b.length);
+  out.set(a, 0); out.set(b, a.length);
+  return out;
+}
+function hmacSha256Hex(secretStr, messageStr) {
+  const blockSize = 64;
+  let key = new TextEncoder().encode(secretStr);
+  if (key.length > blockSize) key = sha256Bytes(key);
+  if (key.length < blockSize) { const p = new Uint8Array(blockSize); p.set(key); key = p; }
+  const oKeyPad = new Uint8Array(blockSize);
+  const iKeyPad = new Uint8Array(blockSize);
+  for (let i = 0; i < blockSize; i++) { oKeyPad[i] = key[i]^0x5c; iKeyPad[i] = key[i]^0x36; }
+  const msgBytes = new TextEncoder().encode(messageStr);
+  const inner = sha256Bytes(concatBytes(iKeyPad, msgBytes));
+  const digest = sha256Bytes(concatBytes(oKeyPad, inner));
+  return Array.from(digest).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+function base64urlEncode(str) {
+  const b64 = btoa(unescape(encodeURIComponent(str)));
+  return b64.replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+
+// ===== Logic giao diện =====
+const dateInput = document.getElementById('activateDate');
+const today = new Date();
+dateInput.value = today.toISOString().slice(0, 10);
+
+document.getElementById('genBtn').addEventListener('click', () => {
+  const secret = document.getElementById('secret').value.trim();
+  const machineCode = document.getElementById('machineCode').value.trim();
+  const years = parseFloat(document.getElementById('years').value) || 1;
+  const dateStr = dateInput.value;
+
+  if (!secret) { alert('Thiếu chuỗi bí mật.'); return; }
+  if (!machineCode) { alert('Thiếu mã máy của khách hàng.'); return; }
+  if (!dateStr) { alert('Thiếu ngày kích hoạt.'); return; }
+
+  const activateDate = new Date(dateStr + 'T00:00:00');
+  const expiryDate = new Date(activateDate.getTime());
+  expiryDate.setFullYear(expiryDate.getFullYear() + Math.round(years));
+  // Hết hạn vào cuối ngày đó (23:59:59) để tính đủ "1 năm liên tục".
+  expiryDate.setHours(23, 59, 59, 0);
+
+  const payload = {
+    m: machineCode,
+    exp: Math.floor(expiryDate.getTime() / 1000),
+    iat: Math.floor(Date.now() / 1000),
+  };
+  const payloadB64 = base64urlEncode(JSON.stringify(payload));
+  const sig = hmacSha256Hex(secret, payloadB64);
+  const token = payloadB64 + '.' + sig;
+
+  document.getElementById('tokenOut').value = token;
+  document.getElementById('result').classList.add('show');
+
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+  document.getElementById('expInfo').textContent =
+    `${fmt(activateDate)} → ${fmt(expiryDate)}`;
+});
+
+document.getElementById('copyBtn').addEventListener('click', () => {
+  const ta = document.getElementById('tokenOut');
+  ta.select();
+  navigator.clipboard && navigator.clipboard.writeText(ta.value).catch(() => document.execCommand('copy'));
+  const btn = document.getElementById('copyBtn');
+  const old = btn.textContent;
+  btn.textContent = 'Đã copy ✓';
+  setTimeout(() => (btn.textContent = old), 1200);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.getElementById('machineCode').value = '';
+  document.getElementById('tokenOut').value = '';
+  document.getElementById('result').classList.remove('show');
+});
+</script>
+</body>
+</html>
