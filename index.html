@@ -133,6 +133,7 @@
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> In phiếu STT - Sinh hiệu</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê toa thuốc</a>
+    <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu chỉ định nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
   </nav>
   <div class="sidebar-resize-handle" id="sidebarResizeHandle" title="Kéo để chỉnh độ rộng menu"></div>
@@ -187,6 +188,7 @@
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> STT - Sinh hiệu</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Toa thuốc</a>
+    <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
   </nav>
 
@@ -2548,6 +2550,12 @@
     </div>
   </div>
 
+  <div class="page" id="page-noisoi">
+    <!-- Khung nội dung cho tính năng "Phiếu chỉ định nội soi". File js/phieu-chi-dinh-noi-soi.js
+         sẽ tự render toàn bộ form + bản in vào #noiSoiContent bên dưới. -->
+    <div id="noiSoiContent"></div>
+  </div>
+
   <div class="page" id="page-cccd">
     <!-- Khung nội dung cho tính năng "Ghép ảnh CCCD để in". File js/cccd-ghep-anh.js
          (khi được tạo và upload) tự render giao diện thật vào bên trong
@@ -2637,6 +2645,7 @@
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script defer src="js/prescription.js?v=20260906"></script>
+<script defer src="js/phieu-chi-dinh-noi-soi.js?v=20260925"></script>
 
 <script defer src="js/nav-customize.js"></script>
 <script defer src="js/sidebar-resize.js"></script>
