@@ -105,6 +105,7 @@
     ".ns-bsname-row{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14mm;}",
     ".ns-bsname-clear{border:none;background:none;color:#c0392b;cursor:pointer;font-size:12px;}",
     "@media print{",
+    "  @page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "  html.ns-printing,html.ns-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
     "  html.ns-printing body *{visibility:hidden !important;}",
     "  html.ns-printing #nsSheet, html.ns-printing #nsSheet *{visibility:visible !important;}",
