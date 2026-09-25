@@ -66,21 +66,21 @@
     ".ns-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".ns-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
     "#nsSheet{width:" + PAGE_W_MM + "mm;min-height:" + PAGE_H_MM + "mm;background:#fff;position:relative;font-family:'Times New Roman',Times,serif;color:#000;box-sizing:border-box;padding:10mm 11mm;font-size:12px;line-height:1.4;}",
-    ".ns-hd{display:flex;align-items:flex-start;gap:3mm;margin-bottom:1.5mm;}",
+    ".ns-hd{display:flex;align-items:center;gap:3mm;margin-bottom:1.5mm;}",
     ".ns-hd-logo{flex:0 0 auto;width:14mm;height:auto;}",
-    ".ns-hd-text{flex:1 1 auto;text-align:center;font-size:10.5px;line-height:1.3;padding-top:1mm;}",
+    ".ns-hd-text{flex:1 1 auto;text-align:left;font-size:10.5px;line-height:1.3;}",
     ".ns-hd-text .ns-soyte{font-weight:400;text-transform:uppercase;}",
     ".ns-hd-text .ns-hospital{font-weight:bold;text-transform:uppercase;}",
-    ".ns-hd-spacer{flex:0 0 auto;width:14mm;}",
     ".ns-title{text-align:center;font-weight:bold;font-size:16px;margin:3mm 0 1mm;text-transform:uppercase;}",
     ".ns-tinhtrang{text-align:center;font-style:italic;font-size:12px;margin-bottom:3mm;display:flex;align-items:center;justify-content:center;gap:6px;}",
     ".ns-tinhtrang select{font-style:italic;font-family:inherit;font-size:12px;border:none;border-bottom:1px dotted #000;background:transparent;text-align:center;color:#000;}",
     ".ns-field-line{margin-bottom:3mm;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;}",
     ".ns-field-line label{white-space:nowrap;}",
     ".ns-field-line input,.ns-field-line select{font-family:inherit;font-size:12px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;padding:3px 2px;line-height:1.5;}",
-    ".ns-inp-name{flex:1 1 150px;min-width:90px;text-transform:uppercase;}",
-    ".ns-inp-dob{width:70px;}",
-    ".ns-inp-sex{width:70px;}",
+    ".ns-fl-name{flex-wrap:nowrap;}",
+    ".ns-inp-name{flex:1 1 90px;min-width:55px;text-transform:uppercase;}",
+    ".ns-inp-dob{width:46px;flex:0 0 auto;}",
+    ".ns-inp-sex{width:52px;flex:0 0 auto;}",
     ".ns-inp-addr{flex:1 1 auto;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
     ".ns-diag-fixed{font-weight:bold;}",
     ".ns-table{width:100%;border-collapse:collapse;margin:2.5mm 0 4mm;font-size:11.5px;}",
@@ -162,7 +162,6 @@
                   '<div class="ns-soyte">' + SO_Y_TE + '</div>' +
                   '<div class="ns-hospital">' + HOSPITAL_NAME + '</div>' +
                 '</div>' +
-                '<div class="ns-hd-spacer"></div>' +
               '</div>' +
               '<div class="ns-title">Phiếu chỉ định nội soi</div>' +
               '<div class="ns-tinhtrang">Tình trạng:' +
@@ -171,7 +170,7 @@
                   '<option value="Cấp cứu">Cấp cứu</option>' +
                 '</select>' +
               '</div>' +
-              '<div class="ns-field-line">' +
+              '<div class="ns-field-line ns-fl-name">' +
                 '<label>Họ và tên:</label>' +
                 '<input type="text" id="nsHoTen" class="ns-inp-name" placeholder="NGUYỄN VĂN B">' +
                 '<label>Năm sinh:</label>' +
