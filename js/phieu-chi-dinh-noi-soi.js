@@ -81,7 +81,7 @@
     ".ns-inp-name{flex:1 1 90px;min-width:55px;text-transform:uppercase;}",
     ".ns-inp-dob{width:46px;flex:0 0 auto;}",
     ".ns-inp-sex{width:52px;flex:0 0 auto;}",
-    ".ns-inp-addr{flex:1 1 auto;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
+    ".ns-inp-addr{flex:1 1 auto;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;}",
     ".ns-diag-fixed{font-weight:bold;}",
     ".ns-table{width:100%;border-collapse:collapse;margin:2.5mm 0 4mm;font-size:11.5px;}",
     ".ns-table th,.ns-table td{border:1px solid #000;padding:1.2mm 1.6mm;vertical-align:middle;}",
