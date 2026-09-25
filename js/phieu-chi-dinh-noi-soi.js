@@ -149,7 +149,9 @@
     "  html.ns-printing .ns-rowdel,html.ns-printing .ns-bsname-btn{display:none !important;}",
     "  html.ns-printing .ns-field-line input,html.ns-printing .ns-field-line select,",
     "  html.ns-printing .ns-table input,html.ns-printing .ns-table textarea,",
-    "  html.ns-printing .ns-footer input,html.ns-printing .ns-tinhtrang select{border-bottom:none !important;}",
+    "  html.ns-printing .ns-footer input,html.ns-printing .ns-tinhtrang select,",
+    "  html.ns-printing .ns-bsname-row select{border-bottom:none !important;}",
+    "  html.ns-printing .ns-table textarea{resize:none !important;}",
     "  html.ns-printing select{-webkit-appearance:none !important;-moz-appearance:none !important;appearance:none !important;background-image:none !important;padding-right:0 !important;}",
     "}"
   ].join("\n");
