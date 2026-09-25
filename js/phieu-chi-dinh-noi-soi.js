@@ -7,7 +7,7 @@
    - Cho phép thêm/xoá dòng chỉ định nội soi (mặc định 1 dòng "Nội soi
      dạ dày thực quản" đúng như mẫu gốc).
    - Bác sĩ ký tên bên dưới: có thể bật/tắt hiển thị và xoá tên đã điền.
-   - Nút "IN PHIẾU CHỈ ĐỊNH" -> window.print() render đúng khổ A4, đúng
+   - Nút "IN PHIẾU CHỈ ĐỊNH" -> window.print() render đúng khổ A5, đúng
      bố cục mẫu Word gốc (logo + SỞ Y TẾ + BV ĐK Bình Dương CS2).
    Không cần sửa nhiều index.html — file này tự render vào #noiSoiContent.
    ===================================================================== */
@@ -20,7 +20,7 @@
   var root = document.getElementById(ROOT_ID);
   if (!root) return;
 
-  var PAGE_W_MM = 210, PAGE_H_MM = 297;
+  var PAGE_W_MM = 148, PAGE_H_MM = 210;
 
   var SO_Y_TE = "SỞ Y TẾ THÀNH PHỐ HỒ CHÍ MINH";
   var HOSPITAL_NAME = "BỆNH VIỆN ĐA KHOA BÌNH DƯƠNG - CƠ SỞ 2";
@@ -65,44 +65,44 @@
     /* -------- vùng xem trước / bản in -------- */
     ".ns-stage{background:#5a5f66;border-radius:12px;padding:22px;display:flex;justify-content:center;overflow:auto;}",
     ".ns-sheet-outer{background:#fff;box-shadow:0 6px 24px rgba(0,0,0,.35);position:relative;}",
-    "#nsSheet{width:" + PAGE_W_MM + "mm;min-height:" + PAGE_H_MM + "mm;background:#fff;position:relative;font-family:'Times New Roman',Times,serif;color:#000;box-sizing:border-box;padding:14mm 16mm;font-size:13.5px;line-height:1.5;}",
-    ".ns-hd{display:flex;align-items:flex-start;gap:5mm;margin-bottom:2mm;}",
-    ".ns-hd-logo{flex:0 0 auto;width:20mm;height:auto;}",
-    ".ns-hd-text{flex:1 1 auto;text-align:center;font-size:12.5px;line-height:1.4;padding-top:1mm;}",
+    "#nsSheet{width:" + PAGE_W_MM + "mm;min-height:" + PAGE_H_MM + "mm;background:#fff;position:relative;font-family:'Times New Roman',Times,serif;color:#000;box-sizing:border-box;padding:10mm 11mm;font-size:12px;line-height:1.4;}",
+    ".ns-hd{display:flex;align-items:flex-start;gap:3mm;margin-bottom:1.5mm;}",
+    ".ns-hd-logo{flex:0 0 auto;width:14mm;height:auto;}",
+    ".ns-hd-text{flex:1 1 auto;text-align:center;font-size:10.5px;line-height:1.3;padding-top:1mm;}",
     ".ns-hd-text .ns-soyte{font-weight:400;text-transform:uppercase;}",
     ".ns-hd-text .ns-hospital{font-weight:bold;text-transform:uppercase;}",
-    ".ns-hd-spacer{flex:0 0 auto;width:20mm;}",
-    ".ns-title{text-align:center;font-weight:bold;font-size:19px;margin:4mm 0 1mm;text-transform:uppercase;}",
-    ".ns-tinhtrang{text-align:center;font-style:italic;font-size:13.5px;margin-bottom:4mm;display:flex;align-items:center;justify-content:center;gap:6px;}",
-    ".ns-tinhtrang select{font-style:italic;font-family:inherit;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;text-align:center;color:#000;}",
-    ".ns-field-line{margin-bottom:4.2mm;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;}",
+    ".ns-hd-spacer{flex:0 0 auto;width:14mm;}",
+    ".ns-title{text-align:center;font-weight:bold;font-size:16px;margin:3mm 0 1mm;text-transform:uppercase;}",
+    ".ns-tinhtrang{text-align:center;font-style:italic;font-size:12px;margin-bottom:3mm;display:flex;align-items:center;justify-content:center;gap:6px;}",
+    ".ns-tinhtrang select{font-style:italic;font-family:inherit;font-size:12px;border:none;border-bottom:1px dotted #000;background:transparent;text-align:center;color:#000;}",
+    ".ns-field-line{margin-bottom:3mm;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 8px;}",
     ".ns-field-line label{white-space:nowrap;}",
-    ".ns-field-line input,.ns-field-line select{font-family:inherit;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;padding:3px 2px;line-height:1.6;}",
-    ".ns-inp-name{flex:1 1 260px;min-width:120px;text-transform:uppercase;}",
-    ".ns-inp-dob{width:90px;}",
-    ".ns-inp-sex{width:80px;}",
-    ".ns-inp-addr{flex:1 1 100%;width:100%;}",
+    ".ns-field-line input,.ns-field-line select{font-family:inherit;font-size:12px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;padding:3px 2px;line-height:1.5;}",
+    ".ns-inp-name{flex:1 1 150px;min-width:90px;text-transform:uppercase;}",
+    ".ns-inp-dob{width:70px;}",
+    ".ns-inp-sex{width:70px;}",
+    ".ns-inp-addr{flex:1 1 auto;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}",
     ".ns-diag-fixed{font-weight:bold;}",
-    ".ns-table{width:100%;border-collapse:collapse;margin:3mm 0 5mm;font-size:13px;}",
-    ".ns-table th,.ns-table td{border:1px solid #000;padding:1.6mm 2mm;vertical-align:middle;}",
+    ".ns-table{width:100%;border-collapse:collapse;margin:2.5mm 0 4mm;font-size:11.5px;}",
+    ".ns-table th,.ns-table td{border:1px solid #000;padding:1.2mm 1.6mm;vertical-align:middle;}",
     ".ns-table th{font-weight:bold;text-align:center;background:rgba(0,0,0,.03);}",
-    ".ns-table td.ns-stt{text-align:center;width:9%;}",
-    ".ns-table td.ns-sl{text-align:center;width:14%;}",
-    ".ns-table input,.ns-table textarea{width:100%;box-sizing:border-box;border:none;background:transparent;font-family:inherit;font-size:13px;color:#000;resize:vertical;padding:0;text-align:inherit;}",
+    ".ns-table td.ns-stt{text-align:center;width:7%;}",
+    ".ns-table td.ns-sl{text-align:center;width:12%;}",
+    ".ns-table input,.ns-table textarea{width:100%;box-sizing:border-box;border:none;background:transparent;font-family:inherit;font-size:11.5px;color:#000;resize:vertical;padding:0;text-align:inherit;}",
     ".ns-table td.ns-stt{color:#000;}",
     ".ns-table td.ns-noidung input{text-align:left;}",
     ".ns-table td.ns-sl input{text-align:center;}",
     ".ns-table td.ns-kq textarea{min-height:5mm;}",
     ".ns-rowdel{border:none;background:none;color:#c0392b;cursor:pointer;font-size:13px;margin-left:6px;}",
-    ".ns-footer{margin-top:6mm;display:flex;justify-content:flex-end;}",
-    ".ns-footer-col{width:65mm;text-align:center;}",
-    ".ns-footer .ns-daterow{font-style:italic;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;}",
-    ".ns-footer .ns-daterow input{font-family:inherit;font-style:italic;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;}",
-    ".ns-inp-day,.ns-inp-month{width:26px;}",
-    ".ns-inp-year{width:46px;}",
-    ".ns-footer .ns-bstitle{font-weight:bold;margin-top:1mm;text-align:center;}",
-    ".ns-bsname-row input{font-family:inherit;font-weight:bold;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-transform:uppercase;width:220px;}",
-    ".ns-bsname-row{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:20mm;}",
+    ".ns-footer{margin-top:4mm;display:flex;justify-content:flex-end;}",
+    ".ns-footer-col{width:58mm;text-align:center;}",
+    ".ns-footer .ns-daterow{font-style:italic;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;font-size:12px;}",
+    ".ns-footer .ns-daterow input{font-family:inherit;font-style:italic;font-size:12px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;}",
+    ".ns-inp-day,.ns-inp-month{width:22px;}",
+    ".ns-inp-year{width:40px;}",
+    ".ns-footer .ns-bstitle{font-weight:bold;margin-top:1mm;text-align:center;font-size:12px;}",
+    ".ns-bsname-row input{font-family:inherit;font-weight:bold;font-size:15px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-transform:uppercase;width:220px;padding:5px 2px;line-height:2;}",
+    ".ns-bsname-row{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14mm;}",
     ".ns-bsname-clear{border:none;background:none;color:#c0392b;cursor:pointer;font-size:12px;}",
     "@media print{",
     "  html.ns-printing,html.ns-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -138,7 +138,7 @@
   root.innerHTML =
     '<div id="nsWrap">' +
       '<h1>🔬 Phiếu chỉ định nội soi</h1>' +
-      '<p class="ns-sub">BV Đa khoa Bình Dương CS2 — khổ A4</p>' +
+      '<p class="ns-sub">BV Đa khoa Bình Dương CS2 — khổ A5</p>' +
       '<div class="ns-grid">' +
         '<div class="ns-panel">' +
           '<h3>Tuỳ chọn</h3>' +
@@ -193,10 +193,10 @@
               '</div>' +
               '<table class="ns-table" id="nsTable">' +
                 '<thead><tr>' +
-                  '<th style="width:9%">STT</th>' +
-                  '<th>Nội dung</th>' +
-                  '<th style="width:14%">SỐ LƯỢNG</th>' +
-                  '<th style="width:26%">KẾT QUẢ</th>' +
+                  '<th style="width:7%">STT</th>' +
+                  '<th>NỘI DUNG</th>' +
+                  '<th style="width:12%">SỐ LƯỢNG</th>' +
+                  '<th style="width:34%">KẾT QUẢ</th>' +
                 '</tr></thead>' +
                 '<tbody id="nsTableBody"></tbody>' +
               '</table>' +
