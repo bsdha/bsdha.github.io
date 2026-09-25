@@ -44,11 +44,10 @@
     "#nsWrap{max-width:1400px;margin:0 auto;padding:16px;font-family:inherit;color:var(--text,#222);}",
     "#nsWrap h1{font-size:20px;margin:0 0 4px;}",
     "#nsWrap .ns-sub{color:var(--muted,#777);font-size:13px;margin:0 0 16px;}",
-    ".ns-grid{display:grid;grid-template-columns:1fr 300px;gap:18px;align-items:start;}",
+    ".ns-grid{display:grid;grid-template-columns:1fr;gap:18px;align-items:start;}",
     ".ns-grid>.ns-panel{order:2;}",
     ".ns-grid>.ns-stage{order:1;}",
-    "@media (max-width:980px){.ns-grid{grid-template-columns:1fr;}}",
-    ".ns-panel{background:var(--surface,#fff);border:1px solid var(--border,#e2e2e2);border-radius:12px;padding:14px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto;}",
+    ".ns-panel{background:var(--surface,#fff);border:1px solid var(--border,#e2e2e2);border-radius:12px;padding:14px;}",
     ".ns-panel h3{font-size:14px;margin:14px 0 8px;padding-top:10px;border-top:1px dashed var(--border,#ddd);}",
     ".ns-panel h3:first-child{margin-top:0;padding-top:0;border-top:none;}",
     ".ns-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:8px;padding:10px 14px;font-size:13.5px;cursor:pointer;background:var(--blue,#0066FF);color:#fff;width:100%;margin-top:4px;transition:transform .12s ease,box-shadow .12s ease,background .2s ease;}",
@@ -120,14 +119,14 @@
     "  #nsWrap .ns-hd,#nsWrap .ns-title,#nsWrap .ns-tinhtrang,#nsWrap #nsDiagLine,#nsWrap #nsTable{display:none !important;}",
     "  .ns-stage{background:var(--surface,#fff);border:1px solid var(--border,#e2e2e2);border-radius:12px;padding:20px;justify-content:flex-start;}",
     "  .ns-sheet-outer{box-shadow:none;background:transparent;width:100%;}",
-    "  #nsSheet{width:auto;max-width:620px;min-height:0;margin:0 auto;padding:6px;font-size:16px;}",
-    "  .ns-fl-name{flex-wrap:wrap !important;}",
-    "  .ns-field-line{margin-bottom:18px;gap:8px 14px;}",
-    "  .ns-field-line label{font-size:15px;font-weight:700;}",
+    "  #nsSheet{width:auto;max-width:760px;min-height:0;margin:0 auto;padding:6px;font-size:16px;}",
+    "  .ns-fl-name{flex-wrap:nowrap !important;}",
+    "  .ns-field-line{margin-bottom:18px;gap:6px 10px;}",
+    "  .ns-field-line label{font-size:15px;font-weight:700;white-space:nowrap;}",
     "  .ns-field-line input,.ns-field-line select{font-size:16px;padding:9px 8px;border-bottom:2px solid #ccc;}",
-    "  .ns-inp-name{min-width:240px;}",
-    "  .ns-inp-dob{width:90px;}",
-    "  .ns-inp-sex{width:100px;}",
+    "  .ns-inp-name{min-width:180px;flex:1 1 180px;}",
+    "  .ns-inp-dob{width:70px;}",
+    "  .ns-inp-sex{width:80px;}",
     "  .ns-inp-addr{min-width:300px;white-space:normal;overflow:visible;text-overflow:clip;}",
     "  .ns-footer{justify-content:center;margin-top:10px;}",
     "  .ns-footer-col{width:auto;max-width:380px;}",
@@ -395,8 +394,10 @@
     var list = loadDoctorList();
     var def = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
     var blankOpt = '<option value="">(Ký, ghi rõ họ tên)</option>';
+    var defBtn = document.getElementById("nsBsNameDefBtn");
     if (list.length === 0) {
       nsBsSelect.innerHTML = blankOpt;
+      if (defBtn) defBtn.classList.remove("is-default");
       return;
     }
     nsBsSelect.innerHTML = blankOpt + list.map(function (name) {
@@ -406,6 +407,7 @@
       ? selectValue
       : (def && list.indexOf(def) !== -1 ? def : "");
     nsBsSelect.value = toSelect;
+    if (defBtn) defBtn.classList.toggle("is-default", !!toSelect && toSelect === def);
   }
   function escapeHtmlNs(s) {
     return String(s).replace(/[&<>"']/g, function (c) {
@@ -414,6 +416,11 @@
   }
   renderDoctorSelect();
   pullDoctorsFromCloud();
+  nsBsSelect.addEventListener("change", function () {
+    var def = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
+    var defBtn = document.getElementById("nsBsNameDefBtn");
+    if (defBtn) defBtn.classList.toggle("is-default", !!nsBsSelect.value && nsBsSelect.value === def);
+  });
 
   document.getElementById("nsBsNameAddBtn").addEventListener("click", function () {
     var name = window.prompt("Thêm bác sĩ mới (VD: BS. Nguyễn Văn A):", "");
@@ -429,7 +436,12 @@
   });
   document.getElementById("nsBsNameDefBtn").addEventListener("click", function () {
     if (!nsBsSelect.value) return;
-    localStorage.setItem(LS_DOCTOR_DEFAULT, nsBsSelect.value);
+    var curDef = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
+    if (curDef === nsBsSelect.value) {
+      localStorage.removeItem(LS_DOCTOR_DEFAULT);
+    } else {
+      localStorage.setItem(LS_DOCTOR_DEFAULT, nsBsSelect.value);
+    }
     renderDoctorSelect(nsBsSelect.value);
     pushDoctorsToCloud();
   });
@@ -447,9 +459,6 @@
   /* 6. Giá trị mặc định: ngày tháng năm hôm nay                       */
   /* ---------------------------------------------------------------- */
   function fillDefaults() {
-    document.getElementById("nsNgay").value = todayD.getDate();
-    document.getElementById("nsThang").value = (todayD.getMonth() + 1);
-    document.getElementById("nsNam").value = todayD.getFullYear();
     addRow("Nội soi dạ dày thực quản", "01");
   }
 
@@ -511,6 +520,9 @@
     document.getElementById("nsDiaChi").value = "";
     document.getElementById("nsTinhTrang").value = "Thường";
     document.getElementById("nsBsName").value = "";
+    document.getElementById("nsNgay").value = "";
+    document.getElementById("nsThang").value = "";
+    document.getElementById("nsNam").value = "";
     tbody.innerHTML = "";
     fillDefaults();
     setStatus("Đã làm mới phiếu.", "ok");
