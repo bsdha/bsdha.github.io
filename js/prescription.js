@@ -487,11 +487,62 @@
   })();
 
   // ---------- Danh sách bác sĩ ký (thêm / xoá / đặt mặc định) ----------
+  // Đồng bộ qua Supabase (dùng chung bảng "logo" key-value đã có sẵn, key riêng)
+  // → đổi máy khác vẫn thấy đủ tên bác sĩ đã thêm.
   const doctorSelect = $('rxDoctorSelect'), doctorDefBtn = $('rxDoctorDefBtn');
+  const doctorSyncStatus = $('rxDoctorSyncStatus'); // tuỳ chọn: thêm <span id="rxDoctorSyncStatus"> trong HTML nếu muốn hiện trạng thái
+  const CLOUD_DOCTOR_KEY = 'rx_doctor_list';
   function loadDoctorList() {
     try { return JSON.parse(localStorage.getItem(LS_DOCTORS) || '[]'); } catch (e) { return []; }
   }
-  function saveDoctorList(list) { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); }
+  function saveDoctorListLocal(list) { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); }
+  function saveDoctorList(list) {
+    saveDoctorListLocal(list);
+    pushDoctorsToCloud();
+  }
+  let pushDoctorTimer = null;
+  function pushDoctorsToCloud() {
+    if (doctorSyncStatus) doctorSyncStatus.textContent = 'Đang đồng bộ...';
+    clearTimeout(pushDoctorTimer);
+    pushDoctorTimer = setTimeout(async () => {
+      try {
+        const payload = {
+          key: CLOUD_DOCTOR_KEY,
+          value: JSON.stringify({
+            list: loadDoctorList(),
+            def: localStorage.getItem(LS_DOCTOR_DEFAULT) || '',
+          }),
+        };
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/logo`, {
+          method: 'POST',
+          headers: { ...cloudHeaders(), Prefer: 'resolution=merge-duplicates' },
+          body: JSON.stringify(payload),
+        });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        if (doctorSyncStatus) doctorSyncStatus.textContent = 'Đã đồng bộ cho mọi máy ✓';
+      } catch (err) {
+        if (doctorSyncStatus) doctorSyncStatus.textContent = 'Chưa đồng bộ được (kiểm tra mạng)';
+      }
+    }, 400);
+  }
+  async function pullDoctorsFromCloud() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/logo?key=eq.${CLOUD_DOCTOR_KEY}&select=value`, {
+        headers: cloudHeaders(),
+      });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const rows = await resp.json();
+      if (rows && rows[0] && rows[0].value) {
+        const cfg = JSON.parse(rows[0].value);
+        if (Array.isArray(cfg.list)) saveDoctorListLocal(cfg.list);
+        if (cfg.def) localStorage.setItem(LS_DOCTOR_DEFAULT, cfg.def);
+        renderDoctorSelect();
+        if (doctorSyncStatus) doctorSyncStatus.textContent = 'Đã lấy danh sách mới nhất từ máy chủ ✓';
+      }
+    } catch (err) {
+      // Chưa có mạng hoặc chưa tạo bảng "logo" → vẫn dùng danh sách lưu cục bộ trên máy này
+    }
+  }
 
   function renderDoctorSelect(selectValue) {
     const list = loadDoctorList();
@@ -512,6 +563,7 @@
     doctorDefBtn.classList.toggle('is-default', doctorSelect.value === def && !!def);
   }
   renderDoctorSelect();
+  pullDoctorsFromCloud();
 
   doctorSelect.addEventListener('change', () => {
     const def = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
@@ -534,6 +586,7 @@
     if (!doctorSelect.value) return;
     localStorage.setItem(LS_DOCTOR_DEFAULT, doctorSelect.value);
     renderDoctorSelect(doctorSelect.value);
+    pushDoctorsToCloud();
   });
 
   $('rxDoctorDelBtn').addEventListener('click', async () => {
