@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         HIS Bình Dương - Tiện ích Helix
+// @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.73
+// @version      1.75
 // @description  Tiện ích Helix + Quick Select Cận lâm sàng
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -10,14 +10,29 @@
 // @downloadURL  https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js
 // ==/UserScript==
 
-/* Hai phần dưới đây chạy trong 2 khối IIFE độc lập, không chia sẻ biến/hàm nào,
-   và mọi id phần tử DOM (toolbar, nút, popup...) đều khác nhau nên không xung đột.
-   Gộp lại giúp @match chỉ cần khai báo 1 lần và Tampermonkey chỉ theo dõi 1 file. */
+// ===== Changelog =====
+// 1.75  Mã máy (bản quyền) đổi sang tính từ fingerprint phần cứng/trình
+//       duyệt thay vì UUID ngẫu nhiên lưu localStorage -> Ctrl+Shift+Del
+//       (xoá dữ liệu duyệt web) không còn làm mất bản quyền đã kích hoạt.
+//       Dọn bớt comment giải thích rườm rà trong code.
+// 1.74  Bỏ dò theo nhãn "Số ngày" gần nhất cho ô "Số lượng"; chủ động thử
+//       tích "Tái khám" ngay khi xử lý thay vì chỉ chờ theo dõi sau.
+// 1.67  Debounce lại phần theo dõi thay đổi DOM (trước đó chạy lại trên
+//       mọi thay đổi, gây tốn hiệu năng).
+// 1.65  Dùng đúng ô mã bệnh nhân (input[pinputtext] nằm trong cùng khối).
+// 1.63  Sửa dò nút "In toa thuốc" khi nằm sát mép phải toolbar.
+// 1.62  Xử lý nhãn tab con "Đơn thuốc" có kèm số đếm (badge) cạnh tên.
+// 1.61  Bắt buộc dòng phải đúng cấu trúc "Đơn thuốc số ..." mới tính hợp lệ.
+// 1.60  (Đã thay bằng cách xử lý ở 1.61 vì coi mọi dòng là hợp lệ khi
+//       không xác định được nhãn.)
+// 1.58  Nới lỏng điều kiện dò tìm cấu trúc; dùng setProperty(...,
+//       'important') thay vì gán style.opacity trực tiếp; yêu cầu ít
+//       nhất 1 đơn thuốc cho "In nhanh BK toa về" / "In bảng kê lại".
 
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '1.73';
+  const HELIXFAST_VERSION = '1.75';
   const SYMPTOM_SELECTOR = 'textarea[formcontrolname="symptom"]';
   const PROGRESSION_SELECTOR = 'textarea[formcontrolname="progression"]';
   const NOTE_TEXTAREA_SELECTOR = '.width-per88 textarea.form-control';
@@ -39,16 +54,9 @@
   }
 
   // ===== Bản quyền theo máy =====
-  // Mỗi máy tự sinh 1 mã máy cố định (localStorage). Admin ký mã kích hoạt
-  // bằng file helixfast-license-generator.html (offline, HMAC-SHA256).
-  // Chuỗi bí mật dưới đây phải khớp với chuỗi trong file generator đó.
   const HELIXFAST_LICENSE_SECRET = '3780ca6bca82cf7389f693dfc26a3ff69dde2433c2649c9e122598af5d7be435';
-  const HELIXFAST_MACHINE_CODE_KEY = 'helixfast_machine_code';
   const HELIXFAST_LICENSE_TOKEN_KEY = 'helixfast_license_token';
 
-  // --- SHA-256 / HMAC-SHA256 thuần JS (FIPS 180-4), chạy đồng bộ, dùng
-  // chung cho cả script này lẫn file
-  // HTML tạo mã kích hoạt để đảm bảo ra cùng 1 kết quả chữ ký. ---
   function hlxSha256Bytes(messageBytes) {
     const K = new Uint32Array([
       0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
@@ -143,27 +151,106 @@
     return decodeURIComponent(escape(atob(b64)));
   }
 
-  // Sinh/lấy mã máy cố định cho trình duyệt này (giữ nguyên qua các lần mở
-  // lại vì lưu trong localStorage, chỉ mất nếu người dùng tự xoá dữ liệu
-  // trình duyệt).
-  function hlxGetMachineCode() {
+  function hlxDjb2(str) {
+    let h = 5381;
+    for (let i = 0; i < str.length; i++) {
+      h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+    }
+    return h.toString(16).padStart(8, '0');
+  }
+
+  function hlxFpWebGL() {
     try {
-      let code = localStorage.getItem(HELIXFAST_MACHINE_CODE_KEY);
-      if (code) return code;
-      const rnd =
-        window.crypto && window.crypto.randomUUID
-          ? window.crypto.randomUUID().replace(/-/g, '')
-          : Array.from({ length: 32 }, () => Math.floor(Math.random() * 16).toString(16)).join('');
-      code = 'HLF-' + rnd.slice(0, 20).toUpperCase();
-      localStorage.setItem(HELIXFAST_MACHINE_CODE_KEY, code);
-      return code;
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      if (!gl) return 'nogl';
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      const vendor = dbg ? gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) : gl.getParameter(gl.VENDOR);
+      const renderer = dbg ? gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+      return (vendor || '') + '|' + (renderer || '');
     } catch (err) {
-      return 'HLF-TAM-THOI-KHONG-LUU-DUOC';
+      return 'errgl';
     }
   }
 
-  // Kiểm tra 1 chuỗi mã kích hoạt (payloadB64.chữKýHex) có hợp lệ với mã máy
-  // hiện tại hay không. Trả về { ok, exp, reason }.
+  function hlxFpCanvas() {
+    try {
+      const canvas = document.createElement('canvas');
+      canvas.width = 240;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return 'noctx';
+      ctx.textBaseline = 'top';
+      ctx.font = '15px Arial';
+      ctx.fillStyle = '#f60';
+      ctx.fillRect(0, 0, 90, 22);
+      ctx.fillStyle = '#069';
+      ctx.fillText('Helixfast \u00c1\u00c2\u00caO \u0111\u1eb7c 0123', 2, 16);
+      ctx.fillStyle = 'rgba(102, 200, 0, 0.65)';
+      ctx.fillText('Helixfast \u00c1\u00c2\u00caO \u0111\u1eb7c 0123', 4, 19);
+      return canvas.toDataURL();
+    } catch (err) {
+      return 'errcanvas';
+    }
+  }
+
+  function hlxFpFonts() {
+    try {
+      if (!document.body) return 'nobody';
+      const testFonts = [
+        'Arial', 'Times New Roman', 'Courier New', 'Verdana', 'Tahoma',
+        'Segoe UI', 'Calibri', 'Cambria', 'Consolas', 'Comic Sans MS',
+        'Vni-Times', 'VNI-Times', '.VnTime', 'UTM Avo', 'Roboto Condensed',
+      ];
+      const baseFonts = ['monospace', 'sans-serif', 'serif'];
+      const testString = 'mmmmmmmmmmlli0123';
+      const span = document.createElement('span');
+      span.style.position = 'absolute';
+      span.style.left = '-9999px';
+      span.style.top = '-9999px';
+      span.style.fontSize = '72px';
+      span.textContent = testString;
+      document.body.appendChild(span);
+      const baseWidths = {};
+      baseFonts.forEach((bf) => {
+        span.style.fontFamily = bf;
+        baseWidths[bf] = span.offsetWidth;
+      });
+      const detected = [];
+      testFonts.forEach((font) => {
+        const found = baseFonts.some((bf) => {
+          span.style.fontFamily = '"' + font + '", ' + bf;
+          return span.offsetWidth !== baseWidths[bf];
+        });
+        if (found) detected.push(font);
+      });
+      document.body.removeChild(span);
+      return detected.join(',');
+    } catch (err) {
+      return 'errfont';
+    }
+  }
+
+  function hlxGetMachineCode() {
+    const raw = [
+      navigator.platform || '',
+      (screen.width || 0) + 'x' + (screen.height || 0),
+      (screen.availWidth || 0) + 'x' + (screen.availHeight || 0),
+      (screen.colorDepth || 0) + '',
+      (window.devicePixelRatio || 1) + '',
+      navigator.language || '',
+      (navigator.languages || []).join(','),
+      (navigator.hardwareConcurrency || 0) + '',
+      (navigator.deviceMemory || 0) + '',
+      (navigator.maxTouchPoints || 0) + '',
+      new Date().getTimezoneOffset() + '',
+      hlxFpWebGL(),
+      hlxFpCanvas(),
+      hlxFpFonts(),
+    ].join('||');
+    return 'HLF-' + hlxDjb2(raw).toUpperCase();
+  }
+
   function hlxParseLicenseToken(token) {
     if (!token || typeof token !== 'string' || token.indexOf('.') === -1) {
       return { ok: false, reason: 'Mã kích hoạt không đúng định dạng.' };
@@ -204,7 +291,6 @@
     try {
       token = localStorage.getItem(HELIXFAST_LICENSE_TOKEN_KEY);
     } catch (err) {
-      /* ignore */
     }
     if (!token) return { valid: false, expired: false, reason: 'Chưa kích hoạt bản quyền cho máy này.' };
     const res = hlxParseLicenseToken(token);
@@ -249,7 +335,6 @@
   }
 
   // ===== Điền nhanh khám lâm sàng + đồng bộ 2 ô =====
-  // Chỉ số theo thứ tự textarea trong '.width-per88' (0 = bệnh sử).
   const EXAM_IDX = { general: 1, organs: 2, mirrorA: 3, mirrorB: 4 };
   const EXAM_GENERAL_TEXT = 'Bệnh tỉnh, tiếp xúc tốt, da niêm hồng\nHạch ngoại vi không sờ chạm';
   const EXAM_ORGANS_TEXT = 'Tim đều\nPhổi không rale\nBụng mềm';
@@ -398,8 +483,6 @@
     });
   }
 
-  // Cột STT không phải lúc nào cũng là cột đầu tiên (có thể có cột checkbox
-  // chọn dòng đứng trước, tuỳ trạng thái đơn thuốc), nên dò theo tiêu đề cột.
   function rxGetColIndex(table, label, cacheKey) {
     if (table.dataset[cacheKey] !== undefined) {
       return parseInt(table.dataset[cacheKey], 10);
@@ -489,9 +572,6 @@
     setTimeout(() => row.classList.remove('his-rx-flash'), 500);
   }
 
-  // --- Đổi thứ tự bằng chính cơ chế của HIS: sửa ô STT rồi rời khỏi ô (blur) ---
-  // Người dùng phát hiện: gõ số thứ tự mới vào ô STT rồi click ra ngoài thì
-  // HIS tự sắp xếp lại + lưu đúng thứ tự. Ta mô phỏng lại thao tác đó.
   function rxCommitStt(row, newStt, tbody) {
     const cell = rxSttCell(row);
     if (!cell) return;
@@ -505,7 +585,6 @@
       try {
         input.focus();
       } catch (err) {
-        /* ignore */
       }
       setNativeValue(input, String(newStt));
 
@@ -520,7 +599,6 @@
       try {
         input.blur();
       } catch (err) {
-        /* ignore */
       }
       document.body.focus();
 
@@ -552,8 +630,6 @@
     }
 
     if (input0.disabled) {
-      // Ô STT thường ở trạng thái khoá (disabled) để hiển thị số thứ tự;
-      // cần "mở khoá" bằng double-click trước khi có thể sửa được, giống thao tác chuột thật.
       cell.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
       cell.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, cancelable: true }));
       cell.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
@@ -760,9 +836,6 @@
           td.insertBefore(rxBuildCtrl(), td.firstChild);
         }
       });
-      // Luôn tính lại trạng thái khoá ▲▼ vì Angular có thể chỉ DI CHUYỂN
-      // (giữ nguyên) các phần tử DOM đang có sẵn thay vì tạo mới khi đổi thứ
-      // tự, nên không thể chỉ dựa vào việc "có control mới được chèn hay không".
       rxRenumber(tbody);
     });
   }
@@ -840,6 +913,19 @@
     if (!isHelixfastEnabled()) return;
     capitalizeFirstChar(e.target);
     syncToProgression(e.target);
+    hsHandleSymptomTextChange(e.target.value, { advanceVariant: false });
+  }
+
+  function hsHandleSymptomTextChange(rawText, opts) {
+    const text = (rawText || '').trim();
+    if (!text) return;
+    if (text !== hsQuickLastText) {
+      hsQuickLastText = text;
+      hsQuickVariantIndex = 0;
+    }
+    hsApplyQuickVariant(text, hsQuickVariantIndex);
+    if (opts && opts.advanceVariant) hsQuickVariantIndex++;
+    fillExamFields();
   }
 
   function capitalizeFirstChar(el) {
@@ -857,7 +943,6 @@
     try {
       el.setSelectionRange(selStart, selEnd);
     } catch (err) {
-      /* ignore */
     }
   }
 
@@ -865,16 +950,7 @@
     if (!isHelixfastEnabled()) return;
     if (e.key === 'Enter') {
       e.preventDefault();
-      const text = e.target.value.trim();
-      if (text) {
-        if (text !== hsQuickLastText) {
-          hsQuickLastText = text;
-          hsQuickVariantIndex = 0;
-        }
-        hsApplyQuickVariant(text, hsQuickVariantIndex);
-        hsQuickVariantIndex++;
-        fillExamFields();
-      }
+      hsHandleSymptomTextChange(e.target.value, { advanceVariant: true });
       focusIcdInput();
     }
   }
@@ -990,9 +1066,10 @@
         background-color: #e6f4ea !important;
       }
       .ng-dropdown-panel .ng-option.icd-option-duplicate {
-        opacity: 0.4;
+        opacity: 1;
         background-color: #f0f0f0 !important;
-        color: #999 !important;
+        color: #d32f2f !important;
+        font-weight: 600;
         text-decoration: line-through;
         pointer-events: none;
         cursor: not-allowed;
@@ -1073,44 +1150,48 @@
       }
       .his-hs-panel {
         position: fixed;
-        top: 90px;
-        right: 20px;
-        width: 320px;
-        max-height: 80vh;
+        top: 5vh;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 88vw;
+        max-width: 1400px;
+        height: 88vh;
+        max-height: 88vh;
         overflow-y: auto;
         background: #ffffff;
         color: #1c1f26;
         border: 1px solid #d8dce2;
-        border-radius: 8px;
+        border-radius: 10px;
         box-shadow: 0 6px 24px rgba(0,0,0,.25);
         z-index: 99999;
         flex-direction: column;
-        font-size: 12.5px;
+        font-size: 16px;
       }
       .his-hs-header {
         background: #0f9d78;
         color: #fff;
-        padding: 8px 10px;
-        border-radius: 8px 8px 0 0;
+        padding: 12px 16px;
+        border-radius: 10px 10px 0 0;
         cursor: move;
         font-weight: 600;
+        font-size: 19px;
         display: flex;
         justify-content: space-between;
         align-items: center;
       }
-      .his-hs-close { cursor: pointer; padding: 0 4px; }
-      .his-hs-body { padding: 10px; display: flex; flex-direction: column; gap: 6px; }
-      .his-hs-label { font-size: 11px; color: #0f9d78; font-weight: 600; margin-top: 4px; }
-      .his-hs-row { display: flex; flex-direction: column; gap: 2px; }
+      .his-hs-close { cursor: pointer; padding: 0 6px; font-size: 20px; }
+      .his-hs-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
+      .his-hs-label { font-size: 14px; color: #0f9d78; font-weight: 600; margin-top: 6px; }
+      .his-hs-row { display: flex; flex-direction: column; gap: 4px; }
       .his-hs-field {
         width: 100%;
         box-sizing: border-box;
         background: #fff;
         color: #1c1f26;
         border: 1px solid #c7cdd6;
-        border-radius: 4px;
-        padding: 5px 6px;
-        font-size: 12px;
+        border-radius: 5px;
+        padding: 8px 10px;
+        font-size: 15px;
       }
       .his-hs-preview {
         width: 100%;
@@ -1118,17 +1199,18 @@
         background: #f7f9fa;
         color: #1c1f26;
         border: 1px solid #c7cdd6;
-        border-radius: 4px;
-        padding: 6px;
-        font-size: 12px;
+        border-radius: 5px;
+        padding: 10px;
+        font-size: 15px;
         resize: vertical;
+        min-height: 120px;
       }
-      .his-hs-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+      .his-hs-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
       .his-hs-btn {
         flex: 1 1 auto;
-        font-size: 11px;
-        padding: 6px 8px;
-        border-radius: 4px;
+        font-size: 14px;
+        padding: 9px 12px;
+        border-radius: 5px;
         border: 1px solid #c7cdd6;
         background: #fff;
         color: #1c1f26;
@@ -1148,11 +1230,26 @@
       }
       .his-hs-panel input[type="checkbox"] {
         cursor: pointer !important;
+        width: 16px;
+        height: 16px;
       }
       .his-hs-checkbox-group label,
       .his-hs-panel #his-hs-reason-group label {
         color: #1c1f26;
+        font-size: 14px;
       }
+      #his-hs-reason-group {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+        gap: 2px 14px;
+      }
+      #his-hs-fields {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+        gap: 0 24px;
+        align-items: start;
+      }
+      .hs-reason-block { min-width: 0; }
     `;
     document.head.appendChild(style);
   }
@@ -1515,7 +1612,7 @@
   const HS_REASONS = {
     dau_bung: { label: 'đau bụng', vitri: ['vùng thượng vị', 'quanh rốn', 'vùng hạ vị', 'hố chậu phải', 'hố chậu trái', 'khắp bụng'], tinhchat: ['âm ỉ', 'quặn từng cơn', 'dữ dội'], lan: ['không lan', 'lan ra sau lưng', 'lan xuống hạ vị'], kemtheo: ['đầy bụng', 'buồn nôn/nôn', 'tiêu chảy', 'táo bón', 'chán ăn', 'không kèm triệu chứng khác'] },
     dau_dau: { label: 'đau đầu', vitri: ['hai bên đầu', 'nửa đầu một bên', 'vùng trán', 'vùng chẩm', 'lan tỏa toàn đầu'], tinhchat: ['âm ỉ', 'giật theo nhịp mạch', 'căng tức'], kemtheo: ['chóng mặt', 'buồn nôn/nôn', 'sợ ánh sáng/tiếng động', 'nhìn mờ', 'không kèm triệu chứng khác'] },
-    chong_mat: { label: 'chóng mặt', tinhchat: ['choáng váng', 'cảm giác xoay tròn', 'mất thăng bằng'], vitri: ['xuất hiện khi thay đổi tư thế', 'xuất hiện liên tục không phụ thuộc tư thế', 'xuất hiện khi gắng sức'], kemtheo: ['buồn nôn/nôn', 'ù tai', 'nhìn mờ', 'yếu tay chân', 'không kèm triệu chứng khác'] },
+    chong_mat: { label: 'chóng mặt', tinhchat: ['choáng váng', 'cảm giác xoay tròn', 'mất thăng bằng'], vitri: ['xuất hiện khi thay đổi tư thế', 'xuất hiện liên tục không phụ thuộc tư thế', 'xuất hiện khi gắng sức'], kemtheo: ['buồn nôn/nôn', 'ù tai', 'nhìn mờ', 'yếu tay chân', 'đau đầu', 'không kèm triệu chứng khác'] },
     dau_nguc: { label: 'đau ngực', vitri: ['sau xương ức', 'vùng ngực trái', 'vùng ngực phải', 'lan lên vai/hàm'], tinhchat: ['đè nặng', 'nhói', 'bỏng rát'], lan: ['liên quan đến gắng sức', 'không liên quan đến gắng sức'], kemtheo: ['khó thở', 'hồi hộp/đánh trống ngực', 'vã mồ hôi', 'không kèm triệu chứng khác'] },
     dau_vaigay: { label: 'đau vai gáy', vitri: ['vai phải', 'vai trái', 'hai vai', 'lan xuống cánh tay'], tinhchat: ['âm ỉ', 'nhức mỏi', 'tê bì kèm theo'], lan: ['xuất hiện sau vận động/mang vác', 'tự nhiên xuất hiện', 'xuất hiện sau khi ngủ dậy'], kemtheo: ['hạn chế vận động', 'tê tay', 'không kèm triệu chứng khác'] },
     tieu_kho: { label: 'tiểu khó', tinhchat: ['tiểu buốt', 'tiểu rắt', 'tiểu ngắt quãng, khó bắt đầu dòng tiểu'], kemtheo: ['tiểu máu', 'sốt', 'đau vùng hông lưng', 'đau bụng dưới', 'không kèm triệu chứng khác'] },
@@ -1528,13 +1625,32 @@
     non: { label: 'buồn nôn/nôn', vitri: ['nôn 1-2 lần', 'nôn 3-5 lần', 'nôn trên 5 lần'], tinhchat: ['liên quan đến bữa ăn', 'không liên quan đến bữa ăn'], kemtheo: ['đau bụng', 'sốt', 'tiêu chảy', 'đau đầu', 'không kèm triệu chứng khác'] },
     phu: { label: 'phù', vitri: ['hai chân', 'vùng mặt', 'toàn thân'], tinhchat: ['phù mềm, ấn lõm', 'phù cứng'], kemtheo: ['tiểu ít', 'khó thở', 'tăng cân nhanh', 'không kèm triệu chứng khác'] },
     met_moi: { label: 'mệt mỏi', tinhchat: ['mệt nhẹ, vẫn sinh hoạt được', 'mệt nhiều, hạn chế sinh hoạt'], kemtheo: ['chán ăn', 'sụt cân', 'mất ngủ', 'không kèm triệu chứng khác'] },
+    dau_hong: { label: 'đau họng', tinhchat: ['rát họng', 'nuốt đau', 'nuốt vướng'], kemtheo: ['ho', 'sốt', 'khàn tiếng', 'sưng hạch cổ', 'không kèm triệu chứng khác'] },
+    ngua_diung: { label: 'ngứa, nổi mẩn da', vitri: ['khu trú một vùng', 'lan toàn thân'], tinhchat: ['mẩn đỏ', 'sẩn phù', 'mụn nước'], kemtheo: ['sốt', 'sưng môi/mắt', 'khó thở', 'không kèm triệu chứng khác'] },
+    mat_ngu: { label: 'mất ngủ', tinhchat: ['khó vào giấc', 'ngủ không sâu giấc, hay tỉnh giấc', 'thức dậy sớm, khó ngủ lại'], kemtheo: ['lo âu, căng thẳng', 'đau đầu', 'mệt mỏi ban ngày', 'không kèm triệu chứng khác'] },
+    chan_an: { label: 'chán ăn, sụt cân', tinhchat: ['sụt cân dưới 5% trọng lượng cơ thể', 'sụt cân trên 5% trọng lượng cơ thể'], kemtheo: ['mệt mỏi', 'sốt kéo dài', 'đau bụng', 'không kèm triệu chứng khác'] },
+    tao_bon: { label: 'táo bón', tinhchat: ['đại tiện dưới 3 lần/tuần', 'phân cứng, khó rặn'], kemtheo: ['đau bụng', 'chướng bụng', 'đại tiện ra máu', 'không kèm triệu chứng khác'] },
+    dau_mat_do: { label: 'đau mắt đỏ', vitri: ['một bên mắt', 'hai bên mắt'], tinhchat: ['cộm, ngứa mắt', 'chảy nước mắt, tiết dử'], kemtheo: ['nhìn mờ', 'sợ ánh sáng', 'sưng mí mắt', 'không kèm triệu chứng khác'] },
+    u_tai: { label: 'ù tai, nghe kém', vitri: ['một bên tai', 'hai bên tai'], kemtheo: ['chóng mặt', 'đau tai', 'chảy dịch tai', 'không kèm triệu chứng khác'] },
+    te_bi: { label: 'tê bì tay chân', vitri: ['đầu chi hai tay', 'đầu chi hai chân', 'nửa người một bên'], kemtheo: ['yếu cơ', 'đau', 'không kèm triệu chứng khác'] },
+    chan_thuong: { label: 'chấn thương, té ngã', vitri: ['vùng tay', 'vùng chân', 'vùng đầu mặt', 'vùng lưng/hông'], tinhchat: ['xây xát da', 'bầm tím, sưng nề', 'nghi ngờ gãy xương'], kemtheo: ['đau nhiều khi vận động', 'chảy máu vết thương', 'hạn chế vận động', 'không kèm triệu chứng khác'] },
+    dau_rang: { label: 'đau răng, đau miệng', vitri: ['một răng', 'nhiều răng', 'vùng nướu/lợi'], kemtheo: ['sưng nướu', 'sốt', 'hôi miệng', 'không kèm triệu chứng khác'] },
+    chay_mau: { label: 'chảy máu bất thường', vitri: ['chảy máu cam', 'chảy máu chân răng', 'xuất huyết dưới da', 'ra huyết âm đạo bất thường'], kemtheo: ['chóng mặt', 'mệt mỏi', 'không kèm triệu chứng khác'] },
   };
-  const HS_REASON_ORDER = ['tai_kham', 'dau_bung', 'dau_dau', 'chong_mat', 'dau_nguc', 'dau_vaigay', 'tieu_kho', 'tieu_long', 'ho', 'sot', 'kho_tho', 'dau_khop', 'dau_lung', 'non', 'phu', 'met_moi', 'khac'];
+  const HS_REASON_ORDER = [
+    'tai_kham', 'dau_bung', 'dau_dau', 'chong_mat', 'dau_nguc', 'dau_vaigay', 'tieu_kho', 'tieu_long',
+    'ho', 'dau_hong', 'sot', 'kho_tho', 'dau_khop', 'dau_lung', 'non', 'phu', 'met_moi',
+    'ngua_diung', 'mat_ngu', 'chan_an', 'tao_bon', 'dau_mat_do', 'u_tai', 'te_bi', 'chan_thuong', 'dau_rang', 'chay_mau',
+    'khac',
+  ];
   const HS_REASON_LABELS = {
     tai_kham: 'Tái khám (bệnh mạn tính)', dau_bung: 'Đau bụng', dau_dau: 'Đau đầu', chong_mat: 'Chóng mặt',
     dau_nguc: 'Đau ngực', dau_vaigay: 'Đau vai gáy', tieu_kho: 'Tiểu khó', tieu_long: 'Tiêu lỏng', ho: 'Ho',
-    sot: 'Sốt', kho_tho: 'Khó thở', dau_khop: 'Đau khớp', dau_lung: 'Đau lưng', non: 'Buồn nôn/nôn',
-    phu: 'Phù', met_moi: 'Mệt mỏi', khac: 'Khác (tự nhập)',
+    dau_hong: 'Đau họng', sot: 'Sốt', kho_tho: 'Khó thở', dau_khop: 'Đau khớp', dau_lung: 'Đau lưng',
+    non: 'Buồn nôn/nôn', phu: 'Phù', met_moi: 'Mệt mỏi', ngua_diung: 'Ngứa, nổi mẩn da', mat_ngu: 'Mất ngủ',
+    chan_an: 'Chán ăn, sụt cân', tao_bon: 'Táo bón', dau_mat_do: 'Đau mắt đỏ', u_tai: 'Ù tai, nghe kém',
+    te_bi: 'Tê bì tay chân', chan_thuong: 'Chấn thương, té ngã', dau_rang: 'Đau răng, đau miệng',
+    chay_mau: 'Chảy máu bất thường', khac: 'Khác (tự nhập)',
   };
   const HS_TAIKHAM = {
     benhnen: ['Đái tháo đường', 'Tăng huyết áp', 'COPD', 'Hen phế quản', 'Rối loạn lipid máu', 'Gout', 'Bệnh tuyến giáp', 'Bệnh thận mạn'],
@@ -1656,7 +1772,7 @@
     `Bệnh nhân vào viện tại ${HS_DEST}.`,
   ];
 
-  const HS_MAX_REASONS = 2;
+  const HS_MAX_REASONS = 4;
 
   function hsMakeSelect(id, options, withBlank) {
     const sel = document.createElement('select');
@@ -1675,6 +1791,30 @@
       sel.appendChild(o);
     });
     return sel;
+  }
+
+  function hsMakeSelectWithOther(id, options, placeholder) {
+    const wrap = document.createElement('div');
+    wrap.style.display = 'flex';
+    wrap.style.flexDirection = 'column';
+    wrap.style.gap = '3px';
+
+    const sel = hsMakeSelect(id, options);
+    wrap.appendChild(sel);
+
+    const other = document.createElement('input');
+    other.type = 'text';
+    other.className = 'his-hs-field';
+    other.id = `${id}-other`;
+    other.placeholder = placeholder || 'Khác (tự gõ nếu danh sách không có)';
+    other.style.fontSize = '12px';
+    other.style.boxSizing = 'border-box';
+    other.addEventListener('input', () => {
+      sel.disabled = !!other.value.trim();
+    });
+    wrap.appendChild(other);
+
+    return wrap;
   }
 
   function hsMakeCheckboxGroup(idPrefix, options, exclusiveValue) {
@@ -1739,7 +1879,31 @@
       });
     }
 
+    const otherRow = document.createElement('div');
+    otherRow.style.marginTop = '4px';
+    otherRow.style.paddingTop = '4px';
+    otherRow.style.borderTop = '1px dashed #dfe3e8';
+    const otherInput = document.createElement('input');
+    otherInput.type = 'text';
+    otherInput.className = 'his-hs-field';
+    otherInput.id = `${idPrefix}-other`;
+    otherInput.placeholder = 'Khác (ghi thêm, cách nhau bằng dấu phẩy)';
+    otherInput.style.fontSize = '12px';
+    otherInput.style.width = '100%';
+    otherInput.style.boxSizing = 'border-box';
+    otherRow.appendChild(otherInput);
+    wrap.appendChild(otherRow);
+
     return wrap;
+  }
+
+  function hsGetOtherKemTheo(idPrefix) {
+    const input = document.getElementById(`${idPrefix}-other`);
+    if (!input || !input.value) return [];
+    return input.value
+      .split(/[,;]/)
+      .map((s) => s.trim())
+      .filter((s) => s);
   }
 
   function hsGetCheckedValues(idPrefix) {
@@ -1875,10 +2039,10 @@
 
       const def = HS_REASONS[key];
       block.appendChild(fieldRow('Thời gian', hsMakeSelect(`hs-f-${key}-thoigian`, HS_COMMON.thoigian)));
-      if (def.vitri) block.appendChild(fieldRow('Vị trí / hoàn cảnh', hsMakeSelect(`hs-f-${key}-vitri`, def.vitri)));
-      if (def.tinhchat) block.appendChild(fieldRow('Tính chất', hsMakeSelect(`hs-f-${key}-tinhchat`, def.tinhchat)));
+      if (def.vitri) block.appendChild(fieldRow('Vị trí / hoàn cảnh', hsMakeSelectWithOther(`hs-f-${key}-vitri`, def.vitri)));
+      if (def.tinhchat) block.appendChild(fieldRow('Tính chất', hsMakeSelectWithOther(`hs-f-${key}-tinhchat`, def.tinhchat)));
       block.appendChild(fieldRow('Mức độ', hsMakeSelect(`hs-f-${key}-mucdo`, HS_COMMON.mucdo)));
-      if (def.lan) block.appendChild(fieldRow('Đặc điểm thêm', hsMakeSelect(`hs-f-${key}-lan`, def.lan)));
+      if (def.lan) block.appendChild(fieldRow('Đặc điểm thêm', hsMakeSelectWithOther(`hs-f-${key}-lan`, def.lan)));
       if (def.kemtheo) {
         block.appendChild(
           fieldRow(
@@ -1915,9 +2079,13 @@
       fieldsWrap.querySelectorAll(`select[id^="${prefix}"], textarea[id^="${prefix}"]`).forEach((el) => {
         values[el.id.replace(prefix, '')] = el.value;
       });
+      ['vitri', 'tinhchat', 'lan'].forEach((field) => {
+        const otherEl = document.getElementById(`${prefix}${field}-other`);
+        if (otherEl && otherEl.value.trim()) values[field] = otherEl.value.trim();
+      });
       const kemtheoId = `${prefix}kemtheo`;
       if (document.getElementById(kemtheoId)) {
-        values.kemtheo = hsGetCheckedValues(kemtheoId);
+        values.kemtheo = hsGetCheckedValues(kemtheoId).concat(hsGetOtherKemTheo(kemtheoId));
       }
       return values;
     }
@@ -2058,6 +2226,7 @@
       panel.style.left = `${rect.left}px`;
       panel.style.top = `${rect.top}px`;
       panel.style.right = 'auto';
+      panel.style.transform = 'none'; // panel mặc định căn giữa bằng translateX(-50%), phải bỏ đi khi bắt đầu kéo tự do
     });
     document.addEventListener('mousemove', (e) => {
       if (!dragging) return;
@@ -2465,10 +2634,6 @@
   let printOutpatientDialogObserver = null;
 
   function findToolbarButton(selector) {
-    // querySelector đơn thuần có thể trúng phải 1 nút cũ còn sót lại (ẩn) trong
-    // DOM do Angular chưa dọn, khiến đọc nhầm text/trạng thái. Ưu tiên nút đang
-    // thực sự hiển thị trên toolbar; nếu không có nút nào hiển thị thì mới
-    // fallback về nút đầu tiên tìm được (giữ hành vi cũ để không phá vỡ chỗ khác).
     const all = document.querySelectorAll(selector);
     for (const el of all) {
       if (el.offsetParent !== null) return el;
@@ -2599,10 +2764,6 @@
     }
   }
 
-  // Sau khi bấm "In" trong hộp thoại "Bảng kê bảo hiểm QĐ 6556/697", ẩn ngay
-  // hộp thoại đó (kể cả lớp nền mờ phía sau) bằng CSS để người dùng không
-  // nhìn thấy nó nữa, đợi một chút cho hành động in kịp thực thi rồi mới bấm
-  // "Thoát" để đóng đúng cách (dọn dẹp state của ứng dụng thay vì chỉ ẩn).
   const PRINT_DIALOG_CLOSE_DELAY_MS = 500;
 
   function hidePrintDialogElement(dialog) {
@@ -2640,21 +2801,9 @@
     }
   }
 
-  // Nút "In" gốc (app-toolbar-action-menu) chỉ được render khi đang ở subtab
-  // "Khám bệnh" (href="#examination"). Ở các subtab khác như "Đơn thuốc"
-  // (#pharmacy) hay "Phiếu chỉ định" (#service) nút đó không tồn tại trong DOM.
-  // Đây là tab kiểu Bootstrap (data-toggle="tab"), các pane chỉ ẩn/hiện bằng
-  // CSS chứ không bị hủy component, nên chuyển qua lại không làm mất dữ liệu
-  // đang nhập ở tab khác.
   const EXAM_SUBTAB_HREF = '#examination';
   const EXAM_SUBTAB_SWITCH_WAIT_MS = 200;
 
-  // Trang có thể có nhiều hơn 1 "ul.nav-tabs" (VD: thanh tab ngoài cùng
-  // "Danh sách thăm khám ngoại trú | Chi tiết thông tin ngoại trú"), nên phải
-  // xác định đúng thanh tab CON (Khám bệnh | DS chỉ định | Phiếu chỉ định |
-  // Đơn thuốc | ...) bằng cách tìm ul.nav-tabs nào chứa link href="#examination",
-  // rồi chỉ tìm/đọc trạng thái active bên trong đúng thanh đó — tránh đọc
-  // nhầm sang thanh tab khác khiến không xác định đúng tab gốc để quay lại.
   function findExamSubTabBar() {
     const bars = document.querySelectorAll('ul.nav-tabs');
     for (const ul of bars) {
@@ -2684,9 +2833,6 @@
     return true;
   }
 
-  // Lớp phủ tạm thời trong lúc script tự chuyển qua tab "Khám bệnh" rồi quay
-  // lại, để người dùng không thấy giao diện nháy đổi tab — chỉ thấy 1 lớp mờ
-  // + spinner ngắn, giống như đang chờ xử lý bình thường.
   const PRINT_OVERLAY_ID = 'his-print-bangke-overlay';
   const PRINT_OVERLAY_STYLE_ID = 'his-print-bangke-overlay-style';
 
@@ -2745,15 +2891,6 @@
     if (el) el.remove();
   }
 
-  // Khi đã ở trạng thái "Hủy hoàn thành" (tức khám đã hoàn thành trước đó),
-  // nút chuyển thành "In bảng kê lại": thực hiện 3 lần click liên tiếp
-  // (chờ render giữa mỗi bước để tránh lỗi) — mở menu "In" trên toolbar,
-  // chọn mục "Bảng kê bảo hiểm QĐ 6556/697", rồi bấm nút "In" trong hộp
-  // thoại hiện ra — để xuất đúng bảng kê bảo hiểm.
-  //
-  // Nếu nút "In" gốc không có sẵn ở subtab hiện tại, tự chuyển sang subtab
-  // "Khám bệnh" trước, chạy xong thì tự quay lại subtab ban đầu — có phủ
-  // overlay để việc chuyển qua-lại này không hiện ra trước mắt người dùng.
   function runPrintBangKeSequence() {
     const trigger = findPrintMenuTriggerButton();
     if (trigger && !trigger.disabled) {
@@ -2805,30 +2942,16 @@
   }
 
   // ===== Nút "In toa thuốc" =====
-  // Mỗi dòng "Đơn thuốc số ..." trong bảng danh sách đơn thuốc có 1 nút "In"
-  // (title="In") riêng, nằm trong action-col CÙNG hàng <tr> với nhãn "Đơn
-  // thuốc số ... (ngày giờ) - Bác sĩ ...". Bảng này chỉ được render khi đang
-  // ở subtab "Đơn thuốc" (href="#pharmacy").
   const PRINT_RX_BTN_ID = 'his-print-rx-btn';
   const PRINT_RX_LABEL = 'In toa thuốc';
   const RX_SUBTAB_HREF = '#pharmacy';
   const RX_PICKER_MENU_ID = 'his-print-rx-menu';
 
-  // v1.62: nhãn tab con "Đơn thuốc" có kèm số đếm (badge) ngay cạnh, ví dụ
-  // "Đơn thuốc 1" — số này luôn nằm sẵn trong DOM ngay khi trang vừa tải
-  // xong, KHÔNG phụ thuộc việc người dùng đã từng bấm vào tab "Đơn thuốc"
-  // hay chưa (khác với bảng đơn thuốc bên trong pane, chỉ được Angular
-  // render vào DOM ở lần đầu tab đó được kích hoạt). Dùng badge này làm tín
-  // hiệu "chắc chắn có đơn" ngay từ khi load trang / vừa chuyển bệnh nhân,
-  // để 2 nút in không bị mờ oan trong lúc người dùng còn ở tab "Khám bệnh".
   function getRxTabBadgeCount() {
     const bar = findExamSubTabBar();
     if (!bar) return 0;
     const link = bar.querySelector('a[data-toggle="tab"][href="' + RX_SUBTAB_HREF + '"]');
     if (!link) return 0;
-    // Thử tìm phần tử badge riêng trước (span có nội dung thuần số), rồi mới
-    // fallback đọc số ở cuối toàn bộ text của tab — tránh vơ nhầm span khác
-    // (icon...) nếu tab có nhiều span con.
     const spans = Array.from(link.querySelectorAll('span'));
     const badgeSpan = spans.find((s) => /^\d+$/.test(s.textContent.trim()));
     if (badgeSpan) return parseInt(badgeSpan.textContent.trim(), 10) || 0;
@@ -2837,26 +2960,11 @@
     return m ? parseInt(m[1], 10) || 0 : 0;
   }
 
-  // Quét toàn bộ đơn thuốc đang hiển thị: lấy nút "In" kèm nhãn của dòng đó,
-  // để nếu có nhiều hơn 1 đơn thì hiện danh sách cho người dùng chọn.
-  //
-  // v1.58: nới lỏng điều kiện dò tìm — trước đây yêu cầu ĐÚNG cấu trúc
-  // ".action-col button[title=\"In\"]" nằm trong "p-table tr" và bản thân nút
-  // đó phải offsetParent !== null. Nếu HIS render lệch 1 chút (khác class,
-  // icon là <a> thay vì <button>, hoặc nút bị coi là "ẩn" do offsetParent
-  // tính sai vì nằm trong container có overflow/animation) thì hàm cũ trả
-  // về mảng rỗng dù trên màn hình rõ ràng đã có "Đơn thuốc số ...", khiến
-  // nút "In toa thuốc" bị mờ vĩnh viễn dù F5 lại vẫn vậy. Giờ dò theo nhiều
-  // tầng dự phòng, ưu tiên khớp đúng như cũ, sau đó nới dần điều kiện.
   function findPrintIconInRow(row) {
-    // 1) Đúng cấu trúc gốc.
     let btn = row.querySelector('.action-col button[title="In"]');
     if (btn) return btn;
-    // 2) Bỏ yêu cầu class "action-col", chỉ cần button[title="In"] trong dòng.
     btn = row.querySelector('button[title="In"]');
     if (btn) return btn;
-    // 3) title có thể là "In" nhưng kèm khoảng trắng/hoa-thường khác, hoặc
-    //    nằm ở aria-label thay vì title.
     const candidates = row.querySelectorAll('button, a');
     for (const el of candidates) {
       const t = (el.getAttribute('title') || el.getAttribute('aria-label') || '')
@@ -2865,7 +2973,6 @@
         .toLowerCase();
       if (t === 'in' || t === 'in toa' || t === 'in đơn') return el;
     }
-    // 4) Nhận diện qua icon in (fa-print) bên trong nút/thẻ a.
     const iconBtn = row.querySelector('button i.fa-print, a i.fa-print, i.fa-print');
     if (iconBtn) return iconBtn.closest('button, a') || iconBtn;
     return null;
@@ -2875,9 +2982,6 @@
 
   function collectRxPrintEntries() {
     const entries = [];
-    // Ưu tiên các dòng bên trong <p-table>, nhưng nếu không có dòng nào phù
-    // hợp thì thử lại trên toàn bộ <tr> của trang — phòng trường hợp HIS đổi
-    // component bảng mà không còn thẻ <p-table> bao ngoài.
     let rows = Array.from(document.querySelectorAll('p-table tr'));
     let printBtns = rows.map((row) => findPrintIconInRow(row)).filter(Boolean);
     if (printBtns.length === 0) {
@@ -2885,12 +2989,6 @@
     }
 
     rows.forEach((row) => {
-      // v1.61: BẮT BUỘC dòng phải thực sự là "Đơn thuốc số ..." mới tính là
-      // hợp lệ. Trước đó (v1.60) khi không xác định được nhãn, code coi mọi
-      // nút "In"/icon in tìm thấy trên trang (kể cả ở bảng "Phiếu chỉ định",
-      // "Cận lâm sàng", "Tiếp nhận"...) đều là đơn thuốc, khiến 2 nút sáng
-      // sai dù bệnh nhân CHƯA có đơn thuốc nào. Giờ chỉ nhận dòng có nhãn
-      // khớp "Đơn thuốc số ..." (từ a.btn-expand b hoặc text của cả dòng).
       const rowText = row.textContent.replace(/\s+/g, ' ').trim();
       const labelEl = row.querySelector('a.btn-expand b');
       const labelText = labelEl ? labelEl.textContent.replace(/\s+/g, ' ').trim() : '';
@@ -2898,9 +2996,6 @@
 
       const printBtn = findPrintIconInRow(row);
       if (!printBtn) return;
-      // Pane của tab không active chỉ ẩn bằng CSS, không bị Angular huỷ khỏi
-      // DOM, nên vẫn tính là "có đơn" dù đang ở tab khác — chỉ cần phần tử
-      // còn gắn trong document.
       if (!document.contains(printBtn)) return;
 
       let label = labelText;
@@ -2908,7 +3003,6 @@
         const m = rowText.match(/Đơn thuốc số[^)]*\)/i);
         label = m ? m[0] : 'Đơn thuốc';
       }
-      // Tránh trùng lặp nếu cùng 1 nút được match qua nhiều dòng lồng nhau.
       if (entries.some((e) => e.btn === printBtn)) return;
       entries.push({ label, btn: printBtn });
     });
@@ -2974,12 +3068,6 @@
       menu.appendChild(item);
     });
 
-    // v1.63: nút "In toa thuốc" thường nằm sát mép phải toolbar, nếu chỉ lấy
-    // rect.left làm mép trái menu thì với maxWidth 420px menu rất dễ tràn ra
-    // ngoài khung nhìn bên phải và bị cắt mất chữ. Giờ append vào DOM trước
-    // để đo kích thước THẬT của menu (do nội dung co giãn giữa minWidth và
-    // maxWidth), rồi canh menu theo MÉP PHẢI của nút bấm và tự kẹp lại trong
-    // phạm vi cửa sổ (cả trái/phải lẫn trên/dưới).
     menu.style.visibility = 'hidden';
     document.body.appendChild(menu);
     const anchorRect = anchorBtn.getBoundingClientRect();
@@ -2994,7 +3082,6 @@
 
     let top = anchorRect.bottom + 4;
     if (top + menuRect.height > window.innerHeight - margin) {
-      // Không đủ chỗ phía dưới -> hiện lên phía trên nút thay vì bị cắt.
       const aboveTop = anchorRect.top - menuRect.height - 4;
       top = aboveTop >= margin ? aboveTop : margin;
     }
@@ -3014,11 +3101,6 @@
     }, 0);
   }
 
-  // Giống hệt cơ chế của "In bảng kê lại": nếu bảng đơn thuốc không có sẵn ở
-  // subtab hiện tại, tự chuyển sang subtab "Đơn thuốc", đọc danh sách đơn,
-  // rồi tự quay lại subtab ban đầu — có phủ overlay để việc chuyển qua-lại
-  // này không hiện ra trước mắt người dùng. Nếu có nhiều hơn 1 đơn, hiện
-  // danh sách ngay tại nút "In toa thuốc" để người dùng chọn đơn cần in.
   function runPrintRxSequence() {
     const anchorBtn = document.getElementById(PRINT_RX_BTN_ID);
 
@@ -3095,8 +3177,6 @@
     btn.id = PRINT_RX_BTN_ID;
     btn.className = 'btn btn-xs';
     btn.innerHTML = '<i class="fa fa-print"></i> ' + PRINT_RX_LABEL;
-    // Màu riêng (tím), khác với nút "In nhanh BK toa về" / "In bảng kê lại"
-    // (btn-info, xanh dương) để không bị nhầm 2 nút với nhau.
     Object.assign(btn.style, {
       background: '#6f42c1',
       borderColor: '#6f42c1',
@@ -3106,13 +3186,6 @@
     return btn;
   }
 
-  // Mờ (disable) nút "In toa thuốc" khi chưa có đơn thuốc nào để in — tức
-  // collectRxPrintEntries() không tìm thấy dòng "Đơn thuốc số ..." nào cả.
-  //
-  // v1.58: dùng setProperty(..., 'important') thay vì gán style.opacity
-  // trực tiếp, để tránh trường hợp CSS khác trên trang (hoặc style trước đó
-  // còn sót lại) ghi đè và làm nút bị kẹt ở trạng thái mờ dù disabled đã là
-  // false. Đồng thời log ra console để dễ chẩn đoán nếu vẫn còn bị mờ.
   function updatePrintRxButtonState(btn, hasEntriesArg) {
     if (!btn) return;
     const hasEntries = typeof hasEntriesArg === 'boolean' ? hasEntriesArg : collectRxPrintEntries().length > 0;
@@ -3125,9 +3198,6 @@
     btn.dataset.hasEntries = hasEntries ? '1' : '0';
   }
 
-  // Lưới an toàn: ngoài MutationObserver, kiểm tra lại định kỳ mỗi 1.5s
-  // phòng trường hợp DOM thay đổi theo cách MutationObserver không bắt kịp
-  // (ví dụ Angular thay nguyên node cha bằng detached/reattach nhanh).
   let printRxWatchdogTimer = null;
   function startPrintRxWatchdog() {
     if (printRxWatchdogTimer) return;
@@ -3163,10 +3233,6 @@
 
   function updatePrintOutpatientButtonLabel(btn) {
     if (!btn) return;
-    // Không dựa vào data-sk nữa: khi ở trạng thái "đã hoàn thành khám", nút
-    // này có thể không còn mang data-sk="control.Q" như lúc ban đầu (do
-    // Angular gán lại), nên quét trực tiếp theo TEXT của các nút đang hiển
-    // thị trên trang để tìm đúng trạng thái "Hủy hoàn thành".
     const isCancelCompleteState = isCancelCompleteButtonVisible();
     const desiredLabel = isCancelCompleteState
       ? PRINT_OUTPATIENT_LABEL_REPRINT
@@ -3177,9 +3243,6 @@
     }
   }
 
-  // v1.58: "In nhanh BK toa về" / "In bảng kê lại" cũng cần ít nhất 1 đơn
-  // thuốc mới in được, nên mờ/khoá đồng bộ với nút "In toa thuốc" — dùng
-  // chung 1 kết quả hasEntries để tránh gọi collectRxPrintEntries() 2 lần.
   function updatePrintOutpatientButtonState(btn, hasEntries) {
     if (!btn) return;
     btn.disabled = !hasEntries;
@@ -3205,11 +3268,6 @@
   }
 
   // ===== Tự tích "Tái khám" khi vào tab Đơn thuốc =====
-  // Nút PrimeNG p-checkbox: phần tử thật sự nhận click là div[data-pc-section
-  // ="input"] (class "p-checkbox-box") bên trong, không phải input ẩn.
-  // Khi bị khoá (disabled), root có class "p-checkbox-disabled" và/hoặc
-  // div input có data-p-disabled="true" — lúc đó KHÔNG cố ép tích vì Angular
-  // sẽ không nhận, click chỉ vô ích.
   function findTaiKhamCheckbox() {
     const boxes = document.querySelectorAll('p-checkbox');
     for (const cb of boxes) {
@@ -3231,25 +3289,39 @@
     return !!(inputBox && inputBox.getAttribute('data-p-highlight') === 'true');
   }
 
+  function isCurrentPrescriptionEmpty() {
+    const tables = findRxTables();
+    if (!tables.length) return false;
+    return tables.every((t) => {
+      const tbody = t.querySelector('tbody');
+      const rows = tbody ? getRxRows(tbody) : [];
+      return rows.length === 0;
+    });
+  }
+
   function tryAutoCheckTaiKhamOnce() {
     const cb = findTaiKhamCheckbox();
     if (!cb) return false;
     if (isPCheckboxChecked(cb)) return true; // đã tích rồi, coi như xong
     if (isPCheckboxDisabled(cb)) return false; // đang khoá, thử lại sau
+    if (isCurrentPrescriptionEmpty()) return false; // đơn trống -> chưa tích, chờ xem có thuốc được kê thêm không rồi hết giờ tự dừng
     const clickTarget = cb.querySelector('[data-pc-section="input"]') || cb;
     clickTarget.click();
     return isPCheckboxChecked(cb);
   }
 
-  // Chỉ kích hoạt đúng lúc VỪA chuyển sang tab "Đơn thuốc" (cạnh sườn lên),
-  // không lặp lại liên tục khi vẫn đang ở tab đó — để không ép tích lại nếu
-  // người dùng chủ động bỏ tích. Checkbox có thể đang khoá ngay lúc chuyển
-  // tab rồi mở khoá ngay sau (Angular render xong), nên thử lại vài lần.
   let lastActiveExamSubTabHref = null;
-  function autoCheckTaiKhamRetry(attemptsLeft) {
+  function autoCheckTaiKhamRetry(attemptsLeft, onDone) {
     if (attemptsLeft === undefined) attemptsLeft = 10;
-    if (tryAutoCheckTaiKhamOnce()) return;
-    if (attemptsLeft > 0) setTimeout(() => autoCheckTaiKhamRetry(attemptsLeft - 1), 300);
+    if (tryAutoCheckTaiKhamOnce()) {
+      if (onDone) onDone();
+      return;
+    }
+    if (attemptsLeft > 0) {
+      setTimeout(() => autoCheckTaiKhamRetry(attemptsLeft - 1, onDone), 300);
+    } else if (onDone) {
+      onDone(); // hết lượt thử (VD đơn vẫn trống) -> vẫn gọi tiếp để không kẹt luồng
+    }
   }
   function watchExamSubTabForRxAutoCheck() {
     const href = getActiveExamSubTabHref();
@@ -3259,31 +3331,43 @@
     lastActiveExamSubTabHref = href;
   }
 
+  function uncheckTaiKhamCheckbox(cb) {
+    if (!isPCheckboxChecked(cb) || isPCheckboxDisabled(cb)) return false;
+    const clickTarget = cb.querySelector('[data-pc-section="input"]') || cb;
+    clickTarget.click();
+    return !isPCheckboxChecked(cb);
+  }
+
+  function clearTaiKhamDaysInputIfAny() {
+    const input = findTaiKhamDaysInput();
+    if (!input || input.disabled || !input.value) return;
+    setNativeValue(input, '');
+    setTimeout(() => {
+      input.dispatchEvent(new Event('blur', { bubbles: true }));
+      document.body.click();
+    }, 50);
+  }
+
+  function autoUncheckTaiKhamIfPrescriptionEmptied() {
+    const cb = findTaiKhamCheckbox();
+    if (!cb || !isPCheckboxChecked(cb)) return;
+    if (!isCurrentPrescriptionEmpty()) return;
+    if (uncheckTaiKhamCheckbox(cb)) {
+      clearTaiKhamDaysInputIfAny();
+      rxDaysMax = 0; // kê lại thuốc từ đầu thì tính lại số ngày tái khám từ 0
+    }
+  }
+
   // ===== Tự động điền "Số ngày tái khám" = số ngày lớn nhất đã kê trong đợt =====
-  // Theo dõi mọi ô "Số ngày" (nhãn <span class="inline-label ...">Số ngày</span>
-  // đứng cạnh 1 <input>, dùng khi thêm từng loại thuốc). Mỗi lần Enter, so với
-  // số lớn nhất đã ghi nhận CHO BỆNH NHÂN ĐANG XEM; nếu lớn hơn thì cập nhật
-  // ngay vào ô số ngày hẹn tái khám rồi bấm ra ngoài để p-calendar tự tính
-  // lại ngày hẹn.
   let rxDaysMax = 0;
   let rxDaysPatientKey = null;
 
-  // Không có id bệnh nhân lộ sẵn trong DOM nên tạm dùng số hồ sơ (6-10 chữ số
-  // liền nhau) xuất hiện sớm nhất trong khối thông tin ngoại trú đang active
-  // làm khoá phân biệt — nếu sau này thấy nhận diện sai bệnh nhân (số max bị
-  // giữ nguyên qua bệnh nhân khác), báo lại để đổi sang selector chính xác
-  // hơn (VD: đúng phần tử hiển thị "Số BA").
-  // v1.65: dùng đúng ô mã bệnh nhân — input[pinputtext] nằm trong cùng
-  // .ui-inputgroup với 2 nút "Cập nhật TTHC" / "Tra cứu bệnh sử" (theo đúng
-  // HTML người dùng cung cấp), thay vì đoán số 6-10 chữ số đầu tiên trên
-  // trang (dễ bắt nhầm số khác như huyết áp, cân nặng...).
   function getCurrentPatientKeyForRxDays() {
     const updateBtn = document.querySelector('button[title="Cập nhật TTHC"]');
     const group = updateBtn ? updateBtn.closest('.ui-inputgroup') : null;
     const input = group ? group.querySelector('input[pinputtext]') : null;
     const val = input ? input.value.trim() : '';
     if (val) return val;
-    // Dự phòng nếu không tìm thấy đúng cấu trúc trên.
     const pane =
       document.querySelector('.tab-content > .tab-pane.active') ||
       document.querySelector('.tab-pane.active') ||
@@ -3300,17 +3384,6 @@
     }
   }
 
-  function findInlineLabelTextForInput(input) {
-    const parent = input.parentElement;
-    if (!parent) return '';
-    const label = parent.querySelector('span.inline-label');
-    return label ? label.textContent.replace(/\s+/g, ' ').trim() : '';
-  }
-
-  // Hàng "Tái khám" gồm 3 phần: checkbox + input số ngày (plthousandformater,
-  // rộng 50px) + p-calendar — cùng nằm trong 1 container cha gần nhau. Đi lên
-  // tối đa vài cấp từ checkbox để tìm đúng container này, tránh nhầm sang
-  // input[plthousandformater] khác ở chỗ khác của trang (VD ô số lượng thuốc).
   function findTaiKhamRowContainer() {
     const cb = findTaiKhamCheckbox();
     if (!cb) return null;
@@ -3330,8 +3403,6 @@
       const el = row.querySelector('input[plthousandformater]');
       if (el) return el;
     }
-    // Dự phòng nếu không dò được container: lấy input plthousandformater đầu
-    // tiên trên trang (chấp nhận rủi ro nếu trang có nhiều ô cùng directive).
     return document.querySelector('input[plthousandformater]');
   }
 
@@ -3340,8 +3411,6 @@
     if (!input || input.disabled) return; // ô đang khoá (VD chưa tích Tái khám)
     if (input.value === String(rxDaysMax)) return;
     setNativeValue(input, String(rxDaysMax));
-    // Bấm ra ngoài để p-calendar tự tính lại ngày hẹn tái khám theo số ngày
-    // vừa điền — kích blur trên chính ô rồi click ra vùng trống trung tính.
     setTimeout(() => {
       input.dispatchEvent(new Event('blur', { bubbles: true }));
       document.body.click();
@@ -3354,25 +3423,17 @@
       if (e.key !== 'Enter') return;
       const target = e.target;
       if (!target || target.tagName !== 'INPUT') return;
-      if (findInlineLabelTextForInput(target) !== 'Số ngày') return;
+      if (!target.matches(SUPPLY_DAY_SELECTOR)) return;
       const val = parseInt((target.value || '').replace(/\D/g, ''), 10);
       if (!val || val <= 0) return;
       resetRxDaysTrackingIfPatientChanged();
-      if (val > rxDaysMax) {
-        rxDaysMax = val;
-        applyRxDaysMaxToTaiKham();
-      }
+      if (val > rxDaysMax) rxDaysMax = val;
+      autoCheckTaiKhamRetry(undefined, applyRxDaysMaxToTaiKham);
     },
     true
   );
 
   function ensureCustomPrintButtonsPlacement() {
-    // Cố định thứ tự NGAY TRƯỚC nút "Lưu lại" (control.S), bất kể nút này
-    // đang bị vô hiệu hóa (disabled) hay không:
-    //   [In bảng kê lại / In nhanh BK toa về]  [In toa thuốc]  [Lưu lại]
-    // Đặt theo kiểu "chỉ số bên trái phải là X" (idempotent) thay vì mỗi nút
-    // tự tranh nhau giành vị trí "ngay trước Lưu lại", để 2 hàm không đẩy
-    // nhau đổi chỗ liên tục mỗi lần MutationObserver chạy lại.
     const saveBtn = findToolbarButton(TOOLBAR_SAVE_BTN_SELECTOR);
     if (!saveBtn) return;
 
@@ -3395,6 +3456,7 @@
     updatePrintOutpatientButtonState(outBtn, hasEntries);
     startPrintRxWatchdog();
     watchExamSubTabForRxAutoCheck();
+    autoUncheckTaiKhamIfPrescriptionEmptied();
   }
 
   const HELIXFAST_STORAGE_KEY = 'helixfast_enabled';
@@ -3415,7 +3477,6 @@
     try {
       localStorage.setItem(HELIXFAST_STORAGE_KEY, enabled ? '1' : '0');
     } catch (err) {
-      /* bỏ qua nếu trình duyệt chặn localStorage */
     }
   }
 
@@ -3525,7 +3586,6 @@
     } else {
       link.title = enabled ? 'Helixfast đang BẬT — bấm để tắt' : 'Helixfast đang TẮT — bấm để bật';
     }
-    // Đổi màu nút Helixfast: cam khi sắp hết hạn, đỏ khi đã hết hạn.
     if (isExpired) {
       link.style.background = '#fdecea';
       link.style.color = '#c0392b';
@@ -3573,9 +3633,6 @@
     if (overlay) overlay.remove();
   }
 
-  // Dán vào 1 ô input/textarea. Ưu tiên Clipboard API (không hiện lỗi nếu bị
-  // trình duyệt/Permissions-Policy chặn — khi đó chỉ focus + chọn sẵn nội
-  // dung để người dùng tự bấm Ctrl+V, giống thao tác dán bình thường).
   async function hlxTryPaste(targetEl, btn) {
     if (!targetEl) return;
     targetEl.focus();
@@ -3594,7 +3651,6 @@
         }
       }
     } catch (err) {
-      /* Bị chặn quyền đọc clipboard — bỏ qua, để người dùng tự Ctrl+V vào ô đã chọn sẵn. */
     }
   }
 
@@ -3861,12 +3917,6 @@
   }
 
   const observer = new MutationObserver(() => {
-    // v1.67: DEBOUNCE lại — trước đây hàm này chạy lại trên MỌI thay đổi DOM
-    // (không giới hạn tần suất). Khi trang HIS đang tải nặng (nhiều DOM thay
-    // đổi liên tục trong vài trăm ms), việc gọi lại toàn bộ các hàm quét bên
-    // dưới hàng chục/hàng trăm lần mỗi giây khiến trình duyệt bị đơ tạm thời.
-    // Giờ gộp lại: nếu đã có 1 lần chạy đang chờ thì bỏ qua, chỉ chạy tối đa
-    // 1 lần mỗi ~200ms.
     if (mainObserverDebounceTimer) return;
     mainObserverDebounceTimer = setTimeout(() => {
       mainObserverDebounceTimer = null;
@@ -3903,11 +3953,6 @@
 // ============================================================
 // ===== HIS BVBD - Quick Select Cận lâm sàng (v2.1) =========
 // ============================================================
-// Ghép nguyên vẹn từ userscript riêng, chạy trong IIFE riêng, độc lập hoàn toàn
-// với phần Helixfast phía trên. Tự nhận biết trang phù hợp qua getSearchInput()
-// (ô #specify-search-kw) nên vẫn an toàn khi chạy trên toàn bộ
-// his.benhvienbinhduong.org.vn — ở trang khác không có ô đó, injectToolbar()
-// đơn giản không làm gì.
 (function () {
     'use strict';
 
@@ -4445,13 +4490,9 @@
                 const optBtn = makeBaseBtn(opt.label, group.color);
                 optBtn.style.textAlign = 'left';
                 optBtn.style.width = '100%';
-                // Khôi phục trạng thái đã chọn/bỏ chọn từ lần trước, vì menu này
-                // bị tạo lại từ đầu mỗi lần mở, không tự nhớ trạng thái.
                 setBtnActive(optBtn, group.color, !!opt.active);
                 optBtn.addEventListener('click', async (e2) => {
                     e2.preventDefault(); e2.stopPropagation();
-                    // Không đóng menu ngay — chờ xử lý xong để người dùng thấy dấu ✓
-                    // trước khi menu tự đóng khi click ra ngoài.
                     menu.querySelectorAll('button').forEach((b) => (b.disabled = true));
                     const isActive = await toggleGroup(opt.label, opt.keywords, optBtn, group.color);
                     opt.active = isActive;
@@ -4531,4 +4572,93 @@
 
     setTimeout(injectToolbar, 1000);
 
+})();
+
+// ===== Auto-fill "DỊCH VỤ" cho ô Số thẻ BHYT trống + chèn icon sao sau Họ tên =====
+(function () {
+  'use strict';
+
+  const STAR_DATA_URI =
+    'data:image/svg+xml;utf8,' +
+    encodeURIComponent(
+      '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' +
+      '<defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">' +
+      '<stop offset="0" stop-color="#FFE066"/>' +
+      '<stop offset="1" stop-color="#F5A623"/>' +
+      '</linearGradient></defs>' +
+      '<path fill="url(#g)" stroke="#D98A0B" stroke-width="1.5" stroke-linejoin="round" ' +
+      'd="M32 4l7.9 16.5 18 2.4-13.1 12.6 3.3 18-16.1-8.9-16.1 8.9 3.3-18L6.1 22.9l18-2.4z"/>' +
+      '</svg>'
+    );
+  const STAR_FLAG_ATTR = 'data-hlx-star';
+  const BHYT_EMPTY_TEXT = 'DỊCH VỤ';
+  const STAR_ANIM_STYLE_ID = 'hlx-star-anim-style';
+
+  function ensureStarAnimStyle() {
+    if (document.getElementById(STAR_ANIM_STYLE_ID)) return;
+    const style = document.createElement('style');
+    style.id = STAR_ANIM_STYLE_ID;
+    style.textContent =
+      '@keyframes hlxStarSpinPulse {' +
+      '0%   { transform: rotate(0deg) scale(1); }' +
+      '25%  { transform: rotate(90deg) scale(1.35); }' +
+      '50%  { transform: rotate(180deg) scale(1); }' +
+      '75%  { transform: rotate(270deg) scale(0.85); }' +
+      '100% { transform: rotate(360deg) scale(1); }' +
+      '}' +
+      '.hlx-star-icon {' +
+      'animation: hlxStarSpinPulse 2.2s linear infinite;' +
+      'transform-origin: center center;' +
+      'display: inline-block;' +
+      '}';
+    document.head.appendChild(style);
+  }
+
+  function processRow(tr) {
+    const bhytTd = tr.querySelector('td[pltablecolumncell="MODULE.HIS.health_insurance_id"]');
+    let isDichVu = false;
+    if (bhytTd) {
+      if (!bhytTd.hasAttribute(STAR_FLAG_ATTR)) {
+        const txt = (bhytTd.textContent || '').trim();
+        if (txt === '') {
+          bhytTd.textContent = BHYT_EMPTY_TEXT;
+        }
+        bhytTd.setAttribute(STAR_FLAG_ATTR, '1');
+      }
+      isDichVu = (bhytTd.textContent || '').trim() === BHYT_EMPTY_TEXT;
+    }
+
+    const nameTd = tr.querySelector('td[pltablecolumncell="full_name"]');
+    if (nameTd && !nameTd.hasAttribute(STAR_FLAG_ATTR)) {
+      if (isDichVu) {
+        ensureStarAnimStyle();
+        const star = document.createElement('img');
+        star.src = STAR_DATA_URI;
+        star.alt = '⭐';
+        star.className = 'hlx-star-icon';
+        Object.assign(star.style, {
+          width: '20px',
+          height: '20px',
+          marginLeft: '4px',
+          verticalAlign: 'middle',
+        });
+        nameTd.appendChild(star);
+      }
+      nameTd.setAttribute(STAR_FLAG_ATTR, '1');
+    }
+  }
+
+  function processTable() {
+    document
+      .querySelectorAll('.p-datatable-tbody > tr')
+      .forEach(processRow);
+  }
+
+  const hlxRowObserver = new MutationObserver(() => {
+    processTable();
+  });
+  hlxRowObserver.observe(document.body, { childList: true, subtree: true });
+
+  setInterval(processTable, 1000);
+  setTimeout(processTable, 500);
 })();
