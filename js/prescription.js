@@ -584,7 +584,12 @@
 
   $('rxDoctorDefBtn').addEventListener('click', () => {
     if (!doctorSelect.value) return;
-    localStorage.setItem(LS_DOCTOR_DEFAULT, doctorSelect.value);
+    const curDef = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
+    if (curDef === doctorSelect.value) {
+      localStorage.removeItem(LS_DOCTOR_DEFAULT);
+    } else {
+      localStorage.setItem(LS_DOCTOR_DEFAULT, doctorSelect.value);
+    }
     renderDoctorSelect(doctorSelect.value);
     pushDoctorsToCloud();
   });
