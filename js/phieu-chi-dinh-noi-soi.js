@@ -75,14 +75,14 @@
     ".ns-title{text-align:center;font-weight:bold;font-size:19px;margin:4mm 0 1mm;text-transform:uppercase;}",
     ".ns-tinhtrang{text-align:center;font-style:italic;font-size:13.5px;margin-bottom:4mm;display:flex;align-items:center;justify-content:center;gap:6px;}",
     ".ns-tinhtrang select{font-style:italic;font-family:inherit;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;text-align:center;color:#000;}",
-    ".ns-field-line{margin-bottom:2.6mm;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;}",
+    ".ns-field-line{margin-bottom:4.2mm;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;}",
     ".ns-field-line label{white-space:nowrap;}",
-    ".ns-field-line input,.ns-field-line select{font-family:inherit;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;padding:0 2px;}",
+    ".ns-field-line input,.ns-field-line select{font-family:inherit;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;padding:3px 2px;line-height:1.6;}",
     ".ns-inp-name{flex:1 1 260px;min-width:120px;text-transform:uppercase;}",
     ".ns-inp-dob{width:90px;}",
     ".ns-inp-sex{width:80px;}",
     ".ns-inp-addr{flex:1 1 100%;width:100%;}",
-    ".ns-inp-diag{flex:1 1 100%;width:100%;}",
+    ".ns-diag-fixed{font-weight:bold;}",
     ".ns-table{width:100%;border-collapse:collapse;margin:3mm 0 5mm;font-size:13px;}",
     ".ns-table th,.ns-table td{border:1px solid #000;padding:1.6mm 2mm;vertical-align:middle;}",
     ".ns-table th{font-weight:bold;text-align:center;background:rgba(0,0,0,.03);}",
@@ -94,17 +94,15 @@
     ".ns-table td.ns-sl input{text-align:center;}",
     ".ns-table td.ns-kq textarea{min-height:5mm;}",
     ".ns-rowdel{border:none;background:none;color:#c0392b;cursor:pointer;font-size:13px;margin-left:6px;}",
-    ".ns-addrow-wrap{text-align:left;margin:-2mm 0 5mm;}",
-    ".ns-addrow-btn{border:1px dashed #999;background:#fafafa;color:#333;font-size:12px;padding:4px 10px;border-radius:6px;cursor:pointer;}",
-    ".ns-footer{margin-top:6mm;text-align:right;}",
-    ".ns-footer .ns-daterow{font-style:italic;display:flex;justify-content:flex-end;gap:4px;flex-wrap:wrap;}",
+    ".ns-footer{margin-top:6mm;display:flex;justify-content:flex-end;}",
+    ".ns-footer-col{width:65mm;text-align:center;}",
+    ".ns-footer .ns-daterow{font-style:italic;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;}",
     ".ns-footer .ns-daterow input{font-family:inherit;font-style:italic;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;}",
     ".ns-inp-day,.ns-inp-month{width:26px;}",
     ".ns-inp-year{width:46px;}",
-    ".ns-footer .ns-bstitle{font-weight:bold;margin-top:1mm;}",
-    ".ns-footer .ns-bsname{margin-top:16mm;font-weight:bold;text-align:right;}",
-    ".ns-footer .ns-bsname input{font-family:inherit;font-weight:bold;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-transform:uppercase;width:220px;}",
-    ".ns-bsname-row{display:flex;justify-content:flex-end;align-items:center;gap:6px;}",
+    ".ns-footer .ns-bstitle{font-weight:bold;margin-top:1mm;text-align:center;}",
+    ".ns-bsname-row input{font-family:inherit;font-weight:bold;font-size:13.5px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-transform:uppercase;width:220px;}",
+    ".ns-bsname-row{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:20mm;}",
     ".ns-bsname-clear{border:none;background:none;color:#c0392b;cursor:pointer;font-size:12px;}",
     "@media print{",
     "  html.ns-printing,html.ns-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -112,10 +110,11 @@
     "  html.ns-printing #nsSheet, html.ns-printing #nsSheet *{visibility:visible !important;}",
     "  html.ns-printing .ns-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  html.ns-printing #nsSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
-    "  html.ns-printing .ns-rowdel,html.ns-printing .ns-addrow-wrap,html.ns-printing .ns-bsname-clear{display:none !important;}",
+    "  html.ns-printing .ns-rowdel,html.ns-printing .ns-bsname-clear{display:none !important;}",
     "  html.ns-printing .ns-field-line input,html.ns-printing .ns-field-line select,",
     "  html.ns-printing .ns-table input,html.ns-printing .ns-table textarea,",
-    "  html.ns-printing .ns-footer input,html.ns-printing .ns-tinhtrang select{border-bottom-color:#000 !important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}",
+    "  html.ns-printing .ns-footer input,html.ns-printing .ns-tinhtrang select{border-bottom:none !important;}",
+    "  html.ns-printing select{-webkit-appearance:none !important;-moz-appearance:none !important;appearance:none !important;background-image:none !important;padding-right:0 !important;}",
     "}"
   ].join("\n");
   document.head.appendChild(style);
@@ -147,7 +146,7 @@
             '<label class="ns-switch"><input type="checkbox" id="nsShowBsName" checked><span class="ns-slider"></span></label>' +
             '<span>Hiển thị tên bác sĩ ký bên dưới</span>' +
           '</div>' +
-          '<p class="ns-hint">Nhấn <b>Tab</b> hoặc <b>Enter</b> để chuyển nhanh giữa các ô. Dùng nút "+ Thêm dòng chỉ định" trong phiếu nếu bệnh nhân chỉ định nhiều loại nội soi.</p>' +
+          '<p class="ns-hint">Nhấn <b>Tab</b> hoặc <b>Enter</b> để chuyển nhanh giữa các ô.</p>' +
           '<div class="ns-row-actions">' +
             '<button class="ns-btn secondary" id="nsResetBtn">↺ Làm mới phiếu</button>' +
           '</div>' +
@@ -190,7 +189,7 @@
               '</div>' +
               '<div class="ns-field-line">' +
                 '<label>Chẩn đoán:</label>' +
-                '<input type="text" id="nsChanDoan" class="ns-inp-diag" placeholder="VD: Viêm dạ dày &amp; tá tràng">' +
+                '<span class="ns-diag-fixed">Viêm dạ dày &amp; tá tràng</span>' +
               '</div>' +
               '<table class="ns-table" id="nsTable">' +
                 '<thead><tr>' +
@@ -201,22 +200,21 @@
                 '</tr></thead>' +
                 '<tbody id="nsTableBody"></tbody>' +
               '</table>' +
-              '<div class="ns-addrow-wrap">' +
-                '<button class="ns-addrow-btn" id="nsAddRowBtn" type="button">+ Thêm dòng chỉ định</button>' +
-              '</div>' +
               '<div class="ns-footer">' +
-                '<div class="ns-daterow">' +
-                  '<span>Ngày</span>' +
-                  '<input type="text" id="nsNgay" class="ns-inp-day" inputmode="numeric" maxlength="2">' +
-                  '<span>tháng</span>' +
-                  '<input type="text" id="nsThang" class="ns-inp-month" inputmode="numeric" maxlength="2">' +
-                  '<span>năm</span>' +
-                  '<input type="text" id="nsNam" class="ns-inp-year" inputmode="numeric" maxlength="4">' +
-                '</div>' +
-                '<div class="ns-bstitle">Bác sĩ điều trị</div>' +
-                '<div class="ns-bsname-row" id="nsBsNameRow">' +
-                  '<input type="text" id="nsBsName" placeholder="(Ký, ghi rõ họ tên)">' +
-                  '<button class="ns-bsname-clear" id="nsBsNameClear" type="button" title="Xoá tên bác sĩ">✕</button>' +
+                '<div class="ns-footer-col">' +
+                  '<div class="ns-daterow">' +
+                    '<span>Ngày</span>' +
+                    '<input type="text" id="nsNgay" class="ns-inp-day" inputmode="numeric" maxlength="2">' +
+                    '<span>tháng</span>' +
+                    '<input type="text" id="nsThang" class="ns-inp-month" inputmode="numeric" maxlength="2">' +
+                    '<span>năm</span>' +
+                    '<input type="text" id="nsNam" class="ns-inp-year" inputmode="numeric" maxlength="4">' +
+                  '</div>' +
+                  '<div class="ns-bstitle">Bác sĩ điều trị</div>' +
+                  '<div class="ns-bsname-row" id="nsBsNameRow">' +
+                    '<input type="text" id="nsBsName" placeholder="(Ký, ghi rõ họ tên)">' +
+                    '<button class="ns-bsname-clear" id="nsBsNameClear" type="button" title="Xoá tên bác sĩ">✕</button>' +
+                  '</div>' +
                 '</div>' +
               '</div>' +
             '</div>' +
@@ -284,10 +282,6 @@
     el.style.height = "auto";
     el.style.height = el.scrollHeight + "px";
   }
-
-  document.getElementById("nsAddRowBtn").addEventListener("click", function () {
-    addRow("", "01");
-  });
 
   /* ---------------------------------------------------------------- */
   /* 5. Bác sĩ ký tên: bật/tắt + xoá                                    */
@@ -368,7 +362,6 @@
     document.getElementById("nsNamSinh").value = "";
     document.getElementById("nsGioiTinh").value = "";
     document.getElementById("nsDiaChi").value = "";
-    document.getElementById("nsChanDoan").value = "";
     document.getElementById("nsTinhTrang").value = "Thường";
     document.getElementById("nsBsName").value = "";
     tbody.innerHTML = "";
