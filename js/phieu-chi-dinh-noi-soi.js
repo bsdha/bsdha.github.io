@@ -17,6 +17,13 @@
   var ROOT_ID = "noiSoiContent";
   var LS_KEY = "ns_phieunoisoi_settings_v1";
 
+  // Dùng chung danh sách bác sĩ + Supabase với js/prescription.js (đơn thuốc)
+  // → thêm/xoá/đặt mặc định ở phiếu nào cũng đồng bộ cho phiếu kia và mọi máy.
+  var SUPABASE_URL = "https://bihsqhjyobbktzmwnbdx.supabase.co";
+  var SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJpaHNxaGp5b2Jia3R6bXduYmR4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzMjgwNTgsImV4cCI6MjEwMDkwNDA1OH0.UZxojIHCrd8D8vUI6f-TWqZX_qmZjPJXlNT5ljn4Gp0";
+  var LS_DOCTORS = "rxDoctorList", LS_DOCTOR_DEFAULT = "rxDoctorDefault";
+  var CLOUD_DOCTOR_KEY = "rx_doctor_list";
+
   var root = document.getElementById(ROOT_ID);
   if (!root) return;
 
@@ -101,9 +108,12 @@
     ".ns-inp-day,.ns-inp-month{width:22px;}",
     ".ns-inp-year{width:40px;}",
     ".ns-footer .ns-bstitle{font-weight:bold;margin-top:1mm;text-align:center;font-size:12px;}",
-    ".ns-bsname-row input{font-family:inherit;font-weight:bold;font-size:15px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-transform:uppercase;width:220px;padding:5px 2px;line-height:2;}",
+    ".ns-bsname-row select{font-family:inherit;font-weight:bold;font-size:15px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-align-last:center;text-transform:uppercase;width:220px;padding:5px 2px;line-height:2;}",
     ".ns-bsname-row{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14mm;}",
-    ".ns-bsname-clear{border:none;background:none;color:#c0392b;cursor:pointer;font-size:12px;}",
+    ".ns-bsname-btn{border:1px solid #ccc;border-radius:4px;background:#fff;color:#333;cursor:pointer;font-size:12px;width:22px;height:22px;line-height:1;padding:0;}",
+    ".ns-bsname-btn:hover{border-color:#3b82f6;}",
+    ".ns-bsname-def-btn.is-default{background:#fef3c7;color:#b45309;border-color:#d97706;}",
+    ".ns-bsname-del-btn:hover{border-color:#c0392b;color:#c0392b;}",
     "@page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "@media print{",
     "  html.ns-printing,html.ns-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -111,7 +121,7 @@
     "  html.ns-printing #nsSheet, html.ns-printing #nsSheet *{visibility:visible !important;}",
     "  html.ns-printing .ns-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  html.ns-printing #nsSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
-    "  html.ns-printing .ns-rowdel,html.ns-printing .ns-bsname-clear{display:none !important;}",
+    "  html.ns-printing .ns-rowdel,html.ns-printing .ns-bsname-btn{display:none !important;}",
     "  html.ns-printing .ns-field-line input,html.ns-printing .ns-field-line select,",
     "  html.ns-printing .ns-table input,html.ns-printing .ns-table textarea,",
     "  html.ns-printing .ns-footer input,html.ns-printing .ns-tinhtrang select{border-bottom:none !important;}",
@@ -212,8 +222,10 @@
                   '</div>' +
                   '<div class="ns-bstitle">Bác sĩ điều trị</div>' +
                   '<div class="ns-bsname-row" id="nsBsNameRow">' +
-                    '<input type="text" id="nsBsName" placeholder="(Ký, ghi rõ họ tên)">' +
-                    '<button class="ns-bsname-clear" id="nsBsNameClear" type="button" title="Xoá tên bác sĩ">✕</button>' +
+                    '<select id="nsBsName"></select>' +
+                    '<button class="ns-bsname-btn" id="nsBsNameAddBtn" type="button" title="Thêm bác sĩ mới">+</button>' +
+                    '<button class="ns-bsname-btn ns-bsname-def-btn" id="nsBsNameDefBtn" type="button" title="Đặt làm mặc định">☆</button>' +
+                    '<button class="ns-bsname-btn ns-bsname-del-btn" id="nsBsNameDelBtn" type="button" title="Xoá bác sĩ này">✕</button>' +
                   '</div>' +
                 '</div>' +
               '</div>' +
@@ -284,16 +296,126 @@
   }
 
   /* ---------------------------------------------------------------- */
-  /* 5. Bác sĩ ký tên: bật/tắt + xoá                                    */
+  /* 5. Bác sĩ ký tên: dropdown, thêm/đặt mặc định/xoá, đồng bộ Supabase */
+  /*    (dùng chung danh sách với js/prescription.js)                  */
   /* ---------------------------------------------------------------- */
   var bsNameRow = document.getElementById("nsBsNameRow");
   var showBsChk = document.getElementById("nsShowBsName");
   showBsChk.addEventListener("change", function () {
     bsNameRow.style.display = showBsChk.checked ? "" : "none";
   });
-  document.getElementById("nsBsNameClear").addEventListener("click", function () {
-    document.getElementById("nsBsName").value = "";
-    document.getElementById("nsBsName").focus();
+
+  var nsBsSelect = document.getElementById("nsBsName");
+  var nsBsSyncStatus = document.getElementById("nsBsSyncStatus"); // tuỳ chọn, không bắt buộc có trong HTML
+
+  function loadDoctorList() {
+    try { return JSON.parse(localStorage.getItem(LS_DOCTORS) || "[]"); } catch (e) { return []; }
+  }
+  function saveDoctorListLocal(list) { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); }
+  function saveDoctorList(list) {
+    saveDoctorListLocal(list);
+    pushDoctorsToCloud();
+  }
+  function cloudHeaders() {
+    return {
+      "Content-Type": "application/json",
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: "Bearer " + SUPABASE_ANON_KEY,
+    };
+  }
+  var pushDoctorTimer = null;
+  function pushDoctorsToCloud() {
+    if (nsBsSyncStatus) nsBsSyncStatus.textContent = "Đang đồng bộ...";
+    clearTimeout(pushDoctorTimer);
+    pushDoctorTimer = setTimeout(function () {
+      var payload = {
+        key: CLOUD_DOCTOR_KEY,
+        value: JSON.stringify({
+          list: loadDoctorList(),
+          def: localStorage.getItem(LS_DOCTOR_DEFAULT) || "",
+        }),
+      };
+      fetch(SUPABASE_URL + "/rest/v1/logo", {
+        method: "POST",
+        headers: Object.assign({ Prefer: "resolution=merge-duplicates" }, cloudHeaders()),
+        body: JSON.stringify(payload),
+      }).then(function (resp) {
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        if (nsBsSyncStatus) nsBsSyncStatus.textContent = "Đã đồng bộ cho mọi máy ✓";
+      }).catch(function () {
+        if (nsBsSyncStatus) nsBsSyncStatus.textContent = "Chưa đồng bộ được (kiểm tra mạng)";
+      });
+    }, 400);
+  }
+  function pullDoctorsFromCloud() {
+    fetch(SUPABASE_URL + "/rest/v1/logo?key=eq." + CLOUD_DOCTOR_KEY + "&select=value", {
+      headers: cloudHeaders(),
+    }).then(function (resp) {
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+      return resp.json();
+    }).then(function (rows) {
+      if (rows && rows[0] && rows[0].value) {
+        var cfg = JSON.parse(rows[0].value);
+        if (Array.isArray(cfg.list)) saveDoctorListLocal(cfg.list);
+        if (cfg.def) localStorage.setItem(LS_DOCTOR_DEFAULT, cfg.def);
+        renderDoctorSelect();
+        if (nsBsSyncStatus) nsBsSyncStatus.textContent = "Đã lấy danh sách mới nhất từ máy chủ ✓";
+      }
+    }).catch(function () {
+      // Chưa có mạng hoặc chưa tạo bảng "logo" → vẫn dùng danh sách lưu cục bộ trên máy này
+    });
+  }
+
+  function renderDoctorSelect(selectValue) {
+    var list = loadDoctorList();
+    var def = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
+    var blankOpt = '<option value="">(Ký, ghi rõ họ tên)</option>';
+    if (list.length === 0) {
+      nsBsSelect.innerHTML = blankOpt;
+      return;
+    }
+    nsBsSelect.innerHTML = blankOpt + list.map(function (name) {
+      return '<option value="' + escapeHtmlNs(name) + '">' + escapeHtmlNs(name) + (name === def ? " ★" : "") + "</option>";
+    }).join("");
+    var toSelect = (selectValue !== undefined && (selectValue === "" || list.indexOf(selectValue) !== -1))
+      ? selectValue
+      : (def && list.indexOf(def) !== -1 ? def : "");
+    nsBsSelect.value = toSelect;
+  }
+  function escapeHtmlNs(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  renderDoctorSelect();
+  pullDoctorsFromCloud();
+
+  document.getElementById("nsBsNameAddBtn").addEventListener("click", function () {
+    var name = window.prompt("Thêm bác sĩ mới (VD: BS. Nguyễn Văn A):", "");
+    if (!name) return;
+    var trimmed = name.trim();
+    if (!trimmed) return;
+    var list = loadDoctorList();
+    if (list.indexOf(trimmed) === -1) {
+      list.push(trimmed);
+      saveDoctorList(list);
+    }
+    renderDoctorSelect(trimmed);
+  });
+  document.getElementById("nsBsNameDefBtn").addEventListener("click", function () {
+    if (!nsBsSelect.value) return;
+    localStorage.setItem(LS_DOCTOR_DEFAULT, nsBsSelect.value);
+    renderDoctorSelect(nsBsSelect.value);
+    pushDoctorsToCloud();
+  });
+  document.getElementById("nsBsNameDelBtn").addEventListener("click", function () {
+    if (!nsBsSelect.value) return;
+    if (!window.confirm('Xoá bác sĩ "' + nsBsSelect.value + '" khỏi danh sách?')) return;
+    var removed = nsBsSelect.value;
+    var list = loadDoctorList().filter(function (n) { return n !== removed; });
+    saveDoctorList(list);
+    if (localStorage.getItem(LS_DOCTOR_DEFAULT) === removed) localStorage.removeItem(LS_DOCTOR_DEFAULT);
+    renderDoctorSelect();
   });
 
   /* ---------------------------------------------------------------- */
