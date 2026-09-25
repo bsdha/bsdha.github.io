@@ -114,6 +114,32 @@
     ".ns-bsname-btn:hover{border-color:#3b82f6;}",
     ".ns-bsname-def-btn.is-default{background:#fef3c7;color:#b45309;border-color:#d97706;}",
     ".ns-bsname-del-btn:hover{border-color:#c0392b;color:#c0392b;}",
+    /* ---- Giao diện điền liệu trên màn hình: chỉ hiện các ô cần điền,
+       to rõ, cân đối — KHÔNG ảnh hưởng bản in (bản in vẫn đủ nguyên gốc). */
+    "@media screen{",
+    "  #nsWrap .ns-hd,#nsWrap .ns-title,#nsWrap .ns-tinhtrang,#nsWrap #nsDiagLine,#nsWrap #nsTable{display:none !important;}",
+    "  .ns-stage{background:var(--surface,#fff);border:1px solid var(--border,#e2e2e2);border-radius:12px;padding:20px;justify-content:flex-start;}",
+    "  .ns-sheet-outer{box-shadow:none;background:transparent;width:100%;}",
+    "  #nsSheet{width:auto;max-width:620px;min-height:0;margin:0 auto;padding:6px;font-size:16px;}",
+    "  .ns-fl-name{flex-wrap:wrap !important;}",
+    "  .ns-field-line{margin-bottom:18px;gap:8px 14px;}",
+    "  .ns-field-line label{font-size:15px;font-weight:700;}",
+    "  .ns-field-line input,.ns-field-line select{font-size:16px;padding:9px 8px;border-bottom:2px solid #ccc;}",
+    "  .ns-inp-name{min-width:240px;}",
+    "  .ns-inp-dob{width:90px;}",
+    "  .ns-inp-sex{width:100px;}",
+    "  .ns-inp-addr{min-width:300px;white-space:normal;overflow:visible;text-overflow:clip;}",
+    "  .ns-footer{justify-content:center;margin-top:10px;}",
+    "  .ns-footer-col{width:auto;max-width:380px;}",
+    "  .ns-footer .ns-daterow{font-size:16px;gap:10px;}",
+    "  .ns-footer .ns-daterow input{font-size:16px;padding:7px 5px;border-bottom:2px solid #ccc;}",
+    "  .ns-inp-day,.ns-inp-month{width:40px;}",
+    "  .ns-inp-year{width:70px;}",
+    "  .ns-footer .ns-bstitle{font-size:15px;margin-top:8px;}",
+    "  .ns-bsname-row{margin-top:14px;gap:12px;}",
+    "  .ns-bsname-row select{font-size:17px;width:270px;padding:9px 8px;border-bottom:2px solid #ccc;}",
+    "  .ns-bsname-btn{width:38px;height:38px;font-size:19px;border-radius:8px;}",
+    "}",
     "@page{size:" + PAGE_W_MM + "mm " + PAGE_H_MM + "mm;margin:0;}",
     "@media print{",
     "  html.ns-printing,html.ns-printing body{height:" + PAGE_H_MM + "mm !important;overflow:hidden !important;margin:0 !important;padding:0 !important;}",
@@ -149,7 +175,6 @@
   root.innerHTML =
     '<div id="nsWrap">' +
       '<h1>🔬 Phiếu chỉ định nội soi</h1>' +
-      '<p class="ns-sub">BV Đa khoa Bình Dương CS2 — khổ A5</p>' +
       '<div class="ns-grid">' +
         '<div class="ns-panel">' +
           '<h3>Tuỳ chọn</h3>' +
@@ -197,7 +222,7 @@
                 '<label>Địa chỉ:</label>' +
                 '<input type="text" id="nsDiaChi" class="ns-inp-addr" placeholder="Số nhà, đường, phường/xã, tỉnh/thành...">' +
               '</div>' +
-              '<div class="ns-field-line">' +
+              '<div class="ns-field-line" id="nsDiagLine">' +
                 '<label>Chẩn đoán:</label>' +
                 '<span class="ns-diag-fixed">Viêm dạ dày &amp; tá tràng</span>' +
               '</div>' +
