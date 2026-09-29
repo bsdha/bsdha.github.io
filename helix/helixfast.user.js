@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.76
+// @version      1.78
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,6 +11,12 @@
 // ==/UserScript==
 
 // ===== Changelog =====
+// 1.78  Sửa thanh "Chọn nhanh" đôi lúc mất khi mở lại popup: chọn ô tìm kiếm/
+//       bảng đang HIỂN THỊ (không lấy bản ẩn cũ), thanh gắn theo header thay vì
+//       theo ID toàn cục, tự dọn thanh mồ côi và chèn lại khi bị mất.
+// 1.77  Thanh "⚡ Chọn nhanh" cận lâm sàng chèn đúng vào vùng danh sách dịch
+//       vụ (ngay dưới thanh tìm kiếm, phía trên bảng) thay vì dò
+//       .ui-widget-header đầu tiên của cả trang.
 // 1.76  FIX LỖI TREO TRANG
 // 1.75  Mã máy (bản quyền) đổi sang tính từ fingerprint phần cứng/trình
 //       duyệt thay vì UUID ngẫu nhiên lưu localStorage -> Ctrl+Shift+Del
@@ -33,7 +39,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '1.76';
+  const HELIXFAST_VERSION = '1.78';
   const SYMPTOM_SELECTOR = 'textarea[formcontrolname="symptom"]';
   const PROGRESSION_SELECTOR = 'textarea[formcontrolname="progression"]';
   const NOTE_TEXTAREA_SELECTOR = '.width-per88 textarea.form-control';
@@ -4142,7 +4148,21 @@
     }
 
     function getSearchInput() {
-        return document.getElementById('specify-search-kw');
+        const all = document.querySelectorAll('#specify-search-kw');
+        for (const el of all) {
+            if (el.getClientRects().length > 0) return el;
+        }
+        return all.length ? all[0] : null;
+    }
+
+    function getRoot() {
+        const inp = getSearchInput();
+        if (!inp) return document;
+        return inp.closest('.datatable-container') || inp.closest('.ui-g-12') || document;
+    }
+
+    function getToolbar() {
+        return getRoot().querySelector('.cls-qs-toolbar');
     }
 
     function getSearchForm() {
@@ -4156,7 +4176,7 @@
     }
 
     function getTable() {
-        const wrapper = document.querySelector('.ui-table-wrapper');
+        const wrapper = getRoot().querySelector('.ui-table-wrapper');
         return wrapper ? wrapper.querySelector('table') : null;
     }
 
@@ -4222,7 +4242,7 @@
     }
 
     function waitForTableRefresh(timeout = 4000) {
-        const wrapper = document.querySelector('.ui-table-wrapper');
+        const wrapper = getRoot().querySelector('.ui-table-wrapper');
         if (!wrapper) return sleep(300);
         return new Promise(resolve => {
             let done = false;
@@ -4350,12 +4370,13 @@
     }
 
     function setStatus(text) {
-        const el = document.getElementById(STATUS_ID);
+        const tb = getToolbar();
+        const el = tb ? tb.querySelector('.cls-qs-status') : null;
         if (el) el.textContent = text;
     }
 
     function setToolbarDisabled(disabled) {
-        const toolbar = document.getElementById(TOOLBAR_ID);
+        const toolbar = getToolbar();
         if (!toolbar) return;
         toolbar.querySelectorAll('button').forEach(b => (b.disabled = disabled));
     }
@@ -4529,18 +4550,25 @@
     }
 
     function injectToolbar() {
-        if (document.getElementById(TOOLBAR_ID)) return;
+        document.querySelectorAll('.cls-qs-toolbar').forEach(t => {
+            const prev = t.previousElementSibling;
+            if (!prev || !prev.querySelector('#specify-search-kw')) t.remove();
+        });
         const searchForm = getSearchForm();
         if (!searchForm) return;
 
-        const header = document.querySelector('.ui-widget-header');
+        // Neo đúng vào thanh header chứa ô tìm kiếm (không lấy header đầu tiên của trang)
+        const header = searchForm.closest('.ui-widget-header');
         if (!header || !header.parentNode) return;
+        const nxt = header.nextElementSibling;
+        if (nxt && nxt.classList.contains('cls-qs-toolbar')) return;
 
         const toolbar = document.createElement('div');
-        toolbar.id = TOOLBAR_ID;
+        toolbar.className = 'cls-qs-toolbar';
         Object.assign(toolbar.style, {
             display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center',
             padding: '6px 10px', background: '#eef2f7', borderBottom: '1px solid #c8d3e0',
+            width: '100%', boxSizing: 'border-box', clear: 'both',
         });
 
         const label = document.createElement('span');
@@ -4560,7 +4588,7 @@
         });
 
         const status = document.createElement('span');
-        status.id = STATUS_ID;
+        status.className = 'cls-qs-status';
         Object.assign(status.style, {
             marginLeft: '10px', fontSize: '11px', color: '#333', fontStyle: 'italic',
         });
@@ -4569,15 +4597,17 @@
         header.parentNode.insertBefore(toolbar, header.nextSibling);
     }
 
-    const clsQsMainObserver = new MutationObserver(() => {
-        if (getSearchInput() && !document.getElementById(TOOLBAR_ID)) {
-            injectToolbar();
-        }
-        if (!getSearchInput() && document.getElementById(TOOLBAR_ID)) {
-            document.getElementById(TOOLBAR_ID).remove();
-        }
-    });
+    let clsQsTimer = null;
+    function scheduleEnsure() {
+        if (clsQsTimer) return;
+        clsQsTimer = setTimeout(() => {
+            clsQsTimer = null;
+            try { injectToolbar(); } catch (e) { /* bỏ qua */ }
+        }, 120);
+    }
+    const clsQsMainObserver = new MutationObserver(scheduleEnsure);
     clsQsMainObserver.observe(document.body, { childList: true, subtree: true });
+    setInterval(scheduleEnsure, 1500);
 
     setTimeout(injectToolbar, 1000);
 
