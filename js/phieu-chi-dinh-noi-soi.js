@@ -55,11 +55,12 @@
     ".ns-btn.secondary{background:var(--surface-2,#eee);color:var(--text,#222);}",
     ".ns-btn.small{width:auto;padding:6px 10px;font-size:12px;margin-top:0;}",
     ".ns-btn.danger{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff;}",
-    ".ns-btn.print{background:linear-gradient(135deg,#0066FF,#0047b3);box-shadow:0 2px 10px rgba(0,102,255,.35);font-size:15px;padding:13px 14px;font-weight:600;}",
-    ".ns-hint{font-size:11.5px;color:var(--muted,#888);line-height:1.5;}",
+    ".ns-btn.print{background:linear-gradient(135deg,#0066FF,#0047b3);box-shadow:0 2px 10px rgba(0,102,255,.35);font-size:15px;padding:11px 22px;font-weight:600;}",
+    ".ns-hint{font-size:16px;color:var(--text,#222);line-height:1.5;margin:0 0 14px;}",
+    "#nsWrap .ns-btn{width:auto;min-width:0;}",
     ".ns-status{font-size:12px;margin-top:8px;min-height:16px;}",
     ".ns-status.ok{color:#1a7a37;}",
-    ".ns-row-actions{display:flex;gap:8px;margin-top:10px;}",
+    ".ns-row-actions{display:flex;gap:10px;margin-top:0;flex-wrap:wrap;align-items:center;}",
     ".ns-row-actions .ns-btn{margin-top:0;}",
     ".ns-switchrow{display:flex;align-items:center;gap:10px;margin:10px 0;font-size:13px;}",
     ".ns-switch{position:relative;display:inline-block;width:38px;height:22px;flex:none;}",
@@ -104,8 +105,7 @@
     ".ns-footer-col{width:58mm;text-align:center;}",
     ".ns-footer .ns-daterow{font-style:italic;display:flex;justify-content:center;gap:4px;flex-wrap:wrap;font-size:12px;}",
     ".ns-footer .ns-daterow input{font-family:inherit;font-style:italic;font-size:12px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;}",
-    ".ns-inp-day,.ns-inp-month{width:22px;}",
-    ".ns-inp-year{width:40px;}",
+    ".ns-inp-date{width:92px;}",
     ".ns-footer .ns-bstitle{font-weight:bold;margin-top:1mm;text-align:center;font-size:12px;}",
     ".ns-bsname-row select{font-family:inherit;font-weight:bold;font-size:15px;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;text-align:center;text-align-last:center;text-transform:uppercase;width:220px;padding:5px 2px;line-height:2;}",
     ".ns-bsname-row{display:flex;justify-content:center;align-items:center;gap:6px;margin-top:14mm;}",
@@ -132,8 +132,7 @@
     "  .ns-footer-col{width:auto;max-width:380px;}",
     "  .ns-footer .ns-daterow{font-size:16px;gap:10px;}",
     "  .ns-footer .ns-daterow input{font-size:16px;padding:7px 5px;border-bottom:2px solid #ccc;}",
-    "  .ns-inp-day,.ns-inp-month{width:40px;}",
-    "  .ns-inp-year{width:70px;}",
+    "  .ns-inp-date{width:170px;}",
     "  .ns-footer .ns-bstitle{font-size:15px;margin-top:8px;}",
     "  .ns-bsname-row{margin-top:14px;gap:12px;}",
     "  .ns-bsname-row select{font-size:17px;width:270px;padding:9px 8px;border-bottom:2px solid #ccc;}",
@@ -176,18 +175,13 @@
   root.innerHTML =
     '<div id="nsWrap">' +
       '<h1>🔬 Phiếu chỉ định nội soi</h1>' +
+      '<p class="ns-hint">Nhấn <b>Tab</b> hoặc <b>Enter</b> để chuyển nhanh giữa các ô.</p>' +
       '<div class="ns-grid">' +
         '<div class="ns-panel">' +
-          '<h3>Tuỳ chọn</h3>' +
-          '<div class="ns-switchrow">' +
-            '<label class="ns-switch"><input type="checkbox" id="nsShowBsName" checked><span class="ns-slider"></span></label>' +
-            '<span>Hiển thị tên bác sĩ ký bên dưới</span>' +
-          '</div>' +
-          '<p class="ns-hint">Nhấn <b>Tab</b> hoặc <b>Enter</b> để chuyển nhanh giữa các ô.</p>' +
           '<div class="ns-row-actions">' +
             '<button class="ns-btn secondary" id="nsResetBtn">↺ Làm mới phiếu</button>' +
+            '<button class="ns-btn print" id="nsPrintBtn">🖨️ IN PHIẾU CHỈ ĐỊNH</button>' +
           '</div>' +
-          '<button class="ns-btn print" id="nsPrintBtn" style="margin-top:14px;">🖨️ IN PHIẾU CHỈ ĐỊNH</button>' +
           '<div class="ns-status" id="nsStatus"></div>' +
         '</div>' +
         '<div class="ns-stage">' +
@@ -239,12 +233,7 @@
               '<div class="ns-footer">' +
                 '<div class="ns-footer-col">' +
                   '<div class="ns-daterow">' +
-                    '<span>Ngày</span>' +
-                    '<input type="text" id="nsNgay" class="ns-inp-day" inputmode="numeric" maxlength="2">' +
-                    '<span>tháng</span>' +
-                    '<input type="text" id="nsThang" class="ns-inp-month" inputmode="numeric" maxlength="2">' +
-                    '<span>năm</span>' +
-                    '<input type="text" id="nsNam" class="ns-inp-year" inputmode="numeric" maxlength="4">' +
+                    '<input type="date" id="nsDate" class="ns-inp-date">' +
                   '</div>' +
                   '<div class="ns-bstitle">Bác sĩ điều trị</div>' +
                   '<div class="ns-bsname-row" id="nsBsNameRow">' +
@@ -326,11 +315,6 @@
   /*    (dùng chung danh sách với js/prescription.js)                  */
   /* ---------------------------------------------------------------- */
   var bsNameRow = document.getElementById("nsBsNameRow");
-  var showBsChk = document.getElementById("nsShowBsName");
-  showBsChk.addEventListener("change", function () {
-    bsNameRow.style.display = showBsChk.checked ? "" : "none";
-  });
-
   var nsBsSelect = document.getElementById("nsBsName");
   var nsBsSyncStatus = document.getElementById("nsBsSyncStatus"); // tuỳ chọn, không bắt buộc có trong HTML
 
@@ -461,8 +445,15 @@
   /* 6. Giá trị mặc định: ngày tháng năm hôm nay                       */
   /* ---------------------------------------------------------------- */
   function fillDefaults() {
+    document.getElementById("nsDate").value = nsTodayISO();
     addRow("Nội soi dạ dày thực quản", "01");
   }
+
+  // Năm sinh: chỉ cho gõ số
+  document.getElementById("nsNamSinh").addEventListener("input", function (e) {
+    var el = e.target, c = el.value.replace(/\D/g, "");
+    if (c !== el.value) el.value = c;
+  });
 
   /* ---------------------------------------------------------------- */
   /* 7. Điều hướng Tab / Enter giữa các ô nhập                          */
@@ -508,6 +499,16 @@
   /* Tạo PDF A5 bằng văn bản thật (cùng cách với đơn thuốc: jsPDF + font Roboto
      dùng chung từ js/prescription.js) rồi mở ở TAB MỚI bằng trình xem PDF của
      trình duyệt → bấm in là ra đúng khổ A5, không cần chỉnh gì. */
+  function nsDateText() {
+    var v = document.getElementById("nsDate").value; // yyyy-mm-dd
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v || "");
+    return m ? { ngay: m[3], thang: m[2], nam: m[1] } : { ngay: "", thang: "", nam: "" };
+  }
+  function nsTodayISO() {
+    var t = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return t.getFullYear() + "-" + p(t.getMonth() + 1) + "-" + p(t.getDate());
+  }
+
   function nsCollect() {
     var rows = [];
     tbody.querySelectorAll(".ns-row").forEach(function (tr) {
@@ -517,8 +518,6 @@
         kq: tr.querySelector(".ns-fld-kq").value.trim()
       });
     });
-    var opt = nsBsSelect.options[nsBsSelect.selectedIndex];
-    var bsText = nsBsSelect.value || (opt ? opt.text.replace(/\s*★\s*$/, "") : "");
     return {
       tinhTrang: document.getElementById("nsTinhTrang").value,
       hoTen: document.getElementById("nsHoTen").value.trim(),
@@ -526,12 +525,8 @@
       gioiTinh: document.getElementById("nsGioiTinh").value,
       diaChi: document.getElementById("nsDiaChi").value.trim(),
       rows: rows,
-      ngay: document.getElementById("nsNgay").value.trim(),
-      thang: document.getElementById("nsThang").value.trim(),
-      nam: document.getElementById("nsNam").value.trim(),
-      showBs: showBsChk.checked,
-      bsName: bsText,
-      bsIsBlank: !nsBsSelect.value
+      date: nsDateText(),
+      bsName: nsBsSelect.value || ""
     };
   }
 
@@ -606,15 +601,15 @@
     setF("bold", nsz);
     while (tw(nm) > nameW - 1.5 && nsz > 8) { nsz -= 0.5; setF("bold", nsz); }
     text(nm, nameX, y);
-    dots(nameX + tw(nm) + 1, y, nameW - tw(nm) - 1);
+    if (!nm) dots(nameX, y, nameW);
 
     setF("normal", LS); text(lDob, dobX0, y);
     setF("bold", LS); text(d.namSinh, dobX0 + wDob + gap, y);
-    dots(dobX0 + wDob + gap + tw(d.namSinh) + 1, y, dobW - tw(d.namSinh) - 1);
+    if (!d.namSinh) dots(dobX0 + wDob + gap, y, dobW);
 
     setF("normal", LS); text(lSex, sexX0, y);
     setF("bold", LS); text(d.gioiTinh, sexX0 + wSex + gap, y);
-    dots(sexX0 + wSex + gap + tw(d.gioiTinh) + 1, y, sexW - tw(d.gioiTinh) - 1);
+    if (!d.gioiTinh) dots(sexX0 + wSex + gap, y, sexW);
     y += 7;
 
     /* ---- Địa chỉ (xuống dòng nếu dài) ---- */
@@ -628,7 +623,7 @@
     aLines.forEach(function (ln, i) {
       if (i > 0) { y += 5.2; ensureSpace(6); setF("bold", LS); }
       text(ln, ax, y);
-      if (i === aLines.length - 1) dots(ax + tw(ln) + 1, y, mx + cw - ax - tw(ln) - 1);
+      if (!d.diaChi) dots(ax, y, mx + cw - ax);
     });
     y += 7;
 
@@ -680,13 +675,13 @@
     y += 6;
 
     /* ---- Chân phiếu: ngày tháng năm + bác sĩ điều trị ---- */
-    ensureSpace(d.showBs ? 40 : 18);
+    ensureSpace(40);
     var colW = 62, cx = PW - mx - colW / 2;
     setF("normal", 10.5);
     var segs = [
-      { t: "Ngày", lab: true }, { t: d.ngay, w: 7 },
-      { t: "tháng", lab: true }, { t: d.thang, w: 7 },
-      { t: "năm", lab: true }, { t: d.nam, w: 12 }
+      { t: "Ngày", lab: true }, { t: d.date.ngay, w: 7 },
+      { t: "tháng", lab: true }, { t: d.date.thang, w: 7 },
+      { t: "năm", lab: true }, { t: d.date.nam, w: 12 }
     ];
     var g2 = 1.5, total = 0;
     segs.forEach(function (sg, i) {
@@ -697,21 +692,18 @@
     segs.forEach(function (sg) {
       setF("normal", 10.5);
       if (sg.lab) { text(sg.t, dx, y); }
-      else {
-        var vx = dx + (sg.width - tw(sg.t)) / 2;
-        text(sg.t, vx, y);
-        if (!sg.t) dots(dx, y, sg.width);
-      }
+      else if (sg.t) { text(sg.t, dx + (sg.width - tw(sg.t)) / 2, y); }
+      else { dots(dx, y, sg.width); }
       dx += sg.width + g2;
     });
     y += 6;
     setF("bold", 11);
     var bt = "Bác sĩ điều trị";
     text(bt, cx - tw(bt) / 2, y);
-    if (d.showBs) {
+    if (d.bsName) {
       y += 24;
-      var nm2 = d.bsIsBlank ? d.bsName : d.bsName.toUpperCase();
-      setF(d.bsIsBlank ? "normal" : "bold", 11);
+      var nm2 = d.bsName.toUpperCase();
+      setF("bold", 11);
       text(nm2, cx - tw(nm2) / 2, y);
     }
 
@@ -760,9 +752,7 @@
     document.getElementById("nsDiaChi").value = "";
     document.getElementById("nsTinhTrang").value = "Thường";
     document.getElementById("nsBsName").value = "";
-    document.getElementById("nsNgay").value = "";
-    document.getElementById("nsThang").value = "";
-    document.getElementById("nsNam").value = "";
+    document.getElementById("nsDate").value = nsTodayISO();
     tbody.innerHTML = "";
     fillDefaults();
     setStatus("Đã làm mới phiếu.", "ok");
