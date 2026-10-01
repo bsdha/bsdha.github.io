@@ -164,48 +164,11 @@ input:focus { border-color:#1565c0; }
   background:#fce4ec; color:#c62828; font-size:10.5px; font-weight:800; cursor:pointer;
 }
 .mini-refund-btn:hover { background:#f8bbd0; }
-.status-pill {
-  display:inline-block; padding:3px 10px; border-radius:999px; font-size:10.5px; font-weight:800;
-  cursor:default; user-select:none; border:1px solid transparent;
-}
-.status-paid { background:#e8f5e9; color:#2e7d32; border-color:#a5d6a7; }
-.status-refunded { background:#ede7f6; color:#5e35b1; border-color:#b39ddb; }
-.copy-mid-btn {
-  margin-left:6px; padding:2px 7px; border:1px solid #90caf9; border-radius:6px;
-  background:#e3f2fd; color:#0d47a1; font-size:11px; font-weight:700; cursor:pointer; vertical-align:middle;
-}
-.copy-mid-btn:hover { background:#bbdefb; }
-.copy-mid-btn.copied { background:#c8e6c9; border-color:#81c784; color:#1b5e20; }
+.pending-box { border:1px dashed #ddd; border-radius:8px; padding:8px 12px; font-size:12px; margin-bottom:14px; background:#fafafa; }
+.pending-box summary { cursor:pointer; font-weight:700; color:#777; list-style-position:inside; }
+.pending-box .pending-rows { margin-top:6px; max-height:160px; overflow:auto; color:#777; }
+.badge-cancel { background:#f0f0f0; color:#999; }
 .edit-form input, .edit-form select { margin-bottom:10px; }
-
-/* Bu tru / Hang tang */
-.adj-overlay { z-index:120; }
-.adj-btn {
-  padding:5px 10px; border:1px solid #ce93d8; border-radius:8px; background:#f3e5f5;
-  color:#6a1b9a; font-size:11.5px; font-weight:800; cursor:pointer; white-space:nowrap;
-}
-.adj-btn:hover { background:#e1bee7; }
-.note-cell { color:#555; font-size:12px; max-width:220px; word-break:break-word; }
-.adj-mid { font-family:monospace; font-weight:800; color:#0d47a1; margin-bottom:2px; }
-.adj-bal { font-size:12.5px; color:#888; margin-bottom:14px; }
-.adj-preview { font-size:12.5px; margin:8px 0 14px; padding:9px 12px; border-radius:8px; background:#f3e5f5; color:#4a148c; }
-.adj-preview.warn { background:#fff3e0; color:#e65100; }
-.chip.disabled { opacity:.4; pointer-events:none; }
-.chip.gift.active { border-color:#ad1457; background:#fce4ec; color:#ad1457; }
-.sum-line { font-size:12.5px; background:#f7f9fc; border:1px solid #e3e8f0; border-radius:10px; padding:10px 12px; margin-bottom:16px; line-height:1.8; }
-.tx-head, .tx-row { display:grid; grid-template-columns:118px 92px 68px 1fr; gap:8px; align-items:start; }
-.tx-head { font-size:10.5px; color:#888; text-transform:uppercase; font-weight:700; padding:2px 0 6px; border-bottom:2px solid #eee; position:sticky; top:-8px; background:#fff; }
-.tx-row { padding:6px 0; border-bottom:1px dashed #eee; }
-.tx-note { color:#555; word-break:break-word; }
-.tag { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10.5px; font-weight:800; white-space:nowrap; }
-.tag-buy { background:#e3f2fd; color:#0d47a1; }
-.tag-gift { background:#fce4ec; color:#ad1457; }
-.tag-trial { background:#fff8e1; color:#e65100; }
-.tag-use { background:#f0f0f0; color:#555; }
-.tag-adj { background:#ede7f6; color:#5e35b1; }
-.toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%); background:#1b5e20; color:#fff; padding:11px 20px; border-radius:10px; font-size:13.5px; font-weight:700; z-index:300; display:none; box-shadow:0 8px 24px rgba(0,0,0,.3); }
-.toast.error { background:#b71c1c; }
-.toast.show { display:block; }
 .edit-form label { margin-top:0; }
 </style>
 </head>
@@ -297,7 +260,7 @@ input:focus { border-color:#1565c0; }
       <div style="overflow:auto">
         <table class="cust-table">
           <thead>
-            <tr><th>Machine ID</th><th>Tên / SĐT</th><th>Đơn vị</th><th>Còn lại</th><th>Trạng thái</th><th>Bảo hành</th><th>Bù trừ</th><th>Ghi chú</th></tr>
+            <tr><th>Machine ID</th><th>Tên / SĐT</th><th>Đơn vị</th><th>Còn lại</th><th>Trạng thái</th><th>Bảo hành</th></tr>
           </thead>
           <tbody id="custTableBody"></tbody>
         </table>
@@ -326,7 +289,6 @@ input:focus { border-color:#1565c0; }
         <div class="chip" onclick="setAmount(500000)">500.000đ (+5%)</div>
         <div class="chip" onclick="setAmount(1000000)">1.000.000đ (+10%)</div>
         <div class="chip" onclick="setAmount(2000000)">2.000.000đ (+15%)</div>
-        <div class="chip" onclick="setAmount(5000000)">5.000.000đ</div>
       </div>
       <input type="number" id="amountInput" placeholder="Hoặc nhập số tiền khác (tối thiểu 100.000đ)" oninput="clearChipSelection()">
       <button class="btn btn-topup" onclick="doTopup()">💳 Cộng Medi vào Ví</button>
@@ -334,16 +296,9 @@ input:focus { border-color:#1565c0; }
 
     <!-- TAB: Bu su co - Admin tu do cong/tru so Medi bat ky -->
     <div class="panel-section" id="panelAdjust">
-      <label>Loại điều chỉnh</label>
-      <select id="adjustTypeSelect" onchange="onWalletAdjTypeChange()" style="width:100%;padding:11px 14px;border:2px solid #e0e4ea;border-radius:10px;font-size:14px;margin-bottom:12px;background:#fff">
-        <option value="fix">🛠️ Bù sự cố</option>
-        <option value="transfer">🏦 Sai lệch chuyển khoản</option>
-        <option value="gift">🎁 Hàng tặng (chỉ cộng)</option>
-        <option value="other">Khác</option>
-      </select>
       <label>Số Medi cần cộng (âm để trừ)</label>
-      <input type="number" step="0.01" id="mediDeltaInput" placeholder="VD: 5 (cộng) hoặc -5 (trừ)" style="margin-bottom:12px">
-      <label id="adjustNoteLabel">Ghi chú (bắt buộc, để đối soát sau này)</label>
+      <input type="number" id="mediDeltaInput" placeholder="VD: 5 (cộng) hoặc -5 (trừ)" style="margin-bottom:12px">
+      <label>Ghi chú (bắt buộc, để đối soát sau này)</label>
       <input type="text" id="adjustNoteInput" placeholder="VD: Bù lỗi kỹ thuật ngày 28/08" style="margin-bottom:12px">
       <button class="btn btn-adjust" onclick="doAdjust()">🛠️ Áp dụng điều chỉnh</button>
       <div class="divider"></div>
@@ -380,13 +335,11 @@ input:focus { border-color:#1565c0; }
     <div class="detail-card">
       <button class="close-btn" onclick="closeCustDetail()">✕</button>
       <h3 id="custDetailTitle">Chi tiết khách hàng</h3>
-      <button type="button" class="btn btn-adjust" style="margin:0 0 14px;padding:11px" onclick="openAdjModal(custDetailMid, custDetailBal)">⚖️ Bù trừ / 🎁 Hàng tặng cho khách này</button>
       <div class="detail-grid" id="custDetailGrid"></div>
-      <div class="stat-section-title" style="margin-top:0">Tổng hợp Medi theo nguồn</div>
-      <div class="sum-line" id="custSumLine">—</div>
 
       <div class="stat-section-title">Lịch sử thanh toán</div>
       <div class="hist-list" id="custOrderHist">—</div>
+      <details class="pending-box" id="custPendingBox" style="display:none"></details>
 
       <div class="stat-section-title">Lịch sử giao dịch Medi</div>
       <div class="hist-list" id="custTxHist">—</div>
@@ -413,35 +366,6 @@ input:focus { border-color:#1565c0; }
       </div>
     </div>
   </div>
-
-  <!-- ============ Overlay: Bu tru / Hang tang ============ -->
-  <div class="overlay adj-overlay" id="adjOverlay">
-    <div class="detail-card" style="max-width:460px">
-      <button class="close-btn" onclick="closeAdjModal()">✕</button>
-      <h3>⚖️ Bù trừ / Hàng tặng</h3>
-      <div class="adj-mid" id="adjMidLabel"></div>
-      <div class="adj-bal" id="adjBalLabel"></div>
-
-      <label>Loại</label>
-      <div class="amount-chips" id="adjTypeChips"></div>
-
-      <label>Hướng</label>
-      <div class="amount-chips" id="adjDirChips">
-        <div class="chip active" id="adjDirPlus" onclick="setAdjDir(1)">➕ Cộng Medi</div>
-        <div class="chip" id="adjDirMinus" onclick="setAdjDir(-1)">➖ Trừ Medi</div>
-      </div>
-
-      <label>Số Medi</label>
-      <input type="number" step="0.01" min="0" id="adjAmountInput" placeholder="VD: 5 hoặc 0.5" oninput="updateAdjPreview()">
-      <div class="adj-preview" id="adjPreview">—</div>
-
-      <label id="adjModalNoteLabel">Ghi chú (bắt buộc)</label>
-      <input type="text" id="adjModalNote" placeholder="VD: Khách CK 500k nhưng cộng thiếu 0.5 Medi">
-      <button class="btn btn-adjust" style="margin-top:14px" onclick="submitAdjModal()">✔ Áp dụng</button>
-    </div>
-  </div>
-
-  <div class="toast" id="toast"></div>
 
   <div class="warning">
     ⚠️ Không chia sẻ Admin Key. Mọi thao tác nạp/điều chỉnh đều được Worker ghi log lại (bảng <code>transactions</code>) để đối soát.
@@ -485,16 +409,9 @@ function logoutAdmin() {
   document.getElementById('adminKeyInput').focus();
 }
 
-function showGateErr(html) {
-  var el = document.getElementById('gateErr');
-  el.innerHTML = html;
-  el.style.display = 'block';
-}
-
 function unlockGate() {
   var key = document.getElementById('adminKeyInput').value.trim();
   if (!key) return;
-  document.getElementById('gateErr').style.display = 'none';
   // Xac thuc bang cach thu goi 1 endpoint admin voi mid gia (se tra ve loi
   // khac 401 neu key dung, hoac 401 neu sai) - dung /admin/adjust voi
   // mediDelta=0 se bi tu choi o buoc validate nhung van vuot qua check key truoc.
@@ -503,15 +420,7 @@ function unlockGate() {
     headers: { 'Content-Type': 'application/json', 'X-Admin-Key': key },
     body: JSON.stringify({ mid: 'MID-00000000', mediDelta: 0, note: 'ping' }),
   })
-  .then(function(r) {
-    // Doc dang text roi tu parse JSON: neu Worker/Cloudflare tra ve HTML (chan, loi 5xx...)
-    // thi van biet duoc ma loi HTTP thay vi bao chung chung "khong ket noi".
-    return r.text().then(function(t) {
-      var d = null;
-      try { d = JSON.parse(t); } catch (e) {}
-      return { status: r.status, data: d };
-    });
-  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
   .then(function(res) {
     if (res.status === 401) {
       var remaining = res.data && res.data.attemptsRemaining;
@@ -521,15 +430,13 @@ function unlockGate() {
           ? ' Còn <b>' + remaining + '</b> lần thử trước khi bị khoá tạm 30 phút.'
           : ' Đã hết lượt thử — mạng này đang bị khoá tạm, thử lại sau 30 phút.';
       }
-      showGateErr(msg);
+      document.getElementById('gateErr').innerHTML = msg;
+      document.getElementById('gateErr').style.display = 'block';
       return;
     }
     if (res.status === 429) {
-      showGateErr('Nhập sai quá nhiều lần — mạng này đang bị khoá tạm, thử lại sau 30 phút');
-      return;
-    }
-    if (res.status === 403 || res.status === 404 || res.status >= 500) {
-      showGateErr('Worker trả lỗi HTTP <b>' + res.status + '</b> — chưa xác thực được key. Kiểm tra Worker đã deploy đúng và URL trong <code>WALLET_API</code>.');
+      document.getElementById('gateErr').textContent = 'Nhập sai quá nhiều lần — mạng này đang bị khoá tạm, thử lại sau 30 phút';
+      document.getElementById('gateErr').style.display = 'block';
       return;
     }
     adminKey = key;
@@ -537,8 +444,8 @@ function unlockGate() {
     document.getElementById('mainPanel').classList.add('open');
   })
   .catch(function() {
-    var origin = location.origin === 'null' ? 'file:// (mở từ máy)' : location.origin;
-    showGateErr('Không gọi được Worker. Thường do <b>CORS</b>: Worker chưa cho phép trang chạy ở <code>' + origin + '</code>, hoặc mất mạng / sai <code>WALLET_API</code>.');
+    document.getElementById('gateErr').textContent = 'Không kết nối được Worker — kiểm tra WALLET_API trong file này';
+    document.getElementById('gateErr').style.display = 'block';
   });
 }
 
@@ -599,196 +506,29 @@ function doTopup() {
   .catch(function() { showResult(false, 'Lỗi mạng', 'Không gọi được Worker', ''); });
 }
 
-// ================= Bu tru / Hang tang - dung chung =================
-// Loai dieu chinh duoc ghi vao dau ghi chu dang "[Ten loai] noi dung" de Worker
-// luu nguyen van vao bang transactions, khong can sua Worker. Khi hien lai,
-// script tach tag ra de biet day la hang tang, bu su co, v.v.
-var ADJ_TYPES = [
-  { key: 'fix',      label: '🛠️ Bù sự cố',            tag: 'Bù sự cố',     plusOnly: false, noteRequired: true },
-  { key: 'transfer', label: '🏦 Sai lệch chuyển khoản', tag: 'Sai lệch CK',  plusOnly: false, noteRequired: true },
-  { key: 'gift',     label: '🎁 Hàng tặng',            tag: 'Hàng tặng',    plusOnly: true,  noteRequired: false },
-  { key: 'other',    label: 'Khác',                    tag: 'Khác',         plusOnly: false, noteRequired: true }
-];
-function getAdjType(key) {
-  for (var i = 0; i < ADJ_TYPES.length; i++) if (ADJ_TYPES[i].key === key) return ADJ_TYPES[i];
-  return ADJ_TYPES[0];
-}
-function esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch) {
-    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
-  });
-}
-function round2(n) { return Math.round((Number(n) || 0) * 100) / 100; }
-function fmtSigned(n) {
-  var v = round2(n);
-  return (v > 0 ? '+' : '') + v.toFixed(2);
-}
-function buildAdjustNote(typeKey, text) {
-  var t = getAdjType(typeKey);
-  text = (text || '').trim();
-  if (!text && t.key === 'gift') text = 'Tặng';
-  return '[' + t.tag + '] ' + text;
-}
-function parseAdjustNote(note) {
-  var m = /^\[([^\]]+)\]\s*([\s\S]*)$/.exec(note || '');
-  return m ? { tag: m[1], text: m[2] } : { tag: '', text: note || '' };
-}
-// Phan loai 1 giao dich de hien thi + tong hop
-function classifyTx(t) {
-  var raw = t.note || t.reason || t.description || t.memo || '';
-  var p = parseAdjustNote(raw);
-  var d = Number(t.medi_delta) || 0;
-  if (t.type === 'topup') return { cat: 'buy', label: 'Mua', cls: 'tag-buy', text: raw };
-  if (t.type === 'trial') return { cat: 'trial', label: 'Dùng thử', cls: 'tag-trial', text: raw };
-  if (t.type === 'spend') return { cat: 'use', label: 'Sử dụng', cls: 'tag-use', text: raw };
-  if (t.type === 'admin_adjust') {
-    if (p.tag === 'Hàng tặng') return { cat: 'gift', label: '🎁 Hàng tặng', cls: 'tag-gift', text: p.text };
-    return { cat: d >= 0 ? 'adjPlus' : 'adjMinus', label: p.tag || 'Admin chỉnh', cls: 'tag-adj', text: p.text };
-  }
-  return { cat: 'other', label: t.type, cls: 'tag-use', text: raw };
-}
-
-function showToast(msg, isError) {
-  var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'toast show' + (isError ? ' error' : '');
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(function() { el.classList.remove('show'); }, 3200);
-}
-
-function postAdjust(mid, delta, note) {
-  return fetch(WALLET_API + '/admin/adjust', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
-    body: JSON.stringify({ mid: mid, mediDelta: delta, note: note }),
-  }).then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); });
-}
-
-// ---- Tab "Bu su co" trong the Vi Medi ----
-function onWalletAdjTypeChange() {
-  var t = getAdjType(document.getElementById('adjustTypeSelect').value);
-  document.getElementById('adjustNoteLabel').textContent = t.noteRequired
-    ? 'Ghi chú (bắt buộc, để đối soát sau này)'
-    : 'Ghi chú (không bắt buộc) — VD: tặng ai, vì sao';
-  document.getElementById('adjustNoteInput').placeholder = t.key === 'gift'
-    ? 'VD: Tặng anh Nam phòng khám ABC dùng thử'
-    : 'VD: Bù lỗi kỹ thuật ngày 28/08';
-  document.getElementById('mediDeltaInput').placeholder = t.plusOnly
-    ? 'VD: 5 (số Medi tặng)'
-    : 'VD: 5 (cộng) hoặc -5 (trừ)';
-}
-
 function doAdjust() {
   var mid = getMid();
   if (!mid) return;
-  var typeKey = document.getElementById('adjustTypeSelect').value;
-  var t = getAdjType(typeKey);
-  var delta = round2(parseFloat(document.getElementById('mediDeltaInput').value));
-  var text = document.getElementById('adjustNoteInput').value.trim();
+  var delta = parseInt(document.getElementById('mediDeltaInput').value, 10);
+  var note = document.getElementById('adjustNoteInput').value.trim();
   if (!delta) { alert('Nhập số Medi cần cộng/trừ (khác 0)'); return; }
-  if (t.plusOnly && delta < 0) { alert('Hàng tặng chỉ cộng Medi — nhập số dương.\nMuốn thu hồi hàng đã tặng thì chọn loại "Bù sự cố" hoặc "Khác".'); return; }
-  if (t.noteRequired && !text) { alert('Vui lòng ghi chú lý do điều chỉnh'); return; }
-  var note = buildAdjustNote(typeKey, text);
+  if (!note) { alert('Vui lòng ghi chú lý do điều chỉnh'); return; }
 
-  postAdjust(mid, delta, note)
+  fetch(WALLET_API + '/admin/adjust', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': adminKey },
+    body: JSON.stringify({ mid: mid, mediDelta: delta, note: note }),
+  })
+  .then(function(r) { return r.json().then(function(d) { return { status: r.status, data: d }; }); })
   .then(function(res) {
     if (res.status === 200) {
-      var label = t.key === 'gift' ? 'Đã tặng' : (delta > 0 ? 'Đã cộng bù' : 'Đã trừ');
-      showResult(true, label, fmtSigned(delta) + ' Medi',
-        'Số dư mới: ' + fmtMedi(res.data.balance) + ' Medi · Loại: ' + t.tag);
+      showResult(true, (delta > 0 ? 'Đã cộng bù' : 'Đã trừ'), (delta > 0 ? '+' : '') + delta + ' Medi',
+        'Số dư mới: ' + fmtMedi(res.data.balance) + ' Medi');
     } else {
       showResult(false, 'Lỗi', res.data.error || 'Không xác định', '');
     }
   })
   .catch(function() { showResult(false, 'Lỗi mạng', 'Không gọi được Worker', ''); });
-}
-
-// ---- Popup Bu tru / Hang tang (dung tu danh sach + the khach hang) ----
-var adjMid = null, adjBal = 0, adjType = 'fix', adjDir = 1;
-function openAdjModal(mid, balance) {
-  if (!mid) return;
-  adjMid = mid;
-  adjBal = Number(balance) || 0;
-  adjType = 'fix';
-  adjDir = 1;
-  document.getElementById('adjMidLabel').textContent = mid;
-  document.getElementById('adjBalLabel').textContent = 'Số dư hiện tại: ' + fmtMedi(adjBal) + ' Medi';
-  document.getElementById('adjAmountInput').value = '';
-  document.getElementById('adjModalNote').value = '';
-  renderAdjTypeChips();
-  applyAdjTypeRules();
-  updateAdjPreview();
-  document.getElementById('adjOverlay').classList.add('show');
-  setTimeout(function() { document.getElementById('adjAmountInput').focus(); }, 50);
-}
-function closeAdjModal() {
-  document.getElementById('adjOverlay').classList.remove('show');
-  adjMid = null;
-}
-function renderAdjTypeChips() {
-  var box = document.getElementById('adjTypeChips');
-  box.innerHTML = '';
-  ADJ_TYPES.forEach(function(t) {
-    var d = document.createElement('div');
-    d.className = 'chip' + (t.key === 'gift' ? ' gift' : '') + (t.key === adjType ? ' active' : '');
-    d.textContent = t.label;
-    d.onclick = function() { adjType = t.key; renderAdjTypeChips(); applyAdjTypeRules(); updateAdjPreview(); };
-    box.appendChild(d);
-  });
-}
-function applyAdjTypeRules() {
-  var t = getAdjType(adjType);
-  if (t.plusOnly) adjDir = 1;
-  document.getElementById('adjDirPlus').classList.toggle('active', adjDir === 1);
-  document.getElementById('adjDirMinus').classList.toggle('active', adjDir === -1);
-  document.getElementById('adjDirMinus').classList.toggle('disabled', t.plusOnly);
-  document.getElementById('adjModalNoteLabel').textContent = t.noteRequired
-    ? 'Ghi chú (bắt buộc)' : 'Ghi chú (không bắt buộc) — tặng ai, vì sao';
-  document.getElementById('adjModalNote').placeholder = t.key === 'gift'
-    ? 'VD: Tặng phòng khám ABC dùng thử'
-    : (t.key === 'transfer' ? 'VD: Khách CK 500k nhưng cộng thiếu 0.5 Medi' : 'VD: Bù lỗi kỹ thuật ngày 28/08');
-}
-function setAdjDir(dir) {
-  if (getAdjType(adjType).plusOnly && dir < 0) return;
-  adjDir = dir;
-  applyAdjTypeRules();
-  updateAdjPreview();
-}
-function updateAdjPreview() {
-  var amt = round2(Math.abs(parseFloat(document.getElementById('adjAmountInput').value) || 0));
-  var el = document.getElementById('adjPreview');
-  if (!amt) { el.className = 'adj-preview'; el.textContent = 'Nhập số Medi để xem số dư sau điều chỉnh'; return; }
-  var after = round2(adjBal + adjDir * amt);
-  el.className = 'adj-preview' + (after < 0 ? ' warn' : '');
-  el.textContent = fmtSigned(adjDir * amt) + ' Medi  →  Số dư sau: ' + (after < 0 ? after.toFixed(2) + ' (ÂM — kiểm tra lại)' : after.toFixed(2)) + ' Medi';
-}
-function submitAdjModal() {
-  if (!adjMid) return;
-  var t = getAdjType(adjType);
-  var amt = round2(Math.abs(parseFloat(document.getElementById('adjAmountInput').value) || 0));
-  var text = document.getElementById('adjModalNote').value.trim();
-  if (!amt) { alert('Nhập số Medi cần cộng/trừ (lớn hơn 0)'); return; }
-  if (t.noteRequired && !text) { alert('Vui lòng ghi chú lý do để đối soát sau này'); return; }
-  var delta = adjDir * amt;
-  var after = round2(adjBal + delta);
-  var msg = (t.key === 'gift' ? '🎁 TẶNG ' : (delta > 0 ? 'CỘNG ' : 'TRỪ ')) + Math.abs(delta).toFixed(2) + ' Medi cho ' + adjMid +
-            '\nLoại: ' + t.tag + '\nSố dư: ' + fmtMedi(adjBal) + ' → ' + after.toFixed(2) + ' Medi';
-  if (after < 0) msg += '\n\n⚠️ Số dư sau điều chỉnh bị ÂM. Vẫn tiếp tục?';
-  if (!confirm(msg)) return;
-
-  var mid = adjMid;
-  postAdjust(mid, delta, buildAdjustNote(adjType, text))
-  .then(function(res) {
-    if (res.status === 200) {
-      closeAdjModal();
-      showToast((t.key === 'gift' ? 'Đã tặng ' : (delta > 0 ? 'Đã cộng ' : 'Đã trừ ')) + Math.abs(delta).toFixed(2) + ' Medi · số dư mới ' + fmtMedi(res.data.balance));
-      loadCustomers();
-      if (custDetailMid === mid) openCustDetail(mid);
-    } else {
-      alert('Lỗi: ' + (res.data.error || 'Không xác định'));
-    }
-  })
-  .catch(function() { alert('Không gọi được Worker — kiểm tra kết nối'); });
 }
 
 function doResetDevice() {
@@ -917,27 +657,6 @@ function loadDashboard() {
 }
 
 // ================= Danh sach khach hang =================
-function copyMidText(text, btn) {
-  function done() {
-    if (!btn) return;
-    var old = btn.textContent;
-    btn.textContent = '✔ Đã copy';
-    btn.classList.add('copied');
-    setTimeout(function() { btn.textContent = old; btn.classList.remove('copied'); }, 1200);
-  }
-  function fallback() {
-    var ta = document.createElement('textarea');
-    ta.value = text; ta.style.position = 'fixed'; ta.style.left = '-9999px';
-    document.body.appendChild(ta); ta.select();
-    try { document.execCommand('copy'); done(); } catch (e) { prompt('Sao chép thủ công:', text); }
-    document.body.removeChild(ta);
-  }
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(done, fallback);
-  } else {
-    fallback();
-  }
-}
 function loadCustomers() {
   var search = document.getElementById('custSearchInput').value.trim();
   var url = WALLET_API + '/admin/customers' + (search ? ('?search=' + encodeURIComponent(search)) : '');
@@ -958,29 +677,23 @@ function loadCustomers() {
           ? '<span class="badge badge-trial">' + (warrantyMap[c.warranty_status] || c.warranty_status) + '</span>'
           : '<span class="badge badge-none">Chưa có TT</span>';
         tr.innerHTML =
-          '<td><code>' + c.machine_id + '</code><button type="button" class="copy-mid-btn" title="Sao chép Mã máy">📋 Copy</button></td>' +
+          '<td><code>' + c.machine_id + '</code></td>' +
           '<td>' + (c.name || '<span style="color:#bbb">(chưa có tên)</span>') + '<br><span style="color:#888">' + (c.phone || '(chưa có SĐT)') + '</span></td>' +
           '<td>' + (c.org || '—') + '</td>' +
           '<td>' + fmtMedi(c.balance_medi) + ' Medi</td>' +
           '<td>' + statusBadge + '</td>' +
-          '<td>' + warrantyBadge + '</td>' +
-          '<td><button type="button" class="adj-btn" title="Cộng/trừ Medi hoặc tặng hàng">⚖️ Bù trừ</button></td>' +
-          '<td class="note-cell">' + (c.admin_note ? esc(c.admin_note) : '<span style="color:#bbb">—</span>') + '</td>';
-        var adjBtn = tr.querySelector('.adj-btn');
-        if (adjBtn) adjBtn.onclick = function(e) { e.stopPropagation(); openAdjModal(c.machine_id, c.balance_medi); };
-        var copyBtn = tr.querySelector('.copy-mid-btn');
-        if (copyBtn) copyBtn.onclick = function(e) { e.stopPropagation(); copyMidText(c.machine_id, copyBtn); };
+          '<td>' + warrantyBadge + '</td>';
         tbody.appendChild(tr);
       });
       if (!(d.customers || []).length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px">Không tìm thấy khách hàng nào</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#999;padding:20px">Không tìm thấy khách hàng nào</td></tr>';
       }
     })
     .catch(function() { alert('Không tải được danh sách khách hàng — kiểm tra kết nối Worker'); });
 }
 
 // ================= Chi tiet 1 khach hang =================
-var custDetailMid = null, custDetailBal = 0;
+var custDetailMid = null;
 function openCustDetail(mid) {
   custDetailMid = mid;
   fetch(WALLET_API + '/admin/customer?mid=' + encodeURIComponent(mid), { headers: { 'X-Admin-Key': adminKey } })
@@ -988,23 +701,9 @@ function openCustDetail(mid) {
     .then(function(d) {
       if (d.error) { alert('Lỗi tải chi tiết: ' + d.error); return; }
       var w = d.wallet, c = d.customer || {};
-      custDetailBal = Number(w.balance_medi) || 0;
       document.getElementById('custDetailTitle').textContent = 'Chi tiết — ' + mid;
-      var sums = { buy: 0, trial: 0, gift: 0, adjPlus: 0, adjMinus: 0, use: 0 };
-      (d.transactions || []).forEach(function(t) {
-        var k = classifyTx(t).cat, v = Number(t.medi_delta) || 0;
-        if (k === 'use') sums.use += -v;
-        else if (k === 'adjMinus') sums.adjMinus += -v;
-        else if (sums.hasOwnProperty(k)) sums[k] += v;
-      });
-      var totalBought = sums.buy, totalUsed = sums.use;
-      document.getElementById('custSumLine').innerHTML =
-        '<span class="tag tag-buy">Mua</span> ' + fmtMedi(sums.buy) +
-        ' &nbsp; <span class="tag tag-gift">🎁 Tặng</span> ' + fmtMedi(sums.gift) +
-        ' &nbsp; <span class="tag tag-trial">Dùng thử</span> ' + fmtMedi(sums.trial) +
-        ' &nbsp; <span class="tag tag-adj">Bù</span> +' + fmtMedi(sums.adjPlus) + ' / −' + fmtMedi(sums.adjMinus) +
-        ' &nbsp; <span class="tag tag-use">Đã dùng</span> ' + fmtMedi(sums.use) +
-        '<div style="font-size:11px;color:#999">Tính trên các giao dịch tải về dưới đây (đơn vị: Medi).</div>';
+      var totalBought = (d.transactions || []).filter(function(t){return t.type==='topup';}).reduce(function(s,t){return s+t.medi_delta;},0);
+      var totalUsed = (d.transactions || []).filter(function(t){return t.type==='spend';}).reduce(function(s,t){return s-t.medi_delta;},0);
       document.getElementById('custDetailGrid').innerHTML =
         '<div><div class="k">Còn lại</div><div class="v">' + fmtMedi(w.balance_medi) + ' Medi</div></div>' +
         '<div><div class="k">Đã mua (tổng)</div><div class="v">' + fmtMedi(totalBought) + ' Medi</div></div>' +
@@ -1013,31 +712,39 @@ function openCustDetail(mid) {
         '<div><div class="k">Ngày đăng ký (ví)</div><div class="v">' + fmtDate(w.created_at) + '</div></div>' +
         '<div><div class="k">Zalo</div><div class="v">' + (c.zalo || '—') + '</div></div>';
 
-      var orderHtml = (d.orders || []).map(function(o) {
-        var statusMap = { pending: 'Chờ TT', cancelled: 'Đã huỷ' };
-        var statusHtml;
-        if (o.status === 'paid') {
-          statusHtml = '<span class="status-pill status-paid">Đã TT</span>';
-        } else if (o.status === 'refunded') {
-          statusHtml = '<span class="status-pill status-refunded">Đã hoàn tiền</span>';
-        } else {
-          statusHtml = statusMap[o.status] || o.status;
-        }
+      var allOrders = d.orders || [];
+      var mainOrders = allOrders.filter(function(o) { return o.status === 'paid' || o.status === 'refunded'; });
+      var waitOrders = allOrders.filter(function(o) { return o.status === 'pending' || o.status === 'cancelled'; });
+
+      var orderHtml = mainOrders.map(function(o) {
+        var badge = o.status === 'paid'
+          ? '<span class="badge badge-active">Đã thanh toán</span>'
+          : '<span class="badge badge-empty">Đã hoàn tiền</span>';
         var refundBtn = o.status === 'paid'
           ? '<button class="mini-refund-btn" onclick="doRefundOrder(' + o.id + ', event)">Hoàn tiền</button>'
           : '';
-        return '<div class="hist-row"><span>' + fmtDate(o.created_at) + ' · ' + fmtVnd(o.amount_vnd) + '</span><span>' + statusHtml + refundBtn + '</span></div>';
+        return '<div class="hist-row"><span>' + fmtDate(o.paid_at || o.created_at) + ' · ' + fmtVnd(o.amount_vnd) + '</span><span>' + badge + refundBtn + '</span></div>';
       }).join('');
-      document.getElementById('custOrderHist').innerHTML = orderHtml || '<span style="color:#999">Chưa có đơn hàng nào</span>';
+      document.getElementById('custOrderHist').innerHTML = orderHtml || '<span style="color:#999">Chưa có đơn thanh toán nào</span>';
+
+      var pendBox = document.getElementById('custPendingBox');
+      if (waitOrders.length) {
+        var waitRows = waitOrders.map(function(o) {
+          var lbl = o.status === 'pending' ? 'Chờ thanh toán' : 'Đã huỷ';
+          return '<div class="hist-row"><span>' + fmtDate(o.created_at) + ' · ' + fmtVnd(o.amount_vnd) + '</span><span>' + lbl + '</span></div>';
+        }).join('');
+        pendBox.innerHTML = '<summary>Đơn chờ thanh toán / đã huỷ (' + waitOrders.length + ')</summary><div class="pending-rows">' + waitRows + '</div>';
+        pendBox.open = false;
+        pendBox.style.display = '';
+      } else {
+        pendBox.innerHTML = '';
+        pendBox.style.display = 'none';
+      }
 
       var txHtml = (d.transactions || []).map(function(t) {
-        var x = classifyTx(t);
-        return '<div class="tx-row"><span>' + fmtDate(t.created_at) + '</span>' +
-               '<span><span class="tag ' + x.cls + '">' + esc(x.label) + '</span></span>' +
-               '<span><b>' + fmtSigned(t.medi_delta) + '</b></span>' +
-               '<span class="tx-note">' + (x.text ? esc(x.text) : '<span style="color:#ccc">—</span>') + '</span></div>';
+        var typeMap = { topup: 'Nạp', trial: 'Dùng thử', spend: 'Sử dụng', admin_adjust: 'Admin chỉnh' };
+        return '<div class="hist-row"><span>' + fmtDate(t.created_at) + ' · ' + (typeMap[t.type] || t.type) + '</span><span>' + (t.medi_delta > 0 ? '+' : '') + t.medi_delta + ' Medi</span></div>';
       }).join('');
-      if (txHtml) txHtml = '<div class="tx-head"><span>Thời gian</span><span>Loại</span><span>Medi</span><span>Ghi chú</span></div>' + txHtml;
       document.getElementById('custTxHist').innerHTML = txHtml || '<span style="color:#999">Chưa có giao dịch nào</span>';
 
       document.getElementById('custEditPhone').value = c.phone || '';
