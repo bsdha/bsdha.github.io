@@ -7,8 +7,8 @@
    - Cho phép thêm/xoá dòng chỉ định nội soi (mặc định 1 dòng "Nội soi
      dạ dày thực quản" đúng như mẫu gốc).
    - Bác sĩ ký tên bên dưới: có thể bật/tắt hiển thị và xoá tên đã điền.
-   - Nút "IN PHIẾU CHỈ ĐỊNH" -> window.print() render đúng khổ A5, đúng
-     bố cục mẫu Word gốc (logo + SỞ Y TẾ + BV ĐK Bình Dương CS2).
+   - Nút "IN PHIẾU CHỈ ĐỊNH" -> tạo PDF khổ A5 (jsPDF, giống đơn thuốc) và mở
+     ở tab mới, đúng bố cục mẫu Word gốc (logo + SỞ Y TẾ + BV ĐK Bình Dương CS2).
    Không cần sửa nhiều index.html — file này tự render vào #noiSoiContent.
    ===================================================================== */
 (function () {
@@ -500,16 +500,254 @@
     el.className = "ns-status" + (cls ? " " + cls : "");
   }
 
+  /* Dự phòng: nếu chưa nạp được jsPDF/font thì in trực tiếp từ trang như trước */
   function nsBeforePrint() { document.documentElement.classList.add("ns-printing"); }
   function nsAfterPrint() { document.documentElement.classList.remove("ns-printing"); }
+  window.addEventListener("afterprint", nsAfterPrint);
+
+  /* Tạo PDF A5 bằng văn bản thật (cùng cách với đơn thuốc: jsPDF + font Roboto
+     dùng chung từ js/prescription.js) rồi mở ở TAB MỚI bằng trình xem PDF của
+     trình duyệt → bấm in là ra đúng khổ A5, không cần chỉnh gì. */
+  function nsCollect() {
+    var rows = [];
+    tbody.querySelectorAll(".ns-row").forEach(function (tr) {
+      rows.push({
+        nd: tr.querySelector(".ns-fld-noidung").value.trim(),
+        sl: tr.querySelector(".ns-fld-sl").value.trim(),
+        kq: tr.querySelector(".ns-fld-kq").value.trim()
+      });
+    });
+    var opt = nsBsSelect.options[nsBsSelect.selectedIndex];
+    var bsText = nsBsSelect.value || (opt ? opt.text.replace(/\s*★\s*$/, "") : "");
+    return {
+      tinhTrang: document.getElementById("nsTinhTrang").value,
+      hoTen: document.getElementById("nsHoTen").value.trim(),
+      namSinh: document.getElementById("nsNamSinh").value.trim(),
+      gioiTinh: document.getElementById("nsGioiTinh").value,
+      diaChi: document.getElementById("nsDiaChi").value.trim(),
+      rows: rows,
+      ngay: document.getElementById("nsNgay").value.trim(),
+      thang: document.getElementById("nsThang").value.trim(),
+      nam: document.getElementById("nsNam").value.trim(),
+      showBs: showBsChk.checked,
+      bsName: bsText,
+      bsIsBlank: !nsBsSelect.value
+    };
+  }
+
+  function nsBuildPdf(d) {
+    var jsPDF = window.jspdf.jsPDF;
+    var fonts = window.__rxPdfFonts;
+    var pdf = new jsPDF({ unit: "mm", format: "a5", compress: true });
+    pdf.addFileToVFS("Roboto-Regular.ttf", fonts.regular);
+    pdf.addFont("Roboto-Regular.ttf", "Roboto", "normal");
+    pdf.addFileToVFS("Roboto-Bold.ttf", fonts.bold);
+    pdf.addFont("Roboto-Bold.ttf", "Roboto", "bold");
+    pdf.setFont("Roboto", "normal");
+
+    var PW = pdf.internal.pageSize.getWidth();
+    var PH = pdf.internal.pageSize.getHeight();
+    var mx = 11, top = 10, bottom = 10, cw = PW - mx * 2;
+    var y = top;
+
+    function setF(style, size) { pdf.setFont("Roboto", style); pdf.setFontSize(size); }
+    function tw(str) { return pdf.getTextWidth(str); }
+    function text(str, x, yy, opts) { if (str) pdf.text(str, x, yy, opts); }
+    function ensureSpace(h) {
+      if (y + h > PH - bottom) { pdf.addPage(); y = top; }
+    }
+    // Đường chấm cách đều (giống đường chấm trong đơn thuốc)
+    function dots(x, yy, w) {
+      if (w <= 0) return;
+      setF("normal", 10.5);
+      var pitch = 1.1, n = Math.max(1, Math.floor(w / pitch) + 1);
+      for (var i = 0; i < n; i++) text(".", x + i * pitch, yy);
+    }
+
+    /* ---- Header: logo + 2 dòng tên cơ quan ---- */
+    var logoW = 14, logoH = 14;
+    try {
+      var ip = pdf.getImageProperties(LOGO_B64);
+      logoH = logoW * ip.height / ip.width;
+      pdf.addImage(LOGO_B64, "JPEG", mx, y, logoW, logoH);
+    } catch (e) { /* bỏ qua nếu logo lỗi */ }
+    var hx = mx + logoW + 3;
+    setF("normal", 9.5);
+    text(SO_Y_TE, hx, y + logoH / 2 - 0.8);
+    setF("bold", 9.5);
+    text(HOSPITAL_NAME, hx, y + logoH / 2 + 4);
+    y += logoH + 3;
+
+    /* ---- Tiêu đề + tình trạng ---- */
+    setF("bold", 15);
+    var title = "PHIẾU CHỈ ĐỊNH NỘI SOI";
+    text(title, (PW - tw(title)) / 2, y + 5);
+    y += 11;
+    setF("normal", 11);
+    var tt = "Tình trạng: " + d.tinhTrang;
+    text(tt, (PW - tw(tt)) / 2, y);
+    y += 8;
+
+    /* ---- Dòng Họ tên / Năm sinh / Giới tính ---- */
+    var LS = 10.5;
+    setF("normal", LS);
+    var lName = "Họ và tên:", lDob = "Năm sinh:", lSex = "Giới tính:";
+    var gap = 1.5, dobW = 9, sexW = 8, sp = 2.5;
+    var wName = tw(lName), wDob = tw(lDob), wSex = tw(lSex);
+    var sexBlock = wSex + gap + sexW;
+    var dobBlock = wDob + gap + dobW;
+    var nameX = mx + wName + gap;
+    var nameW = cw - wName - gap - sp - dobBlock - sp - sexBlock;
+    var dobX0 = mx + cw - sexBlock - sp - dobBlock;
+    var sexX0 = mx + cw - sexBlock;
+
+    setF("normal", LS); text(lName, mx, y);
+    var nm = (d.hoTen || "").toUpperCase(), nsz = LS;
+    setF("bold", nsz);
+    while (tw(nm) > nameW - 1.5 && nsz > 8) { nsz -= 0.5; setF("bold", nsz); }
+    text(nm, nameX, y);
+    dots(nameX + tw(nm) + 1, y, nameW - tw(nm) - 1);
+
+    setF("normal", LS); text(lDob, dobX0, y);
+    setF("bold", LS); text(d.namSinh, dobX0 + wDob + gap, y);
+    dots(dobX0 + wDob + gap + tw(d.namSinh) + 1, y, dobW - tw(d.namSinh) - 1);
+
+    setF("normal", LS); text(lSex, sexX0, y);
+    setF("bold", LS); text(d.gioiTinh, sexX0 + wSex + gap, y);
+    dots(sexX0 + wSex + gap + tw(d.gioiTinh) + 1, y, sexW - tw(d.gioiTinh) - 1);
+    y += 7;
+
+    /* ---- Địa chỉ (xuống dòng nếu dài) ---- */
+    setF("normal", LS);
+    var lAddr = "Địa chỉ:";
+    var wAddr = tw(lAddr);
+    var ax = mx + wAddr + gap;
+    text(lAddr, mx, y);
+    setF("bold", LS);
+    var aLines = d.diaChi ? pdf.splitTextToSize(d.diaChi.toUpperCase(), cw - wAddr - gap) : [""];
+    aLines.forEach(function (ln, i) {
+      if (i > 0) { y += 5.2; ensureSpace(6); setF("bold", LS); }
+      text(ln, ax, y);
+      if (i === aLines.length - 1) dots(ax + tw(ln) + 1, y, mx + cw - ax - tw(ln) - 1);
+    });
+    y += 7;
+
+    /* ---- Chẩn đoán ---- */
+    setF("normal", LS);
+    var lDiag = "Chẩn đoán:";
+    text(lDiag, mx, y);
+    setF("bold", LS);
+    text("Viêm dạ dày & tá tràng", mx + tw(lDiag) + gap, y);
+    y += 6;
+
+    /* ---- Bảng chỉ định ---- */
+    var cStt = cw * 0.07, cSl = cw * 0.14, cKq = cw * 0.32, cNd = cw - cStt - cSl - cKq;
+    var xs = [mx, mx + cStt, mx + cStt + cNd, mx + cStt + cNd + cSl];
+    var ws = [cStt, cNd, cSl, cKq];
+    var LH = 4.6, pad = 1.8;
+
+    ensureSpace(14);
+    var hh = 7;
+    pdf.setDrawColor(0); pdf.setLineWidth(0.25);
+    pdf.setFillColor(245, 245, 245);
+    pdf.rect(mx, y, cw, hh, "F");
+    setF("bold", 9.5);
+    ["STT", "NỘI DUNG", "SỐ LƯỢNG", "KẾT QUẢ"].forEach(function (h, i) {
+      pdf.rect(xs[i], y, ws[i], hh);
+      text(h, xs[i] + ws[i] / 2 - tw(h) / 2, y + hh / 2 + 1.3);
+    });
+    y += hh;
+
+    d.rows.forEach(function (r, idx) {
+      setF("normal", 10.5);
+      var ndL = r.nd ? pdf.splitTextToSize(r.nd, ws[1] - pad * 2) : [""];
+      var kqL = r.kq ? pdf.splitTextToSize(r.kq, ws[3] - pad * 2) : [""];
+      var rh = Math.max(9, Math.max(ndL.length, kqL.length) * LH + 3);
+      ensureSpace(rh);
+      for (var i = 0; i < 4; i++) pdf.rect(xs[i], y, ws[i], rh);
+      setF("normal", 10.5);
+      var cy = y + rh / 2 + 1.3;
+      var s = String(idx + 1);
+      text(s, xs[0] + ws[0] / 2 - tw(s) / 2, cy);
+      var slv = r.sl || "";
+      text(slv, xs[2] + ws[2] / 2 - tw(slv) / 2, cy);
+      var y0 = y + (rh - ndL.length * LH) / 2 + 3.4;
+      ndL.forEach(function (ln, k) { text(ln, xs[1] + pad, y0 + k * LH); });
+      var y1 = y + (rh - kqL.length * LH) / 2 + 3.4;
+      kqL.forEach(function (ln, k) { text(ln, xs[3] + pad, y1 + k * LH); });
+      y += rh;
+    });
+    y += 6;
+
+    /* ---- Chân phiếu: ngày tháng năm + bác sĩ điều trị ---- */
+    ensureSpace(d.showBs ? 40 : 18);
+    var colW = 62, cx = PW - mx - colW / 2;
+    setF("normal", 10.5);
+    var segs = [
+      { t: "Ngày", lab: true }, { t: d.ngay, w: 7 },
+      { t: "tháng", lab: true }, { t: d.thang, w: 7 },
+      { t: "năm", lab: true }, { t: d.nam, w: 12 }
+    ];
+    var g2 = 1.5, total = 0;
+    segs.forEach(function (sg, i) {
+      sg.width = sg.lab ? tw(sg.t) : Math.max(sg.w, tw(sg.t) + 1.5);
+      total += sg.width + (i ? g2 : 0);
+    });
+    var dx = cx - total / 2;
+    segs.forEach(function (sg) {
+      setF("normal", 10.5);
+      if (sg.lab) { text(sg.t, dx, y); }
+      else {
+        var vx = dx + (sg.width - tw(sg.t)) / 2;
+        text(sg.t, vx, y);
+        if (!sg.t) dots(dx, y, sg.width);
+      }
+      dx += sg.width + g2;
+    });
+    y += 6;
+    setF("bold", 11);
+    var bt = "Bác sĩ điều trị";
+    text(bt, cx - tw(bt) / 2, y);
+    if (d.showBs) {
+      y += 24;
+      var nm2 = d.bsIsBlank ? d.bsName : d.bsName.toUpperCase();
+      setF(d.bsIsBlank ? "normal" : "bold", 11);
+      text(nm2, cx - tw(nm2) / 2, y);
+    }
+
+    try {
+      pdf.setProperties({ title: "Phiếu chỉ định nội soi" + (d.hoTen ? " - " + d.hoTen : "") });
+    } catch (e) { /* không quan trọng */ }
+    return pdf;
+  }
 
   document.getElementById("nsPrintBtn").addEventListener("click", function () {
     if (typeof logUsage === "function") logUsage("phieunoisoi_print");
-    nsBeforePrint();
-    window.print();
-    setTimeout(nsAfterPrint, 1000);
+
+    // Dự phòng nếu jsPDF / font chưa sẵn sàng
+    if (!(window.jspdf && window.jspdf.jsPDF && window.__rxPdfFonts)) {
+      nsBeforePrint();
+      window.print();
+      setTimeout(nsAfterPrint, 1000);
+      return;
+    }
+    try {
+      var d = nsCollect();
+      var pdf = nsBuildPdf(d);
+      // window.open phải gọi ngay trong cử chỉ click (không await trước đó) để không bị chặn popup
+      var blobUrl = pdf.output("bloburl");
+      var w = window.open(blobUrl, "_blank");
+      if (!w) {
+        var safe = (d.hoTen || "phieunoisoi").replace(/[^\p{L}\p{N}]+/gu, "_");
+        pdf.save("PhieuNoiSoi_" + safe + ".pdf");
+        setStatus("Trình duyệt chặn tab mới — đã tải file PDF xuống.", "ok");
+      } else {
+        setStatus("Đã mở phiếu ở tab mới (khổ A5).", "ok");
+      }
+    } catch (err) {
+      setStatus("Lỗi tạo PDF: " + err.message, "");
+    }
   });
-  window.addEventListener("afterprint", nsAfterPrint);
 
   /* ---------------------------------------------------------------- */
   /* 9. Làm mới phiếu                                                   */
