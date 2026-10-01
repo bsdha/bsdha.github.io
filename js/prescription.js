@@ -1456,35 +1456,13 @@
       if (brand) brand.focus();
     }
 
-    // Dải cảnh báo vàng đầu trang — chỉ hiện khi tab được mở từ nút Helixfast (HIS đã trả lời) mà không có dữ liệu.
-    function showNotice(msg) {
-      if ($('rxHisNotice')) return;
-      const bar = document.createElement('div');
-      bar.id = 'rxHisNotice';
-      bar.className = 'rx-his-notice';
-      const text = document.createElement('span');
-      text.textContent = msg;
-      const close = document.createElement('button');
-      close.type = 'button';
-      close.textContent = '✕';
-      close.title = 'Đóng';
-      bar.appendChild(text);
-      bar.appendChild(close);
-      const wrap = document.querySelector('#page-donthuoc .rx-wrap');
-      if (wrap) wrap.insertBefore(bar, wrap.firstChild); else document.body.insertBefore(bar, document.body.firstChild);
-      const hide = () => { bar.remove(); document.removeEventListener('input', hide, true); };
-      close.addEventListener('click', hide);
-      document.addEventListener('input', hide, true); // bắt đầu gõ là tự tắt
-    }
-
     let received = false;
     window.addEventListener('message', (ev) => {
       if (ev.origin !== HIS_ORIGIN || ev.source !== window.opener) return;
       const d = ev.data;
       if (!d || d.type !== 'bsdha-rx-patient') return;
       received = true;
-      if (d.patient && typeof d.patient === 'object') applyPatient(d.patient);
-      else showNotice('⚠️ Không đọc được thông tin bệnh nhân từ HIS (trang này chưa có bệnh nhân hoặc khác trang Khám bệnh / Quản lý cấp cứu) — vui lòng nhập tay.');
+      applyPatient(d.patient);
     });
 
     // Báo cho tab HIS biết trang đã sẵn sàng nhận (thử lại vài giây phòng khi trang chưa nạp xong).
