@@ -1393,218 +1393,22 @@
     ageHint.textContent = age !== null ? `Tuổi: ${age}` : '';
   });
 
-  // ---------- Ô dán ảnh AI: tự động trích xuất & điền thông tin bệnh nhân ----------
-  (function initAiPasteBox() {
-    const box = $('rxAiPasteBox');
-    const statusEl = $('rxAiStatus');
+  // ---------- Nút "Xoá thông tin đã điền": xoá nhanh toàn bộ thông tin bệnh nhân ----------
+  (function initClearPatientBtn() {
     const clearBtn = $('rxAiClearBtn');
-    if (!box) return;
-
-    const AI_EXTRACT_URL = 'https://bsdha-usage-tracker.dhabolero.workers.dev/ai-extract-patient';
-
-    function setStatus(msg, kind) {
-      statusEl.textContent = msg || '';
-      statusEl.classList.remove('rx-ai-status-loading', 'rx-ai-status-ok', 'rx-ai-status-err');
-      if (kind) statusEl.classList.add('rx-ai-status-' + kind);
-    }
-
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const r = new FileReader();
-        r.onload = () => resolve(String(r.result).split(',')[1] || '');
-        r.onerror = () => reject(new Error('read failed'));
-        r.readAsDataURL(file);
-      });
-    }
-
-    // Chuyển "dd/mm/yyyy" hoặc "yyyy-mm-dd" -> "yyyy-mm-dd" cho input[type=date]
-    function normalizeDob(raw) {
-      if (!raw) return '';
-      const s = String(raw).trim();
-      let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-      if (m) {
-        const dd = m[1].padStart(2, '0'), mm = m[2].padStart(2, '0'), yyyy = m[3];
-        return `${yyyy}-${mm}-${dd}`;
-      }
-      m = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-      if (m) {
-        const yyyy = m[1], mm = m[2].padStart(2, '0'), dd = m[3].padStart(2, '0');
-        return `${yyyy}-${mm}-${dd}`;
-      }
-      return '';
-    }
-
-    function flashField(el) {
-      if (!el) return;
-      el.classList.remove('rx-ai-field-flash');
-      // force reflow để animation chạy lại nếu trước đó vừa flash
-      void el.offsetWidth;
-      el.classList.add('rx-ai-field-flash');
-      setTimeout(() => el.classList.remove('rx-ai-field-flash'), 1500);
-    }
-
-    function setVal(id, value) {
-      if (value === undefined || value === null || value === '') return;
-      const el = $(id);
-      if (!el) return;
-      el.value = value;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-      flashField(el);
-    }
-
-    function fillPatientForm(d) {
-      if (!d || typeof d !== 'object') return 0;
-      let filled = 0;
-      if (d.hoTen) { setVal('rxPatientName', String(d.hoTen).toUpperCase()); filled++; }
-      const dob = normalizeDob(d.ngaySinh);
-      if (dob) { setVal('rxPatientDob', dob); filled++; }
-      if (d.gioiTinh) {
-        const sexVal = /nam/i.test(d.gioiTinh) && !/nữ/i.test(d.gioiTinh) ? 'Nam' : (/nữ|nu/i.test(d.gioiTinh) ? 'Nữ' : '');
-        if (sexVal) { setVal('rxPatientSex', sexVal); filled++; }
-      }
-      if (d.diaChi) { setVal('rxAddress', d.diaChi); filled++; }
-      if (d.chanDoan) { setVal('rxDiagnosis', d.chanDoan); filled++; }
-      if (d.mach) { setVal('rxVitalPulse', d.mach); filled++; }
-      if (d.huyetApTren) { setVal('rxVitalBpSys', d.huyetApTren); filled++; }
-      if (d.huyetApDuoi) { setVal('rxVitalBpDia', d.huyetApDuoi); filled++; }
-      if (d.nhietDo) { setVal('rxVitalTemp', d.nhietDo); filled++; }
-      if (d.nhipTho) { setVal('rxVitalResp', d.nhipTho); filled++; }
-      if (d.canNang) { setVal('rxVitalWeight', d.canNang); filled++; }
-      return filled;
-    }
-
-    // Các trường mà ô dán AI có thể điền vào — dùng chung để xoá nhanh khi AI điền sai.
-    const AI_FILLABLE_FIELD_IDS = [
+    if (!clearBtn) return;
+    const PATIENT_FIELD_IDS = [
       'rxPatientName', 'rxPatientDob', 'rxPatientSex', 'rxAddress', 'rxDiagnosis',
       'rxVitalPulse', 'rxVitalBpSys', 'rxVitalBpDia', 'rxVitalTemp', 'rxVitalResp', 'rxVitalWeight',
     ];
-
-    function clearAiFilledFields() {
-      AI_FILLABLE_FIELD_IDS.forEach((id) => {
+    clearBtn.addEventListener('click', () => {
+      PATIENT_FIELD_IDS.forEach((id) => {
         const el = $(id);
         if (!el) return;
         el.value = '';
         el.dispatchEvent(new Event('input', { bubbles: true }));
         el.dispatchEvent(new Event('change', { bubbles: true }));
       });
-      box.textContent = '';
-      setStatus('Đã xoá thông tin bệnh nhân — dán lại ảnh/văn bản hoặc nhập tay.', '');
-    }
-
-    if (clearBtn) {
-      clearBtn.addEventListener('click', clearAiFilledFields);
-    }
-
-    // Các model AI miễn phí đôi khi quá tải/rate-limit nên có thể lỗi ngẫu nhiên dù
-    // ảnh/văn bản hoàn toàn hợp lệ -> tự động thử lại ngầm 1 lần trước khi báo lỗi
-    // cho người dùng, để giảm cảm giác "lúc được lúc không".
-    async function callExtractApi(body, { retries = 1 } = {}) {
-      let lastErr = null;
-      for (let attempt = 0; attempt <= retries; attempt++) {
-        try {
-          const res = await fetch(AI_EXTRACT_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-          });
-          if (!res.ok) throw new Error('HTTP ' + res.status);
-          return await res.json();
-        } catch (err) {
-          lastErr = err;
-          if (attempt < retries) {
-            setStatus('Máy chủ AI đang bận, đang thử lại...', 'loading');
-            await new Promise((r) => setTimeout(r, 800));
-          }
-        }
-      }
-      throw lastErr;
-    }
-
-    async function handleImageFile(file) {
-      if (!file) return;
-      box.classList.add('rx-ai-loading');
-      box.textContent = '';
-      setStatus('Đang phân tích ảnh, vui lòng chờ...', 'loading');
-      try {
-        const base64 = await fileToBase64(file);
-        const data = await callExtractApi({ image: base64, mimeType: file.type || 'image/png' });
-        const filledCount = fillPatientForm(data);
-        if (filledCount > 0) {
-          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê toa.', 'ok');
-        } else {
-          setStatus('AI không đọc được thông tin nào từ ảnh này. Thử dán TEXT copy từ HIS thay vì ảnh sẽ chính xác hơn, hoặc nhập tay.', 'err');
-        }
-      } catch (err) {
-        console.error('AI extract error:', err);
-        setStatus('Không đọc được ảnh (máy chủ AI đang bận). Vui lòng dán lại, thử dán TEXT copy từ HIS, hoặc nhập tay.', 'err');
-      } finally {
-        box.classList.remove('rx-ai-loading');
-        box.textContent = '';
-      }
-    }
-
-    async function handleTextPaste(text) {
-      const trimmed = (text || '').trim();
-      if (!trimmed) return;
-      box.classList.add('rx-ai-loading');
-      box.textContent = '';
-      setStatus('Đang phân tích văn bản, vui lòng chờ...', 'loading');
-      try {
-        const data = await callExtractApi({ text: trimmed });
-        const filledCount = fillPatientForm(data);
-        if (filledCount > 0) {
-          setStatus('Đã điền thông tin bệnh nhân — vui lòng kiểm tra lại trước khi kê toa.', 'ok');
-        } else {
-          setStatus('AI không nhận diện được thông tin nào từ văn bản này. Vui lòng thử lại hoặc nhập tay.', 'err');
-        }
-      } catch (err) {
-        console.error('AI extract error:', err);
-        setStatus('Không xử lý được văn bản (máy chủ AI đang bận). Vui lòng dán lại hoặc nhập tay.', 'err');
-      } finally {
-        box.classList.remove('rx-ai-loading');
-        box.textContent = '';
-      }
-    }
-
-    box.addEventListener('paste', (e) => {
-      const items = (e.clipboardData && e.clipboardData.items) || [];
-      let imageFile = null;
-      for (const item of items) {
-        if (item.type && item.type.indexOf('image/') === 0) {
-          imageFile = item.getAsFile();
-          break;
-        }
-      }
-      if (imageFile) {
-        e.preventDefault();
-        handleImageFile(imageFile);
-        return;
-      }
-      // Không có ảnh trong clipboard -> thử lấy TEXT đã copy (từ phần mềm HIS, Excel, v.v.)
-      const pastedText = e.clipboardData && e.clipboardData.getData('text/plain');
-      if (pastedText && pastedText.trim()) {
-        e.preventDefault();
-        handleTextPaste(pastedText);
-      }
-    });
-
-    // Cho phép kéo-thả ảnh vào ô luôn, tiện hơn paste trên một số trình duyệt/máy
-    box.addEventListener('dragover', (e) => { e.preventDefault(); box.classList.add('rx-ai-dragover'); });
-    box.addEventListener('dragleave', () => box.classList.remove('rx-ai-dragover'));
-    box.addEventListener('drop', (e) => {
-      e.preventDefault();
-      box.classList.remove('rx-ai-dragover');
-      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-      if (file && file.type && file.type.indexOf('image/') === 0) handleImageFile(file);
-    });
-
-    // Ngăn gõ text trực tiếp vào ô (chỉ dùng để paste/kéo-thả ảnh), nhưng vẫn cho
-    // phép các tổ hợp phím có Ctrl/Cmd (Ctrl+V, Ctrl+C, Ctrl+A...) đi qua bình thường,
-    // nếu không trình duyệt sẽ không kích hoạt được hành động dán (paste) qua Ctrl+V.
-    box.addEventListener('keydown', (e) => {
-      if (e.key === 'Tab' || e.ctrlKey || e.metaKey) return;
-      e.preventDefault();
     });
   })();
 
