@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.78
+// @version      1.79
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,6 +11,14 @@
 // ==/UserScript==
 
 // ===== Changelog =====
+// 1.79  Thêm nút "💊 Kê toa DV của BSDHA" ngay trước nút Helixfast: bấm mở tab
+//       mới tới bsdha.github.io/donthuoc?mode=kt (chế độ chỉ kê toa, ẩn menu
+//       và các công cụ khác). Nút này không phụ thuộc bản quyền/công tắc Helixfast.
+//       Khi bấm, tự đọc thông tin bệnh nhân (họ tên, ngày sinh, giới tính, địa
+//       chỉ, chẩn đoán, sinh hiệu) ở trang Khám bệnh (/his/medical-examination)
+//       hoặc Quản lý cấp cứu (/his/emergency) rồi điền sẵn vào toa (gửi qua
+//       postMessage, không đưa lên URL). Nếu không đọc được thì tab kê toa hiện
+//       dải vàng "nhập tay" (chỉ khi mở từ nút này).
 // 1.78  Sửa thanh "Chọn nhanh" đôi lúc mất khi mở lại popup: chọn ô tìm kiếm/
 //       bảng đang HIỂN THỊ (không lấy bản ẩn cũ), thanh gắn theo header thay vì
 //       theo ID toàn cục, tự dọn thanh mồ côi và chèn lại khi bị mất.
@@ -39,7 +47,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '1.78';
+  const HELIXFAST_VERSION = '1.79';
   const SYMPTOM_SELECTOR = 'textarea[formcontrolname="symptom"]';
   const PROGRESSION_SELECTOR = 'textarea[formcontrolname="progression"]';
   const NOTE_TEXTAREA_SELECTOR = '.width-per88 textarea.form-control';
@@ -3477,6 +3485,9 @@
   const HELIXFAST_STORAGE_KEY = 'helixfast_enabled';
   const HELIXFAST_TOGGLE_LI_ID = 'helixfast-toggle-li';
   const HELIXFAST_SETTINGS_LINK_SELECTOR = 'a[title="Thiết lập"]';
+  const BSDHA_RX_LI_ID = 'helixfast-rx-li';
+  const BSDHA_RX_ORIGIN = 'https://bsdha.github.io';
+  const BSDHA_RX_URL = BSDHA_RX_ORIGIN + '/donthuoc?mode=kt';
 
   function isHelixfastEnabled() {
     if (!hlxGetLicenseStatus().valid) return false;
@@ -3500,6 +3511,39 @@
     const style = document.createElement('style');
     style.id = 'helixfast-toggle-style';
     style.textContent = `
+      #${BSDHA_RX_LI_ID} {
+        position: relative !important;
+        z-index: 2147483647 !important;
+        isolation: isolate;
+        display: inline-flex !important;
+        align-items: center;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        overflow: visible !important;
+      }
+      #${BSDHA_RX_LI_ID} > a {
+        display: inline-flex !important;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+        cursor: pointer;
+        width: auto !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+        outline: none !important;
+        box-shadow: none !important;
+      }
+      #${BSDHA_RX_LI_ID} > a:hover { color: #0f9d78; }
+      #${BSDHA_RX_LI_ID} > a { position: relative; z-index: 2147483647; }
+      .new-button .new-message,
+      .new-button .pre-new-message { pointer-events: none !important; }
+      body.hlx-rx-hover .new-button .new-message,
+      body.hlx-rx-hover .new-button .pre-new-message,
+      body.hlx-rx-hover .new-button .new-icon { display: none !important; }
+      body.hlx-rx-hover .new-button { pointer-events: none !important; }
       #${HELIXFAST_TOGGLE_LI_ID} {
         display: inline-flex !important;
         align-items: center;
@@ -3911,6 +3955,244 @@
     return li;
   }
 
+  // ===== Đọc thông tin bệnh nhân từ HIS để điền sẵn vào toa =====
+  // Hỗ trợ 2 trang: Khám bệnh (/his/medical-examination) và Quản lý cấp cứu (/his/emergency).
+  function bsdhaClean(t) {
+    return String(t == null ? '' : t).replace(/\u00a0/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  function bsdhaVisible(el) {
+    return !!(el && (el.offsetParent !== null || (el.getClientRects && el.getClientRects().length)));
+  }
+
+  function bsdhaOwnText(el) {
+    let t = '';
+    el.childNodes.forEach((n) => { if (n.nodeType === 3) t += n.textContent; });
+    return bsdhaClean(t).replace(/:$/, '');
+  }
+
+  // Các phần tử đang hiển thị mà chữ trực tiếp của chúng đúng bằng nhãn (không phân biệt hoa/thường).
+  function bsdhaFindLabels(text, root) {
+    const want = text.toLowerCase();
+    const out = [];
+    (root || document).querySelectorAll('td, label, div, span, b').forEach((el) => {
+      if (el.children.length > 3) return;
+      if (bsdhaOwnText(el).toLowerCase() === want && bsdhaVisible(el)) out.push(el);
+    });
+    return out;
+  }
+
+  function bsdhaValueOf(el) {
+    if (!el) return '';
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return bsdhaClean(el.value);
+    const inp = el.querySelector && el.querySelector('input, textarea');
+    if (inp) return bsdhaClean(inp.value);
+    return bsdhaClean(el.textContent);
+  }
+
+  function bsdhaNormDob(raw) {
+    const s = bsdhaClean(raw);
+    let m = s.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    let y, mo, d;
+    if (m) { d = +m[1]; mo = +m[2]; y = +m[3]; }
+    else {
+      m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+      if (!m) return '';
+      y = +m[1]; mo = +m[2]; d = +m[3];
+    }
+    if (y < 1880 || y > new Date().getFullYear() || mo < 1 || mo > 12 || d < 1 || d > 31) return '';
+    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
+
+  function bsdhaNormSex(raw) {
+    const s = bsdhaClean(raw).toLowerCase();
+    if (/^nữ$|^nu$|^female$/.test(s)) return 'Nữ';
+    if (/^nam$|^male$/.test(s)) return 'Nam';
+    return '';
+  }
+
+  // "(E78.2)- Tăng lipid máu\(R73.9)- Tăng đường huyết\" -> "Tăng lipid máu (E78.2); Tăng đường huyết (R73.9)"
+  function bsdhaFormatDiagnosis(raw) {
+    const items = String(raw || '').split('\\').map(bsdhaClean).filter(Boolean);
+    const out = [];
+    items.forEach((it) => {
+      if (/\.\.\.$|…$/.test(it)) return; // bị cắt bớt khi hiển thị -> bỏ, tránh ghi dở dang
+      const m = it.match(/^\(([A-Za-z][0-9A-Za-z.]*)\)\s*-?\s*(.+)$/);
+      out.push(m ? m[2].trim() + ' (' + m[1].toUpperCase() + ')' : it);
+    });
+    return out.join('; ');
+  }
+
+  // Ô sinh hiệu (Huyết áp / Mạch / Cân nặng / Nhiệt độ / Nhịp thở): nhãn đứng trước, giá trị ở ô kế bên.
+  function bsdhaReadVital(label, re) {
+    const labels = bsdhaFindLabels(label).filter((el) => el.tagName !== 'TH');
+    for (let i = 0; i < labels.length; i++) {
+      const L = labels[i];
+      const cands = [L.nextElementSibling, L.parentElement && L.parentElement.nextElementSibling];
+      for (let k = 0; k < cands.length; k++) {
+        const m = bsdhaValueOf(cands[k]).replace(',', '.').match(re);
+        if (m) return m;
+      }
+    }
+    return null;
+  }
+
+  function bsdhaScrapeVitals() {
+    const v = {};
+    const bp = bsdhaReadVital('Huyết áp', /(\d{2,3})\s*\/\s*(\d{2,3})/);
+    if (bp) { v.bpSys = bp[1]; v.bpDia = bp[2]; }
+    const pulse = bsdhaReadVital('Mạch', /(\d{2,3})/);
+    if (pulse) v.pulse = pulse[1];
+    const temp = bsdhaReadVital('Nhiệt độ', /(\d{2}(?:\.\d)?)/);
+    if (temp) v.temp = temp[1];
+    const resp = bsdhaReadVital('Nhịp thở', /(\d{1,2})/);
+    if (resp) v.resp = resp[1];
+    const w = bsdhaReadVital('Cân nặng', /(\d{1,3}(?:\.\d{1,2})?)/);
+    if (w) v.weight = w[1];
+    return v;
+  }
+
+  // Trang Khám bệnh: khối "TT bệnh nhân" (họ tên, giới tính, ngày sinh, bảng Địa chỉ / Bệnh sử).
+  function bsdhaScrapeExamPage() {
+    const boxes = Array.from(document.querySelectorAll('[data-bootstro-title="TT bệnh nhân"]'));
+    const box = boxes.find(bsdhaVisible);
+    if (!box) return null;
+    const head = box.querySelector('.width-per60') || box;
+    const nameEl = head.cloneNode(true);
+    nameEl.querySelectorAll('a, span, i, button, svg').forEach((n) => n.remove());
+    const p = { name: bsdhaClean(nameEl.textContent) };
+
+    if (head.querySelector('.fa-female')) p.sex = 'Nữ';
+    else if (head.querySelector('.fa-male')) p.sex = 'Nam';
+    else {
+      const sm = bsdhaClean(head.textContent).match(/(^|\s)(Nam|Nữ)(\s|$)/);
+      if (sm) p.sex = sm[2];
+    }
+
+    const dm = bsdhaClean(head.textContent).match(/NS:\s*(\d{1,2}\/\d{1,2}\/\d{4})/);
+    if (dm) p.dob = bsdhaNormDob(dm[1]);
+
+    const addrL = bsdhaFindLabels('Địa chỉ', box)[0];
+    if (addrL) p.address = bsdhaValueOf(addrL.nextElementSibling);
+
+    const histL = bsdhaFindLabels('Bệnh sử', box)[0];
+    if (histL && histL.nextElementSibling) {
+      const cell = histL.nextElementSibling;
+      const sp = cell.querySelector('span[title]');
+      p.diagnosis = bsdhaFormatDiagnosis(sp ? sp.getAttribute('title') : cell.textContent);
+    }
+    return p;
+  }
+
+  // Trang Quản lý cấp cứu: form "Họ tên / Ngày sinh / Xã-Tỉnh ..." (giá trị nằm trong ô input).
+  function bsdhaScrapeEmergencyPage() {
+    const nameL = bsdhaFindLabels('Họ tên')[0];
+    if (!nameL) return null;
+    const get = (label) => {
+      const L = bsdhaFindLabels(label)[0];
+      return L ? bsdhaValueOf(L.nextElementSibling) : '';
+    };
+    const p = { name: get('Họ tên') };
+    const dob = bsdhaNormDob(get('Ngày sinh'));
+    if (dob) p.dob = dob;
+    const sex = bsdhaNormSex(get('Giới tính'));
+    if (sex) p.sex = sex;
+    p.address = get('Xã/Tỉnh') || get('Địa chỉ');
+    return p;
+  }
+
+  function bsdhaScrapePatient() {
+    const p = bsdhaScrapeExamPage() || bsdhaScrapeEmergencyPage();
+    if (!p || !p.name) return null;
+    Object.assign(p, bsdhaScrapeVitals());
+    console.log('[BSDHA-RX] Đã đọc từ HIS:', p);
+    return p;
+  }
+
+  // Tab kê toa gửi 'bsdha-rx-ready' khi đã nạp xong -> trả thông tin bệnh nhân (chỉ tin đúng origin bsdha.github.io).
+  function bsdhaSendPatientWhenReady(win, patient) {
+    const onMsg = (ev) => {
+      if (ev.origin !== BSDHA_RX_ORIGIN || ev.source !== win) return;
+      if (!ev.data || ev.data.type !== 'bsdha-rx-ready') return;
+      try {
+        win.postMessage({ type: 'bsdha-rx-patient', v: 1, patient: patient || null }, BSDHA_RX_ORIGIN);
+      } catch (err) {
+        console.warn('[BSDHA-RX] Không gửi được dữ liệu sang tab kê toa:', err);
+      }
+    };
+    window.addEventListener('message', onMsg);
+    setTimeout(() => window.removeEventListener('message', onMsg), 60000);
+  }
+
+  // Thông báo nổi ngay trên trang HIS.
+  function bsdhaToast(msg) {
+    const old = document.getElementById('bsdha-rx-toast');
+    if (old) old.remove();
+    const t = document.createElement('div');
+    t.id = 'bsdha-rx-toast';
+    t.textContent = msg;
+    Object.assign(t.style, {
+      position: 'fixed', left: '50%', top: '70px', transform: 'translateX(-50%)',
+      background: '#c0392b', color: '#fff', padding: '12px 22px', borderRadius: '8px',
+      fontSize: '15px', fontWeight: '700', zIndex: 2147483647,
+      boxShadow: '0 4px 16px rgba(0,0,0,.35)', pointerEvents: 'none',
+    });
+    document.body.appendChild(t);
+    setTimeout(() => { if (t.parentNode) t.remove(); }, 3500);
+  }
+
+  let bsdhaRxHoverBound = false;
+  function bsdhaBindRxHoverOnce() {
+    if (bsdhaRxHoverBound) return;
+    bsdhaRxHoverBound = true;
+    const inRx = (e) => e.target && e.target.closest && e.target.closest('#' + BSDHA_RX_LI_ID);
+    ['mouseover', 'mouseenter', 'pointerover', 'pointerenter', 'mousemove'].forEach((type) => {
+      document.addEventListener(type, (e) => {
+        if (inRx(e)) { document.body.classList.add('hlx-rx-hover'); e.stopPropagation(); }
+        else document.body.classList.remove('hlx-rx-hover');
+      }, true);
+    });
+  }
+
+  function createBsdhaRxLi(settingsLi) {
+    const li = settingsLi.cloneNode(true);
+    li.removeAttribute('id');
+    li.id = BSDHA_RX_LI_ID;
+    li.classList.remove('open');
+    li.style.position = 'relative';
+
+    const link = li.querySelector('a') || li;
+    link.removeAttribute('data-toggle');
+    link.removeAttribute('href');
+    link.title = 'Mở tab mới: Kê toa thuốc dịch vụ của BSDHA (chỉ phần kê toa)';
+    link.innerHTML =
+      '<span class="helixfast-logo">💊</span>' +
+      '<span class="helixfast-label">Kê toa DV của BSDHA</span>';
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (typeof link.blur === 'function') link.blur();
+      let patient = null;
+      try {
+        patient = bsdhaScrapePatient();
+      } catch (err) {
+        console.warn('[BSDHA-RX] Lỗi đọc thông tin bệnh nhân:', err);
+      }
+      if (!patient) {
+        bsdhaToast('Chỉ khả dụng khi đang khám 1 bệnh nhân cụ thể');
+        return;
+      }
+      // Không dùng 'noopener': tab kê toa cần window.opener để nhận dữ liệu qua postMessage.
+      const w = window.open(BSDHA_RX_URL, '_blank');
+      if (!w) return;
+      // Luôn trả lời tab kê toa (kể cả khi không đọc được, patient = null) để tab đó biết mình mở từ Helixfast
+      // và hiện dải cảnh báo "nhập tay".
+      bsdhaSendPatientWhenReady(w, patient);
+    });
+    bsdhaBindRxHoverOnce();
+    return li;
+  }
+
   function ensureHelixfastToggleButton() {
     const settingsLink = document.querySelector(HELIXFAST_SETTINGS_LINK_SELECTOR);
     if (!settingsLink) return;
@@ -3928,6 +4210,12 @@
 
     if (settingsLi.previousElementSibling !== li) {
       settingsLi.insertAdjacentElement('beforebegin', li);
+    }
+
+    let rxLi = document.getElementById(BSDHA_RX_LI_ID);
+    if (!rxLi) rxLi = createBsdhaRxLi(settingsLi);
+    if (li.previousElementSibling !== rxLi) {
+      li.insertAdjacentElement('beforebegin', rxLi);
     }
   }
 
@@ -4040,6 +4328,58 @@
 
         { label: 'Nhóm máu ABO', color: '#4e342e',
           keywords: ['Định nhóm máu hệ ABO (Kỹ thuật phiến đá)'] },
+
+        { label: 'X-quang', color: '#3949ab',
+          sub: [
+              { header: 'Đầu mặt' },
+              { label: 'Sọ thẳng/nghiêng', keywords: ['Chụp Xquang sọ thẳng/nghiêng'] },
+              { label: 'Blondeau (1 phim)', keywords: ['Chụp Xquang Blondeau [B - 01 phim]'] },
+              { label: 'Blondeau + Hirtz (2 phim)', keywords: ['Chụp Xquang Blondeau [Blondeau + Hirtz số hóa 2 phim]'] },
+              { label: 'Hirtz (1 phim)', keywords: ['Chụp Xquang Hirtz [H - 01 phim]'] },
+
+              { header: 'Ngực / Cột sống' },
+              { label: 'Ngực thẳng', keywords: ['Chụp Xquang ngực thẳng [01 phim]'] },
+              { label: 'CS cổ thẳng/nghiêng', keywords: ['Chụp Xquang cột sống cổ thẳng nghiêng [ thẳng hoặc nghiêng 01 phim]'] },
+              { label: 'CS thắt lưng thẳng/nghiêng', keywords: ['Chụp Xquang cột sống thắt lưng thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+              { label: 'CS thắt lưng L5-S1', keywords: ['Chụp Xquang cột sống thắt lưng L5-S1 thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+
+              { header: 'Chi trên' },
+              { label: 'Khớp vai', keywords: ['Chụp Xquang khớp vai thẳng [01 phim]'] },
+              { label: 'Xương bả vai', keywords: ['Chụp Xquang xương bả vai thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+              { label: 'Xương cánh tay', keywords: ['Chụp Xquang xương cánh tay thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+              { label: 'Xương cẳng tay', keywords: ['Chụp Xquang xương cẳng tay thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+              { label: 'Xương cổ tay', keywords: ['Chụp Xquang xương cổ tay thẳng, nghiêng hoặc chếch [T hoặc N hoặc C, 01 phim]'] },
+              { label: 'Bàn, ngón tay', keywords: ['Chụp Xquang xương bàn ngón tay thẳng, nghiêng hoặc chếch [T hoặc N hoặc C, 01 phim]'] },
+
+              { header: 'Chi dưới' },
+              { label: 'Khung chậu thẳng', keywords: ['Chụp Xquang khung chậu thẳng [01 phim]'] },
+              { label: 'Xương đùi', keywords: ['Chụp Xquang xương đùi thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+              { label: 'Khớp gối', keywords: ['Chụp Xquang khớp gối thẳng, nghiêng hoặc chếch [01 phim]'] },
+              { label: 'Xương cẳng chân', keywords: ['Chụp Xquang xương cẳng chân thẳng nghiêng [thẳng hoặc nghiêng, 01 phim]'] },
+              { label: 'Xương cổ chân', keywords: ['Chụp Xquang xương cổ chân thẳng, nghiêng hoặc chếch [01 phim]'] },
+              { label: 'Bàn, ngón chân', keywords: ['Chụp Xquang xương bàn, ngón chân thẳng, nghiêng hoặc chếch [01 phim]'] }
+          ] },
+
+        { label: 'Siêu âm / Điện tim', color: '#00838f',
+          sub: [
+              { header: 'Siêu âm' },
+              { label: 'Ổ bụng', keywords: ['Siêu âm ổ bụng'] },
+              { label: 'Tuyến giáp', keywords: ['Siêu âm tuyến giáp'] },
+              { label: 'Khớp (gối, háng, khuỷu, cổ tay...)', keywords: ['Siêu âm khớp (gối, háng, khuỷu, cổ tay...)'] },
+              { label: 'Phần mềm cổ mặt', keywords: ['Siêu âm cơ phần mềm vùng cổ mặt'] },
+              { label: 'Phần mềm (da, dưới da, cơ)', keywords: ['Siêu âm phần mềm (da, tổ chức dưới da, cơ'] },
+
+              { header: 'Điện tim' },
+              { label: 'Điện tim thường', keywords: ['Điện tim thường'] }
+          ] },
+
+        { label: 'Thủ thuật', color: '#00695c',
+          sub: [
+              { label: 'Hút dịch khớp gối', keywords: ['Hút dịch khớp gối'] },
+              { label: 'Hút ổ viêm / áp xe phần mềm', keywords: ['Hút ổ viêm/ áp xe phần mềm'] },
+              { label: 'Thay băng, cắt chỉ vết mổ (<15cm)', keywords: ['Thay băng, cắt chỉ vết mổ [(vết mổ, nhi + người lớn) (dưới 15cm)]'] },
+              { label: 'Khâu vết thương nông (<10cm)', keywords: ['Khâu vết thương phần mềm dài dưới 10cm [tổn thương nông]'] }
+          ] },
     ];
 
     const TOOLBAR_ID = 'cls_qs_toolbar';
@@ -4517,6 +4857,17 @@
             });
 
             group.sub.forEach(opt => {
+                if (opt.header) {
+                    const h = document.createElement('div');
+                    h.textContent = opt.header;
+                    Object.assign(h.style, {
+                        fontSize: '11px', fontWeight: '700', color: group.color,
+                        textTransform: 'uppercase', letterSpacing: '.3px',
+                        padding: '4px 2px 2px', borderBottom: '1px solid #ddd', marginTop: '2px',
+                    });
+                    menu.appendChild(h);
+                    return;
+                }
                 const optBtn = makeBaseBtn(opt.label, group.color);
                 optBtn.style.textAlign = 'left';
                 optBtn.style.width = '100%';
@@ -4536,6 +4887,18 @@
             menu.style.top = (rect.bottom + 4) + 'px';
             menu.style.left = rect.left + 'px';
             document.body.appendChild(menu);
+            (function clampMenu() {
+                const mr = menu.getBoundingClientRect();
+                if (mr.right > window.innerWidth - 8) menu.style.left = Math.max(8, window.innerWidth - mr.width - 8) + 'px';
+                if (mr.bottom > window.innerHeight - 8) {
+                    const newTop = Math.max(8, window.innerHeight - mr.height - 8);
+                    menu.style.top = newTop + 'px';
+                    if (mr.height > window.innerHeight - 16) {
+                        menu.style.maxHeight = (window.innerHeight - 16) + 'px';
+                        menu.style.overflowY = 'auto';
+                    }
+                }
+            })();
 
             setTimeout(() => {
                 document.addEventListener('click', function closer(ev) {
@@ -4549,7 +4912,29 @@
         return btn;
     }
 
+    // ===== Reset trạng thái "đã chọn" khi chuyển sang bệnh nhân khác =====
+    let clsLastPatientKey = null;
+    function clsGetPatientKey() {
+        const boxes = Array.from(document.querySelectorAll('[data-bootstro-title="TT bệnh nhân"]'));
+        const box = boxes.find((b) => b.offsetParent !== null) || null;
+        if (!box) return null;
+        const inp = box.querySelector('input');
+        const code = inp ? String(inp.value || '').trim() : '';
+        const txt = String(box.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        return code + '|' + txt;
+    }
+    function clsResetSelectionState() {
+        GROUPS.forEach((g) => { if (g.sub) g.sub.forEach((o) => { o.active = false; }); });
+        document.querySelectorAll('[id^="cls_submenu_"]').forEach((m) => m.remove());
+        document.querySelectorAll('.cls-qs-toolbar').forEach((t) => t.remove());
+    }
+
     function injectToolbar() {
+        const patientKey = clsGetPatientKey();
+        if (patientKey !== null) {
+            if (clsLastPatientKey !== null && patientKey !== clsLastPatientKey) clsResetSelectionState();
+            clsLastPatientKey = patientKey;
+        }
         document.querySelectorAll('.cls-qs-toolbar').forEach(t => {
             const prev = t.previousElementSibling;
             if (!prev || !prev.querySelector('#specify-search-kw')) t.remove();
