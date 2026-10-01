@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.79
+// @version      1.80
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,7 +11,7 @@
 // ==/UserScript==
 
 // ===== Changelog =====
-// 1.79  Thêm nút "💊 Kê toa DV của BSDHA" ngay trước nút Helixfast: bấm mở tab
+// 1.80  Thêm nút "💊 Kê toa DV của BSDHA" ngay trước nút Helixfast: bấm mở tab
 //       mới tới bsdha.github.io/donthuoc?mode=kt (chế độ chỉ kê toa, ẩn menu
 //       và các công cụ khác). Nút này không phụ thuộc bản quyền/công tắc Helixfast.
 //       Khi bấm, tự đọc thông tin bệnh nhân (họ tên, ngày sinh, giới tính, địa
