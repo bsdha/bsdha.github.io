@@ -301,7 +301,7 @@ input:focus { border-color:#1565c0; }
       <div style="overflow:auto">
         <table class="cust-table">
           <thead>
-            <tr><th>Machine ID</th><th>Tên / SĐT</th><th>Đơn vị</th><th>Còn lại</th><th>Trạng thái</th><th>Bảo hành</th><th>Bù trừ</th><th>Ghi chú</th></tr>
+            <tr><th>Machine ID</th><th>Tên / SĐT</th><th>Đơn vị</th><th>Còn lại</th><th>Trạng thái</th><th>Bảo hành</th><th>Bù trừ</th></tr>
           </thead>
           <tbody id="custTableBody"></tbody>
         </table>
@@ -969,8 +969,7 @@ function loadCustomers() {
           '<td>' + fmtMedi(c.balance_medi) + ' Medi</td>' +
           '<td>' + statusBadge + '</td>' +
           '<td>' + warrantyBadge + '</td>' +
-          '<td><button type="button" class="adj-btn" title="Cộng/trừ Medi hoặc tặng hàng">⚖️ Bù trừ</button></td>' +
-          '<td class="note-cell">' + (c.admin_note ? esc(c.admin_note) : '<span style="color:#bbb">—</span>') + '</td>';
+          '<td><button type="button" class="adj-btn" title="Cộng/trừ Medi hoặc tặng hàng">⚖️ Bù trừ</button></td>';
         var adjBtn = tr.querySelector('.adj-btn');
         if (adjBtn) adjBtn.onclick = function(e) { e.stopPropagation(); openAdjModal(c.machine_id, c.balance_medi); };
         var copyBtn = tr.querySelector('.copy-mid-btn');
@@ -978,7 +977,7 @@ function loadCustomers() {
         tbody.appendChild(tr);
       });
       if (!(d.customers || []).length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;padding:20px">Không tìm thấy khách hàng nào</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;padding:20px">Không tìm thấy khách hàng nào</td></tr>';
       }
     })
     .catch(function() { alert('Không tải được danh sách khách hàng — kiểm tra kết nối Worker'); });
