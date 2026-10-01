@@ -2199,6 +2199,21 @@
   background: var(--red-light);
 }
 
+.rx-prefill-flash { animation: rxPrefillFlash 1.4s ease; }
+@keyframes rxPrefillFlash {
+  0% { background: #d7ecff; }
+  100% { background: transparent; }
+}
+
+.rx-his-notice {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: #fff4cc; border: 1.5px solid #f0c000; color: #6b4e00;
+  border-radius: 10px; padding: 9px 14px; font-size: 13px; font-weight: 600;
+}
+.rx-his-notice button {
+  border: none; background: transparent; color: #6b4e00; cursor: pointer; font-size: 15px; padding: 0 4px;
+}
+
 /* ---------- Chế độ "chỉ kê toa" (/donthuoc?mode=kt): ẩn mọi mục khác ---------- */
 html.rx-only .sidebar,
 html.rx-only .sidebar-resize-handle,
