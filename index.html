@@ -10,9 +10,22 @@
 <!-- End Cloudflare Web Analytics -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script>
+  // Chế độ "chỉ kê toa": mở /donthuoc?mode=kt (vd. từ nút trong Helixfast) -> ẩn sidebar/topbar/radio,
+  // chỉ còn trang kê toa. Lần đầu vào qua 404.html nên query nằm trong sessionStorage('spa-redirect').
+  (function () {
+    try {
+      var q = location.search + (sessionStorage.getItem('spa-redirect') || '');
+      if (/[?&]mode=kt(&|#|$)/.test(q)) {
+        document.documentElement.classList.add('rx-only');
+        document.addEventListener('DOMContentLoaded', function () { document.title = 'Kê toa DV – BSDHA'; });
+      }
+    } catch (e) {}
+  })();
+</script>
 <title>BSDHA - Bộ công cụ Y khoa</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230066FF'/%3E%3Crect x='28' y='14' width='8' height='36' rx='3' fill='white'/%3E%3Crect x='14' y='28' width='36' height='8' rx='3' fill='white'/%3E%3C/svg%3E">
-<link rel="stylesheet" href="css/style.css?v=20260906">
+<link rel="stylesheet" href="css/style.css?v=20261002">
 </head>
 <body>
 
@@ -1558,14 +1571,10 @@
       <div class="rx-panel" id="rxPatientPanel">
         <h2 class="rx-h2">Thông tin bệnh nhân</h2>
 
-        <div class="rx-ai-paste-wrap">
-          <div class="rx-ai-paste-row">
-            <div class="rx-ai-paste-box" id="rxAiPasteBox" tabindex="0" contenteditable="true" data-placeholder="📋 Dán ảnh hoặc copy-paste văn bản từ HIS (Ctrl+V)..."></div>
-            <button type="button" class="rx-ai-clear-btn" id="rxAiClearBtn" title="Xoá thông tin bệnh nhân vừa được AI điền">
-              <span class="rx-ai-clear-icon">🗑️</span><span class="rx-ai-clear-label">Xoá thông tin đã điền</span>
-            </button>
-          </div>
-          <div class="rx-ai-paste-status" id="rxAiStatus"></div>
+        <div class="rx-clear-row">
+          <button type="button" class="rx-ai-clear-btn" id="rxAiClearBtn" title="Xoá toàn bộ thông tin bệnh nhân đã điền">
+            <span class="rx-ai-clear-icon">🗑️</span><span class="rx-ai-clear-label">Xoá thông tin đã điền</span>
+          </button>
         </div>
 
         <div class="rx-patient-grid">
@@ -2644,7 +2653,7 @@
 
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script defer src="js/prescription.js?v=20261001"></script>
+<script defer src="js/prescription.js?v=20261002"></script>
 <script defer src="js/phieu-chi-dinh-noi-soi.js?v=20261001c"></script>
 
 <script defer src="js/nav-customize.js"></script>
