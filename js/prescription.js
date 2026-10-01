@@ -1412,6 +1412,90 @@
     });
   })();
 
+  // ---------- Nhận thông tin bệnh nhân từ HIS (nút "Kê toa DV của BSDHA" của Helixfast) ----------
+  // Dữ liệu đi qua postMessage giữa 2 tab (không nằm trên URL nên không lọt vào lịch sử/analytics).
+  (function initHisPrefill() {
+    const HIS_ORIGIN = 'https://his.benhvienbinhduong.org.vn';
+    if (!window.opener || !document.documentElement.classList.contains('rx-only')) return;
+
+    const TEXT_FIELDS = { name: 'rxPatientName', address: 'rxAddress', diagnosis: 'rxDiagnosis' };
+    const NUM_FIELDS = {
+      pulse: 'rxVitalPulse', bpSys: 'rxVitalBpSys', bpDia: 'rxVitalBpDia',
+      temp: 'rxVitalTemp', resp: 'rxVitalResp', weight: 'rxVitalWeight',
+    };
+
+    function setField(id, value) {
+      const el = $(id);
+      if (!el || value === '') return false;
+      el.value = value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      el.classList.remove('rx-prefill-flash');
+      void el.offsetWidth;
+      el.classList.add('rx-prefill-flash');
+      setTimeout(() => el.classList.remove('rx-prefill-flash'), 1500);
+      return true;
+    }
+
+    function applyPatient(p) {
+      if (!p || typeof p !== 'object') return;
+      Object.keys(TEXT_FIELDS).forEach((k) => {
+        if (typeof p[k] !== 'string') return;
+        let v = p[k].trim().slice(0, 500);
+        if (k === 'name') v = v.toUpperCase();
+        setField(TEXT_FIELDS[k], v);
+      });
+      if (typeof p.dob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.dob)) setField('rxPatientDob', p.dob);
+      if (p.sex === 'Nam' || p.sex === 'Nữ') setField('rxPatientSex', p.sex);
+      Object.keys(NUM_FIELDS).forEach((k) => {
+        const v = String(p[k] == null ? '' : p[k]).trim();
+        if (/^\d{1,3}(\.\d{1,2})?$/.test(v)) setField(NUM_FIELDS[k], v);
+      });
+      // Đã có sẵn thông tin bệnh nhân -> đưa con trỏ vào ô gõ thuốc để gõ luôn.
+      const brand = $('rxFieldBrand');
+      if (brand) brand.focus();
+    }
+
+    // Dải cảnh báo vàng đầu trang — chỉ hiện khi tab được mở từ nút Helixfast (HIS đã trả lời) mà không có dữ liệu.
+    function showNotice(msg) {
+      if ($('rxHisNotice')) return;
+      const bar = document.createElement('div');
+      bar.id = 'rxHisNotice';
+      bar.className = 'rx-his-notice';
+      const text = document.createElement('span');
+      text.textContent = msg;
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = '✕';
+      close.title = 'Đóng';
+      bar.appendChild(text);
+      bar.appendChild(close);
+      const wrap = document.querySelector('#page-donthuoc .rx-wrap');
+      if (wrap) wrap.insertBefore(bar, wrap.firstChild); else document.body.insertBefore(bar, document.body.firstChild);
+      const hide = () => { bar.remove(); document.removeEventListener('input', hide, true); };
+      close.addEventListener('click', hide);
+      document.addEventListener('input', hide, true); // bắt đầu gõ là tự tắt
+    }
+
+    let received = false;
+    window.addEventListener('message', (ev) => {
+      if (ev.origin !== HIS_ORIGIN || ev.source !== window.opener) return;
+      const d = ev.data;
+      if (!d || d.type !== 'bsdha-rx-patient') return;
+      received = true;
+      if (d.patient && typeof d.patient === 'object') applyPatient(d.patient);
+      else showNotice('⚠️ Không đọc được thông tin bệnh nhân từ HIS (trang này chưa có bệnh nhân hoặc khác trang Khám bệnh / Quản lý cấp cứu) — vui lòng nhập tay.');
+    });
+
+    // Báo cho tab HIS biết trang đã sẵn sàng nhận (thử lại vài giây phòng khi trang chưa nạp xong).
+    let tries = 0;
+    (function ping() {
+      if (received || tries++ > 40) return;
+      try { window.opener.postMessage({ type: 'bsdha-rx-ready' }, HIS_ORIGIN); } catch (e) {}
+      setTimeout(ping, 500);
+    })();
+  })();
+
   // ---------- Tự động điền "Lời dặn của bác sĩ": Tái khám {thứ} ngày {dd/mm/yyyy} ----------
   const noteInput = $('rxNote');
   const WEEKDAYS_VN = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
