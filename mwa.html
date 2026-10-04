@@ -1001,6 +1001,11 @@ function openCustDetail(mid) {
         else if (k === 'adjMinus') sums.adjMinus += -v;
         else if (sums.hasOwnProperty(k)) sums[k] += v;
       });
+      // Uu tien so tong tu Worker (tinh tren TOAN BO giao dich); neu Worker cu chua tra ve thi dung so cong tu danh sach (co the thieu neu > 100 dong)
+      if (d.sums) {
+        ['buy', 'trial', 'gift', 'adjPlus', 'adjMinus', 'use'].forEach(function(k) { sums[k] = Number(d.sums[k]) || 0; });
+      }
+      var txShown = (d.transactions || []).length, txTotal = Number(d.txCount) || txShown;
       var totalBought = sums.buy, totalUsed = sums.use;
       document.getElementById('custSumLine').innerHTML =
         '<span class="tag tag-buy">Mua</span> ' + fmtMedi(sums.buy) +
@@ -1008,7 +1013,9 @@ function openCustDetail(mid) {
         ' &nbsp; <span class="tag tag-trial">Dùng thử</span> ' + fmtMedi(sums.trial) +
         ' &nbsp; <span class="tag tag-adj">Bù</span> +' + fmtMedi(sums.adjPlus) + ' / −' + fmtMedi(sums.adjMinus) +
         ' &nbsp; <span class="tag tag-use">Đã dùng</span> ' + fmtMedi(sums.use) +
-        '<div style="font-size:11px;color:#999">Tính trên các giao dịch tải về dưới đây (đơn vị: Medi).</div>';
+        (d.sums
+          ? '<div style="font-size:11px;color:#999">Tổng tính trên toàn bộ ' + txTotal + ' giao dịch (đơn vị: Medi)' + (txTotal > txShown ? ' — bảng bên dưới chỉ hiện ' + txShown + ' giao dịch gần nhất.' : '.') + '</div>'
+          : '<div style="font-size:11px;color:#c62828">Chỉ cộng trên ' + txShown + ' giao dịch tải về — có thể thiếu nếu khách có nhiều giao dịch (cần cập nhật Worker).</div>');
       document.getElementById('custDetailGrid').innerHTML =
         '<div><div class="k">Còn lại</div><div class="v">' + fmtMedi(w.balance_medi) + ' Medi</div></div>' +
         '<div><div class="k">Đã mua (tổng)</div><div class="v">' + fmtMedi(totalBought) + ' Medi</div></div>' +
