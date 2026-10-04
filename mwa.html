@@ -1020,7 +1020,7 @@ function openCustDetail(mid) {
         '<div><div class="k">Còn lại</div><div class="v">' + fmtMedi(w.balance_medi) + ' Medi</div></div>' +
         '<div><div class="k">Đã mua (tổng)</div><div class="v">' + fmtMedi(totalBought) + ' Medi</div></div>' +
         '<div><div class="k">Đã sử dụng</div><div class="v">' + fmtMedi(totalUsed) + ' Medi</div></div>' +
-        '<div><div class="k">Trạng thái trial</div><div class="v">' + (w.trial_used ? 'Đã dùng thử' : 'Chưa dùng thử') + '</div></div>' +
+        '<div><div class="k">Trạng thái trial</div><div class="v">' + (w.trial_used ? 'Đã dùng thử' + (sums.trial > 0 ? ' (+' + fmtMedi(sums.trial) + ' Medi)' : '') : 'Chưa dùng thử') + '</div></div>' +
         '<div><div class="k">Ngày đăng ký (ví)</div><div class="v">' + fmtDate(w.created_at) + '</div></div>' +
         '<div><div class="k">Zalo</div><div class="v">' + (c.zalo || '—') + '</div></div>';
 
