@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.80
+// @version      1.81
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,6 +11,10 @@
 // ==/UserScript==
 
 // ===== Changelog =====
+// 1.81  Hộp Bản quyền: thu nhỏ (zoom 1.5 -> 1.2), nhãn trạng thái nổi hơn
+//       (xanh đậm khi đã kích hoạt, cam khi sắp hết hạn, đỏ + header đỏ khi
+//       hết hạn/chưa kích hoạt), thêm nút "Cập nhật" kiểm tra bản mới trên
+//       GitHub và mở trang cài đặt. Sửa HELIXFAST_VERSION lệch với @version.
 // 1.80  Thêm nút "💊 Kê toa DV của BSDHA" ngay trước nút Helixfast: bấm mở tab
 //       mới tới bsdha.github.io/donthuoc?mode=kt (chế độ chỉ kê toa, ẩn menu
 //       và các công cụ khác). Nút này không phụ thuộc bản quyền/công tắc Helixfast.
@@ -47,7 +51,18 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '1.79';
+  const HELIXFAST_VERSION = '1.81';
+  const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
+  const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
+  // Công tắc TẮT lúc nạp trang => không gắn bất kỳ listener/observer/CSS tính năng nào
+  // (chỉ còn nút toggle + nút Kê toa BSDHA + hộp bản quyền để bật lại).
+  const HLX_OFF = (() => {
+    try { return localStorage.getItem('helixfast_enabled') === '0'; } catch (err) { return false; }
+  })();
+  function hlxDocListen() {
+    if (HLX_OFF) return;
+    document.addEventListener.apply(document, arguments);
+  }
   const SYMPTOM_SELECTOR = 'textarea[formcontrolname="symptom"]';
   const PROGRESSION_SELECTOR = 'textarea[formcontrolname="progression"]';
   const NOTE_TEXTAREA_SELECTOR = '.width-per88 textarea.form-control';
@@ -380,7 +395,7 @@
   }
 
   let examMirrorBusy = false;
-  document.addEventListener(
+  hlxDocListen(
     'input',
     (e) => {
       if (examMirrorBusy || !isHelixfastEnabled()) return;
@@ -747,7 +762,7 @@
     return mids.length;
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'mousedown',
     (e) => {
       if (e.button !== 0 || !isHelixfastEnabled()) return;
@@ -783,7 +798,7 @@
     true
   );
 
-  document.addEventListener(
+  hlxDocListen(
     'mousemove',
     (e) => {
       if (!rxDrag) return;
@@ -800,7 +815,7 @@
     true
   );
 
-  document.addEventListener(
+  hlxDocListen(
     'mouseup',
     (e) => {
       if (!rxDrag) return;
@@ -820,7 +835,7 @@
     true
   );
 
-  document.addEventListener(
+  hlxDocListen(
     'keydown',
     (e) => {
       if (e.key === 'Escape' && rxDrag) rxCleanupDrag();
@@ -828,7 +843,7 @@
     true
   );
 
-  document.addEventListener(
+  hlxDocListen(
     'click',
     (e) => {
       const btn = e.target.closest && e.target.closest('.his-rx-up, .his-rx-down');
@@ -1012,7 +1027,7 @@
     }
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'mouseover',
     (e) => {
       updateOverflowTitle(e.target);
@@ -1021,12 +1036,12 @@
     },
     true
   );
-  document.addEventListener(
+  hlxDocListen(
     'input',
     (e) => updateOverflowTitle(e.target),
     true
   );
-  document.addEventListener(
+  hlxDocListen(
     'focus',
     (e) => updateOverflowTitle(e.target),
     true
@@ -1122,8 +1137,17 @@
         padding-top: 4px !important;
         padding-bottom: 4px !important;
       }
+      /* Bỏ giới hạn chiều cao (hiện hết dòng) nhưng GIỮ thanh trượt ngang.
+         Trước đây overflow:visible làm bảng width:max-content tràn ra ngoài
+         và mất scrollbar ngang + sticky cột Tác vụ. */
       .p-datatable-wrapper {
         max-height: none !important;
+        overflow-x: auto !important;
+        overflow-y: hidden !important;
+      }
+      /* Bảng có ô chứa dropdown (ng-select ICD...) thì giữ visible để
+         panel không bị cắt như hành vi cũ. */
+      .p-datatable-wrapper:has(.ng-select, .icd-search-container, .dropdown-menu.open) {
         overflow: visible !important;
       }
 
@@ -1205,6 +1229,15 @@
       .his-hs-close { cursor: pointer; padding: 0 6px; font-size: 20px; }
       .his-hs-body { padding: 18px 22px; display: flex; flex-direction: column; gap: 10px; }
       .his-hs-label { font-size: 14px; color: #0f9d78; font-weight: 600; margin-top: 6px; }
+      .his-hs-search-wrap { position: relative; display: inline-block; width: 340px; max-width: 100%; margin: 4px 0 2px; }
+      .his-hs-search { width: 100%; height: 32px; box-sizing: border-box; padding: 0 30px 0 10px; font-size: 13px;
+        border: 1.5px solid #0f9d78; border-radius: 8px; outline: none; background: #fff; }
+      .his-hs-search:focus { box-shadow: 0 0 0 3px rgba(15,157,120,.2); }
+      .his-hs-search-clear { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); cursor: pointer;
+        color: #94a3b8; font-size: 13px; display: none; }
+      .his-hs-search-clear:hover { color: #ef4444; }
+      .his-hs-search-hint { font-size: 12.5px; color: #b45309; font-weight: 600; margin: 2px 0 4px; display: none; }
+      .his-hs-reason-hl { background: #fff4d6; border-radius: 6px; box-shadow: 0 0 0 2px #f59e0b inset; font-weight: 700 !important; padding: 2px 6px !important; }
       .his-hs-row { display: flex; flex-direction: column; gap: 4px; }
       .his-hs-field {
         width: 100%;
@@ -1277,9 +1310,9 @@
     document.head.appendChild(style);
   }
 
-  injectIcdWideningCss();
+  if (!HLX_OFF) injectIcdWideningCss();
 
-  document.addEventListener(
+  hlxDocListen(
     'focus',
     (e) => {
       if (e.target && e.target.matches && e.target.matches(ICD_INPUT_SELECTOR)) {
@@ -1289,7 +1322,7 @@
     true
   );
 
-  document.addEventListener(
+  hlxDocListen(
     'mousedown',
     (e) => {
       const container = e.target.closest && e.target.closest(ICD_CONTAINER_SELECTOR);
@@ -1316,7 +1349,7 @@
     }
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'keydown',
     function (e) {
       if (e.key !== 'Enter') return;
@@ -1362,7 +1395,7 @@
     true
   );
 
-  document.addEventListener(
+  hlxDocListen(
     'focus',
     (e) => {
       if (!e.target || !e.target.matches || !e.target.matches(ICD_INPUT_SELECTOR)) return;
@@ -1374,7 +1407,7 @@
     },
     true
   );
-  document.addEventListener(
+  hlxDocListen(
     'blur',
     (e) => {
       if (!e.target || !e.target.matches || !e.target.matches(ICD_INPUT_SELECTOR)) return;
@@ -1449,7 +1482,7 @@
       }
     }
   });
-  dropdownWatchObserver.observe(document.body, { childList: true, subtree: true });
+  if (!HLX_OFF) dropdownWatchObserver.observe(document.body, { childList: true, subtree: true });
 
   function focusSymptomFieldOnly(attemptsLeft) {
     if (!isHelixfastEnabled()) return;
@@ -1492,7 +1525,7 @@
     }
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'dblclick',
     (e) => {
       const row = e.target.closest && e.target.closest('tr.cur-pointer');
@@ -1528,13 +1561,13 @@
       }
     }
   });
-  pharmacyMenuObserver.observe(document.body, {
+  if (!HLX_OFF) pharmacyMenuObserver.observe(document.body, {
     attributes: true,
     attributeFilter: ['class'],
     subtree: true,
   });
 
-  document.addEventListener(
+  hlxDocListen(
     'keydown',
     (e) => {
       if (e.key !== 'ArrowUp') return;
@@ -1953,6 +1986,11 @@
       '<div class="his-hs-header" id="his-hs-drag-handle">🩺 Tạo bệnh sử nâng cao <span class="his-hs-close" id="his-hs-close-btn">✕</span></div>' +
       '<div class="his-hs-body">' +
       '<label class="his-hs-label">Lý do vào viện (chọn tối đa 2)</label>' +
+      '<div><div class="his-hs-search-wrap">' +
+      '<input type="text" id="his-hs-search" class="his-hs-search" placeholder="🔍 Tìm lý do vào viện (vd: đau, ho, sốt...)" autocomplete="off">' +
+      '<span id="his-hs-search-clear" class="his-hs-search-clear" title="Xóa từ khóa">✕</span>' +
+      '</div></div>' +
+      '<div id="his-hs-search-hint" class="his-hs-search-hint"></div>' +
       '<div id="his-hs-reason-group"></div>' +
       '<div id="his-hs-fields"></div>' +
       '<label class="his-hs-label">Xem trước</label>' +
@@ -1967,6 +2005,7 @@
 
     const reasonGroupEl = panel.querySelector('#his-hs-reason-group');
     const reasonCheckboxes = [];
+    const reasonRows = [];
     let selectedReasons = [];
 
     HS_REASON_ORDER.forEach((key) => {
@@ -1989,6 +2028,7 @@
       row.appendChild(document.createTextNode(HS_REASON_LABELS[key]));
       reasonGroupEl.appendChild(row);
       reasonCheckboxes.push(cb);
+      reasonRows.push({ key, row, label: HS_REASON_LABELS[key], cb });
 
       cb.addEventListener('change', () => {
         if (cb.checked) {
@@ -2003,6 +2043,47 @@
         updateReasonCheckboxAvailability();
         renderFields();
       });
+    });
+
+    // ---- Ô tìm kiếm lý do vào viện (không phân biệt dấu/hoa thường) ----
+    const searchInput = panel.querySelector('#his-hs-search');
+    const searchClear = panel.querySelector('#his-hs-search-clear');
+    const searchHint = panel.querySelector('#his-hs-search-hint');
+    const hsNorm = (str) =>
+      String(str || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase().trim();
+
+    function applyReasonFilter() {
+      const q = hsNorm(searchInput.value);
+      searchClear.style.display = q ? 'block' : 'none';
+      let matched = 0;
+      reasonRows.forEach((r) => {
+        const isOther = r.key === 'khac';
+        r.row.classList.remove('his-hs-reason-hl');
+        if (!q) { r.row.style.display = 'flex'; return; }
+        const hit = hsNorm(r.label).includes(q);
+        if (hit && !isOther) matched++;
+        // "Khác (tự nhập)" luôn hiện; mục đã tick cũng giữ lại để thấy lựa chọn của mình
+        r.row.style.display = (hit || isOther || r.cb.checked) ? 'flex' : 'none';
+      });
+      const noMatch = !!q && matched === 0;
+      searchHint.style.display = noMatch ? 'block' : 'none';
+      if (noMatch) {
+        searchHint.textContent = 'Không có lý do nào khớp "' + searchInput.value.trim() + '". Hãy chọn mục "Khác (tự nhập)" để tự nhập lý do.';
+        const other = reasonRows.find((r) => r.key === 'khac');
+        if (other) other.row.classList.add('his-hs-reason-hl');
+      }
+    }
+    searchInput.addEventListener('input', applyReasonFilter);
+    searchInput.addEventListener('keydown', (e) => {
+      e.stopPropagation(); // tránh phím tắt của HIS bắt nhầm khi đang gõ
+      if (e.key === 'Escape') { searchInput.value = ''; applyReasonFilter(); }
+    });
+    searchInput.addEventListener('keyup', (e) => e.stopPropagation());
+    searchClear.addEventListener('click', () => {
+      searchInput.value = '';
+      applyReasonFilter();
+      searchInput.focus();
     });
 
     function updateReasonCheckboxAvailability() {
@@ -2209,6 +2290,8 @@
         cb.disabled = false;
       });
       selectedReasons = [];
+      searchInput.value = '';
+      applyReasonFilter();
       renderFields();
       preview.value = '';
     });
@@ -2344,9 +2427,9 @@
     }
   }
 
-  fixPharmacyDosageRow();
-  setInterval(fixPharmacyDosageRow, 300);
-  new MutationObserver(() => fixPharmacyDosageRow()).observe(document.body, {
+  if (!HLX_OFF) fixPharmacyDosageRow();
+  if (!HLX_OFF) setInterval(fixPharmacyDosageRow, 300);
+  if (!HLX_OFF) new MutationObserver(() => fixPharmacyDosageRow()).observe(document.body, {
     childList: true,
     subtree: true,
   });
@@ -2529,7 +2612,7 @@
     }
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'keydown',
     (e) => {
       if (e.key !== 'Enter') return;
@@ -2565,6 +2648,13 @@
   const AUTO_SAVE_CLICK_GAP_MS = 300;
 
   let awaitingCompleteExamDialog = false;
+  // true khi luồng "In nhanh BK toa về" đang chạy (màn chờ + khoá thao tác đang bật)
+  let quickPrintOverlayFlow = false;
+  function endQuickPrintOverlay(delay) {
+    if (!quickPrintOverlayFlow) return;
+    quickPrintOverlayFlow = false;
+    setTimeout(hidePrintOverlay, delay || 0);
+  }
   let awaitingCompleteExamTimeoutId = null;
 
   function findDialogFooterButtonByLabel(dialog, label) {
@@ -2588,6 +2678,7 @@
     function runStep(i) {
       if (i >= steps.length) {
         if (exitBtn) setTimeout(() => exitBtn.click(), AUTO_SAVE_CLICK_GAP_MS);
+        endQuickPrintOverlay(AUTO_SAVE_CLICK_GAP_MS + 600);
         return;
       }
       steps[i].click();
@@ -2596,7 +2687,7 @@
     runStep(0);
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'click',
     (e) => {
       const btn = e.target.closest && e.target.closest('button');
@@ -2614,6 +2705,7 @@
       clearTimeout(awaitingCompleteExamTimeoutId);
       awaitingCompleteExamTimeoutId = setTimeout(() => {
         awaitingCompleteExamDialog = false;
+        endQuickPrintOverlay(0); // không thấy hộp "Lưu lại" -> trả lại thao tác
       }, AUTO_SAVE_WAIT_WINDOW_MS);
     },
     true
@@ -2642,7 +2734,7 @@
       }
     }
   });
-  autoSaveDialogObserver.observe(document.body, { childList: true, subtree: true });
+  if (!HLX_OFF) autoSaveDialogObserver.observe(document.body, { childList: true, subtree: true });
 
   const TOOLBAR_COMPLETE_BTN_SELECTOR = 'button[data-sk="control.Q"]';
   const TOOLBAR_SAVE_BTN_SELECTOR = 'button[data-sk="control.S"]';
@@ -2711,6 +2803,7 @@
 
     printOutpatientTimeoutId = setTimeout(() => {
       stopWaitingForCompleteExamDialog();
+      endQuickPrintOverlay(0); // hộp "Hoàn thành khám" không xuất hiện
     }, AUTO_SAVE_WAIT_WINDOW_MS);
   }
 
@@ -2718,13 +2811,15 @@
     if (attemptsLeft === undefined) attemptsLeft = 10;
     const completeBtn = findToolbarButton(TOOLBAR_COMPLETE_BTN_SELECTOR);
     if (completeBtn) {
-      if (completeBtn.disabled) return;
+      if (completeBtn.disabled) { endQuickPrintOverlay(0); return; }
       completeBtn.click();
       startWaitingForCompleteExamDialogThenConfirm();
       return;
     }
     if (attemptsLeft > 1) {
       setTimeout(() => tryClickCompleteExamToolbarButton(attemptsLeft - 1), PRINT_OUTPATIENT_WAIT_RETRY_GAP_MS);
+    } else {
+      endQuickPrintOverlay(0);
     }
   }
 
@@ -2868,70 +2963,219 @@
         position: fixed;
         inset: 0;
         z-index: 2147483647;
-        background: rgba(255, 255, 255, 0.94);
+        cursor: wait;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: inherit;
+        overflow: hidden;
+        background: linear-gradient(120deg, #e0f2fe, #ede9fe, #dcfce7, #e0f2fe);
+        background-size: 300% 300%;
+        animation: his-po-bg 9s ease infinite;
+      }
+      /* các vệt sáng mờ trôi nhẹ phía sau */
+      #${PRINT_OVERLAY_ID}::before,
+      #${PRINT_OVERLAY_ID}::after {
+        content: '';
+        position: absolute;
+        width: 46vmax;
+        height: 46vmax;
+        border-radius: 50%;
+        filter: blur(70px);
+        opacity: .55;
+      }
+      #${PRINT_OVERLAY_ID}::before {
+        background: #60a5fa;
+        top: -18vmax; left: -14vmax;
+        animation: his-po-float1 11s ease-in-out infinite alternate;
+      }
+      #${PRINT_OVERLAY_ID}::after {
+        background: #34d399;
+        bottom: -20vmax; right: -14vmax;
+        animation: his-po-float2 13s ease-in-out infinite alternate;
+      }
+      #${PRINT_OVERLAY_ID} .his-po-card {
+        position: relative;
+        z-index: 1;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: center;
-        gap: 10px;
-        font-family: inherit;
+        gap: 18px;
+        padding: 30px 46px 26px;
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.72);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 18px 50px rgba(30, 64, 175, .22), 0 0 0 1px rgba(255,255,255,.8) inset;
+        animation: his-po-pop .35s ease-out both;
       }
-      #${PRINT_OVERLAY_ID} .his-print-overlay-spinner {
-        width: 34px;
-        height: 34px;
-        border: 4px solid #d6dee8;
-        border-top-color: #1a56db;
+      #${PRINT_OVERLAY_ID} .his-po-ring {
+        position: relative;
+        width: 74px;
+        height: 74px;
         border-radius: 50%;
-        animation: his-print-overlay-spin 0.8s linear infinite;
+        background: conic-gradient(from 0deg, #2563eb, #7c3aed, #06b6d4, #10b981, #facc15, #2563eb);
+        -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+                mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px));
+        animation: his-po-spin 1.1s linear infinite;
+        filter: drop-shadow(0 0 8px rgba(37, 99, 235, .55));
+      }
+      #${PRINT_OVERLAY_ID} .his-po-ring-wrap {
+        position: relative;
+        width: 74px;
+        height: 74px;
+      }
+      #${PRINT_OVERLAY_ID} .his-po-ring-wrap::after {
+        content: '';
+        position: absolute;
+        inset: 17px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #3b82f6 0%, #2563eb 55%, rgba(37,99,235,0) 72%);
+        animation: his-po-pulse 1.4s ease-in-out infinite;
       }
       #${PRINT_OVERLAY_ID} .his-print-overlay-text {
-        font-size: 13px;
-        color: #333;
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: .2px;
+        background: linear-gradient(90deg, #1e3a8a, #2563eb, #7c3aed, #0891b2, #1e3a8a);
+        background-size: 250% 100%;
+        -webkit-background-clip: text;
+                background-clip: text;
+        -webkit-text-fill-color: transparent;
+                color: transparent;
+        animation: his-po-shimmer 3s linear infinite;
       }
-      @keyframes his-print-overlay-spin {
-        to { transform: rotate(360deg); }
+      #${PRINT_OVERLAY_ID} .his-po-dots span {
+        display: inline-block;
+        width: 7px; height: 7px;
+        margin: 0 3px;
+        border-radius: 50%;
+        background: #2563eb;
+        animation: his-po-bounce 1s ease-in-out infinite;
       }
+      #${PRINT_OVERLAY_ID} .his-po-dots span:nth-child(2) { background: #7c3aed; animation-delay: .15s; }
+      #${PRINT_OVERLAY_ID} .his-po-dots span:nth-child(3) { background: #10b981; animation-delay: .3s; }
+      #${PRINT_OVERLAY_ID} .his-po-bar {
+        width: 200px;
+        height: 4px;
+        border-radius: 4px;
+        background: rgba(37, 99, 235, .15);
+        overflow: hidden;
+      }
+      #${PRINT_OVERLAY_ID} .his-po-bar::before {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 4px;
+        background: linear-gradient(90deg, #2563eb, #7c3aed, #10b981);
+        animation: his-po-slide 1.3s ease-in-out infinite;
+      }
+      @keyframes his-po-spin { to { transform: rotate(360deg); } }
+      @keyframes his-po-bg { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+      @keyframes his-po-float1 { to { transform: translate(18vw, 14vh) scale(1.15); } }
+      @keyframes his-po-float2 { to { transform: translate(-16vw, -12vh) scale(1.1); } }
+      @keyframes his-po-shimmer { to { background-position: -250% 0; } }
+      @keyframes his-po-pulse { 0%,100% { transform: scale(.7); opacity: .7; } 50% { transform: scale(1.05); opacity: 1; } }
+      @keyframes his-po-bounce { 0%,80%,100% { transform: translateY(0); opacity: .5; } 40% { transform: translateY(-7px); opacity: 1; } }
+      @keyframes his-po-slide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+      @keyframes his-po-pop { from { opacity: 0; transform: scale(.92) translateY(8px); } to { opacity: 1; transform: none; } }
+      @media print { #${PRINT_OVERLAY_ID} { display: none !important; } }
     `;
     document.head.appendChild(style);
   }
 
+    let printOverlayLockHandler = null;
+  let printOverlayWatchdog = null;
+  const PRINT_OVERLAY_MAX_MS = 25000;
+  const PRINT_OVERLAY_LOCK_EVENTS = [
+    'keydown', 'keypress', 'keyup', 'mousedown', 'mouseup', 'click', 'dblclick', 'contextmenu', 'wheel',
+  ];
+
+  function lockPrintOverlayInput() {
+    if (printOverlayLockHandler) return;
+    // Chỉ chặn thao tác thật của người dùng; click do script tạo ra (isTrusted=false) vẫn chạy.
+    printOverlayLockHandler = (e) => {
+      if (!e.isTrusted) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    PRINT_OVERLAY_LOCK_EVENTS.forEach((t) =>
+      window.addEventListener(t, printOverlayLockHandler, { capture: true, passive: false })
+    );
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  }
+
+  function unlockPrintOverlayInput() {
+    if (!printOverlayLockHandler) return;
+    PRINT_OVERLAY_LOCK_EVENTS.forEach((t) =>
+      window.removeEventListener(t, printOverlayLockHandler, { capture: true })
+    );
+    printOverlayLockHandler = null;
+  }
+
   function showPrintOverlay(text) {
     injectPrintOverlayCss();
+    lockPrintOverlayInput();
+    clearTimeout(printOverlayWatchdog);
+    // Chốt an toàn: dù lỗi gì cũng tự mở khoá sau PRINT_OVERLAY_MAX_MS.
+    printOverlayWatchdog = setTimeout(hidePrintOverlay, PRINT_OVERLAY_MAX_MS);
     let el = document.getElementById(PRINT_OVERLAY_ID);
     if (!el) {
       el = document.createElement('div');
       el.id = PRINT_OVERLAY_ID;
       el.innerHTML =
-        '<div class="his-print-overlay-spinner"></div>' +
-        '<div class="his-print-overlay-text"></div>';
+        '<div class="his-po-card">' +
+          '<div class="his-po-ring-wrap"><div class="his-po-ring"></div></div>' +
+          '<div class="his-print-overlay-text"></div>' +
+          '<div class="his-po-dots"><span></span><span></span><span></span></div>' +
+          '<div class="his-po-bar"></div>' +
+        '</div>';
       document.body.appendChild(el);
     }
     el.querySelector('.his-print-overlay-text').textContent = text || 'Đang xử lý...';
   }
 
   function hidePrintOverlay() {
+    clearTimeout(printOverlayWatchdog);
+    printOverlayWatchdog = null;
+    unlockPrintOverlayInput();
     const el = document.getElementById(PRINT_OVERLAY_ID);
     if (el) el.remove();
   }
 
   function runPrintBangKeSequence() {
+    // Phủ kín màn hình + khoá thao tác ngay từ đầu: ẩn mọi popup trung gian,
+    // chỉ hiện "Đang xử lý..." cho tới khi đã bấm In xong và đóng popup.
+    showPrintOverlay('Đang xử lý, vui lòng chờ...');
+    const FINISH_DELAY_MS = PRINT_DIALOG_CLOSE_DELAY_MS + 250;
+
     const trigger = findPrintMenuTriggerButton();
     if (trigger && !trigger.disabled) {
       trigger.click();
-      waitAndClick(findPrintMenuItemBangKe, PRINT_SEQUENCE_MAX_ATTEMPTS, () => {
-        clickFinalPrintButtonThenClose(PRINT_SEQUENCE_MAX_ATTEMPTS, null);
-      });
+      waitAndClick(
+        findPrintMenuItemBangKe,
+        PRINT_SEQUENCE_MAX_ATTEMPTS,
+        () => {
+          clickFinalPrintButtonThenClose(PRINT_SEQUENCE_MAX_ATTEMPTS, () => {
+            setTimeout(hidePrintOverlay, FINISH_DELAY_MS);
+          });
+        },
+        hidePrintOverlay
+      );
       return;
     }
 
     const originalHref = getActiveExamSubTabHref();
-    if (originalHref === EXAM_SUBTAB_HREF) return; // đã ở đúng tab mà vẫn không có nút -> bỏ qua
+    if (originalHref === EXAM_SUBTAB_HREF) {
+      hidePrintOverlay(); // đã ở đúng tab mà vẫn không có nút -> bỏ qua
+      return;
+    }
 
-    showPrintOverlay('Đang in bảng kê bảo hiểm...');
-
-    function restoreAndHideOverlay() {
-      if (originalHref) clickExamSubTab(originalHref);
-      setTimeout(hidePrintOverlay, EXAM_SUBTAB_SWITCH_WAIT_MS);
+    function restoreAndHideOverlay(delay) {
+      setTimeout(() => {
+        if (originalHref) clickExamSubTab(originalHref);
+        setTimeout(hidePrintOverlay, EXAM_SUBTAB_SWITCH_WAIT_MS);
+      }, delay || 0);
     }
 
     if (!clickExamSubTab(EXAM_SUBTAB_HREF)) {
@@ -2943,13 +3187,13 @@
       waitAndClick(findPrintMenuTriggerButton, PRINT_SEQUENCE_MAX_ATTEMPTS, () => {
         waitAndClick(findPrintMenuItemBangKe, PRINT_SEQUENCE_MAX_ATTEMPTS, () => {
           clickFinalPrintButtonThenClose(PRINT_SEQUENCE_MAX_ATTEMPTS, () => {
-            restoreAndHideOverlay();
+            restoreAndHideOverlay(FINISH_DELAY_MS);
           });
         }, () => {
-          restoreAndHideOverlay();
+          restoreAndHideOverlay(0);
         });
       }, () => {
-        restoreAndHideOverlay();
+        restoreAndHideOverlay(0);
       });
     }, EXAM_SUBTAB_SWITCH_WAIT_MS);
   }
@@ -2960,6 +3204,9 @@
     if (isCancelCompleteButtonVisible()) {
       runPrintBangKeSequence();
     } else {
+      // Ẩn mọi popup (Hoàn thành khám / Lưu lại / In...) + khoá thao tác tới khi xử lý xong
+      quickPrintOverlayFlow = true;
+      showPrintOverlay('Đang xử lý, vui lòng chờ...');
       tryClickCompleteExamToolbarButton();
     }
   }
@@ -3440,7 +3687,7 @@
     }, 50);
   }
 
-  document.addEventListener(
+  hlxDocListen(
     'keydown',
     (e) => {
       if (e.key !== 'Enter') return;
@@ -3719,8 +3966,8 @@
     style.id = 'helixfast-license-css';
     style.textContent = `
       .hlx-lic-overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);backdrop-filter:blur(2px);z-index:999998;animation:hlxFadeIn .15s ease-out;}
-      .hlx-lic-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:380px;max-width:92vw;
-        background:#fff;border-radius:14px;overflow:hidden;z-index:999999;zoom:1.5;
+      .hlx-lic-box{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:360px;max-width:92vw;
+        background:#fff;border-radius:14px;overflow:hidden;z-index:999999;zoom:1.2;
         box-shadow:0 24px 64px rgba(15,23,42,.35),0 2px 8px rgba(15,23,42,.12);
         font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#1e293b;font-size:12.5px;
         animation:hlxPopIn .18s cubic-bezier(.2,.9,.3,1.2);}
@@ -3737,9 +3984,20 @@
       .hlx-lic-title .ico{font-size:17px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.25));}
       .hlx-lic-pill{position:relative;display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:11px;
         padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px);white-space:nowrap;}
-      .hlx-lic-pill.ok{background:rgba(16,185,129,.18);color:#d1fae5;border:1px solid rgba(16,185,129,.4);}
-      .hlx-lic-pill.warn{background:rgba(245,158,11,.18);color:#fde68a;border:1px solid rgba(245,158,11,.45);}
-      .hlx-lic-pill.bad{background:rgba(248,113,113,.18);color:#fee2e2;border:1px solid rgba(248,113,113,.4);}
+      .hlx-lic-pill{font-size:12px !important;padding:5px 12px !important;font-weight:700 !important;}
+      .hlx-lic-pill.ok{background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:1px solid #86efac;
+        box-shadow:0 2px 10px rgba(21,128,61,.55);text-shadow:0 1px 1px rgba(0,0,0,.25);}
+      .hlx-lic-pill.warn{background:linear-gradient(135deg,#fbbf24,#d97706);color:#fff;border:1px solid #fde68a;
+        box-shadow:0 2px 10px rgba(217,119,6,.5);text-shadow:0 1px 1px rgba(0,0,0,.25);}
+      .hlx-lic-pill.bad{background:#fff;color:#b91c1c;border:1px solid #fecaca;
+        box-shadow:0 2px 10px rgba(127,29,29,.45);}
+      .hlx-lic-head.bad{background:linear-gradient(135deg,#7f1d1d 0%,#dc2626 50%,#ef4444 100%);}
+      .hlx-lic-head.warn{background:linear-gradient(135deg,#92400e 0%,#d97706 55%,#f59e0b 100%);}
+      .hlx-lic-btn.update{background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0;margin-right:auto;}
+      .hlx-lic-btn.update:hover{background:#dcfce7;}
+      .hlx-lic-btn.update.has-new{background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border-color:#16a34a;}
+      .hlx-lic-btn:disabled{opacity:.6;cursor:default;}
+      .hlx-lic-upmsg{padding:0 22px 12px;font-size:12px;font-weight:600;min-height:0;}
       .hlx-lic-sub{position:relative;font-size:11px;color:rgba(255,255,255,.75);margin-top:5px;}
       .hlx-lic-body{padding:18px 22px 6px;}
       .hlx-lic-label{display:block;font-weight:600;font-size:11px;color:#64748b;text-transform:uppercase;
@@ -3793,24 +4051,28 @@
     const nearExpiryDlg = lic.valid && lic.daysLeft <= 14;
     let pill;
     let subText;
+    let headCls = '';
     if (lic.valid && !nearExpiryDlg) {
       pill = '<span class="hlx-lic-pill ok">● Đã kích hoạt</span>';
       subText = 'Còn ' + lic.daysLeft + ' ngày · Hết hạn: ' + hlxFormatDate(lic.exp);
     } else if (lic.valid && nearExpiryDlg) {
       pill = '<span class="hlx-lic-pill warn">● Sắp hết hạn</span>';
+      headCls = ' warn';
       subText = 'Còn ' + lic.daysLeft + ' ngày · Hết hạn: ' + hlxFormatDate(lic.exp);
     } else if (lic.expired) {
       pill = '<span class="hlx-lic-pill bad">● Đã hết hạn</span>';
+      headCls = ' bad';
       subText = 'Đã hết hạn ngày ' + hlxFormatDate(lic.exp) + ' — vui lòng kích hoạt lại';
     } else {
       pill = '<span class="hlx-lic-pill bad">● Chưa kích hoạt</span>';
+      headCls = ' bad';
       subText = 'Kích hoạt theo máy';
     }
 
     box.innerHTML =
-      '<div class="hlx-lic-head">' +
+      '<div class="hlx-lic-head' + headCls + '">' +
       '<div class="hlx-lic-head-row">' +
-      '<div class="hlx-lic-title"><span class="ico">🔑</span>Bản quyền Helixfast</div>' +
+      '<div class="hlx-lic-title"><span class="ico">🔑</span>Bản quyền Helixfast <span style="opacity:.7;font-weight:500;font-size:11px;">v' + HELIXFAST_VERSION + '</span></div>' +
       pill +
       '</div>' +
       '<div class="hlx-lic-sub">' + subText + '</div>' +
@@ -3834,7 +4096,9 @@
       '<div class="hlx-lic-contact-zalo"><img src="data:image/png;base64,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" width="15" height="15" alt="Zalo" style="flex:none;border-radius:3px;">0868.91.97.90</div>' +
       '</div>' +
       '</div>' +
+      '<div id="helixfast-update-msg" class="hlx-lic-upmsg"></div>' +
       '<div class="hlx-lic-foot">' +
+      '<button id="helixfast-update-btn" type="button" class="hlx-lic-btn update" title="Kiểm tra bản mới trên GitHub">⟳ Cập nhật</button>' +
       '<button id="helixfast-license-close-btn" type="button" class="hlx-lic-btn secondary">Đóng</button>' +
       '<button id="helixfast-license-activate-btn" type="button" class="hlx-lic-btn primary">Kích hoạt</button>' +
       '</div>';
@@ -3868,6 +4132,50 @@
     });
 
     box.querySelector('#helixfast-license-close-btn').addEventListener('click', closeLicenseDialog);
+
+    const updBtn = box.querySelector('#helixfast-update-btn');
+    const updMsg = box.querySelector('#helixfast-update-msg');
+    let updReadyUrl = null;
+    const setUpd = (txt, color) => { updMsg.textContent = txt; updMsg.style.color = color || '#475569'; };
+    const verCmp = (a, b) => {
+      const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+      for (let i = 0; i < Math.max(x.length, y.length); i++) {
+        const d = (x[i] || 0) - (y[i] || 0);
+        if (d) return d > 0 ? 1 : -1;
+      }
+      return 0;
+    };
+    updBtn.addEventListener('click', async () => {
+      if (updReadyUrl) {
+        window.open(updReadyUrl, '_blank');
+        setUpd('Hãy bấm "Cài đặt/Update" ở tab vừa mở, rồi tải lại trang này.', '#475569');
+        return;
+      }
+      updBtn.disabled = true;
+      updBtn.textContent = '⟳ Đang kiểm tra...';
+      setUpd('');
+      try {
+        const res = await fetch(HLX_UPDATE_META_URL + '?t=' + Date.now(), { cache: 'no-store' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const m = (await res.text()).match(/@version\s+([0-9][0-9.]*)/);
+        if (!m) throw new Error('no version');
+        const remote = m[1];
+        if (verCmp(remote, HELIXFAST_VERSION) > 0) {
+          updReadyUrl = HLX_UPDATE_USER_URL + '?t=' + Date.now();
+          updBtn.classList.add('has-new');
+          updBtn.textContent = '⬇ Cài bản v' + remote;
+          setUpd('Có bản mới v' + remote + ' (đang dùng v' + HELIXFAST_VERSION + ').', '#15803d');
+        } else {
+          updBtn.textContent = '⟳ Cập nhật';
+          setUpd('✅ Đang dùng bản mới nhất (v' + HELIXFAST_VERSION + ').', '#15803d');
+        }
+      } catch (err) {
+        updReadyUrl = HLX_UPDATE_USER_URL + '?t=' + Date.now();
+        updBtn.textContent = '⬇ Mở trang cập nhật';
+        setUpd('Không kiểm tra được phiên bản — bấm để mở trang cập nhật thủ công.', '#b45309');
+      }
+      updBtn.disabled = false;
+    });
 
     box.querySelector('#helixfast-license-activate-btn').addEventListener('click', () => {
       const input = box.querySelector('#helixfast-license-input');
@@ -3905,20 +4213,8 @@
     setHelixfastEnabled(nowEnabled);
     const li = document.getElementById(HELIXFAST_TOGGLE_LI_ID);
     if (li) applyHelixfastToggleVisual(li);
-    if (nowEnabled) {
-      retryEnsureCustomPrintButtonsPlacement();
-      setupRxReorder();
-      const hsBtn = document.getElementById('his-hs-toggle-btn');
-      if (hsBtn) hsBtn.style.display = '';
-    } else {
-      removePrintOutpatientButton();
-      removePrintRxButton();
-      removeRxControls();
-      const hsPanel = document.getElementById('his-hs-panel') || document.querySelector('.his-hs-panel');
-      if (hsPanel) hsPanel.style.display = 'none';
-      const hsBtn = document.getElementById('his-hs-toggle-btn');
-      if (hsBtn) hsBtn.style.display = 'none';
-    }
+    // Bật/tắt => nạp lại trang để dọn sạch toàn bộ (CSS, listener, observer, nút...) như tắt script.
+    setTimeout(() => window.location.reload(), 150);
   }
 
   function createHelixfastToggleLi(settingsLi) {
@@ -4193,6 +4489,109 @@
     return li;
   }
 
+  // ===== Form khám (docx): tự điền khi bấm ENTER trong ô Diễn tiến (progression) =====
+  // Chỉ điền vào ô còn trống, không ghi đè nội dung đã nhập trước đó:
+  // - ô docx ngay trước "Toàn thân": chép nguyên văn nội dung Diễn tiến
+  // - "Toàn thân": mẫu + triệu chứng trích thông minh
+  // - "Các bộ phận", "Yêu cầu xét nghiệm CLS" + "Chỉ định CLS": điền mẫu
+  const EXAM_LABEL_TOAN_THAN = 'Toàn thân';
+  const EXAM_LABEL_CAC_BO_PHAN = 'Các bộ phận';
+  const EXAM_LABEL_YC_XN = 'Yêu cầu xét nghiệm CLS';
+  const EXAM_LABEL_CHI_DINH = 'Chỉ định CLS';
+  const EXAM_DEFAULT_BO_PHAN = 'Tim đều\nPhổi không rale\nBụng mềm';
+  const EXAM_DEFAULT_CLS = 'Tổng phân tích tế bào máu ngoại vi\nĐHMM tại giường';
+  const EXAM_TOAN_THAN_BASE = 'Bệnh tỉnh\nTiếp xúc tốt, niêm hồng, hạch ngoại vi không sờ chạm';
+  const EXAM_SYMPTOM_MAX_LEN = 160;
+
+  function examFindDocxTextarea(label) {
+    const spans = document.querySelectorAll('docx-label span[title]');
+    for (const sp of spans) {
+      if ((sp.getAttribute('title') || '').trim() !== label) continue;
+      const row = sp.closest('.ui-form-group');
+      if (!row || row.offsetParent === null) continue;
+      const ta = row.querySelector('docx-control textarea');
+      if (ta) return ta;
+    }
+    return null;
+  }
+
+  // Ô docx đứng ngay trước "Toàn thân" (bệnh sử/diễn tiến trong form khám)
+  function examFindSymptomSource() {
+    const spans = document.querySelectorAll('docx-label span[title]');
+    for (const sp of spans) {
+      if ((sp.getAttribute('title') || '').trim() !== EXAM_LABEL_TOAN_THAN) continue;
+      const row = sp.closest('.ui-form-group');
+      if (!row || row.offsetParent === null) continue;
+      let prev = row.previousElementSibling;
+      for (let i = 0; i < 3 && prev; i++, prev = prev.previousElementSibling) {
+        const ta = prev.querySelector('docx-control textarea');
+        if (ta) return ta;
+      }
+    }
+    return null;
+  }
+
+  // Trích triệu chứng: lấy câu đầu (thêm câu 2 nếu quá ngắn), bỏ tiền tố "Bệnh nhân vào viện vì...",
+  // "Diễn tiến/Triệu chứng:", hạ chữ cái đầu, cắt gọn.
+  function examExtractSymptoms(raw) {
+    let parts = String(raw || '').replace(/\r/g, '').split(/[.;\n]+/).map((x) => x.trim()).filter(Boolean);
+    if (!parts.length) return '';
+    let t = parts[0];
+    if (t.length < 25 && parts[1]) t += ', ' + parts[1].charAt(0).toLowerCase() + parts[1].slice(1);
+    t = t
+      .replace(/^(bệnh nhân|người bệnh|bn)\s*(vào viện|nhập viện|đến khám|đến)?\s*(vì|do)?\s*(lý do)?\s*[:\-]?\s*/i, '')
+      .replace(/^(diễn tiến|diễn biến|triệu chứng|bệnh sử|lý do vào viện)\s*[:\-]?\s*/i, '')
+      .replace(/[\s,.;:]+$/, '')
+      .trim();
+    if (!t) return '';
+    if (t.length > EXAM_SYMPTOM_MAX_LEN) {
+      const cut = t.slice(0, EXAM_SYMPTOM_MAX_LEN);
+      const k = Math.max(cut.lastIndexOf(','), cut.lastIndexOf(' '));
+      t = (k > 40 ? cut.slice(0, k) : cut).replace(/[\s,.;:]+$/, '');
+    }
+    return t.charAt(0).toLowerCase() + t.slice(1);
+  }
+
+  // Chỉ điền vào ô còn TRỐNG; ô đã có nội dung (nhập trước đó) thì giữ nguyên.
+  function examFillIfEmpty(el, value) {
+    if (!el || !value || el.disabled || el.readOnly) return;
+    if (el.value.trim() !== '') return;
+    setNativeValue(el, value);
+  }
+
+  function examApplyOnEnter(progEl) {
+    const text = (progEl.value || '').trim();
+    if (!text) return;
+    examFillIfEmpty(examFindSymptomSource(), text);
+    const xyz = examExtractSymptoms(text);
+    examFillIfEmpty(
+      examFindDocxTextarea(EXAM_LABEL_TOAN_THAN),
+      EXAM_TOAN_THAN_BASE + (xyz ? ', ' + xyz : '')
+    );
+    examFillIfEmpty(examFindDocxTextarea(EXAM_LABEL_CAC_BO_PHAN), EXAM_DEFAULT_BO_PHAN);
+    const yc = examFindDocxTextarea(EXAM_LABEL_YC_XN);
+    const cd = examFindDocxTextarea(EXAM_LABEL_CHI_DINH);
+    // Hai ô CLS chỉ điền mẫu khi CẢ HAI cùng trống để nội dung luôn như nhau
+    if (yc && cd && yc.value.trim() === '' && cd.value.trim() === '') {
+      examFillIfEmpty(yc, EXAM_DEFAULT_CLS);
+      examFillIfEmpty(cd, EXAM_DEFAULT_CLS);
+    }
+  }
+
+  // Chỉ chạy khi bấm Enter trong ô Diễn tiến (progression)
+  hlxDocListen(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
+      if (!isHelixfastEnabled()) return;
+      const t = e.target;
+      if (!t || t.tagName !== 'TEXTAREA' || !t.matches(PROGRESSION_SELECTOR)) return;
+      // Đợi ký tự xuống dòng được chèn xong rồi mới đọc nội dung
+      setTimeout(() => examApplyOnEnter(t), 0);
+    },
+    true
+  );
+
   function ensureHelixfastToggleButton() {
     const settingsLink = document.querySelector(HELIXFAST_SETTINGS_LINK_SELECTOR);
     if (!settingsLink) return;
@@ -4239,6 +4638,7 @@
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
+  window.__hlxIsEnabled = isHelixfastEnabled;
 
   ensureHelixfastToggleButton();
   if (isHelixfastEnabled()) {
@@ -4258,10 +4658,17 @@
 // ============================================================
 (function () {
     'use strict';
+    if (window.__hlxIsEnabled && !window.__hlxIsEnabled()) return;
 
     const GROUPS = [
         { label: 'Glucose', color: '#2196a8',
           keywords: ['Định lượng Glucose [Máu]'] },
+
+        { label: 'ĐHMM', color: '#039be5',
+          keywords: ['Xét nghiệm đường máu mao mạch tại giường'] },
+
+        { label: 'HbA1c', color: '#8d6e63',
+          keywords: ['HbA1c [Máu]'] },
 
         { label: 'Mỡ máu', color: '#e65c00',
           keywords: [
@@ -4269,15 +4676,6 @@
               'Cholesterol toàn phần (máu)',
               'Định lượng HDL-C (High density lipoprotein Cholesterol)'
           ] },
-
-        { label: 'Điện giải + Ca ion hóa', color: '#0097a7',
-          keywords: [
-              'Điện giải đồ (Na, K, Cl) [Máu]',
-              'Calci ion hoá [Máu]'
-          ] },
-
-        { label: 'HbA1c', color: '#8d6e63',
-          keywords: ['HbA1c [Máu]'] },
 
         { label: 'CN Gan', color: '#7b3f9e',
           keywords: [
@@ -4292,6 +4690,18 @@
               'Định lượng Creatinin (máu)'
           ] },
 
+        { label: 'PT Nước tiểu', color: '#558b2f',
+          keywords: ['Tổng phân tích nước tiểu (Bằng máy tự động)'] },
+
+        { label: 'CTM', color: '#c62828',
+          keywords: ['Tổng phân tích tế bào máu ngoại vi'] },
+
+        { label: 'Điện giải + Ca ion hóa', color: '#0097a7',
+          keywords: [
+              'Điện giải đồ (Na, K, Cl) [Máu]',
+              'Calci ion hoá [Máu]'
+          ] },
+
         { label: 'Acid Uric', color: '#00695c',
           keywords: ['Định lượng Acid Uric [Máu]'] },
 
@@ -4303,12 +4713,6 @@
               'Thời gian máu chảy phương pháp Duke',
               'Xét nghiệm đông máu nhanh tại giường'
           ] },
-
-        { label: 'CTM', color: '#c62828',
-          keywords: ['Tổng phân tích tế bào máu ngoại vi'] },
-
-        { label: 'PT Nước tiểu', color: '#558b2f',
-          keywords: ['Tổng phân tích nước tiểu (Bằng máy tự động)'] },
 
         { label: 'Viêm gan B/C', color: '#4527a0',
           sub: [
@@ -5001,6 +5405,7 @@
 // ===== Auto-fill "DỊCH VỤ" cho ô Số thẻ BHYT trống + chèn icon sao sau Họ tên =====
 (function () {
   'use strict';
+  if (window.__hlxIsEnabled && !window.__hlxIsEnabled()) return;
 
   const STAR_DATA_URI =
     'data:image/svg+xml;utf8,' +
