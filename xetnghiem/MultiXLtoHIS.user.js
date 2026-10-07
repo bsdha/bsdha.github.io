@@ -1,16 +1,18 @@
 // ==UserScript==
-// @name         MultiXL -> HIS
+// @name         MultiXL -> HIS: tải nhiều ảnh, OCR 1 lần, điền hàng loạt theo SID
 // @namespace    his-bd-multixl-ocr
 // @version      6.6
 // @description  Tải/dán nhiều ảnh MultiXL, thu thập (SID máy, xét nghiệm, kết quả) 1 lần; chọn từng bệnh nhân trên web thì tự dò SID và điền vào ô trống
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @grant        none
 // @run-at       document-idle
+// @updateURL    https://github.com/bsdha/bsdha.github.io/raw/refs/heads/main/xetnghiem/MultiXLtoHIS.user.js
+// @downloadURL  https://github.com/bsdha/bsdha.github.io/raw/refs/heads/main/xetnghiem/MultiXLtoHIS.user.js
 // ==/UserScript==
 
 (function () {
   'use strict';
-  console.log('[MultiXL] script đã chạy v6.5');
+  console.log('[MultiXL] script đã chạy v6.6');
 
   /* ============ CẤU HÌNH ============ */
   // Máy: 6 chữ số bắt đầu bằng 0 (vd 012132) -> web 5 chữ số (12132);
