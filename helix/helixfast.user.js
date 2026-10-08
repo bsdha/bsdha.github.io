@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      1.81
+// @version      1.82
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -11,6 +11,9 @@
 // ==/UserScript==
 
 // ===== Changelog =====
+// 1.82  Nút nhanh "Điện tim thường" chọn đúng [21.0014.1778] (trước đó chọn nhầm
+//       [02.0085.1778] vì dòng này nằm trên). Từ khóa hỗ trợ dạng "[mã] tên":
+//       gõ phần tên vào ô tìm kiếm, nhưng khi chọn dòng thì khớp cả mã.
 // 1.81  Hộp Bản quyền: thu nhỏ (zoom 1.5 -> 1.2), nhãn trạng thái nổi hơn
 //       (xanh đậm khi đã kích hoạt, cam khi sắp hết hạn, đỏ + header đỏ khi
 //       hết hạn/chưa kích hoạt), thêm nút "Cập nhật" kiểm tra bản mới trên
@@ -51,7 +54,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '1.81';
+  const HELIXFAST_VERSION = '1.82';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   // Công tắc TẮT lúc nạp trang => không gắn bất kỳ listener/observer/CSS tính năng nào
@@ -3084,7 +3087,7 @@
     document.head.appendChild(style);
   }
 
-    let printOverlayLockHandler = null;
+  let printOverlayLockHandler = null;
   let printOverlayWatchdog = null;
   const PRINT_OVERLAY_MAX_MS = 25000;
   const PRINT_OVERLAY_LOCK_EVENTS = [
@@ -4654,7 +4657,7 @@
 })();
 
 // ============================================================
-// ===== HIS BVBD - Quick Select Cận lâm sàng (v2.1) =========
+// ===== HIS BVBD - Quick Select Cận lâm sàng (v2.2) =========
 // ============================================================
 (function () {
     'use strict';
@@ -4774,7 +4777,9 @@
               { label: 'Phần mềm (da, dưới da, cơ)', keywords: ['Siêu âm phần mềm (da, tổ chức dưới da, cơ'] },
 
               { header: 'Điện tim' },
-              { label: 'Điện tim thường', keywords: ['Điện tim thường'] }
+              // Từ khóa dạng "[mã] tên": gõ phần tên vào ô tìm kiếm, nhưng chọn đúng dòng có mã
+              // (tìm "Điện tim thường" ra 2 dòng: [02.0085.1778] và [21.0014.1778])
+              { label: 'Điện tim thường', keywords: ['[21.0014.1778] Điện tim thường'] }
           ] },
 
         { label: 'Thủ thuật', color: '#00695c',
@@ -5007,11 +5012,16 @@
         });
     }
 
+    // Từ khóa dạng "[mã] tên" -> chỉ lấy phần "tên" để gõ vào ô tìm kiếm của HIS.
+    function searchTextOf(keyword) {
+        return String(keyword).replace(/^\s*\[[^\]]*\]\s*/, '').trim();
+    }
+
     async function searchKeyword(keyword) {
         const input = getSearchInput();
         const submitBtn = getSearchSubmitBtn();
         if (!input || !submitBtn) return false;
-        setNativeInputValue(input, keyword);
+        setNativeInputValue(input, searchTextOf(keyword));
         await sleep(80);
         submitBtn.click();
         await waitForTableRefresh();
@@ -5021,13 +5031,21 @@
     function findBestMatchingRow(keyword) {
         const rows = getRows();
         const kwLower = keyword.trim().toLowerCase();
+        const hasCode = /^\s*\[/.test(keyword);
+        const nameOnly = searchTextOf(keyword).toLowerCase();
         let exact = null;
         let contains = null;
         for (const row of rows) {
             const name = getServiceName(row).toLowerCase();
             if (!name) continue;
-            if (!exact && name.includes('] ' + kwLower)) exact = row;
-            if (!contains && name.includes(kwLower)) contains = row;
+            if (hasCode) {
+                // Từ khóa có mã: phải khớp đúng "[mã] tên" (tránh dính dòng cùng tên khác mã)
+                if (!exact && name.startsWith(kwLower)) exact = row;
+                if (!contains && name.includes(kwLower)) contains = row;
+            } else {
+                if (!exact && name.includes('] ' + nameOnly)) exact = row;
+                if (!contains && name.includes(nameOnly)) contains = row;
+            }
         }
         return exact || contains || null;
     }
@@ -5150,8 +5168,9 @@
         const located = [];
         let allActive = true;
         for (const kw of keywords) {
-            setStatus(`[${label}] Đang dò: ${kw}`);
-            overlaySetText(`Đang dò "${label}"\n${kw}`);
+            const kwShown = searchTextOf(kw);
+            setStatus(`[${label}] Đang dò: ${kwShown}`);
+            overlaySetText(`Đang dò "${label}"\n${kwShown}`);
             const info = await locateKeyword(kw);
             if (!info) {
                 located.push({ kw, found: false, count: 0 });
@@ -5169,8 +5188,9 @@
         let missed = [];
         for (const item of located) {
             if (!item.found) { missed.push(item.kw); continue; }
-            setStatus(`[${label}] ${action}: ${item.kw}`);
-            overlaySetText(`${action} "${label}"\n${item.kw}`);
+            const kwShown = searchTextOf(item.kw);
+            setStatus(`[${label}] ${action}: ${kwShown}`);
+            overlaySetText(`${action} "${label}"\n${kwShown}`);
             const ok = await searchKeyword(item.kw);
             if (!ok) { missed.push(item.kw); continue; }
             const finalCount = await setKeywordCount(item.kw, item.count, target);
@@ -5189,7 +5209,7 @@
             setStatus(doneMsg);
             hideOverlayWithSuccess(target === 1 ? 'Đã chọn xong!' : 'Đã bỏ chọn xong!');
         } else {
-            const errMsg = `Nhóm "${label}": xong ${okCount}, lỗi/không tìm thấy: ${missed.join(', ')}`;
+            const errMsg = `Nhóm "${label}": xong ${okCount}, lỗi/không tìm thấy: ${missed.map(searchTextOf).join(', ')}`;
             setStatus(errMsg);
             hideOverlayWithSuccess('Xong, nhưng có mục lỗi — xem dòng trạng thái.', 1400);
         }
