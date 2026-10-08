@@ -1,9 +1,9 @@
 // ==UserScript==
-// @name         MultiXL -> HIS: tải nhiều ảnh, OCR 1 lần, điền hàng loạt theo SID
+// @name         MultiXL -> HIS
 // @namespace    his-bd-multixl-ocr
-// @version      6.6
+// @version      6.7
 // @description  Tải/dán nhiều ảnh MultiXL, thu thập (SID máy, xét nghiệm, kết quả) 1 lần; chọn từng bệnh nhân trên web thì tự dò SID và điền vào ô trống
-// @match        https://his.benhvienbinhduong.org.vn/*
+// @match        https://his.benhvienbinhduong.org.vn/his/laboratory-report-all-new/*
 // @grant        none
 // @run-at       document-idle
 // @updateURL    https://github.com/bsdha/bsdha.github.io/raw/refs/heads/main/xetnghiem/MultiXLtoHIS.user.js
@@ -12,7 +12,7 @@
 
 (function () {
   'use strict';
-  console.log('[MultiXL] script đã chạy v6.6');
+  console.log('[MultiXL] script đã chạy v6.7');
 
   /* ============ CẤU HÌNH ============ */
   // Máy: 6 chữ số bắt đầu bằng 0 (vd 012132) -> web 5 chữ số (12132);
@@ -114,13 +114,13 @@
     return out;
   }
 
-  /* ============ OCR (2 worker tải sẵn; mỗi ảnh đọc 3 lần rồi lấy kết quả theo đa số) ============ */
+  /* ============ OCR (worker tải sẵn; mỗi ảnh đọc TỪNG DÒNG, mỗi dòng 3-5 lần rồi lấy theo đa số) ============ */
   // Bố cục MultiXL "Patient Report" chụp 1366x768. Chỉ cắt 3 cột: Sample ID | Test | Result rồi ghép lại
   // (bỏ hết cột khác nên máy đọc ít nhầm hơn và nhanh hơn). Toạ độ theo pixel ảnh 1366x768, tự co theo kích thước ảnh.
   const BASE_W = 1366, BASE_H = 768;
   const COLS = [[248, 326], [630, 690], [693, 765]];       // Sample ID, Test, Result
-  const ROW_Y0 = 292, ROW_Y1 = 727, ROW_PITCH = 18, ROW_BAND0 = 293, COL_GAP = 18;
-  const PASSES = [{ s: 4, th: 140 }, { s: 5, th: 130 }, { s: 3, th: 120 }]; // (độ phóng, ngưỡng đen-trắng)
+  const ROW_PITCH = 18, ROW_BAND0 = 293, COL_GAP = 18, N_BANDS = 24; // lưới MultiXL: 24 dòng/ảnh, mỗi dòng cao 18px
+  const PASSES = [{ s: 4, th: 140 }, { s: 5, th: 130 }, { s: 3, th: 120 }, { s: 6, th: 135 }, { s: 2, th: 150 }]; // (độ phóng, ngưỡng đen-trắng)
   // Số worker đọc ảnh song song (chọn trên giao diện: ×1 ... ×10, nhớ lại lần sau). Mỗi worker ~100MB RAM.
   let POOL = (() => {
     const v = +localStorage.getItem('mx-pool');
@@ -146,7 +146,7 @@
           Tesseract.createWorker('eng', 1, { logger: (m) => progressCbs[i] && progressCbs[i](m) })));
         for (const w of ws) {
           await w.setParameters({
-            tessedit_pageseg_mode: '6', preserve_interword_spaces: '1',
+            tessedit_pageseg_mode: '7', preserve_interword_spaces: '1',
             tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789. ',
           });
         }
@@ -197,105 +197,134 @@
     });
     return rows;
   }
-  // Lấy dòng nào có >=2 trong 3 lần đọc giống hệt nhau; xung đột/đọc lẻ -> cảnh báo, không dùng.
-  function consensus(passRows) {
-    const votes = new Map();
-    passRows.forEach((rows) => {
-      new Set(rows.map((r) => r.raw)).forEach((raw) => votes.set(raw, (votes.get(raw) || 0) + 1));
-    });
-    const byRaw = new Map();
-    passRows.forEach((rows) => rows.forEach((r) => byRaw.set(r.raw, r)));
-    const agreed = [...votes].filter(([, v]) => v >= 2).map(([raw]) => byRaw.get(raw));
-    const bySlot = new Map();
-    agreed.forEach((r) => { const k = r.sid + '|' + r.code; bySlot.set(k, (bySlot.get(k) || []).concat(r)); });
-    const rows = [], warns = [];
-    bySlot.forEach((list, k) => {
-      if (list.length === 1) rows.push(list[0]);
-      else warns.push(`Đọc ra nhiều số khác nhau cho "${list[0].sid} ${list[0].code}": ${list.map((r) => r.val).join(' / ')} – không dùng, hãy kiểm tra.`);
-    });
-    const lone = [...votes].filter(([raw, v]) => v === 1 && !bySlot.has(byRaw.get(raw).sid + '|' + byRaw.get(raw).code)).map(([raw]) => raw);
-    if (lone.length) warns.push(`${lone.length} dòng đọc không chắc chắn (3 lần đọc không khớp), đã bỏ qua: ${lone.join(' ; ')}`);
-    return { rows, warns };
+  // Quyết định 1 dòng từ các lần đọc: (mã XN + số) phải được >=2 lần đọc giống nhau và dẫn đầu rõ ràng; ngược lại -> không chắc.
+  function decideBand(votes) {
+    const c = votes.filter(Boolean);
+    if (!c.length) return { why: 'có chữ nhưng không đọc được' };
+    const g = new Map();
+    c.forEach((v) => { const k = v.code + '|' + v.val; g.set(k, (g.get(k) || 0) + 1); });
+    const top = [...g].sort((x, y) => y[1] - x[1]);
+    if (top[0][1] < 2 || (top[1] && top[1][1] === top[0][1])) return { why: 'đọc không chắc chắn: ' + c.map((v) => v.raw).join(' ; ') };
+    const [code, val] = top[0][0].split('|');
+    const sc = new Map();
+    c.filter((v) => v.code === code && v.val === val).forEach((v) => sc.set(v.sid, (sc.get(v.sid) || 0) + 1));
+    const st = [...sc].sort((x, y) => y[1] - x[1]);
+    let sid = st[0][0];
+    if (st[1] && st[1][1] === st[0][1]) {
+      const pl = st.filter((x) => x[1] === st[0][1] && machineToWebSid(x[0]));
+      if (pl.length === 1) sid = pl[0][0];
+      else if (pl.length > 1) return { why: `Sample ID không chắc chắn (${st.map((x) => x[0]).join(' / ')}) cho ${code} ${val}` };
+    }
+    return { row: { sid, code, val, raw: `${sid} ${code} ${val}` } };
   }
 
-  // Cắt 3 cột, ghép cạnh nhau, đổi sang đen-trắng. Dòng đang được chọn (nền xanh, chữ trắng) tự đảo màu.
-  function renderPass(bmp, S, TH) {
+  // Cắt 1 dòng (3 cột), ghép cạnh nhau, đổi sang đen-trắng. Mỗi cột tự quyết định đảo màu (dòng đang chọn: nền xanh, chữ trắng).
+  // Trả về cả tỉ lệ điểm đen (ink): gần 0 = dòng trống (hết danh sách).
+  function renderBand(bmp, b, S, TH) {
     const kx = bmp.width / BASE_W, ky = bmp.height / BASE_H;
-    const H = ROW_Y1 - ROW_Y0;
+    const y0 = ROW_BAND0 + b * ROW_PITCH;
     const W = COLS.reduce((a, [x0, x1]) => a + (x1 - x0), 0) + COL_GAP * (COLS.length + 1);
     const c = document.createElement('canvas');
-    c.width = W * S; c.height = H * S;
+    c.width = W * S; c.height = ROW_PITCH * S;
     const g = c.getContext('2d', { willReadFrequently: true });
     g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
     g.imageSmoothingQuality = 'high';
-    let x = COL_GAP;
+    const spans = []; let x = COL_GAP;
     COLS.forEach(([x0, x1]) => {
-      g.drawImage(bmp, x0 * kx, ROW_Y0 * ky, (x1 - x0) * kx, H * ky, x * S, 0, (x1 - x0) * S, H * S);
+      g.drawImage(bmp, x0 * kx, y0 * ky, (x1 - x0) * kx, ROW_PITCH * ky, x * S, 0, (x1 - x0) * S, ROW_PITCH * S);
+      spans.push([x * S, (x + x1 - x0) * S]);
       x += (x1 - x0) + COL_GAP;
     });
     const img = g.getImageData(0, 0, c.width, c.height), d = img.data, w = c.width, h = c.height;
-    const lum = new Uint8Array(w * h);
-    for (let i = 0, j = 0; i < d.length; i += 4, j++) lum[j] = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-    const bh = ROW_PITCH * S;
-    for (let y0 = (ROW_BAND0 - ROW_Y0) * S; y0 < h; y0 += bh) {
-      const y1 = Math.min(h, y0 + bh);
+    let black = 0;
+    for (const [xa, xb] of spans) {
       let tot = 0, n = 0;
-      for (let y = y0; y < y1; y += 3) for (let xx = 0; xx < w; xx += 3) { tot += lum[y * w + xx]; n++; }
+      for (let y = 0; y < h; y += 3) for (let xx = xa; xx < xb; xx += 3) { const o = (y * w + xx) * 4; tot += 0.299 * d[o] + 0.587 * d[o + 1] + 0.114 * d[o + 2]; n++; }
       const inv = n && tot / n < 170;
-      for (let y = y0; y < y1; y++) for (let xx = 0; xx < w; xx++) {
-        const v = lum[y * w + xx];
-        const black = inv ? v > 200 : v < TH;
-        const o = (y * w + xx) * 4;
-        d[o] = d[o + 1] = d[o + 2] = black ? 0 : 255; d[o + 3] = 255;
+      for (let y = 0; y < h; y++) for (let xx = xa; xx < xb; xx++) {
+        const o = (y * w + xx) * 4, v = 0.299 * d[o] + 0.587 * d[o + 1] + 0.114 * d[o + 2];
+        const isBlack = inv ? v > 200 : v < TH;
+        d[o] = d[o + 1] = d[o + 2] = isBlack ? 0 : 255; d[o + 3] = 255;
+        if (isBlack) black++;
       }
     }
     g.putImageData(img, 0, 0);
-    return c;
+    return { cv: c, ink: black / (w * h) };
   }
 
-  async function ocrBlob(blob, w, wi) {
+  // Đọc TỪNG DÒNG (24 dòng/ảnh) -> biết chắc ảnh có bao nhiêu dòng, dòng nào đọc không chắc thì báo đích danh.
+  async function ocrBlob(blob, w, wi, onBand) {
     const bmp = await createImageBitmap(blob);
     const ratio = bmp.width / bmp.height;
-    const extra = [];
+    const warns = [];
     if (Math.abs(ratio - BASE_W / BASE_H) > 0.08 || bmp.width < 900)
-      extra.push('Ảnh không đúng mẫu MultiXL toàn màn hình (1366×768) – kết quả có thể sai, hãy kiểm tra kỹ.');
-    const passRows = [];
-    for (let p = 0; p < PASSES.length; p++) {
-      passIdx[wi] = p;
-      const cv = renderPass(bmp, PASSES[p].s, PASSES[p].th);
-      passRows.push(parseLines((await w.recognize(cv)).data.text));
+      warns.push('Ảnh không đúng mẫu MultiXL toàn màn hình (1366×768) – kết quả có thể sai, hãy kiểm tra kỹ.');
+    const rows = []; let seen = 0, unsure = 0;
+    for (let b = 0; b < N_BANDS; b++) {
+      if (onBand) onBand(b);
+      const votes = []; let blank = false;
+      for (let p = 0; p < PASSES.length; p++) {
+        const { cv, ink } = renderBand(bmp, b, PASSES[p].s, PASSES[p].th);
+        if (p === 0 && ink < 0.012) { blank = true; break; }
+        const r = parseLines((await w.recognize(cv)).data.text);
+        votes.push(r[0] || null);
+        if (p === 2 && votes.every((v) => v && v.raw === votes[0].raw)) break; // 3 lần giống hệt -> xong
+      }
+      if (blank) continue;
+      seen++;
+      const dec = decideBand(votes);
+      if (dec.row) rows.push(dec.row);
+      else { unsure++; warns.push(`Dòng thứ ${b + 1} (từ trên xuống) ${dec.why} – chưa tính, hãy kiểm tra ảnh.`); }
     }
     if (bmp.close) bmp.close();
-    const res = consensus(passRows);
-    res.warns = extra.concat(res.warns);
-    return res;
+    return { rows, warns, seen, unsure };
   }
 
   /* ============ KHO DỮ LIỆU THU THẬP ============ */
   const store = new Map();      // webSid -> Map(group -> Map(val -> {raw,img}))
   const rejected = new Map();   // mã máy bị bỏ vì sai quy tắc (sid -> số dòng)
   const imgLog = [];            // {name,status,warns[]}
-  const flagged = [];           // số bất thường/nghi đọc sai: {sid,label,val,lv:'block'|'warn'|'fmt',txt,img}
-  let totalRows = 0, dataVersion = 0;
+  const flagged = [];           // số bất thường/nghi đọc sai/nhiều số: {k,sid,label,val,lv:'block'|'warn'|'fmt'|'conf',txt,img}
+  const allLines = new Map();   // sid|mã|số -> {img,n}: nhận ra dòng trùng giữa các ảnh chụp gối nhau
+  const seenSids = new Set();   // mọi SID web có >=1 kết quả số (kể cả số nghi sai/không điền)
+  let resultLines = 0, naLines = 0, rejLines = 0, fmtLines = 0, dupLines = 0, seenTotal = 0, unsureTotal = 0, dataVersion = 0;
+  function setFlag(k, f) {
+    const i = flagged.findIndex((x) => x.k === k);
+    if (i >= 0) flagged.splice(i, 1);
+    flagged.push(Object.assign({ k }, f));
+  }
 
   function addRows(img, rows) {
     const warns = [];
     rows.forEach((r) => {
       if (!/^\d+$/.test(r.sid)) { warns.push(`Sample ID đọc lỗi (không phải số): "${r.raw}"`); return; }
+      // dòng giống hệt (cùng mã máy, xét nghiệm, số) đã có từ ẢNH KHÁC = phần chụp gối nhau -> chỉ tính 1 lần
+      const key = r.sid + '|' + r.code + '|' + r.val;
+      const prev = allLines.get(key);
+      if (prev && prev.img !== img) { dupLines++; return; }
+      if (prev) prev.n++; else allLines.set(key, { img, n: 1 });
       const web = machineToWebSid(r.sid);
-      if (!web) { rejected.set(r.sid, (rejected.get(r.sid) || 0) + 1); return; }
-      if (/^N\/?A$/i.test(r.val)) { warns.push(`SID ${web}: ${r.code} = NA (máy chưa có kết quả) – bỏ qua.`); return; }
-      if (!r.code || !validVal(r.code, r.val)) { if (r.code) flagged.push({ sid: web, label: GROUP_LABEL[CODE_TO_GROUP[r.code]], val: r.val, lv: 'fmt', txt: 'sai định dạng (thiếu/thừa dấu chấm?)', img }); warns.push(`SID ${web}: giá trị sai định dạng máy (${r.code} phải có ${CODE_DEC[r.code]} số lẻ), bỏ qua, hãy kiểm tra ảnh: "${r.raw}"`); return; }
+      if (!web) { rejected.set(r.sid, (rejected.get(r.sid) || 0) + 1); rejLines++; return; }
+      if (/^N\/?A$/i.test(r.val)) { naLines++; warns.push(`SID ${web}: ${r.code} = NA (máy chưa có kết quả) – bỏ qua.`); return; }
+      if (!r.code || !validVal(r.code, r.val)) {
+        fmtLines++;
+        if (r.code) setFlag('f|' + web + '|' + r.code + '|' + r.val, { sid: web, label: GROUP_LABEL[CODE_TO_GROUP[r.code]], val: r.val, lv: 'fmt', txt: 'sai định dạng (thiếu/thừa dấu chấm?)', img });
+        warns.push(`SID ${web}: giá trị sai định dạng máy (${r.code} phải có ${CODE_DEC[r.code]} số lẻ), bỏ qua, hãy kiểm tra ảnh: "${r.raw}"`);
+        return;
+      }
+      // từ đây là 1 KẾT QUẢ SỐ hợp lệ: luôn được đếm (kể cả khi nghi sai/không điền) để số hiện ra = số trong ảnh
+      seenSids.add(web); resultLines++;
       const g = CODE_TO_GROUP[r.code];
       const as = assess(g, r.val);
-      if (as.lv !== 'ok' && as.txt) flagged.push({ sid: web, label: GROUP_LABEL[g], val: r.val, lv: as.lv, txt: as.txt, img });
+      if (as.lv !== 'ok' && as.txt) setFlag('a|' + web + '|' + g + '|' + r.val, { sid: web, label: GROUP_LABEL[g], val: r.val, lv: as.lv, txt: as.txt, img });
       if (as.lv === 'block') { warns.push(`SID ${web}: ${GROUP_LABEL[g]} = ${r.val} ${as.txt} – số gần như chắc chắn đọc sai, KHÔNG dùng. Hãy kiểm tra ảnh.`); return; }
       if (as.lv === 'warn') warns.push(`SID ${web}: ${GROUP_LABEL[g]} = ${r.val} ${as.txt} – hãy so lại với ảnh/máy.`);
       if (!store.has(web)) store.set(web, new Map());
       const gm = store.get(web);
       if (!gm.has(g)) gm.set(g, new Map());
-      if (!gm.get(g).has(r.val)) { gm.get(g).set(r.val, { raw: r.raw, img }); }
-      totalRows++;
+      const vals = gm.get(g);
+      if (!vals.has(r.val)) vals.set(r.val, { raw: r.raw, img });
+      if (vals.size > 1) setFlag('c|' + web + '|' + g, { sid: web, label: GROUP_LABEL[g], val: [...vals.keys()].join(' / '), lv: 'conf', txt: 'có ' + vals.size + ' số khác nhau cho cùng SID', img });
     });
     return warns;
   }
@@ -340,6 +369,8 @@
   .mx-chips{margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;max-height:64px;overflow:auto}
   .mx-chip{background:#e8f1fa;color:#17527f;border-radius:999px;padding:1px 8px;font-size:11px;font-weight:600}
   .mx-muted{color:#7a8c9c;font-size:12px;margin-top:8px}
+  .mx-recon{font-size:11.5px;color:#44586b;margin-top:7px;line-height:1.5}
+  .mx-chip.bad{background:#ffe3e0;color:#c0282d}
   .mx-sep{height:1px;background:linear-gradient(90deg,transparent,#cfdbe6,transparent);margin:12px 0}
   .mx-patient{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .mx-sidpill{background:#fff0ef;color:#d62d33;font-weight:800;font-size:15px;border-radius:10px;padding:2px 12px;border:1px solid #ffc9c6}
@@ -498,9 +529,15 @@
   function renderCollected() {
     imgsEl.innerHTML = imgLog.map((l) =>
       `<div class="mx-img ${l.status}"><span class="mx-ic">${l.status === 'ok' ? '✔' : l.status === 'err' ? '✖' : '⏳'}</span><span class="mx-nm">${esc(l.name)}</span><span class="mx-ms">${esc(l.msg || '')}</span></div>`).join('');
-    const sids = [...store.keys()].sort();
-    sumEl.innerHTML = store.size
-      ? `<div class="mx-stats"><div class="mx-stat"><b>${store.size}</b><span>bệnh nhân</span></div><div class="mx-stat"><b>${totalRows}</b><span>kết quả</span></div></div><div class="mx-chips">${sids.map((s) => `<span class="mx-chip">${s}</span>`).join('')}</div>`
+    const sids = [...seenSids].sort();
+    const badSid = new Set(flagged.filter((f) => f.lv !== 'warn').map((f) => f.sid));
+    let fillable = 0; store.forEach((gm) => gm.forEach((v) => { if (v.size === 1) fillable++; }));
+    sumEl.innerHTML = seenSids.size
+      ? `<div class="mx-stats"><div class="mx-stat"><b>${seenSids.size}</b><span>bệnh nhân</span></div><div class="mx-stat"><b>${resultLines}</b><span>kết quả</span></div></div>`
+        + `<div class="mx-recon">✔ <b>${fillable}</b> ô điền được · ⚠ <b>${resultLines - fillable}</b> cần tự kiểm tra/không điền (khung đỏ bên dưới)<br>`
+        + `Đối chiếu: thấy <b>${seenTotal}</b> dòng − ${dupLines} dòng trùng giữa các ảnh = <b>${seenTotal - dupLines}</b> dòng = ${resultLines} kết quả + ${naLines} NA + ${rejLines} mã ngoài quy tắc (QC, 7 chữ số...)${fmtLines ? ' + ' + fmtLines + ' sai định dạng' : ''}`
+        + (unsureTotal ? `<br><b style="color:#c0282d">⚠ ${unsureTotal} dòng đọc không chắc, CHƯA được tính – xem mục cảnh báo</b>` : '') + `</div>`
+        + `<div class="mx-chips">${sids.map((s) => `<span class="mx-chip${badSid.has(s) ? ' bad' : ''}">${s}</span>`).join('')}</div>`
       : '<div class="mx-muted">Chưa có dữ liệu. Hãy tải/dán ảnh MultiXL.</div>';
     // Khung cảnh báo CHỈ SỐ BẤT THƯỜNG: luôn mở, nêu rõ SID + xét nghiệm + trị số
     const bySid = new Map();
@@ -561,9 +598,8 @@
         try {
           if (!w) throw poolErr || new Error('bộ đọc ảnh chưa sẵn sàng');
           log.msg = 'đang đọc...'; renderCollected();
-          progressCbs[i] = (m) => { if (m.status === 'recognizing text') { log.msg = `đang đọc (lần ${(passIdx[i] || 0) + 1}/${PASSES.length}) ${Math.round(m.progress * 100)}%`; renderCollected(); } };
-          const { rows, warns: ocrWarns } = await ocrBlob(f, w, i);
-          progressCbs[i] = null;
+          const { rows, warns: ocrWarns, seen, unsure } = await ocrBlob(f, w, i, (b) => { log.msg = `đang đọc dòng ${b + 1}/${N_BANDS}`; if (b % 3 === 0) renderCollected(); });
+          seenTotal += seen; unsureTotal += unsure;
           log.warns.push(...ocrWarns);
           if (rows.length === 0) {
             log.status = 'err'; log.msg = 'KHÔNG ĐỌC ĐƯỢC dữ liệu (không thấy dòng kết quả)';
@@ -571,11 +607,10 @@
           } else {
             log.warns.push(...addRows(log.name, rows));
             log.status = 'ok';
-            log.msg = `đọc ${rows.length} dòng`;
+            log.msg = `thấy ${seen} dòng · đọc chắc ${rows.length}` + (unsure ? ` · ⚠ ${unsure} không chắc` : '');
             dataVersion++;
           }
         } catch (err) {
-          progressCbs[i] = null;
           log.status = 'err'; log.msg = 'LỖI: ' + err.message;
           log.warns.push('Không đọc được ảnh: ' + err.message);
         }
@@ -655,7 +690,8 @@
 
   $('#mx-clear').onclick = () => {
     if (!confirm('Xóa toàn bộ dữ liệu đã thu thập từ ảnh?')) return;
-    store.clear(); rejected.clear(); flagged.length = 0; imgLog.length = 0; totalRows = 0; dataVersion++;
+    store.clear(); rejected.clear(); flagged.length = 0; imgLog.length = 0; allLines.clear(); seenSids.clear();
+    resultLines = naLines = rejLines = fmtLines = dupLines = seenTotal = unsureTotal = 0; dataVersion++;
     renderCollected();
   };
 
