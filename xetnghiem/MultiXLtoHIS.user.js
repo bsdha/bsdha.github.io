@@ -3,7 +3,7 @@
 // @namespace    his-bd-multixl-ocr
 // @version      6.7
 // @description  Tải/dán nhiều ảnh MultiXL, thu thập (SID máy, xét nghiệm, kết quả) 1 lần; chọn từng bệnh nhân trên web thì tự dò SID và điền vào ô trống
-// @match        https://his.benhvienbinhduong.org.vn/his/laboratory-report-all-new*
+// @match        https://his.benhvienbinhduong.org.vn/his/laboratory-report-all-new
 // @grant        none
 // @run-at       document-idle
 // @updateURL    https://github.com/bsdha/bsdha.github.io/raw/refs/heads/main/xetnghiem/MultiXLtoHIS.user.js
