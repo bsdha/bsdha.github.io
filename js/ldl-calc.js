@@ -9,11 +9,13 @@
 
   let unit = 'mmol';
 
+  const FORMULA_HTML =
+    '<b>Công thức Sampson/NIH</b> (mg/dL): <code>LDL-C = TC/0.948 − HDL-C/0.971 − (TG/8.56 + TG×non-HDL-C/2140 − TG²/16100) − 9.44</code><br>' +
+    'non-HDL-C = TC − HDL-C. Giá trị nhập mmol/L được tự quy đổi sang mg/dL (TC, HDL-C × 38.67; TG × 88.57) rồi đổi lại kết quả.<br>' +
+    'Khuyến cáo ACC/AHA 2026 (Class 1): dùng Martin/Hopkins hoặc Sampson/NIH thay cho Friedewald; không khuyến khích định lượng LDL-C trực tiếp thường quy. Sampson/NIH áp dụng cho TG &lt; 800 mg/dL (≈ 9.04 mmol/L).';
+
   function updateFormulaBox() {
-    formulaBox.innerHTML =
-      unit === 'mmol'
-        ? 'Công thức đang dùng (mmol/L): <code>LDL-C = TC − HDL-C − TG/2.2</code>'
-        : 'Công thức đang dùng (mg/dL): <code>LDL-C = TC − HDL-C − TG/5</code>';
+    formulaBox.innerHTML = FORMULA_HTML;
   }
 
   unitBtns.forEach((btn) => {
@@ -48,6 +50,9 @@
     );
   }
 
+  const TG_MAX_MG = 800;
+  const TG_FASTING_MG = 400;
+
   function calc() {
     logUsage('ldl_calc');
     const tc = parseFloat(tcInput.value);
@@ -59,14 +64,17 @@
       return;
     }
 
-    const tgLimit = unit === 'mmol' ? 4.5 : 400;
-    const divisor = unit === 'mmol' ? 2.2 : 5;
     const unitLabel = unit === 'mmol' ? 'mmol/L' : 'mg/dL';
+    const tcMg = unit === 'mmol' ? tc * CHOL_FACTOR : tc;
+    const hdlMg = unit === 'mmol' ? hdl * CHOL_FACTOR : hdl;
+    const tgMg = unit === 'mmol' ? tg * TG_FACTOR : tg;
 
-    const ldl = tc - hdl - tg / divisor;
-    const overLimit = tg >= tgLimit;
-    const negative = ldl < 0;
+    const overLimit = tgMg >= TG_MAX_MG;
+    const ldlMg = overLimit ? NaN : sampsonLDL(tcMg, hdlMg, tgMg);
+    const negative = !overLimit && ldlMg < 0;
     const invalid = overLimit || negative;
+    const ldl = unit === 'mmol' ? ldlMg / CHOL_FACTOR : ldlMg;
+    const tgLimitDisplay = unit === 'mmol' ? (TG_MAX_MG / TG_FACTOR).toFixed(2) : TG_MAX_MG;
 
     const cardClass = invalid ? 'ldl-result-card invalid' : 'ldl-result-card';
     const badge = invalid ? '' : (() => {
@@ -74,49 +82,29 @@
       return `<span class="ldl-badge ${c.cls}">${c.label}</span>`;
     })();
 
+    const tgFastingDisplay = unit === 'mmol' ? (TG_FASTING_MG / TG_FACTOR).toFixed(2) : TG_FASTING_MG;
     let warningHtml = '';
     if (overLimit) {
-      warningHtml = `<div class="ldl-warning">⚠ TG = ${tg} ${unitLabel} ≥ ${tgLimit} ${unitLabel}. Công thức Friedewald KHÔNG chính xác trong trường hợp này.</div>`;
+      warningHtml = `<div class="ldl-warning">⚠ TG = ${tg} ${unitLabel} ≥ ${tgLimitDisplay} ${unitLabel}. Ngoài giới hạn áp dụng của công thức Sampson/NIH (TG &lt; 800 mg/dL); cần định lượng LDL-C trực tiếp hoặc beta-quantification.</div>`;
     } else if (negative) {
       warningHtml = `<div class="ldl-warning">⚠ Kết quả tính ra âm, không có ý nghĩa lâm sàng. Vui lòng kiểm tra lại số liệu đầu vào hoặc định lượng LDL-C trực tiếp.</div>`;
     }
 
-    let sampsonHtml = '';
-    if (overLimit) {
-      const tcMg = unit === 'mmol' ? tc * CHOL_FACTOR : tc;
-      const hdlMg = unit === 'mmol' ? hdl * CHOL_FACTOR : hdl;
-      const tgMg = unit === 'mmol' ? tg * TG_FACTOR : tg;
-      const sampsonMg = sampsonLDL(tcMg, hdlMg, tgMg);
-      const sampsonDisplay = unit === 'mmol' ? sampsonMg / CHOL_FACTOR : sampsonMg;
-
-      if (sampsonMg < 0) {
-        sampsonHtml = `
-          <div class="ldl-result-card invalid" style="margin-top:10px;">
-            <div class="ldl-note" style="margin-top:0;">Công thức Sampson (thay thế): kết quả âm, nên định lượng LDL-C trực tiếp bằng xét nghiệm.</div>
-          </div>`;
-      } else {
-        const c = classify(sampsonDisplay, unit);
-        sampsonHtml = `
-          <div class="ldl-result-card" style="margin-top:10px;">
-            <div class="ldl-note" style="margin-top:0; color:var(--text); font-weight:700;">Ước tính bằng công thức Sampson (phù hợp hơn Friedewald khi TG cao)</div>
-            <div class="big" style="font-size:24px; margin-top:6px;">${sampsonDisplay.toFixed(2)}<span class="u">${unitLabel}</span></div>
-            <span class="ldl-badge ${c.cls}">${c.label}</span>
-            <div class="ldl-note">Nếu có điều kiện, vẫn nên ưu tiên định lượng LDL-C trực tiếp bằng xét nghiệm khi TG cao.</div>
-          </div>`;
-      }
-    }
+    const fastingHtml = (!overLimit && tgMg >= TG_FASTING_MG)
+      ? `<div class="ldl-warning">ℹ TG ≥ ${tgFastingDisplay} ${unitLabel}: nên lấy lại mẫu sau nhịn ăn để xác nhận (theo ACC/AHA 2026).</div>`
+      : '';
 
     resultEl.innerHTML = `
       <div class="${cardClass}">
         <div class="big">${invalid ? '—' : ldl.toFixed(2)}<span class="u">${unitLabel}</span></div>
         ${badge}
         ${warningHtml}
+        ${fastingHtml}
         <div class="ldl-note">
-          Công thức Friedewald chỉ đáng tin cậy khi TG &lt; ${tgLimit} ${unitLabel} và bệnh nhân nhịn ăn trước lấy máu.
-          Không dùng cho rối loạn lipoprotein đặc biệt (VD: dysbetalipoproteinemia).
-        </div>
-      </div>
-      ${sampsonHtml}`;
+          Tính theo công thức Sampson/NIH (khuyến cáo ACC/AHA 2026, Class 1) — chính xác hơn Friedewald, nhất là khi TG cao hoặc LDL-C thấp; có thể dùng mẫu không nhịn ăn khi TG &lt; 400 mg/dL (4.52 mmol/L).
+          Công thức vẫn có sai số, nhất là khi TG cao và LDL-C thấp; cần cẩn trọng khi diễn giải gần các ngưỡng mục tiêu.
+          </div>
+      </div>`;
   }
 
   calcBtn.addEventListener('click', calc);
