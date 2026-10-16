@@ -271,7 +271,7 @@
         <a href="/ldl" class="hcard" data-page="ldl" data-path="/ldl" data-kw="cholesterol mỡ máu ldl-c friedewald sampson lipid">
           <div class="ic">🩸</div>
           <h2>Tính LDL-Cholesterol</h2>
-          <p>Ước tính LDL-C theo công thức Friedewald, tự động dùng Sampson khi TG cao.</p>
+          <p>Ước tính LDL-C theo công thức Sampson/NIH (khuyến cáo AHA/ACC 2026).</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -915,7 +915,7 @@
   <div class="page" id="page-ldl">
     <div class="wrap">
       <div class="panel">
-        <h1>Tính LDL-Cholesterol (công thức Friedewald)</h1>
+        <h1>Tính LDL-Cholesterol (công thức Sampson/NIH)</h1>
         <div class="sub">Nhập Cholesterol toàn phần (TC), HDL-C và Triglycerid (TG) để ước tính LDL-C.</div>
 
         <div class="unit-switch">
@@ -943,8 +943,6 @@
         <div class="ldl-result" id="ldlResult"></div>
 
         <div class="formula-box" id="ldlFormulaBox">
-          Công thức đang dùng (mmol/L): <code>LDL-C = TC − HDL-C − TG/2.2</code><br>
-          Công thức mg/dL: <code>LDL-C = TC − HDL-C − TG/5</code>
         </div>
       </div>
     </div>
