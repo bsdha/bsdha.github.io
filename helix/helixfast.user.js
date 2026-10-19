@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.0
+// @version      2.8
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.0';
+  const HELIXFAST_VERSION = '2.8';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -5773,6 +5773,28 @@
     if (e.isTrusted && e.key === 'Escape') closeUpdateDialog();
   }
 
+  // Sau khi bấm "Cài bản mới": khi quay lại tab HIS thì nhắc tải lại để áp dụng
+  let hlxUpdatePending = false;
+  function hlxMarkUpdatePending() { hlxUpdatePending = true; }
+  function hlxShowReloadToast() {
+    if (document.getElementById('helixfast-reload-toast')) return;
+    const t = document.createElement('div');
+    t.id = 'helixfast-reload-toast';
+    t.style.cssText = 'position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:2147483647;background:#0f172a;color:#fff;padding:12px 16px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.35);font:600 13px system-ui,sans-serif;display:flex;gap:10px;align-items:center;';
+    t.innerHTML = '<span>Đã cài xong Helixfast bản mới? Tải lại trang để áp dụng.</span>' +
+      '<button type="button" id="hlx-rl-yes" style="background:#2563eb;color:#fff;border:0;border-radius:8px;padding:6px 12px;font-weight:700;cursor:pointer">Tải lại ngay</button>' +
+      '<button type="button" id="hlx-rl-no" style="background:transparent;color:#cbd5e1;border:0;cursor:pointer;font-size:16px" title="Để sau">✕</button>';
+    document.body.appendChild(t);
+    t.querySelector('#hlx-rl-yes').addEventListener('click', () => window.location.reload());
+    t.querySelector('#hlx-rl-no').addEventListener('click', () => t.remove());
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && hlxUpdatePending) {
+      hlxUpdatePending = false;
+      hlxShowReloadToast();
+    }
+  });
+
   function openUpdateDialog() {
     closeUpdateDialog();
     closeLicenseDialog();
@@ -5837,8 +5859,9 @@
       show();
     };
     act.addEventListener('click', () => {
-      if (mode === 'install') { window.open(HLX_UPDATE_USER_URL + '?t=' + Date.now(), '_blank'); return; }
+      if (mode === 'install') { hlxMarkUpdatePending(); window.open(HLX_UPDATE_USER_URL + '?t=' + Date.now(), '_blank'); closeUpdateDialog(); return; }
       if (mode === 'manual' && hlxUpdState.error && act.textContent.indexOf('Mở trang') !== -1) {
+        hlxMarkUpdatePending();
         window.open(HLX_UPDATE_USER_URL + '?t=' + Date.now(), '_blank');
         return;
       }
