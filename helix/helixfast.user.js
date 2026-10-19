@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.0
+// @version      2.1
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.0';
+  const HELIXFAST_VERSION = '2.1';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -7549,6 +7549,27 @@
     return true;
   }
 
+  // Suy ra số ngày từ lúc có triệu chứng đến khi vào viện (giờ/phút/cùng ngày = 1)
+  function baParseOnsetDays(text) {
+    const t = String(text || '').toLowerCase().normalize('NFC');
+    if (!t.trim()) return 0;
+    const words = { 'một': 1, 'hai': 2, 'ba': 3, 'bốn': 4, 'tư': 4, 'năm': 5, 'sáu': 6, 'bảy': 7, 'tám': 8, 'chín': 9, 'mười': 10 };
+    const re = /(\d+|một|hai|ba|bốn|năm|sáu|bảy|tám|chín|mười)\s*(ngày|tuần|tháng|giờ|tiếng|phút)\b/g;
+    let m;
+    while ((m = re.exec(t))) {
+      const prev = t.slice(Math.max(0, m.index - 6), m.index);
+      if (/thứ\s*$/.test(prev)) continue;
+      const num = /^\d+$/.test(m[1]) ? parseInt(m[1], 10) : words[m[1]];
+      if (!num) continue;
+      if (m[2] === 'ngày') return num;
+      if (m[2] === 'tuần') return num * 7;
+      if (m[2] === 'tháng') return num * 30;
+      return 1; // giờ, tiếng, phút
+    }
+    if (/(cùng ngày|trong ngày|nửa ngày|sáng nay|chiều nay|tối nay|hôm nay|vài giờ|vài tiếng)/.test(t)) return 1;
+    return 0;
+  }
+
   function ipdBenhAnTick() {
     const key = ipdVisitKey() || '_';
     const done = baDone[key] || (baDone[key] = new Set());
@@ -7571,6 +7592,19 @@
     };
 
     fillFrom('5.1', () => baSourceByTitle('Diễn biến vào viện'));
+    // 4.1 Vào ngày thứ: suy ra từ "Diễn biến vào viện" (cách nhập viện N ngày / giờ / phút / cùng ngày → 1)
+    if (!done.has('4.1')) {
+      const f41 = baFindField('4.1');
+      if (f41) {
+        if (f41.value.trim()) done.add('4.1');
+        else {
+          const srcEl = baSourceByTitle('Diễn biến vào viện');
+          const srcTxt = srcEl ? String(srcEl.value || '').trim() : '';
+          const n = srcTxt ? (baParseOnsetDays(srcTxt) || 1) : 0; // không xác định được → mặc định 1
+          if (n) { setNativeValue(f41, String(n)); done.add('4.1'); }
+        }
+      }
+    }
     fillFrom('5.2.1', () => baSourceByControl('self_anamnesis'));
     fillFrom('5.2.3', () => baSourceByControl('family_anamnesis'));
     fillFrom('6.1', () => baSourceByTitle('Toàn thân'));
