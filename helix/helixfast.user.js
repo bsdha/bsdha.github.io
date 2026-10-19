@@ -5682,8 +5682,11 @@
       .helixfast-switch.on .helixfast-switch-knob {
         left: 14px;
       }
-      .hlx-upd-flash { color: #15803d; font-weight: 700; animation: hlxUpdPop .5s ease; }
-      @keyframes hlxUpdPop { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+      .helixfast-label.hlx-has-new { display: inline-grid; }
+      .helixfast-label .hlx-lbl { grid-area: 1 / 1; text-align: center; white-space: nowrap; transition: opacity .35s ease; }
+      .helixfast-label .hlx-lbl-new { opacity: 0; background: #e53935; color: #fff; border-radius: 8px; padding: 0 6px; font-weight: 700; }
+      .helixfast-label.hlx-show-new .hlx-lbl-cur { opacity: 0; }
+      .helixfast-label.hlx-show-new .hlx-lbl-new { opacity: 1; }
     `;
     document.head.appendChild(style);
   }
@@ -5703,13 +5706,24 @@
       if (isExpired) label += ' — Đã hết hạn';
       else if (!lic.valid) label += ' (Chưa kích hoạt)';
       else if (nearExpiry) label += ' — Sắp hết hạn';
-      if (hlxUpdState.hasNew && hlxUpdState.remote && hlxUpdFlip) {
-        label = '⬆ Bản mới v' + hlxUpdState.remote;
-        labelEl.classList.add('hlx-upd-flash');
+      if (hlxUpdState.hasNew && hlxUpdState.remote) {
+        // Hai nhãn xếp chồng trong cùng một ô lưới => độ rộng nút luôn = nhãn dài nhất, không bị giật
+        const alt = '⬆ Bản mới v' + hlxUpdState.remote;
+        const key = label + '|' + alt;
+        if (labelEl.dataset.hlxKey !== key) {
+          labelEl.dataset.hlxKey = key;
+          labelEl.textContent = '';
+          const sa = document.createElement('span'); sa.className = 'hlx-lbl hlx-lbl-cur'; sa.textContent = label;
+          const sb = document.createElement('span'); sb.className = 'hlx-lbl hlx-lbl-new'; sb.textContent = alt;
+          labelEl.append(sa, sb);
+        }
+        labelEl.classList.add('hlx-has-new');
+        labelEl.classList.toggle('hlx-show-new', hlxUpdFlip);
       } else {
-        labelEl.classList.remove('hlx-upd-flash');
+        delete labelEl.dataset.hlxKey;
+        labelEl.classList.remove('hlx-has-new', 'hlx-show-new');
+        labelEl.textContent = label;
       }
-      labelEl.textContent = label;
     }
     if (isExpired) {
       link.title = 'Bản quyền đã hết hạn — chuột phải → Bản quyền để kích hoạt lại';
