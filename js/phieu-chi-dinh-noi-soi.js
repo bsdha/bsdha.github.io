@@ -4,8 +4,8 @@
 
    - Form điền trực tiếp (không cần đọc file nguồn), điều hướng Tab/Enter
      giữa các ô nhập giống hệt các tool khác trong bộ (đơn thuốc...).
-   - Cho phép thêm/xoá dòng chỉ định nội soi (mặc định 1 dòng "Nội soi
-     dạ dày thực quản" đúng như mẫu gốc).
+   - Chọn loại nội soi (thực quản - dạ dày - tá tràng / trực tràng) ngay trên màn hình;
+     mặc định 1 dòng chỉ định tương ứng.
    - Bác sĩ ký tên bên dưới: có thể bật/tắt hiển thị và xoá tên đã điền.
    - Nút "IN PHIẾU CHỈ ĐỊNH" -> tạo PDF khổ A5 (jsPDF, giống đơn thuốc) và mở
      ở tab mới, đúng bố cục mẫu Word gốc (logo + SỞ Y TẾ + BV ĐK Bình Dương CS2).
@@ -90,6 +90,7 @@
     ".ns-inp-sex{width:52px;flex:0 0 auto;}",
     ".ns-inp-addr{flex:1 1 auto;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;}",
     ".ns-diag-fixed{font-weight:bold;}",
+    ".ns-inp-type{min-width:200px;}",
     ".ns-table{width:100%;border-collapse:collapse;margin:2.5mm 0 4mm;font-size:11.5px;}",
     ".ns-table th,.ns-table td{border:1px solid #000;padding:1.2mm 1.6mm;vertical-align:middle;}",
     ".ns-table th{font-weight:bold;text-align:center;background:rgba(0,0,0,.03);}",
@@ -128,6 +129,7 @@
     "  .ns-inp-dob{width:70px;}",
     "  .ns-inp-sex{width:80px;}",
     "  .ns-inp-addr{min-width:300px;white-space:normal;overflow:visible;text-overflow:clip;}",
+    "  .ns-inp-type{min-width:340px;max-width:100%;}",
     "  .ns-footer{justify-content:center;margin-top:10px;}",
     "  .ns-footer-col{width:auto;max-width:380px;}",
     "  .ns-footer .ns-daterow{font-size:16px;gap:10px;}",
@@ -145,7 +147,7 @@
     "  html.ns-printing #nsSheet, html.ns-printing #nsSheet *{visibility:visible !important;}",
     "  html.ns-printing .ns-sheet-outer{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
     "  html.ns-printing #nsSheet{position:absolute !important;left:0 !important;top:0 !important;box-shadow:none !important;}",
-    "  html.ns-printing .ns-rowdel,html.ns-printing .ns-bsname-btn{display:none !important;}",
+    "  html.ns-printing .ns-rowdel,html.ns-printing .ns-bsname-btn,html.ns-printing #nsTypeLine{display:none !important;}",
     "  html.ns-printing .ns-field-line input,html.ns-printing .ns-field-line select,",
     "  html.ns-printing .ns-table input,html.ns-printing .ns-table textarea,",
     "  html.ns-printing .ns-footer input,html.ns-printing .ns-tinhtrang select,",
@@ -159,8 +161,15 @@
   /* ---------------------------------------------------------------- */
   /* 2. Danh mục gợi ý nội dung nội soi thường dùng                    */
   /* ---------------------------------------------------------------- */
+  // Các loại nội soi chọn nhanh trên màn hình. chanDoan: dòng "Chẩn đoán" in trên phiếu
+  // (để "" nếu muốn in đường chấm cho bác sĩ tự viết tay).
+  var NOISOI_TYPES = [
+    { name: "Nội soi thực quản - dạ dày - tá tràng", chanDoan: "Viêm dạ dày & tá tràng" },
+    { name: "Nội soi trực tràng", chanDoan: "" }
+  ];
+
   var NOISOI_SUGGEST = [
-    "Nội soi dạ dày thực quản",
+    "Nội soi thực quản - dạ dày - tá tràng",
     "Nội soi tai mũi họng",
     "Nội soi trực tràng",
     "Nội soi đại tràng",
@@ -172,6 +181,10 @@
   /* ---------------------------------------------------------------- */
   /* 3. HTML khung — không cần sửa index.html                          */
   /* ---------------------------------------------------------------- */
+  var typeOptsHtml = NOISOI_TYPES.map(function (t, i) {
+    return '<option value="' + i + '">' + escapeHtmlNs(t.name) + '</option>';
+  }).join("");
+
   root.innerHTML =
     '<div id="nsWrap">' +
       '<h1>🔬 Phiếu chỉ định nội soi</h1>' +
@@ -217,9 +230,13 @@
                 '<label>Địa chỉ:</label>' +
                 '<input type="text" id="nsDiaChi" class="ns-inp-addr" placeholder="Số nhà, đường, phường/xã, tỉnh/thành...">' +
               '</div>' +
+              '<div class="ns-field-line" id="nsTypeLine">' +
+                '<label>Nội dung nội soi:</label>' +
+                '<select id="nsLoaiNoiSoi" class="ns-inp-type">' + typeOptsHtml + '</select>' +
+              '</div>' +
               '<div class="ns-field-line" id="nsDiagLine">' +
                 '<label>Chẩn đoán:</label>' +
-                '<span class="ns-diag-fixed">Viêm dạ dày &amp; tá tràng</span>' +
+                '<span class="ns-diag-fixed" id="nsDiagText"></span>' +
               '</div>' +
               '<table class="ns-table" id="nsTable">' +
                 '<thead><tr>' +
@@ -444,10 +461,22 @@
   /* ---------------------------------------------------------------- */
   /* 6. Giá trị mặc định: ngày tháng năm hôm nay                       */
   /* ---------------------------------------------------------------- */
+  function applyNoiSoiType() {
+    var sel = document.getElementById("nsLoaiNoiSoi");
+    var t = NOISOI_TYPES[parseInt(sel.value, 10)] || NOISOI_TYPES[0];
+    document.getElementById("nsDiagText").textContent = t.chanDoan;
+    var first = tbody.querySelector(".ns-fld-noidung");
+    if (first) first.value = t.name;
+  }
+
   function fillDefaults() {
     document.getElementById("nsDate").value = nsTodayISO();
-    addRow("Nội soi dạ dày thực quản", "01");
+    document.getElementById("nsLoaiNoiSoi").value = "0";
+    addRow(NOISOI_TYPES[0].name, "01");
+    applyNoiSoiType();
   }
+
+  document.getElementById("nsLoaiNoiSoi").addEventListener("change", applyNoiSoiType);
 
   // Năm sinh: chỉ cho gõ số
   document.getElementById("nsNamSinh").addEventListener("input", function (e) {
@@ -520,6 +549,7 @@
     });
     return {
       tinhTrang: document.getElementById("nsTinhTrang").value,
+      chanDoan: document.getElementById("nsDiagText").textContent,
       hoTen: document.getElementById("nsHoTen").value.trim(),
       namSinh: document.getElementById("nsNamSinh").value.trim(),
       gioiTinh: document.getElementById("nsGioiTinh").value,
@@ -632,7 +662,9 @@
     var lDiag = "Chẩn đoán:";
     text(lDiag, mx, y);
     setF("bold", LS);
-    text("Viêm dạ dày & tá tràng", mx + tw(lDiag) + gap, y);
+    var dgx = mx + tw(lDiag) + gap;
+    if (d.chanDoan) text(d.chanDoan, dgx, y);
+    else dots(dgx, y, mx + cw - dgx);
     y += 6;
 
     /* ---- Bảng chỉ định ---- */
