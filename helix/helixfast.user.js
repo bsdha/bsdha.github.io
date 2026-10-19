@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.1
+// @version      2.11
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.1';
+  const HELIXFAST_VERSION = '2.11';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -5682,6 +5682,8 @@
       .helixfast-switch.on .helixfast-switch-knob {
         left: 14px;
       }
+      .hlx-upd-flash { color: #15803d; font-weight: 700; animation: hlxUpdPop .5s ease; }
+      @keyframes hlxUpdPop { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
     `;
     document.head.appendChild(style);
   }
@@ -5701,7 +5703,12 @@
       if (isExpired) label += ' — Đã hết hạn';
       else if (!lic.valid) label += ' (Chưa kích hoạt)';
       else if (nearExpiry) label += ' — Sắp hết hạn';
-      if (hlxUpdState.hasNew && hlxUpdState.remote) label += ' ⬆ v' + hlxUpdState.remote;
+      if (hlxUpdState.hasNew && hlxUpdState.remote && hlxUpdFlip) {
+        label = '⬆ Bản mới v' + hlxUpdState.remote;
+        labelEl.classList.add('hlx-upd-flash');
+      } else {
+        labelEl.classList.remove('hlx-upd-flash');
+      }
       labelEl.textContent = label;
     }
     if (isExpired) {
@@ -5744,6 +5751,21 @@
     return 0;
   }
 
+  // Nhấp nháy luân phiên: "Helixfast v2.0" <-> "⬆ Bản mới v2.1" khi có bản mới
+  let hlxUpdFlip = false, hlxUpdFlipTimer = null;
+  function hlxUpdFlipStart() {
+    if (hlxUpdFlipTimer) return;
+    hlxUpdFlipTimer = setInterval(() => {
+      hlxUpdFlip = !hlxUpdFlip;
+      const li = document.getElementById(HELIXFAST_TOGGLE_LI_ID);
+      if (li) applyHelixfastToggleVisual(li);
+    }, 2500);
+  }
+  function hlxUpdFlipStop() {
+    if (hlxUpdFlipTimer) { clearInterval(hlxUpdFlipTimer); hlxUpdFlipTimer = null; }
+    hlxUpdFlip = false;
+  }
+
   async function hlxCheckUpdate() {
     try {
       const res = await fetch(HLX_UPDATE_META_URL + '?t=' + Date.now(), { cache: 'no-store' });
@@ -5757,6 +5779,7 @@
       hlxUpdState.error = true;
     }
     hlxUpdState.checked = true;
+    if (hlxUpdState.hasNew) hlxUpdFlipStart(); else hlxUpdFlipStop();
     const li = document.getElementById(HELIXFAST_TOGGLE_LI_ID);
     if (li) applyHelixfastToggleVisual(li);
     return hlxUpdState;
