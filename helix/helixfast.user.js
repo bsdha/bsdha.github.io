@@ -5684,7 +5684,7 @@
       }
       .helixfast-label.hlx-has-new { display: inline-grid; }
       .helixfast-label .hlx-lbl { grid-area: 1 / 1; text-align: center; white-space: nowrap; transition: opacity .35s ease; }
-      .helixfast-label .hlx-lbl-new { opacity: 0; background: #e53935; color: #fff; border-radius: 8px; padding: 0 6px; font-weight: 700; }
+      .helixfast-label .hlx-lbl-new { opacity: 0; }
       .helixfast-label.hlx-show-new .hlx-lbl-cur { opacity: 0; }
       .helixfast-label.hlx-show-new .hlx-lbl-new { opacity: 1; }
     `;
