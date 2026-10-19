@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.11
+// @version      2.1
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -14,7 +14,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.11';
+  const HELIXFAST_VERSION = '2.1';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -3094,6 +3094,47 @@
           try { hlxSyncNote(); } catch (err) {}
           rxNapAndRefocus();
         }, 120);
+        return;
+      }
+    },
+    true
+  );
+
+  // Backspace ở ô trống (Tổng S.Lg / Tối / Chiều / Trưa / Sáng) → lùi về ô liền trước và bôi đen dữ liệu có sẵn.
+  // Ô Số ngày là ô đầu hàng: Backspace không lùi đi đâu nữa.
+  const HLX_DOSE_BACK_ORDER = [
+    SUPPLY_DAY_SELECTOR,
+    'input[formcontrolname="quantity_unit_s"]',
+    'input[formcontrolname="quantity_unit_tr"]',
+    'input[formcontrolname="quantity_unit_c"]',
+    'input[formcontrolname="quantity_unit_t"]',
+    SUPPLY_QTY_SELECTOR
+  ];
+  hlxDocListen(
+    'keydown',
+    (e) => {
+      if (e.key !== 'Backspace' || !e.isTrusted || e.isComposing) return;
+      if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
+      if (!isHelixfastEnabled()) return;
+      const t = e.target;
+      if (!t || !t.matches || t.tagName !== 'INPUT') return;
+      let idx = -1;
+      for (let i = 0; i < HLX_DOSE_BACK_ORDER.length; i++) {
+        if (t.matches(HLX_DOSE_BACK_ORDER[i])) { idx = i; break; }
+      }
+      if (idx < 0) return;
+      // Số ngày: giữ hành vi Backspace bình thường, không chuyển ô
+      if (idx === 0) return;
+      // Còn dữ liệu thì Backspace xóa như bình thường (lần nhấn tiếp theo mới lùi ô)
+      if (t.value !== '') return;
+      const root = t.closest('#pharmacy, .p-dialog') || document;
+      for (let j = idx - 1; j >= 0; j--) {
+        const prev = root.querySelector(HLX_DOSE_BACK_ORDER[j]);
+        if (!prev || prev.disabled || prev.readOnly || prev.offsetParent === null) continue;
+        e.preventDefault();
+        e.stopPropagation();
+        prev.focus();
+        if (typeof prev.select === 'function') prev.select();
         return;
       }
     },
