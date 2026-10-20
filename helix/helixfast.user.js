@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.12
+// @version      2.14
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -18,7 +18,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.12';
+  const HELIXFAST_VERSION = '2.14';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -9906,6 +9906,7 @@
               { label: 'Khớp (gối, háng, khuỷu, cổ tay...)', keywords: ['Siêu âm khớp (gối, háng, khuỷu, cổ tay...)'] },
               { label: 'Phần mềm cổ mặt', keywords: ['Siêu âm cơ phần mềm vùng cổ mặt'] },
               { label: 'Phần mềm (da, dưới da, cơ)', keywords: ['Siêu âm phần mềm (da, tổ chức dưới da, cơ'] },
+              { label: 'Tuyến nước bọt', keywords: ['[18.0002.0001] Siêu âm các tuyến nước bọt'] },
 
               { header: 'Điện tim' },
 
