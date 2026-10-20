@@ -1,12 +1,16 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.11
+// @version      2.24
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
 // @grant        GM_getValue
 // @grant        GM_setValue
+// @grant        GM_xmlhttpRequest
+// @grant        unsafeWindow
+// @connect      rxnav.nlm.nih.gov
+// @connect      api.fda.gov
 // @updateURL    https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js
 // @downloadURL  https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js
 // ==/UserScript==
@@ -14,7 +18,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.11';
+  const HELIXFAST_VERSION = '2.24';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -8488,6 +8492,1295 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) hlxMainTick(); });
   window.addEventListener('pageshow', () => hlxMainTick());
   window.addEventListener('load', () => setTimeout(hlxMainTick, 300));
+
+  // ===== Chọn phòng nhanh + ghim phòng mặc định + tự bấm Tìm kiếm (danh sách thăm khám) =====
+  (function hlxRoomModule() {
+    if (HLX_OFF) return;
+    const K_ON = 'helixfast_room_on_v1', K_DEF = 'helixfast_room_def_v1';
+    const QUICK = ['5', '6', '7'];
+    const HOST_SEL = 'ng-selectize[formcontrolname="area_id"]';
+    let busy = false, autoDone = false, hostSince = 0, lastSeen = null, searchT = null;
+    const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const nz = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd')
+      .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().replace(/\b0+(\d)/g, '$1');
+    const isOn = () => hlxStoreGet(K_ON) === '1';
+    function getDef() { try { const v = JSON.parse(hlxStoreGet(K_DEF) || 'null'); return v && v.n ? v : null; } catch (err) { return null; } }
+    function setDef(v) { try { hlxStoreSet(K_DEF, JSON.stringify(v || null)); } catch (err) {} }
+    function curName(host) {
+      const sp = host.querySelector('.selectize-input > span[data-value]');
+      if (!sp) return '';
+      const dv = sp.querySelector('div');
+      return ((dv || sp).textContent || '').replace(/×/g, '').replace(/\s+/g, ' ').trim();
+    }
+    function ddOf(host) {
+      let dd = host.querySelector('.selectize-dropdown');
+      if (dd && dd.querySelector('.option')) return dd;
+      dd = Array.from(document.querySelectorAll('.selectize-dropdown')).find((x) => x.querySelector('.option') && x.offsetParent !== null);
+      return dd || null;
+    }
+    function optionsOf(host) {
+      const dd = ddOf(host);
+      return dd ? Array.from(dd.querySelectorAll('.option')) : [];
+    }
+    // Ưu tiên gọi thẳng API selectize (nếu truy cập được), không được thì mô phỏng bấm chuột
+    function selApi(host) {
+      try {
+        const sel = host.querySelector('select');
+        if (!sel) return null;
+        let inst = sel.selectize;
+        if (!inst) {
+          const u = (typeof unsafeWindow !== 'undefined') ? unsafeWindow : window;
+          const $ = u.jQuery || u.$;
+          if ($) { const e = $(sel)[0]; inst = e && e.selectize; }
+        }
+        return inst && inst.options ? inst : null;
+      } catch (err) { return null; }
+    }
+    function apiOptions(inst) {
+      const lf = (inst.settings && inst.settings.labelField) || 'text';
+      const vf = (inst.settings && inst.settings.valueField) || 'value';
+      return Object.keys(inst.options).map((k) => ({ id: inst.options[k][vf] !== undefined ? inst.options[k][vf] : k, text: String(inst.options[k][lf] || '') }));
+    }
+    const mev = (el, t) => el.dispatchEvent(new MouseEvent(t, { bubbles: true, cancelable: true, view: window }));
+    async function openDd(host) {
+      const ctl = host.querySelector('.selectize-input');
+      if (!ctl) return [];
+      mev(ctl, 'mousedown');
+      try { const i = ctl.querySelector('input'); if (i) i.focus(); } catch (err) {}
+      for (let i = 0; i < 25; i++) {
+        const o = optionsOf(host);
+        if (o.length) return o;
+        await sleep(100);
+      }
+      return [];
+    }
+    function closeDd(host) {
+      try { const i = host.querySelector('.selectize-input input'); if (i) i.blur(); } catch (err) {}
+    }
+    // Chọn phòng theo TÊN ĐẦY ĐỦ (so khớp chính xác, bỏ qua số 0 đứng đầu: "Phòng 5" = "Phòng 05")
+    async function selectRoom(host, targetNorm) {
+      if (busy) return false;
+      busy = true; paintBusy(true);
+      try {
+        if (nz(curName(host)) === targetNorm) return true;
+        const inst = selApi(host);
+        if (inst) {
+          const ah = apiOptions(inst).find((o) => nz(o.text) === targetNorm);
+          if (ah) {
+            try { inst.setValue(ah.id); } catch (err) {}
+            for (let i = 0; i < 15; i++) { await sleep(100); if (nz(curName(host)) === targetNorm) return true; }
+          }
+        }
+        const opts = await openDd(host);
+        const hit = opts.find((o) => nz(o.textContent) === targetNorm);
+        if (!hit) {
+          try { console.log('[Helixfast] Chọn phòng: không tìm thấy', targetNorm, 'trong', opts.map((o) => o.textContent.trim())); } catch (err) {}
+          closeDd(host); return false;
+        }
+        mev(hit, 'mousedown'); mev(hit, 'click');
+        for (let i = 0; i < 20; i++) {
+          await sleep(100);
+          if (nz(curName(host)) === targetNorm) return true;
+        }
+        closeDd(host);
+        return false;
+      } finally {
+        busy = false; paintBusy(false);
+        try { const hh = document.querySelector(HOST_SEL); if (hh) lastSeen = nz(curName(hh)); } catch (err) {}
+      }
+    }
+    function doSearch(host) {
+      try {
+        const f = host.closest('form');
+        const b = f && f.querySelector('button[type="submit"]');
+        if (b) b.click();
+      } catch (err) {}
+    }
+    function paintBusy(b) {
+      const bar = document.getElementById('hlx-room-bar');
+      if (bar) bar.classList.toggle('busy', !!b);
+    }
+
+    // Danh sách phòng có thể được gắn ngoài khung ng-selectize → nhận diện (theo class hoặc theo nội dung chữ) rồi kéo dài tới đáy màn hình
+    let lastOpen = 0;
+    const ddLogged = new WeakSet();
+    const visible = (el) => !!(el && el.getClientRects && el.getClientRects().length);
+    function fitDd(dd) {
+      try {
+        // Tính chiều cao MỘT LẦN mỗi lần mở: từ đỉnh dropdown đến gần cạnh dưới màn hình
+        let h = +dd.getAttribute('data-hlx-h') || 0;
+        if (!h) {
+          const top = dd.getBoundingClientRect().top;
+          if (top > 0 && top < window.innerHeight - 150) {
+            h = Math.max(160, Math.floor(window.innerHeight - top - 16));
+            dd.setAttribute('data-hlx-h', String(h));
+          } else {
+            h = Math.floor(window.innerHeight * 0.6);
+          }
+        }
+        // Giới hạn + thanh trượt đặt trên chính khung dropdown
+        dd.style.setProperty('max-height', h + 'px', 'important');
+        dd.style.setProperty('overflow-y', 'auto', 'important');
+        dd.style.setProperty('overflow-x', 'hidden', 'important');
+        dd.style.setProperty('overscroll-behavior', 'contain', 'important');
+        // Phần bên trong để giãn tự nhiên, tránh 2 thanh trượt lồng nhau
+        dd.querySelectorAll('.selectize-dropdown-content, [data-hlx-scroll]').forEach((c) => {
+          c.style.setProperty('max-height', 'none', 'important');
+          c.style.setProperty('overflow', 'visible', 'important');
+        });
+        // Lăn chuột chỉ cuộn trong danh sách, không cuộn trang
+        if (!dd._hlxWheel) {
+          dd._hlxWheel = 1;
+          dd.addEventListener('wheel', (e) => {
+            const atTop = dd.scrollTop <= 0 && e.deltaY < 0;
+            const atBot = dd.scrollTop + dd.clientHeight >= dd.scrollHeight - 1 && e.deltaY > 0;
+            e.stopPropagation();
+            if (atTop || atBot) e.preventDefault();
+          }, { passive: false });
+        }
+      } catch (err) {}
+    }
+    function resetDdH() { document.querySelectorAll('[data-hlx-h]').forEach((x) => x.removeAttribute('data-hlx-h')); }
+    function isRoomDd(dd) {
+      const os = Array.from(dd.querySelectorAll('.option'));
+      if (!os.length) return false;
+      if (dd.closest && dd.closest(HOST_SEL)) return true;
+      const h = document.querySelector(HOST_SEL);
+      if (h && visible(dd) && h.querySelector('.dropdown-active, .focus')) return true;
+      return os.some((o) => /^phong \d/.test(nz(o.textContent)));
+    }
+    // Không phụ thuộc class: tìm khối đang hiển thị chứa >=3 dòng chữ "Phòng + số" (ngoài bảng dữ liệu, ngoài ô chọn)
+    function findRoomListByText() {
+      const host = document.querySelector(HOST_SEL);
+      const cnt = new Map();
+      document.querySelectorAll('div,li,span,a,p').forEach((el) => {
+        if (el.firstElementChild) return;
+        const tx = el.textContent || '';
+        if (tx.length > 80 || !/^phong \d/.test(nz(tx))) return;
+        if (el.closest('table,td,th,tr,.p-datatable,#hlx-room-bar,.hlx-ddi-panel,#hlx-ddi-panel')) return;
+        if (host && host.contains(el)) return;
+        if (!visible(el)) return;
+        const p = el.parentElement;
+        if (p) cnt.set(p, (cnt.get(p) || 0) + 1);
+      });
+      let best = null, bn = 2;
+      cnt.forEach((n, p) => { if (n > bn) { bn = n; best = p; } });
+      return best;
+    }
+    function applyDd(dd, why) {
+      dd.classList.add('hlx-room-dd');
+      if (!ddLogged.has(dd)) {
+        ddLogged.add(dd);
+        try {
+          const chain = []; let x = dd;
+          for (let i = 0; i < 4 && x; i++, x = x.parentElement) chain.push(x.tagName.toLowerCase() + (x.className ? '.' + String(x.className).trim().split(/\s+/).join('.') : ''));
+          console.log('[Helixfast] Danh sách phòng (' + why + '):', chain.join(' < '));
+        } catch (err) {}
+      }
+      fitDd(dd);
+      setTimeout(() => fitDd(dd), 60);
+      setTimeout(() => fitDd(dd), 250);
+    }
+    function markDd() {
+      let found = false;
+      document.querySelectorAll('.selectize-dropdown').forEach((dd) => {
+        if (!isRoomDd(dd)) return;
+        applyDd(dd, 'class'); found = true;
+      });
+      if (found) return;
+      const open = Date.now() - lastOpen < 2500;
+      const marked = Array.from(document.querySelectorAll('.hlx-room-dd')).filter(visible);
+      if (marked.length) { marked.forEach(fitDd); return; }
+      if (!open) return;
+      const c = findRoomListByText();
+      if (!c) return;
+      c.setAttribute('data-hlx-scroll', '1');
+      const wrap = (c.closest && c.closest('.selectize-dropdown')) || c.parentElement || c;
+      applyDd(wrap, 'text');
+    }
+    function css() {
+      if (document.getElementById('hlx-room-css')) return;
+      const st = document.createElement('style');
+      st.id = 'hlx-room-css';
+      st.textContent = `
+        #hlx-room-bar { position:absolute; left:100%; top:0; bottom:0; display:flex; align-items:center; gap:4px; padding-left:6px; white-space:nowrap; z-index:5; }
+        #hlx-room-bar.busy { opacity:.6; pointer-events:none; }
+        #hlx-room-bar .tg { position:relative; flex:none; width:26px; height:14px; border-radius:7px; background:#94a3b8; cursor:pointer; transition:background .15s; margin-right:2px; }
+        #hlx-room-bar .tg::after { content:''; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
+        #hlx-room-bar .tg.on { background:#16a34a; }
+        #hlx-room-bar .tg.on::after { left:14px; }
+        #hlx-room-bar .q { width:24px; height:24px; padding:0; border-radius:50%; border:1px solid #1e3a8a; background:#fff; color:#1e3a8a; font-weight:700; font-size:11px; cursor:pointer; line-height:1; }
+        #hlx-room-bar .q:hover { background:#eff6ff; }
+        #hlx-room-bar .q.on { background:#1e3a8a; color:#fff; }
+        #hlx-room-bar .q.bad { border-color:#dc2626; color:#dc2626; }
+        .selectize-dropdown.hlx-room-dd { width:auto !important; min-width:380px; z-index:100000; white-space:nowrap; box-shadow:0 8px 24px rgba(0,0,0,.25); }
+        .selectize-dropdown.hlx-room-dd .option { white-space:nowrap; padding:7px 12px; font-size:14px; border-bottom:1px solid #f1f5f9; }
+      `;
+      document.head.appendChild(st);
+    }
+
+    function build(host) {
+      css();
+      const old = document.getElementById('hlx-room-bar');
+      if (old) old.remove();
+      const col = host.parentElement;
+      if (col) col.style.position = 'relative';
+      const bar = document.createElement('div');
+      bar.id = 'hlx-room-bar';
+      const tg = document.createElement('span');
+      tg.className = 'tg';
+      tg.addEventListener('click', () => {
+        if (isOn()) {
+          try { hlxStoreSet(K_ON, '0'); } catch (err) {}
+        } else {
+          const c = curName(host);
+          if (!c) return;
+          setDef({ n: nz(c), t: c });
+          try { hlxStoreSet(K_ON, '1'); } catch (err) {}
+        }
+        refresh(host);
+      });
+      bar.appendChild(tg);
+      QUICK.forEach((n) => {
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'q'; b.textContent = '0' + n; b.title = 'Chọn nhanh Phòng 0' + n + ' và tìm kiếm'; b.dataset.n = n;
+        b.addEventListener('click', async (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const ok = await selectRoom(host, 'phong ' + n);
+          if (ok) { await sleep(400); doSearch(host); }
+          else { b.classList.add('bad'); setTimeout(() => b.classList.remove('bad'), 1500); }
+          refresh(host);
+        });
+        bar.appendChild(b);
+      });
+      host.insertAdjacentElement('afterend', bar);
+      return bar;
+    }
+
+    function refresh(host) {
+      const bar = document.getElementById('hlx-room-bar');
+      if (!bar) return;
+      const tg = bar.querySelector('.tg');
+      const def = getDef();
+      tg.classList.toggle('on', isOn());
+      tg.title = isOn() && def
+        ? 'Đang ghim: ' + def.t + '. F5 sẽ tự chọn phòng này và bấm Tìm kiếm. Bấm để tắt (bật lại sẽ ghim phòng đang chọn).'
+        : 'Bật để ghim phòng đang chọn làm mặc định: F5 sẽ tự chọn phòng đó và bấm Tìm kiếm.';
+      const cn = nz(curName(host));
+      bar.querySelectorAll('.q').forEach((b) => b.classList.toggle('on', cn === 'phong ' + b.dataset.n));
+    }
+
+    async function startup(host) {
+      const def = getDef();
+      if (!(isOn() && def)) return;
+      for (let i = 0; i < 3; i++) {
+        if (!document.body.contains(host)) return;
+        if (await selectRoom(host, def.n)) { await sleep(400); doSearch(host); refresh(host); return; }
+        await sleep(1500);
+      }
+    }
+
+    function tick() {
+      let host = null, enabled = false;
+      try { host = document.querySelector(HOST_SEL); enabled = isHelixfastEnabled(); } catch (err) {}
+      const bar = document.getElementById('hlx-room-bar');
+      if (!host || !enabled) { if (bar) bar.remove(); hostSince = 0; return; }
+      if (!hostSince) hostSince = Date.now();
+      if (!bar || bar.previousElementSibling !== host) build(host);
+      if (!busy) refresh(host);
+      if (!autoDone && !busy && Date.now() - hostSince > 900) {
+        autoDone = true;
+        if (isOn() && getDef()) startup(host); // ghim phòng: tự chọn phòng rồi tìm
+        else doSearch(host);                   // không ghim: tìm luôn với phòng đang chọn
+      }
+    }
+    setInterval(() => { try { tick(); } catch (err) {} }, 800);
+    // Tự bấm Tìm kiếm mỗi khi người dùng tự chọn phòng khác trong dropdown (không phụ thuộc công tắc ghim)
+    setInterval(() => {
+      try {
+        const host = document.querySelector(HOST_SEL);
+        if (!host || !isHelixfastEnabled()) { lastSeen = null; return; }
+        const cur = nz(curName(host));
+        if (busy) return; // luồng chọn nhanh/ghim tự xử lý tìm kiếm
+        if (lastSeen === null) { lastSeen = cur; return; }
+        if (cur === lastSeen) return;
+        lastSeen = cur;
+        if (!cur) return; // bấm xóa (×) thì không tìm
+        clearTimeout(searchT);
+        searchT = setTimeout(() => {
+          try {
+            const h = document.querySelector(HOST_SEL);
+            if (h && !busy && nz(curName(h)) === cur) doSearch(h);
+          } catch (err) {}
+        }, 400);
+      } catch (err) {}
+    }, 250);
+    let mdT = null;
+    new MutationObserver(() => { if (mdT) return; mdT = requestAnimationFrame(() => { mdT = null; try { markDd(); } catch (err) {} }); })
+      .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+    window.addEventListener('resize', () => { try { resetDdH(); markDd(); } catch (err) {} });
+    document.addEventListener('mousedown', (e) => { try { if (e.target && e.target.closest && e.target.closest(HOST_SEL)) { lastOpen = Date.now(); resetDdH(); setTimeout(markDd, 120); setTimeout(markDd, 400); } } catch (err) {} }, true);
+    try { console.log('[Helixfast] Chọn phòng nhanh: sẵn sàng'); } catch (err) {}
+  })();
+
+  (function hlxDdiModule() {
+  if (HLX_OFF) return;
+// ===== Kiểm tra tương tác thuốc: LÕI DỮ LIỆU (không đụng DOM) =====
+  /*DDI_CORE_START*/
+  const HLX_DDI_LV = {
+    contra: { r: 4, t: 'Chống chỉ định', ic: '⛔' },
+    major: { r: 3, t: 'Quan trọng', ic: '🔴' },
+    moderate: { r: 2, t: 'Vừa', ic: '🟠' },
+    minor: { r: 1, t: 'Lưu ý', ic: '🟡' }
+  };
+  // id: [Tên hiển thị, nhóm (tag) cách nhau bởi dấu cách, tên gốc/biệt dược cách nhau bởi |]
+  const HLX_DDI_ING = {
+    losartan: ['Losartan', 'arb raas', 'losartan|cozaar|hyzaar'],
+    valsartan: ['Valsartan', 'arb raas', 'valsartan|diovan'],
+    irbesartan: ['Irbesartan', 'arb raas', 'irbesartan|aprovel|coaprovel'],
+    telmisartan: ['Telmisartan', 'arb raas', 'telmisartan|micardis'],
+    candesartan: ['Candesartan', 'arb raas', 'candesartan|atacand'],
+    olmesartan: ['Olmesartan', 'arb raas', 'olmesartan|olmetec'],
+    perindopril: ['Perindopril', 'acei raas', 'perindopril|coversyl|prestarium'],
+    enalapril: ['Enalapril', 'acei raas', 'enalapril|renitec'],
+    lisinopril: ['Lisinopril', 'acei raas', 'lisinopril|zestril'],
+    captopril: ['Captopril', 'acei raas', 'captopril'],
+    ramipril: ['Ramipril', 'acei raas', 'ramipril|tritace'],
+    imidapril: ['Imidapril', 'acei raas', 'imidapril|tanatril'],
+    meloxicam: ['Meloxicam', 'nsaid', 'meloxicam|mobic|coxnis'],
+    ibuprofen: ['Ibuprofen', 'nsaid', 'ibuprofen|brufen|nurofen'],
+    diclofenac: ['Diclofenac', 'nsaid', 'diclofenac|voltaren'],
+    naproxen: ['Naproxen', 'nsaid', 'naproxen|apranax'],
+    celecoxib: ['Celecoxib', 'nsaid', 'celecoxib|celebrex'],
+    etoricoxib: ['Etoricoxib', 'nsaid', 'etoricoxib|arcoxia'],
+    piroxicam: ['Piroxicam', 'nsaid', 'piroxicam|feldene'],
+    ketorolac: ['Ketorolac', 'nsaid', 'ketorolac|toradol'],
+    indomethacin: ['Indomethacin', 'nsaid', 'indomethacin|indometacin'],
+    aceclofenac: ['Aceclofenac', 'nsaid', 'aceclofenac|airtal'],
+    nimesulide: ['Nimesulid', 'nsaid', 'nimesulid'],
+    aspirin: ['Aspirin', 'antiplatelet', 'aspirin|aspilets|cardiopirin|astrapirin'],
+    clopidogrel: ['Clopidogrel', 'antiplatelet', 'clopidogrel|plavix|tunadimet'],
+    ticagrelor: ['Ticagrelor', 'antiplatelet', 'ticagrelor|brilinta'],
+    prasugrel: ['Prasugrel', 'antiplatelet', 'prasugrel|effient'],
+    warfarin: ['Warfarin', 'anticoag', 'warfarin|coumadin'],
+    rivaroxaban: ['Rivaroxaban', 'anticoag doac', 'rivaroxaban|xarelto'],
+    apixaban: ['Apixaban', 'anticoag doac', 'apixaban|eliquis'],
+    dabigatran: ['Dabigatran', 'anticoag doac', 'dabigatran|pradaxa'],
+    omeprazole: ['Omeprazol', 'ppi', 'omeprazol|losec|kagasdine'],
+    esomeprazole: ['Esomeprazol', 'ppi', 'esomeprazol|nexium'],
+    lansoprazole: ['Lansoprazol', 'ppi', 'lansoprazol|lanzor'],
+    pantoprazole: ['Pantoprazol', 'ppi', 'pantoprazol|pantoloc'],
+    rabeprazole: ['Rabeprazol', 'ppi', 'rabeprazol|pariet'],
+    gliclazide: ['Gliclazid', 'sulfonylurea', 'gliclazid|diamicron|pyme diapro|predian'],
+    glimepiride: ['Glimepirid', 'sulfonylurea', 'glimepirid|amaryl'],
+    glibenclamide: ['Glibenclamid', 'sulfonylurea', 'glibenclamid|daonil'],
+    metformin: ['Metformin', '', 'metformin|glucophage|panfor|stadovas'],
+    insulin: ['Insulin', '', 'insulin|mixtard|lantus|novorapid'],
+    fenofibrate: ['Fenofibrat', 'fibrate', 'fenofibrat|lipanthyl|tricor'],
+    gemfibrozil: ['Gemfibrozil', 'fibrate', 'gemfibrozil|lopid'],
+    atorvastatin: ['Atorvastatin', 'statin', 'atorvastatin|lipitor'],
+    rosuvastatin: ['Rosuvastatin', 'statin', 'rosuvastatin|crestor'],
+    simvastatin: ['Simvastatin', 'statin', 'simvastatin|zocor'],
+    lovastatin: ['Lovastatin', 'statin', 'lovastatin'],
+    pravastatin: ['Pravastatin', 'statin', 'pravastatin'],
+    tramadol: ['Tramadol', 'serotonergic opioid', 'tramadol|dinalvic|ultracet'],
+    paracetamol: ['Paracetamol', '', 'paracetamol|acetaminophen|panadol|efferalgan|hapacol|dinalvic|ultracet'],
+    trimetazidine: ['Trimetazidin', '', 'trimetazidin|vastarel|vaspycar'],
+    magnesium: ['Magnesi', 'chelator', 'magnesi|magne|mazzgin'],
+    calcium: ['Calci', 'chelator', 'calcium|calci carbonat'],
+    iron: ['Sắt', 'chelator', 'sat fumarat|sat sulfat|ferrous|tardyferon|ferrovit'],
+    aluminium: ['Nhôm hydroxid (antacid)', 'chelator', 'aluminium|nhom hydroxid|maalox|phosphalugel|almagate'],
+    nitrate: ['Nitrat', 'nitrate', 'isosorbid|nitroglycerin|nitromint|imdur|nitrostad'],
+    sildenafil: ['Sildenafil', 'pde5', 'sildenafil|viagra'],
+    tadalafil: ['Tadalafil', 'pde5', 'tadalafil|cialis'],
+    vardenafil: ['Vardenafil', 'pde5', 'vardenafil|levitra'],
+    moclobemide: ['Moclobemid', 'maoi', 'moclobemid|aurorix'],
+    selegiline: ['Selegilin', 'maoi', 'selegilin'],
+    fluoxetine: ['Fluoxetin', 'ssri serotonergic', 'fluoxetin|prozac'],
+    sertraline: ['Sertralin', 'ssri serotonergic', 'sertralin|zoloft'],
+    paroxetine: ['Paroxetin', 'ssri serotonergic', 'paroxetin|paxil'],
+    citalopram: ['Citalopram', 'ssri serotonergic', 'citalopram'],
+    escitalopram: ['Escitalopram', 'ssri serotonergic', 'escitalopram|lexapro'],
+    fluvoxamine: ['Fluvoxamin', 'ssri serotonergic', 'fluvoxamin'],
+    clarithromycin: ['Clarithromycin', 'macrolide', 'clarithromycin|klacid'],
+    erythromycin: ['Erythromycin', 'macrolide', 'erythromycin'],
+    ketoconazole: ['Ketoconazol', 'azole', 'ketoconazol|nizoral'],
+    itraconazole: ['Itraconazol', 'azole', 'itraconazol|sporanox'],
+    fluconazole: ['Fluconazol', 'azole', 'fluconazol|diflucan'],
+    ciprofloxacin: ['Ciprofloxacin', 'quinolone', 'ciprofloxacin|ciprobay'],
+    levofloxacin: ['Levofloxacin', 'quinolone', 'levofloxacin|tavanic'],
+    moxifloxacin: ['Moxifloxacin', 'quinolone', 'moxifloxacin|avelox'],
+    cotrimoxazole: ['Co-trimoxazol', '', 'co trimoxazol|cotrimoxazol|sulfamethoxazol|bactrim|biseptol|septrin'],
+    metronidazole: ['Metronidazol', '', 'metronidazol|flagyl'],
+    methotrexate: ['Methotrexat', '', 'methotrexat'],
+    digoxin: ['Digoxin', '', 'digoxin|lanoxin'],
+    amiodarone: ['Amiodaron', '', 'amiodaron|cordarone'],
+    verapamil: ['Verapamil', 'ndhp', 'verapamil|isoptin'],
+    amlodipine: ['Amlodipin', '', 'amlodipin|amlor|norvasc'],
+    allopurinol: ['Allopurinol', '', 'allopurinol|zyloric'],
+    azathioprine: ['Azathioprin', '', 'azathioprin|imuran'],
+    theophylline: ['Theophyllin', '', 'theophyllin|theostat'],
+    tizanidine: ['Tizanidin', '', 'tizanidin|sirdalud'],
+    ergotamine: ['Ergotamin', '', 'ergotamin|dihydroergotamin'],
+    lithium: ['Lithi', '', 'lithi|lithium'],
+    spironolactone: ['Spironolacton', 'kspare', 'spironolacton|aldactone'],
+    potassium: ['Kali clorid', 'kspare', 'kali clorid|kcl|potassium'],
+    furosemide: ['Furosemid', '', 'furosemid|lasix'],
+    prednisolone: ['Prednisolon', 'corticoid', 'prednisolon|medrol|methylprednisolon|dexamethason|hydrocortison'],
+    gabapentin: ['Gabapentin/Pregabalin', 'cnsdep', 'gabapentin|pregabalin|lyrica'],
+    benzodiazepine: ['Benzodiazepin', 'cnsdep', 'diazepam|alprazolam|lorazepam|clonazepam|seduxen'],
+    levothyroxine: ['Levothyroxin', '', 'levothyroxin|levothyrox|berlthyrox'],
+    bisphosphonate: ['Bisphosphonat', '', 'alendronat|fosamax'],
+    tetracycline: ['Tetracyclin/Doxycyclin', '', 'doxycyclin|tetracyclin'],
+  entresto: ['Sacubitril/valsartan', 'arni arb raas', 'sacubitril|entresto'],
+  aliskiren: ['Aliskiren', '', 'aliskiren|rasilez'],
+  linezolid: ['Linezolid', '', 'linezolid|zyvox'],
+  dextromethorphan: ['Dextromethorphan', '', 'dextromethorphan'],
+  pethidine: ['Pethidin', 'opioid', 'pethidin|meperidin|dolargan'],
+  morphine: ['Morphin', 'opioid', 'morphin'],
+  codeine: ['Codein', 'opioid', 'codein'],
+  fentanyl: ['Fentanyl', 'opioid', 'fentanyl|durogesic'],
+  colchicine: ['Colchicin', '', 'colchicin'],
+  cyclosporine: ['Ciclosporin', '', 'ciclosporin|cyclosporin|sandimmun|neoral'],
+  repaglinide: ['Repaglinid', '', 'repaglinid|novonorm'],
+  ivabradine: ['Ivabradin', '', 'ivabradin|procoralan|coralan'],
+  diltiazem: ['Diltiazem', 'ndhp', 'diltiazem|tildiem'],
+  domperidone: ['Domperidon', '', 'domperidon|motilium'],
+  enoxaparin: ['Enoxaparin/heparin', 'anticoag', 'enoxaparin|lovenox|heparin|nadroparin|fraxiparine'],
+  mercaptopurine: ['Mercaptopurin', '', 'mercaptopurin|purinethol'],
+  febuxostat: ['Febuxostat', '', 'febuxostat|adenuric|febuxo'],
+  carbamazepine: ['Carbamazepin', '', 'carbamazepin|tegretol'],
+  valproate: ['Valproat', '', 'valproat|depakine|depakin'],
+  carbapenem: ['Carbapenem', 'carbapenem', 'meropenem|imipenem|ertapenem|meronem|tienam'],
+  triptan: ['Triptan', '', 'sumatriptan|rizatriptan|zolmitriptan|naratriptan|imigran'],
+  nicorandil: ['Nicorandil', 'nitrate', 'nicorandil|sigmart'],
+  bblocker: ['Chẹn beta', 'bblocker', 'metoprolol|betaloc|bisoprolol|concor|carvedilol|atenolol|propranolol|nebivolol']
+  };
+
+  function hlxDdiNorm(s) {
+    return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  }
+  function hlxDdiBrandKey(name) {
+    return hlxDdiNorm(String(name || '').replace(/\([^)]*\)/g, ' ').replace(/\d+([.,]\d+)?\s*(mg|mcg|g|ml|iu|%)?/gi, ' '));
+  }
+  const HLX_DDI_ALIASES = (() => {
+    const out = [];
+    Object.keys(HLX_DDI_ING).forEach((id) => {
+      String(HLX_DDI_ING[id][2] || '').split('|').forEach((a) => {
+        a = hlxDdiNorm(a);
+        if (a) out.push([a, id]);
+      });
+    });
+    return out;
+  })();
+  function hlxDdiAutoIds(normName) {
+    const hay = ' ' + normName;
+    const ids = [];
+    HLX_DDI_ALIASES.forEach((p) => {
+      if (hay.indexOf(' ' + p[0]) !== -1 && ids.indexOf(p[1]) === -1) ids.push(p[1]);
+    });
+    return ids;
+  }
+
+  // Quy tắc: a/b là id hoạt chất hoặc nhóm (tag). lv: contra|major|moderate|minor
+  const HLX_DDI_RULES = [
+    // ---- CHỐNG CHỈ ĐỊNH (khóa nút Lưu lại) ----
+    { a: ['nitrate'], b: ['pde5'], lv: 'contra', t: 'Nitrat/nicorandil + thuốc ức chế PDE5',
+      why: 'Cùng giãn mạch qua cGMP → tụt huyết áp nặng, ngất, có thể gây thiếu máu cơ tim/nhồi máu.',
+      adv: 'Không dùng chung. Chỉ dùng nitrat sau ≥24 giờ kể từ liều sildenafil/vardenafil, ≥48 giờ với tadalafil.' },
+    { a: ['maoi'], b: ['tramadol', 'ssri', 'dextromethorphan', 'pethidine'], lv: 'contra', t: 'Thuốc ức chế MAO + tramadol/SSRI/dextromethorphan/pethidin',
+      why: 'Tăng serotonin quá mức → hội chứng serotonin (sốt cao, co giật, rối loạn ý thức), có thể tử vong.',
+      adv: 'Không dùng chung; phải có thời gian rửa thuốc theo nhãn (thường ≥2 tuần).' },
+    { a: ['ketorolac'], b: ['nsaid', 'aspirin'], lv: 'contra', t: 'Ketorolac + NSAID/aspirin khác', same: true,
+      why: 'Cộng hưởng độc tính: xuất huyết tiêu hóa, chảy máu, suy thận. Nhãn ketorolac chống chỉ định phối hợp.',
+      adv: 'Chỉ giữ một thuốc giảm đau kháng viêm.' },
+    { a: ['simvastatin', 'lovastatin'], b: ['itraconazole', 'ketoconazole', 'clarithromycin', 'erythromycin'], lv: 'contra',
+      t: 'Simvastatin/lovastatin + thuốc ức chế CYP3A4 mạnh',
+      why: 'Nồng độ statin tăng nhiều lần → nguy cơ tiêu cơ vân, suy thận cấp. Nhãn chống chỉ định.',
+      adv: 'Không dùng chung; tạm ngưng statin trong đợt kháng sinh/kháng nấm hoặc đổi thuốc.' },
+    { a: ['tizanidine'], b: ['ciprofloxacin', 'fluvoxamine'], lv: 'contra', t: 'Tizanidin + ciprofloxacin/fluvoxamin',
+      why: 'Ức chế CYP1A2 làm nồng độ tizanidin tăng mạnh → hạ huyết áp nặng, an thần, chậm nhịp.',
+      adv: 'Không dùng chung; đổi kháng sinh hoặc thuốc giãn cơ.' },
+    { a: ['ergotamine'], b: ['clarithromycin', 'erythromycin', 'itraconazole', 'ketoconazole'], lv: 'contra',
+      t: 'Ergotamin + macrolid/azol ức chế CYP3A4',
+      why: 'Tăng nồng độ ergotamin → co mạch nặng, thiếu máu chi/não (ergotism).',
+      adv: 'Không dùng chung.' },
+    { a: ['arni'], b: ['acei'], lv: 'contra', t: 'Sacubitril/valsartan + ức chế men chuyển',
+    why: 'Nguy cơ phù mạch nặng. Nhãn chống chỉ định; phải ngừng ACEi ≥36 giờ trước khi dùng sacubitril/valsartan.',
+    adv: 'Không dùng chung.' },
+  { a: ['maoi'], b: ['linezolid', 'triptan', 'carbamazepine'], lv: 'contra', t: 'Thuốc ức chế MAO + linezolid/triptan/carbamazepin',
+    why: 'Nguy cơ hội chứng serotonin, cơn tăng huyết áp hoặc tăng độc tính (nhãn các thuốc này chống chỉ định phối hợp với MAOI).',
+    adv: 'Không dùng chung; cần thời gian rửa thuốc theo nhãn.' },
+  { a: ['triptan'], b: ['ergotamine'], lv: 'contra', t: 'Triptan + ergotamin',
+    why: 'Cộng hưởng co mạch kéo dài → thiếu máu mạch vành/ngoại biên. Nhãn chống chỉ định dùng trong vòng 24 giờ.',
+    adv: 'Không dùng chung; cách nhau ít nhất 24 giờ.' },
+  { a: ['simvastatin', 'lovastatin'], b: ['gemfibrozil', 'cyclosporine'], lv: 'contra', t: 'Simvastatin/lovastatin + gemfibrozil/ciclosporin',
+    why: 'Tăng mạnh nồng độ statin → tiêu cơ vân, suy thận cấp. Nhãn chống chỉ định.',
+    adv: 'Không dùng chung; đổi statin hoặc fibrat.' },
+  { a: ['repaglinide'], b: ['gemfibrozil'], lv: 'contra', t: 'Repaglinid + gemfibrozil',
+    why: 'Gemfibrozil làm tăng mạnh nồng độ repaglinid → hạ đường huyết nặng, kéo dài.',
+    adv: 'Không dùng chung.' },
+  { a: ['ivabradine'], b: ['ketoconazole', 'itraconazole', 'clarithromycin', 'erythromycin'], lv: 'contra', t: 'Ivabradin + ức chế CYP3A4 mạnh',
+    why: 'Tăng nồng độ ivabradin → chậm nhịp tim nặng, block dẫn truyền. Nhãn chống chỉ định.',
+    adv: 'Không dùng chung.' },
+  { a: ['domperidone'], b: ['ketoconazole', 'itraconazole', 'clarithromycin', 'erythromycin'], lv: 'contra', t: 'Domperidon + ức chế CYP3A4 mạnh/macrolid',
+    why: 'Tăng nồng độ domperidon, kéo dài QT → nguy cơ loạn nhịp thất (xoắn đỉnh).',
+    adv: 'Không dùng chung; đổi thuốc chống nôn/kháng sinh.' },
+  { a: ['ticagrelor'], b: ['ketoconazole', 'itraconazole', 'clarithromycin'], lv: 'contra', t: 'Ticagrelor + ức chế CYP3A4 mạnh',
+    why: 'Tăng nồng độ ticagrelor nhiều lần → nguy cơ chảy máu. Nhãn chống chỉ định.',
+    adv: 'Không dùng chung.' },
+  { a: ['febuxostat'], b: ['azathioprine', 'mercaptopurine'], lv: 'contra', t: 'Febuxostat + azathioprin/mercaptopurin',
+    why: 'Ức chế xanthin oxidase làm tăng nồng độ thuốc ức chế miễn dịch → ức chế tủy nặng. Nhãn chống chỉ định.',
+    adv: 'Không dùng chung.' },
+  // ---- QUAN TRỌNG ----
+  { a: ['colchicine'], b: ['clarithromycin', 'erythromycin', 'ketoconazole', 'itraconazole', 'cyclosporine'], lv: 'major', t: 'Colchicin + ức chế CYP3A4/P-gp',
+    why: 'Tăng nồng độ colchicin → ngộ độc (tiêu chảy nặng, ức chế tủy, suy đa cơ quan); đặc biệt nguy hiểm khi suy thận/gan.',
+    adv: 'Tránh phối hợp hoặc giảm liều colchicin mạnh; chống chỉ định nếu có suy thận/gan.' },
+  { a: ['anticoag'], b: ['anticoag'], lv: 'major', t: 'Hai thuốc chống đông cùng lúc', same: true,
+    why: 'Cộng hưởng tác dụng → nguy cơ chảy máu nặng.',
+    adv: 'Thường chỉ dùng một thuốc chống đông (trừ giai đoạn chuyển đổi có kế hoạch).' },
+  { a: ['doac'], b: ['ketoconazole', 'itraconazole'], lv: 'major', t: 'DOAC + ketoconazol/itraconazol',
+    why: 'Tăng nồng độ thuốc chống đông đường uống → nguy cơ chảy máu.',
+    adv: 'Tránh phối hợp hoặc đổi thuốc.' },
+  { a: ['aliskiren'], b: ['acei', 'arb'], lv: 'major', t: 'Aliskiren + ACEi/ARB',
+    why: 'Phong tỏa kép hệ renin-angiotensin → tăng kali, suy thận; chống chỉ định ở bệnh nhân đái tháo đường.',
+    adv: 'Tránh phối hợp.' },
+  { a: ['opioid'], b: ['benzodiazepine'], lv: 'major', t: 'Opioid/tramadol + benzodiazepin',
+    why: 'Ức chế hô hấp, hôn mê, có thể tử vong (cảnh báo hộp của nhà sản xuất).',
+    adv: 'Tránh phối hợp; nếu bắt buộc dùng liều thấp nhất, thời gian ngắn, theo dõi sát.' },
+  { a: ['bblocker'], b: ['ndhp'], lv: 'major', t: 'Chẹn beta + verapamil/diltiazem',
+    why: 'Nguy cơ chậm nhịp nặng, block nhĩ thất, suy tim.',
+    adv: 'Tránh phối hợp (nhất là đường tiêm); nếu cần phải theo dõi nhịp, ECG.' },
+  { a: ['ivabradine'], b: ['ndhp'], lv: 'major', t: 'Ivabradin + verapamil/diltiazem',
+    why: 'Tăng nồng độ ivabradin và cộng hưởng làm chậm nhịp.',
+    adv: 'Không khuyến cáo phối hợp.' },
+  { a: ['amiodarone'], b: ['clarithromycin', 'erythromycin', 'moxifloxacin', 'levofloxacin'], lv: 'major', t: 'Amiodaron + thuốc kéo dài QT',
+    why: 'Cộng hưởng kéo dài QT → nguy cơ xoắn đỉnh, loạn nhịp thất.',
+    adv: 'Tránh phối hợp hoặc theo dõi ECG, điện giải.' },
+  { a: ['amiodarone'], b: ['warfarin'], lv: 'major', t: 'Amiodaron + warfarin',
+    why: 'Amiodaron làm tăng mạnh tác dụng warfarin (tăng INR).', adv: 'Giảm liều warfarin và theo dõi INR sát.' },
+  { a: ['carbamazepine'], b: ['clarithromycin', 'erythromycin', 'verapamil', 'diltiazem'], lv: 'major', t: 'Carbamazepin + macrolid/verapamil/diltiazem',
+    why: 'Tăng nồng độ carbamazepin → ngộ độc (chóng mặt, nhìn đôi, thất điều).', adv: 'Tránh hoặc theo dõi nồng độ thuốc.' },
+  { a: ['valproate'], b: ['carbapenem'], lv: 'major', t: 'Valproat + carbapenem',
+    why: 'Carbapenem làm giảm mạnh nồng độ valproat → mất kiểm soát cơn co giật.', adv: 'Tránh phối hợp; dùng kháng sinh khác.' },
+  { a: ['statin'], b: ['statin'], lv: 'major', t: 'Hai statin cùng lúc', same: true,
+    why: 'Không tăng hiệu quả mà tăng nguy cơ độc tính cơ, gan.', adv: 'Chỉ giữ một statin.' },
+  { a: ['sulfonylurea'], b: ['sulfonylurea'], lv: 'major', t: 'Hai sulfonylurea cùng lúc', same: true,
+    why: 'Nguy cơ hạ đường huyết nặng.', adv: 'Chỉ giữ một sulfonylurea.' },
+  { a: ['ssri'], b: ['ssri'], lv: 'major', t: 'Hai SSRI cùng lúc', same: true,
+    why: 'Nguy cơ hội chứng serotonin.', adv: 'Chỉ giữ một thuốc (chuyển đổi cần có kế hoạch).' },
+  { a: ['acei'], b: ['acei'], lv: 'major', t: 'Hai ACEi cùng lúc', same: true,
+    why: 'Tăng nguy cơ hạ huyết áp, tăng kali, suy thận mà không thêm lợi ích.', adv: 'Chỉ giữ một thuốc.' },
+  { a: ['arb'], b: ['arb'], lv: 'major', t: 'Hai ARB cùng lúc', same: true,
+    why: 'Tăng nguy cơ hạ huyết áp, tăng kali, suy thận mà không thêm lợi ích.', adv: 'Chỉ giữ một thuốc.' },
+    { a: ['clopidogrel'], b: ['omeprazole', 'esomeprazole'], lv: 'major', t: 'Clopidogrel + omeprazol/esomeprazol',
+      why: 'Omeprazol/esomeprazol ức chế CYP2C19 → giảm chuyển clopidogrel thành chất có hoạt tính, giảm tác dụng chống kết tập tiểu cầu.',
+      adv: 'Nên đổi PPI ít ảnh hưởng CYP2C19 (vd pantoprazol, rabeprazol) hoặc cân nhắc có cần PPI hay không.' },
+    { a: ['antiplatelet', 'anticoag'], b: ['nsaid'], lv: 'major', t: 'Thuốc chống kết tập/chống đông + NSAID',
+      why: 'NSAID làm tổn thương niêm mạc dạ dày và ức chế tiểu cầu → tăng nguy cơ xuất huyết tiêu hóa và chảy máu.',
+      adv: 'Hạn chế NSAID; nếu bắt buộc dùng thì thời gian ngắn, liều thấp và cân nhắc bảo vệ dạ dày.' },
+    { a: ['anticoag'], b: ['antiplatelet'], lv: 'major', t: 'Thuốc chống đông + thuốc chống kết tập tiểu cầu',
+      why: 'Cộng hưởng tác dụng → tăng nguy cơ chảy máu. Có thể là chủ ý (ví dụ sau đặt stent kèm rung nhĩ).',
+      adv: 'Chỉ phối hợp khi có chỉ định rõ, xác định thời gian dùng và theo dõi chảy máu.' },
+    { a: ['nsaid'], b: ['nsaid'], lv: 'major', t: 'Hai NSAID cùng lúc', same: true, skipIf: ['ketorolac'],
+      why: 'Không tăng hiệu quả nhưng tăng độc tính tiêu hóa, thận, tim mạch.',
+      adv: 'Chỉ giữ một NSAID.' },
+    { a: ['acei'], b: ['arb'], lv: 'major', skipIf: ['arni'], t: 'Ức chế men chuyển + chẹn thụ thể angiotensin',
+      why: 'Phong tỏa kép hệ renin-angiotensin → tăng kali máu, hạ huyết áp, suy thận cấp mà không thêm lợi ích rõ.',
+      adv: 'Thường tránh phối hợp.' },
+    { a: ['warfarin'], b: ['clarithromycin', 'erythromycin', 'fluconazole', 'ketoconazole', 'itraconazole', 'ciprofloxacin', 'levofloxacin', 'metronidazole', 'cotrimoxazole'],
+      lv: 'major', t: 'Warfarin + kháng sinh/kháng nấm',
+      why: 'Làm tăng tác dụng warfarin (tăng INR) → nguy cơ chảy máu.',
+      adv: 'Theo dõi INR sát, cân nhắc đổi thuốc hoặc chỉnh liều warfarin.' },
+    { a: ['tramadol'], b: ['ssri'], lv: 'major', t: 'Tramadol + SSRI',
+      why: 'Nguy cơ hội chứng serotonin và co giật; fluoxetin/paroxetin còn làm giảm tác dụng giảm đau của tramadol (ức chế CYP2D6).',
+      adv: 'Tránh phối hợp hoặc theo dõi sát; cân nhắc thuốc giảm đau khác.' },
+    { a: ['digoxin'], b: ['amiodarone', 'clarithromycin', 'erythromycin', 'verapamil'], lv: 'major', t: 'Digoxin + thuốc làm tăng nồng độ digoxin',
+      why: 'Tăng nồng độ digoxin → ngộ độc (buồn nôn, loạn nhịp, rối loạn thị giác).',
+      adv: 'Giảm liều digoxin/theo dõi nồng độ và ECG.' },
+    { a: ['theophylline'], b: ['ciprofloxacin', 'clarithromycin', 'erythromycin'], lv: 'major', t: 'Theophyllin + ciprofloxacin/macrolid',
+      why: 'Giảm thanh thải theophyllin → ngộ độc (nôn, loạn nhịp, co giật).',
+      adv: 'Theo dõi nồng độ theophyllin, giảm liều hoặc đổi kháng sinh.' },
+    { a: ['methotrexate'], b: ['nsaid', 'cotrimoxazole'], lv: 'major', t: 'Methotrexat + NSAID/co-trimoxazol',
+      why: 'Giảm thải methotrexat hoặc cộng độc tính → ức chế tủy, độc thận.',
+      adv: 'Tránh phối hợp hoặc theo dõi công thức máu, chức năng thận.' },
+    { a: ['spironolactone'], b: ['potassium'], lv: 'major', t: 'Spironolacton + kali clorid',
+      why: 'Cộng hưởng tăng kali máu → loạn nhịp tim.',
+      adv: 'Tránh phối hợp hoặc theo dõi kali máu sát.' },
+    { a: ['statin'], b: ['gemfibrozil'], lv: 'major', skipIf: ['simvastatin', 'lovastatin'], t: 'Statin + gemfibrozil',
+      why: 'Tăng nguy cơ bệnh cơ/tiêu cơ vân.',
+      adv: 'Tránh; nếu cần fibrat nên chọn fenofibrat với liều thấp và theo dõi CK, triệu chứng cơ.' },
+    { a: ['allopurinol'], b: ['azathioprine', 'mercaptopurine'], lv: 'major', t: 'Allopurinol + azathioprin/mercaptopurin',
+      why: 'Giảm chuyển hóa azathioprin → ức chế tủy xương nặng.',
+      adv: 'Giảm liều azathioprin theo hướng dẫn và theo dõi công thức máu.' },
+    { a: ['lithium'], b: ['nsaid', 'raas'], lv: 'major', t: 'Lithi + NSAID/ACEi/ARB',
+      why: 'Giảm thải lithi → tăng nồng độ, ngộ độc lithi.',
+      adv: 'Theo dõi nồng độ lithi hoặc tránh phối hợp.' },
+    // ---- VỪA ----
+    { a: ['raas'], b: ['nsaid'], lv: 'moderate', t: 'ACEi/ARB + NSAID',
+      why: 'NSAID làm giảm tác dụng hạ áp và tăng nguy cơ suy thận cấp, tăng kali, nhất là người lớn tuổi, mất nước hoặc có bệnh thận.',
+      adv: 'Theo dõi huyết áp, creatinin/eGFR, kali máu; hạn chế NSAID dài ngày.' },
+    { a: ['sulfonylurea'], b: ['fibrate'], lv: 'moderate', t: 'Sulfonylurea + fibrat',
+      why: 'Có thể làm tăng tác dụng hạ đường huyết của sulfonylurea.',
+      adv: 'Theo dõi đường huyết, dặn bệnh nhân dấu hiệu hạ đường huyết.' },
+    { a: ['sulfonylurea'], b: ['fluconazole', 'ketoconazole', 'ciprofloxacin', 'levofloxacin'], lv: 'moderate', t: 'Sulfonylurea + azol/quinolon',
+      why: 'Nguy cơ hạ hoặc rối loạn đường huyết.',
+      adv: 'Theo dõi đường huyết trong đợt dùng chung.' },
+    { a: ['statin'], b: ['fenofibrate'], lv: 'moderate', t: 'Statin + fenofibrat',
+      why: 'Tăng nhẹ nguy cơ độc tính trên cơ.',
+      adv: 'Theo dõi đau cơ, CK nếu có triệu chứng.' },
+    { a: ['raas'], b: ['kspare'], lv: 'moderate', t: 'ACEi/ARB + spironolacton/kali',
+      why: 'Nguy cơ tăng kali máu.',
+      adv: 'Theo dõi kali máu và creatinin.' },
+    { a: ['corticoid'], b: ['nsaid'], lv: 'moderate', t: 'Corticoid + NSAID',
+      why: 'Tăng nguy cơ loét và xuất huyết tiêu hóa.',
+      adv: 'Cân nhắc bảo vệ dạ dày, dùng ngắn ngày.' },
+    { a: ['nsaid'], b: ['ssri'], lv: 'moderate', t: 'NSAID + SSRI',
+      why: 'Tăng nguy cơ chảy máu tiêu hóa.',
+      adv: 'Cân nhắc bảo vệ dạ dày.' },
+    { a: ['nsaid'], b: ['furosemide'], lv: 'moderate', t: 'NSAID + furosemid',
+      why: 'Giảm tác dụng lợi tiểu, tăng nguy cơ suy thận.',
+      adv: 'Theo dõi cân nặng, huyết áp, chức năng thận.' },
+    { a: ['quinolone'], b: ['corticoid'], lv: 'moderate', t: 'Quinolon + corticoid',
+      why: 'Tăng nguy cơ viêm/đứt gân.',
+      adv: 'Dặn bệnh nhân ngưng và báo ngay khi đau gân.' },
+    { a: ['quinolone', 'tetracycline', 'levothyroxine', 'bisphosphonate'], b: ['chelator'], lv: 'moderate', t: 'Thuốc bị giảm hấp thu bởi Mg/Ca/Fe/nhôm',
+      why: 'Tạo phức khó hấp thu ở ruột nên giảm nồng độ thuốc.',
+      adv: 'Uống cách nhau ít nhất 2–6 giờ (đọc nhãn từng thuốc).' },
+    { a: ['warfarin'], b: ['fenofibrate'], lv: 'moderate', t: 'Warfarin + fenofibrat',
+      why: 'Có thể tăng INR.', adv: 'Theo dõi INR.' },
+    { a: ['amlodipine'], b: ['simvastatin'], lv: 'moderate', t: 'Amlodipin + simvastatin',
+      why: 'Tăng nồng độ simvastatin → nguy cơ độc tính cơ.',
+      adv: 'Giới hạn simvastatin ≤20 mg/ngày hoặc đổi statin.' },
+    { a: ['opioid'], b: ['gabapentin'], lv: 'moderate', t: 'Opioid/tramadol + gabapentin/pregabalin',
+    why: 'Cộng hưởng ức chế thần kinh trung ương và hô hấp.',
+    adv: 'Dùng liều thấp nhất, theo dõi an thần/hô hấp, nhất là người lớn tuổi.' },
+  { a: ['atorvastatin'], b: ['clarithromycin', 'itraconazole'], lv: 'moderate', t: 'Atorvastatin + clarithromycin/itraconazol',
+    why: 'Tăng nồng độ atorvastatin → nguy cơ độc tính cơ.',
+    adv: 'Giới hạn liều atorvastatin hoặc tạm ngưng trong đợt kháng sinh/kháng nấm.' },
+  { a: ['ppi'], b: ['ppi'], lv: 'moderate', t: 'Hai thuốc ức chế bơm proton', same: true,
+    why: 'Cùng nhóm, không tăng hiệu quả mà tăng tác dụng phụ.', adv: 'Chỉ giữ một PPI.' },
+  { a: ['corticoid'], b: ['sulfonylurea', 'metformin', 'insulin'], lv: 'moderate', t: 'Corticoid + thuốc hạ đường huyết',
+      why: 'Corticoid làm tăng đường huyết, giảm hiệu quả thuốc đái tháo đường.',
+      adv: 'Theo dõi đường huyết, có thể cần chỉnh liều.' },
+    // ---- LƯU Ý ----
+    { a: ['warfarin'], b: ['paracetamol'], lv: 'minor', t: 'Warfarin + paracetamol',
+      why: 'Paracetamol liều cao kéo dài có thể làm tăng INR.', adv: 'Theo dõi INR nếu dùng đều đặn.' }
+  ];
+
+  // Phân tích một toa. drugs = [{ name, idx }], custom = { khóa: [id,...] } (người dùng tự gán hoạt chất)
+  function hlxDdiAnalyze(drugs, custom) {
+    custom = custom || {};
+    const list = drugs.map((d) => {
+      const key = hlxDdiBrandKey(d.name);
+      const cu = custom[key];
+      const ignored = !!(cu && cu.indexOf('_none') !== -1);
+      const ids = cu ? cu.filter((x) => x !== '_none' && HLX_DDI_ING[x]) : hlxDdiAutoIds(hlxDdiNorm(d.name));
+      const tags = new Set();
+      ids.forEach((id) => {
+        tags.add(id);
+        String(HLX_DDI_ING[id][1] || '').split(' ').forEach((t) => { if (t) tags.add(t); });
+      });
+      return { name: d.name, idx: d.idx, ref: d.ref, key, ids, tags, ignored, byUser: !!cu };
+    });
+    const has = (d, arr) => arr.some((t) => d.tags.has(t));
+    const issues = [];
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const X = list[i], Y = list[j];
+        const shared = X.ids.filter((id) => Y.ids.indexOf(id) !== -1);
+        shared.forEach((id) => {
+          if (id === 'paracetamol') {
+            issues.push({ lv: 'minor', x: X, y: Y, t: 'Cùng chứa paracetamol',
+              why: 'Hai thuốc cùng chứa paracetamol: dễ vượt tổng liều an toàn.',
+              adv: 'Tổng paracetamol ≤ 4 g/ngày (≤ 3 g/ngày nếu người lớn tuổi, suy gan, nghiện rượu, suy dinh dưỡng).' });
+          } else {
+            issues.push({ lv: 'moderate', x: X, y: Y, t: 'Trùng hoạt chất: ' + HLX_DDI_ING[id][0],
+              why: 'Cùng một hoạt chất xuất hiện ở hai dòng thuốc → nguy cơ quá liều.',
+              adv: 'Kiểm tra có chủ ý hay không; thường chỉ giữ một dòng.' });
+          }
+        });
+        HLX_DDI_RULES.forEach((r) => {
+          if (r.same && shared.length) return;
+          if (r.skipIf && (has(X, r.skipIf) || has(Y, r.skipIf))) return;
+          if ((has(X, r.a) && has(Y, r.b)) || (has(Y, r.a) && has(X, r.b))) {
+            issues.push({ lv: r.lv, x: X, y: Y, t: r.t, why: r.why, adv: r.adv });
+          }
+        });
+      }
+    }
+    issues.sort((p, q) => (HLX_DDI_LV[q.lv].r - HLX_DDI_LV[p.lv].r) || (p.x.idx - q.x.idx) || (p.y.idx - q.y.idx));
+    issues.forEach((it) => { it.key = it.lv + '|' + it.t + '|' + it.x.key + '|' + it.y.key; });
+    return { drugs: list, issues, unresolved: list.filter((d) => !d.ids.length && !d.ignored) };
+  }
+  /*DDI_CORE_END*/
+
+  // ===== Kiểm tra tương tác thuốc: GIAO DIỆN =====
+  const HLX_DDI_ALIAS_KEY = 'helixfast_ddi_alias_v1';
+  const HLX_DDI_ON_KEY = 'helixfast_ddi_on_v1';
+  function ddiOn() { return hlxStoreGet(HLX_DDI_ON_KEY) !== '0'; }
+  function ddiSetOn(on) {
+    hlxStoreSet(HLX_DDI_ON_KEY, on ? '1' : '0');
+    if (!on) ddiTurnedOffCleanup();
+    else { ddiSig = ''; ddiNotifiedKey = ''; }
+    ddiSyncButtons();
+  }
+  const HLX_DDI_COL = {
+    contra: ['#7f1d1d', '#fee2e2'], major: ['#b91c1c', '#fef2f2'],
+    moderate: ['#c2410c', '#fff7ed'], minor: ['#a16207', '#fefce8']
+  };
+  let ddiOpen = false;
+  let ddiFilter = true;
+  let ddiRes = null;
+  let ddiSig = '';
+  let ddiAliasVer = 0;
+  let ddiNotifiedKey = '';
+  const ddiExpanded = new Set();
+
+  function ddiLoadCustom() {
+    try { return JSON.parse(hlxStoreGet(HLX_DDI_ALIAS_KEY) || '{}') || {}; } catch (err) { return {}; }
+  }
+  function ddiSaveCustom(map) {
+    try { hlxStoreSet(HLX_DDI_ALIAS_KEY, JSON.stringify(map)); } catch (err) {}
+    ddiAliasVer++;
+  }
+  function ddiReadDrugs() {
+    const out = [];
+    findRxTables().forEach((t) => {
+      const tb = t.querySelector('tbody');
+      if (!tb) return;
+      getRxRows(tb).forEach((row) => {
+        const nc = rxNameCell(row);
+        const name = nc ? nc.textContent.replace(/\s+/g, ' ').trim() : '';
+        if (name) out.push({ name, idx: out.length + 1, ref: row });
+      });
+    });
+    return out;
+  }
+  function ddiRun() { return hlxDdiAnalyze(ddiReadDrugs(), ddiLoadCustom()); }
+
+  function ddiH(tag, props, kids) {
+    const el = document.createElement(tag);
+    if (props) Object.keys(props).forEach((k) => {
+      if (k === 'text') el.textContent = props[k];
+      else if (k === 'style') el.style.cssText = props[k];
+      else if (k.slice(0, 2) === 'on') el.addEventListener(k.slice(2), props[k]);
+      else el.setAttribute(k, props[k]);
+    });
+    (kids || []).forEach((c) => { if (c) el.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return el;
+  }
+
+  function ddiCss() {
+    if (document.getElementById('hlx-ddi-css')) return;
+    const st = document.createElement('style');
+    st.id = 'hlx-ddi-css';
+    st.textContent = `
+      #hlx-ddi-btn { background:#fff !important; border:1px solid #d97706 !important; color:#d97706 !important; font-weight:600; margin-right:5px; }
+      #hlx-ddi-btn:hover { background:#fff7ed !important; }
+      #hlx-ddi-btn .hlx-ddi-badge { display:inline-block; min-width:18px; margin-left:6px; padding:0 5px; border-radius:9px; background:#fff7ed; border:1px solid currentColor; color:#b91c1c; font-weight:700; font-size:12px; line-height:18px; text-align:center; }
+      #hlx-ddi-panel { position:fixed; right:14px; bottom:14px; width:430px; max-height:74vh; overflow:auto; z-index:100050; background:#fff; border:1px solid #cbd5e1; border-radius:10px; box-shadow:0 10px 34px rgba(0,0,0,.35); font-size:13px; color:#1f2937; }
+      #hlx-ddi-panel .hd { position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:8px; padding:10px 12px; background:#1e3a8a; color:#fff; font-weight:700; }
+      #hlx-ddi-panel .hd .x { margin-left:auto; cursor:pointer; background:transparent; border:0; color:#fff; font-size:18px; line-height:1; }
+      #hlx-ddi-panel .bd { padding:10px 12px; }
+      #hlx-ddi-panel .ban { margin:0 0 8px; padding:8px 10px; border-radius:6px; background:#fee2e2; color:#7f1d1d; font-weight:600; }
+      #hlx-ddi-panel .okb { margin:0 0 8px; padding:8px 10px; border-radius:6px; background:#ecfdf5; color:#065f46; }
+      #hlx-ddi-panel .card { margin:0 0 8px; padding:8px 10px; border-radius:8px; border:1px solid; }
+      #hlx-ddi-panel .pair { font-weight:700; }
+      #hlx-ddi-panel .sub { margin-top:2px; }
+      #hlx-ddi-panel .bt { display:inline-block; margin:6px 6px 0 0; padding:2px 8px; border:1px solid #94a3b8; border-radius:5px; background:#fff; color:#0f172a; cursor:pointer; font-size:12px; }
+      #hlx-ddi-panel .bt:hover { background:#e2e8f0; }
+      #hlx-ddi-panel .dt { display:none; margin-top:6px; padding:6px 8px; background:rgba(255,255,255,.75); border-radius:6px; line-height:1.45; }
+      #hlx-ddi-panel .dt.on { display:block; }
+      #hlx-ddi-panel .un { margin:8px 0; padding:8px 10px; border:1px dashed #94a3b8; border-radius:8px; background:#f8fafc; }
+      #hlx-ddi-panel select { max-width:150px; margin:2px 4px 2px 0; font-size:12px; }
+      #hlx-ddi-panel .net { margin:6px 0 0; padding:6px 8px; border:1px solid #fdba74; border-radius:6px; background:#fff7ed; font-size:12px; line-height:1.4; }
+      #hlx-ddi-panel .net .sn { color:#475569; font-size:11.5px; margin-top:2px; }
+      #hlx-ddi-panel input.ddi-in { width:130px; margin:2px 4px 2px 0; font-size:12px; padding:1px 4px; border:1px solid #94a3b8; border-radius:4px; }
+      #hlx-ddi-panel .ft { margin-top:8px; color:#64748b; font-size:11.5px; line-height:1.4; }
+    #hlx-ddi-btn { display:inline-flex; align-items:center; }
+    #hlx-ddi-btn.off { background:#fff !important; border-color:#94a3b8 !important; color:#94a3b8 !important; }
+    #hlx-ddi-btn.off .p-button-label, #hlx-ddi-btn.off .hlx-ddi-badge { opacity:.75; }
+    #hlx-ddi-btn .hlx-ddi-tg { position:relative; display:inline-block; flex:none; width:30px; height:16px; margin-right:8px; border-radius:8px; background:#16a34a; cursor:pointer; transition:background .15s; }
+    #hlx-ddi-btn .hlx-ddi-tg::after { content:''; position:absolute; top:2px; left:16px; width:12px; height:12px; border-radius:50%; background:#fff; transition:left .15s; }
+    #hlx-ddi-btn.off .hlx-ddi-tg { background:#64748b; }
+    #hlx-ddi-btn.off .hlx-ddi-tg::after { left:2px; }
+    tr.hlx-ddi-hide { display:none !important; }
+      tr.hlx-ddi-r-contra > td:first-child { box-shadow: inset 5px 0 0 #7f1d1d; }
+      tr.hlx-ddi-r-major > td:first-child { box-shadow: inset 5px 0 0 #dc2626; }
+      tr.hlx-ddi-r-moderate > td:first-child { box-shadow: inset 5px 0 0 #f97316; }
+      tr.hlx-ddi-r-minor > td:first-child { box-shadow: inset 5px 0 0 #eab308; }
+      tr.hlx-ddi-flash > td { animation: hlxDdiFlash 1.2s ease 2; }
+      @keyframes hlxDdiFlash { 50% { background:#fde68a; } }
+      button.hlx-ddi-locked { opacity:.45 !important; cursor:not-allowed !important; filter:grayscale(.6); }
+      #hlx-ddi-toast { position:fixed; top:84px; left:50%; transform:translateX(-50%); z-index:100060; max-width:620px; padding:10px 16px; border-radius:8px; background:#7f1d1d; color:#fff; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,.4); }
+    `;
+    document.head.appendChild(st);
+  }
+
+  function ddiToast(msg) {
+    const old = document.getElementById('hlx-ddi-toast');
+    if (old) old.remove();
+    const t = ddiH('div', { id: 'hlx-ddi-toast', text: msg });
+    document.body.appendChild(t);
+    setTimeout(() => { try { t.remove(); } catch (err) {} }, 7000);
+  }
+
+  function ddiLabel(d) { return '[' + d.idx + '] ' + d.name.replace(/\s*\(.*$/, ''); }
+
+  function ddiSelectRow(d) {
+    const row = d.ref;
+    if (!row || !row.isConnected) return;
+    const nc = rxNameCell(row) || row;
+    try { row.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (err) {}
+    try { nc.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window })); } catch (err) {}
+    row.classList.add('hlx-ddi-flash');
+    setTimeout(() => row.classList.remove('hlx-ddi-flash'), 2600);
+  }
+
+  function ddiBadge() {
+    const b = document.getElementById('hlx-ddi-btn');
+    if (!b || !ddiRes) return;
+    const sp = b.querySelector('.hlx-ddi-badge');
+    const n = ddiRes.issues.length;
+    const un = ddiRes.unresolved.length;
+    if (sp) {
+      let nh = 0; ddiNetFind.forEach((f) => { nh += f.items.length; });
+      sp.style.display = n || un || nh ? '' : 'none';
+      sp.textContent = n ? String(n) : (nh ? '!' : '?');
+      const top = ddiRes.issues[0];
+      sp.style.color = n ? HLX_DDI_COL[top.lv][0] : (nh ? '#c2410c' : '#475569');
+    }
+    b.title = n ? n + ' tương tác trong toa' : (un ? un + ' thuốc chưa nhận diện hoạt chất' : 'Chưa phát hiện tương tác theo bộ quy tắc hiện có');
+  }
+
+  function ddiSyncButtons() {
+    const b = document.getElementById('hlx-ddi-btn');
+    const on = ddiOn();
+    if (b) {
+      b.classList.toggle('off', !on);
+      b.title = on ? 'Kiểm tra tương tác thuốc. Công tắc bên trái để tắt (được lưu lại).' : 'Đang tắt kiểm tra tương tác thuốc. Bật công tắc bên trái để dùng lại (được lưu lại).';
+    }
+    if (on) ddiBadge();
+  }
+  function ddiTurnedOffCleanup() {
+    ddiOpen = false;
+    const p = document.getElementById('hlx-ddi-panel');
+    if (p) p.remove();
+    const t = document.getElementById('hlx-ddi-toast');
+    if (t) t.remove();
+    ddiRes = null;
+    document.querySelectorAll('tr[class*="hlx-ddi-"]').forEach((r) => { r.className = r.className.replace(/\s*hlx-ddi-(hide|r-\w+|flash)/g, ''); });
+    document.querySelectorAll('button.hlx-ddi-locked').forEach((x) => { x.classList.remove('hlx-ddi-locked'); x.removeAttribute('title'); });
+  }
+
+  function ddiEnsureButton() {
+    ddiCss();
+    const foot = Array.from(document.querySelectorAll('.p-datatable-footer p-button')).find((p) => /Kê vật tư/.test(p.textContent || ''));
+    const cur = document.getElementById('hlx-ddi-btn');
+    const old = document.getElementById('hlx-ddi-sw');
+    if (old) old.remove();
+    if (!foot) { if (cur && !cur.isConnected) cur.remove(); return; }
+    if (cur && cur.nextElementSibling === foot) return;
+    if (cur) cur.remove();
+    const tg = ddiH('span', { class: 'hlx-ddi-tg', onclick: (e) => { e.preventDefault(); e.stopPropagation(); ddiSetOn(!ddiOn()); } });
+    const btn = ddiH('button', {
+      id: 'hlx-ddi-btn', type: 'button', class: 'p-ripple p-element p-button p-component',
+      onclick: (e) => { e.preventDefault(); e.stopPropagation(); if (!ddiOn()) return; ddiOpen ? ddiClose() : ddiShow(); }
+    }, [tg, ddiH('span', { class: 'p-button-label', text: 'Kiểm tra tương tác thuốc' }), ddiH('span', { class: 'hlx-ddi-badge', style: 'display:none' })]);
+    foot.parentNode.insertBefore(btn, foot);
+    ddiSyncButtons();
+  }
+
+
+  // ===== Tra cứu online miễn phí (RxNorm + openFDA) =====
+  const HLX_DDI_EXT_KEY = 'helixfast_ddi_ext_v1';
+  function ddiLoadExt() { try { return JSON.parse(hlxStoreGet(HLX_DDI_EXT_KEY) || '{}') || {}; } catch (err) { return {}; } }
+  function ddiSaveExt(m) { try { hlxStoreSet(HLX_DDI_EXT_KEY, JSON.stringify(m)); } catch (err) {} }
+  const ddiNetSug = new Map();   // key thuốc -> { busy, list:[{g,src,note}], err }
+  const ddiNetFind = new Map();  // key thuốc -> { busy, items:[{a,b,snip}], notes:[], done }
+  const ddiLabelCache = new Map();
+  const HLX_DDI_CLASS_TERMS = {
+    nsaid: ['nsaid', 'nonsteroidal'], ppi: ['proton pump'], anticoag: ['anticoagulant'], antiplatelet: ['antiplatelet'],
+    statin: ['statin'], ssri: ['ssri', 'serotonin'], acei: ['ace inhibitor', 'angiotensin converting'], arb: ['angiotensin receptor'],
+    corticoid: ['corticosteroid'], opioid: ['opioid'], chelator: ['antacid', 'magnesium', 'aluminum']
+  };
+
+  function ddiHttp(url) {
+    return new Promise((resolve, reject) => {
+      if (typeof GM_xmlhttpRequest === 'function') {
+        GM_xmlhttpRequest({
+          method: 'GET', url, timeout: 15000, headers: { Accept: 'application/json' },
+          onload: (r) => { try { resolve(JSON.parse(r.responseText)); } catch (err) { reject(err); } },
+          onerror: () => reject(new Error('network')), ontimeout: () => reject(new Error('timeout'))
+        });
+      } else {
+        fetch(url).then((r) => r.json()).then(resolve, reject);
+      }
+    });
+  }
+  function ddiCleanTerm(s) {
+    return String(s || '').replace(/\([^)]*\)/g, ' ').replace(/\d+([.,]\d+)?\s*(mg|mcg|g|ml|iu|%)?/gi, ' ')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd').replace(/[^A-Za-z0-9 -]+/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  // Tra thành phần từ tên biệt dược / tên gõ tay. Chỉ GỢI Ý, người dùng phải bấm xác nhận.
+  async function ddiNetSuggest(d, typed) {
+    const term = ddiCleanTerm(typed || d.name);
+    const st = { busy: true, list: [], err: '' };
+    ddiNetSug.set(d.key, st);
+    if (ddiOpen) ddiRenderPanel();
+    const add = (g, src, note) => {
+      g = String(g || '').toLowerCase().trim();
+      if (g && !st.list.some((x) => x.g === g)) st.list.push({ g, src, note: note || '' });
+    };
+    let netFail = 0;
+    if (term.length >= 3) {
+      const w = term.split(' ')[0];
+      // 1) openFDA: trùng tên biệt dược
+      try {
+        const j = await ddiHttp('https://api.fda.gov/drug/label.json?limit=2&search=openfda.brand_name:%22' + encodeURIComponent(term) + '%22');
+        (j.results || []).forEach((r) => ((r.openfda && r.openfda.generic_name) || []).forEach((g) => add(g, 'openFDA', 'trùng tên biệt dược')));
+      } catch (err) { netFail++; }
+      // 2) openFDA: trùng tên hoạt chất (khi gõ tay)
+      if (typed) {
+        try {
+          const j = await ddiHttp('https://api.fda.gov/drug/label.json?limit=1&search=openfda.generic_name:' + encodeURIComponent(w + '*'));
+          (j.results || []).forEach((r) => ((r.openfda && r.openfda.generic_name) || []).forEach((g) => add(g, 'openFDA', 'có nhãn thuốc')));
+        } catch (err) { netFail++; }
+      }
+      // 3) RxNorm: gần đúng
+      try {
+        const j = await ddiHttp('https://rxnav.nlm.nih.gov/REST/approximateTerm.json?maxEntries=3&term=' + encodeURIComponent(term));
+        const cand = ((j.approximateGroup && j.approximateGroup.candidate) || []).slice(0, 3);
+        const seen = new Set();
+        for (const c of cand) {
+          if (seen.has(c.rxcui)) continue;
+          seen.add(c.rxcui);
+          const r = await ddiHttp('https://rxnav.nlm.nih.gov/REST/rxcui/' + c.rxcui + '/related.json?tty=IN');
+          ((r.relatedGroup && r.relatedGroup.conceptGroup) || []).forEach((cg) => (cg.conceptProperties || []).forEach((p) => {
+            add(p.name, 'RxNorm', 'khớp gần đúng với “' + (c.name || term) + '” (điểm ' + Math.round(+c.score || 0) + ')');
+          }));
+        }
+      } catch (err) { netFail++; }
+    }
+    if (typed && !st.list.some((x) => x.g === typed.toLowerCase().trim())) add(typed, 'tự gõ', 'chưa xác minh được trên FDA/RxNorm');
+    st.busy = false;
+    // Tự động dùng khi chỉ có ĐÚNG 1 kết quả đáng tin; nhiều kết quả hoặc khớp yếu thì để người dùng chọn
+    if (st.list.length === 1 && !typed) {
+      const x = st.list[0];
+      const m = /điểm (\d+)/.exec(x.note || '');
+      if (x.src === 'openFDA' || (x.src === 'RxNorm' && m && +m[1] >= 75)) {
+        st.busy = false;
+        ddiUseGeneric(d, x.g);
+        return;
+      }
+    }
+    if (!st.list.length) st.err = netFail >= 2 ? 'Không kết nối được dịch vụ online.' : 'Không tìm thấy (biệt dược nội địa thường không có trên cơ sở dữ liệu Mỹ). Hãy gõ tên hoạt chất đọc trên hộp thuốc.';
+    if (ddiOpen) ddiRenderPanel();
+  }
+
+  function ddiUseGeneric(d, g) {
+    const ids = hlxDdiAutoIds(hlxDdiNorm(g));
+    const map = ddiLoadCustom();
+    if (ids.length) {
+      map[d.key] = ids;          // đã có trong bộ quy tắc nội bộ → dùng luôn quy tắc tiếng Việt
+    } else {
+      const ext = ddiLoadExt(); ext[d.key] = [g]; ddiSaveExt(ext);
+      map[d.key] = ['_none'];    // chưa có quy tắc nội bộ → quét nhãn FDA
+    }
+    ddiSaveCustom(map);
+    ddiNetSug.delete(d.key); ddiNetFind.clear();
+    ddiRefresh(true);
+  }
+  function ddiForgetExt(d) {
+    const ext = ddiLoadExt(); delete ext[d.key]; ddiSaveExt(ext);
+    const map = ddiLoadCustom(); delete map[d.key]; ddiSaveCustom(map);
+    ddiNetFind.clear(); ddiRefresh(true);
+  }
+
+  async function ddiFdaLabel(generic) {
+    const w = ddiCleanTerm(generic).split(' ')[0].toLowerCase();
+    if (w.length < 3) return '';
+    if (ddiLabelCache.has(w)) return ddiLabelCache.get(w);
+    let txt = '';
+    try {
+      const j = await ddiHttp('https://api.fda.gov/drug/label.json?limit=3&search=openfda.generic_name:' + encodeURIComponent(w + '*'));
+      (j.results || []).forEach((r) => { (r.drug_interactions || []).forEach((s) => { txt += ' ' + s; }); });
+    } catch (err) { return null; }
+    txt = txt.toLowerCase().replace(/\s+/g, ' ');
+    ddiLabelCache.set(w, txt);
+    return txt;
+  }
+  function ddiOtherTerms(o) {
+    const out = [];
+    o.ids.forEach((id) => { const a = hlxDdiNorm(String(HLX_DDI_ING[id][2]).split('|')[0]); if (a) out.push(a); });
+    (ddiLoadExt()[o.key] || []).forEach((g) => out.push(hlxDdiNorm(g).split(' ')[0]));
+    Object.keys(HLX_DDI_CLASS_TERMS).forEach((tg) => { if (o.tags.has(tg)) HLX_DDI_CLASS_TERMS[tg].forEach((x) => out.push(x)); });
+    return Array.from(new Set(out.filter((x) => x.length >= 3)));
+  }
+  function ddiSnip(txt, i) { return '…' + txt.slice(Math.max(0, i - 90), i + 140).trim() + '…'; }
+
+  // Quét mục “Tương tác thuốc” trong nhãn FDA: thuốc ngoài bộ quy tắc ↔ các thuốc còn lại trong toa
+  async function ddiNetCheck(d) {
+    const st = { busy: true, items: [], notes: [], done: false };
+    ddiNetFind.set(d.key, st);
+    if (ddiOpen) ddiRenderPanel();
+    const gens = (ddiLoadExt()[d.key] || []).map((g) => hlxDdiNorm(g));
+    const others = (ddiRes ? ddiRes.drugs : []).filter((x) => x.key !== d.key);
+    for (const g of gens) {
+      const labG = await ddiFdaLabel(g);
+      if (labG === null) { st.notes.push('Không kết nối được openFDA.'); continue; }
+      if (!labG) st.notes.push('Không tìm thấy mục tương tác trên nhãn FDA của “' + g + '”.');
+      for (const o of others) {
+        const terms = ddiOtherTerms(o);
+        if (!terms.length) { st.notes.push(ddiLabel(o) + ': chưa biết hoạt chất nên không đối chiếu.'); continue; }
+        let hit = null;
+        for (const tm of terms) { const i = labG.indexOf(tm); if (i !== -1) { hit = { snip: ddiSnip(labG, i), by: g }; break; } }
+        if (!hit) {
+          const labO = await ddiFdaLabel(terms[0]);
+          const gw = g.split(' ')[0];
+          if (labO) { const i = labO.indexOf(gw); if (i !== -1) hit = { snip: ddiSnip(labO, i), by: terms[0] }; }
+        }
+        if (hit) st.items.push({ a: g, b: ddiLabel(o), snip: hit.snip, by: hit.by });
+      }
+    }
+    st.busy = false; st.done = true;
+    ddiBadge();
+    if (ddiOpen) ddiRenderPanel();
+  }
+
+  // Tự tra thuốc chưa nhận diện + tự quét nhãn FDA cho hoạt chất tra online
+  function ddiAutoNet() {
+    if (!ddiRes || !ddiOn()) return;
+    const ext = ddiLoadExt();
+    ddiRes.unresolved.forEach((d) => { if (!ddiNetSug.has(d.key)) ddiNetSuggest(d, ''); });
+    ddiRes.drugs.forEach((d) => { if (ext[d.key] && !ddiNetFind.has(d.key)) ddiNetCheck(d); });
+  }
+
+  function ddiRenderNet(bd, res) {
+    const ext = ddiLoadExt();
+    const exts = res.drugs.filter((d) => ext[d.key]);
+    if (!exts.length) return;
+    const box = ddiH('div', { class: 'un' }, [ddiH('div', { style: 'font-weight:700;margin-bottom:4px', text: '🌐 Hoạt chất tra online (chưa có trong bộ quy tắc) — đối chiếu nhãn FDA:' })]);
+    exts.forEach((d) => {
+      const f = ddiNetFind.get(d.key);
+      const row = ddiH('div', { style: 'margin:4px 0' }, [
+        ddiH('div', { text: ddiLabel(d) + '  →  ' + ext[d.key].join(', ') }),
+        ddiH('button', { type: 'button', class: 'bt', text: f && f.busy ? 'Đang quét…' : '🔎 Quét nhãn FDA', onclick: () => { if (!(f && f.busy)) ddiNetCheck(d); } }),
+        ddiH('button', { type: 'button', class: 'bt', text: 'Bỏ gán', onclick: () => ddiForgetExt(d) })
+      ]);
+      if (f && f.done) {
+        if (!f.items.length) row.appendChild(ddiH('div', { class: 'net', text: 'Nhãn FDA không nhắc tới các thuốc còn lại trong toa (không đồng nghĩa là an toàn).' }));
+        f.items.forEach((it) => row.appendChild(ddiH('div', { class: 'net' }, [
+          ddiH('b', { text: it.a + ' ⟷ ' + it.b }),
+          ddiH('div', { class: 'sn', text: 'Trích nhãn ' + it.by + ': ' + it.snip })
+        ])));
+        f.notes.forEach((n) => row.appendChild(ddiH('div', { class: 'sn', style: 'color:#64748b;font-size:11.5px', text: 'ℹ ' + n })));
+        row.appendChild(ddiH('div', { class: 'sn', style: 'color:#b45309;font-size:11.5px', text: 'Quét từ khóa tự động trên nhãn tiếng Anh của Mỹ, chưa phân mức độ — cần bác sĩ/dược sĩ đọc lại.' }));
+      }
+      box.appendChild(row);
+    });
+    bd.appendChild(box);
+  }
+
+  function ddiRenderPanel() {
+    let p = document.getElementById('hlx-ddi-panel');
+    if (!p) { p = ddiH('div', { id: 'hlx-ddi-panel' }); document.body.appendChild(p); }
+    const res = ddiRes || ddiRun();
+    const cnt = { contra: 0, major: 0, moderate: 0, minor: 0 };
+    res.issues.forEach((i) => cnt[i.lv]++);
+    p.textContent = '';
+    p.appendChild(ddiH('div', { class: 'hd' }, [
+      ddiH('span', { text: '💊 Kiểm tra tương tác thuốc' }),
+      ddiH('button', { class: 'x', type: 'button', title: 'Đóng', text: '✕', onclick: ddiClose })
+    ]));
+    const bd = ddiH('div', { class: 'bd' });
+    bd.appendChild(ddiH('div', { style: 'margin-bottom:8px', text:
+      res.drugs.length + ' thuốc · ' + res.issues.length + ' tương tác' +
+      (res.issues.length ? '  (' + ['contra', 'major', 'moderate', 'minor'].filter((k) => cnt[k]).map((k) => HLX_DDI_LV[k].ic + cnt[k]).join(' ') + ')' : '') }));
+    if (cnt.contra) {
+      bd.appendChild(ddiH('div', { class: 'ban', text: '⛔ Có phối hợp CHỐNG CHỈ ĐỊNH: nút “Lưu lại” bị khóa cho đến khi bỏ một trong các thuốc liên quan.' }));
+    } else if (!res.issues.length && !res.unresolved.length) {
+      bd.appendChild(ddiH('div', { class: 'okb', text: 'Không phát hiện tương tác theo bộ quy tắc hiện có. Đây không phải bảo đảm an toàn tuyệt đối.' + (Object.keys(ddiLoadExt()).length ? ' Hoạt chất tra online được quét nhãn FDA riêng ở bên dưới.' : '') }));
+    }
+    if (res.issues.length) {
+      const lab = ddiH('label', { style: 'display:block;margin:0 0 8px;cursor:pointer' }, [
+        ddiH('input', { type: 'checkbox', style: 'margin-right:6px', onchange: (e) => { ddiFilter = e.target.checked; ddiApplyFilter(); } }),
+        'Chỉ hiện các thuốc có tương tác trong bảng'
+      ]);
+      lab.firstChild.checked = ddiFilter;
+      bd.appendChild(lab);
+    }
+    res.issues.forEach((it) => {
+      const c = HLX_DDI_COL[it.lv];
+      const card = ddiH('div', { class: 'card', style: 'background:' + c[1] + ';border-color:' + c[0] });
+      card.appendChild(ddiH('div', { style: 'color:' + c[0] + ';font-weight:700', text: HLX_DDI_LV[it.lv].ic + ' ' + HLX_DDI_LV[it.lv].t }));
+      card.appendChild(ddiH('div', { class: 'pair', text: ddiLabel(it.x) + '  ⟷  ' + ddiLabel(it.y) }));
+      card.appendChild(ddiH('div', { class: 'sub', text: it.t }));
+      const dt = ddiH('div', { class: 'dt' + (ddiExpanded.has(it.key) ? ' on' : '') }, [
+        ddiH('div', {}, [ddiH('b', { text: 'Vì sao không nên dùng chung: ' }), it.why]),
+        ddiH('div', { style: 'margin-top:4px' }, [ddiH('b', { text: 'Khuyến nghị: ' }), it.adv])
+      ]);
+      const infoBtn = ddiH('button', { type: 'button', class: 'bt', text: 'ⓘ Chi tiết', onclick: () => {
+        const on = dt.classList.toggle('on');
+        if (on) ddiExpanded.add(it.key); else ddiExpanded.delete(it.key);
+      } });
+      card.appendChild(infoBtn);
+      [it.x, it.y].forEach((d) => card.appendChild(ddiH('button', { type: 'button', class: 'bt', title: 'Chọn dòng này trong bảng để bấm Xóa', text: 'Chọn dòng ' + d.idx + ' để xóa', onclick: () => ddiSelectRow(d) })));
+      card.appendChild(dt);
+      bd.appendChild(card);
+    });
+    if (res.unresolved.length) {
+      const un = ddiH('div', { class: 'un' }, [ddiH('div', { style: 'font-weight:700;margin-bottom:4px', text: '❓ Chưa nhận diện hoạt chất, CHƯA được kiểm tra:' })]);
+      const opts = Object.keys(HLX_DDI_ING).sort((a, b) => HLX_DDI_ING[a][0].localeCompare(HLX_DDI_ING[b][0], 'vi'));
+      res.unresolved.forEach((d) => {
+        const mk = () => {
+          const s = ddiH('select');
+          s.appendChild(ddiH('option', { value: '', text: '— chọn hoạt chất —' }));
+          opts.forEach((id) => s.appendChild(ddiH('option', { value: id, text: HLX_DDI_ING[id][0] })));
+          s.appendChild(ddiH('option', { value: '_none', text: 'Không cần đối chiếu' }));
+          return s;
+        };
+        const s1 = mk(), s2 = mk();
+        const row = ddiH('div', { style: 'margin:4px 0' }, [
+          ddiH('div', { text: ddiLabel(d) }), s1, s2,
+          ddiH('button', { type: 'button', class: 'bt', text: 'Lưu', onclick: () => {
+            const v = [s1.value, s2.value].filter(Boolean);
+            if (!v.length) return;
+            const map = ddiLoadCustom();
+            map[d.key] = v.indexOf('_none') !== -1 ? ['_none'] : v;
+            ddiSaveCustom(map);
+            ddiRefresh(true);
+          } })
+        ]);
+        const sg = ddiNetSug.get(d.key);
+        const inp = ddiH('input', { type: 'text', class: 'ddi-in', placeholder: 'hoặc gõ hoạt chất' });
+        row.appendChild(ddiH('div', {}, [
+          ddiH('button', { type: 'button', class: 'bt', text: sg && sg.busy ? 'Đang tra…' : '🌐 Tra online', onclick: () => { if (!(sg && sg.busy)) ddiNetSuggest(d, ''); } }),
+          inp,
+          ddiH('button', { type: 'button', class: 'bt', text: 'Tra', onclick: () => { const v = inp.value.trim(); if (v && !(sg && sg.busy)) ddiNetSuggest(d, v); } }),
+          ddiH('a', { class: 'bt', style: 'text-decoration:none', target: '_blank', rel: 'noopener', title: 'Mở Google tìm thành phần', text: '🔎 Google',
+            href: 'https://www.google.com/search?q=' + encodeURIComponent(ddiCleanTerm(d.name) + ' thành phần hoạt chất') })
+        ]));
+        if (sg && !sg.busy) {
+          if (sg.err) row.appendChild(ddiH('div', { class: 'net', text: sg.err }));
+          sg.list.forEach((x) => row.appendChild(ddiH('div', { class: 'net' }, [
+            ddiH('b', { text: x.g }),
+            ddiH('span', { text: '  (' + x.src + (x.note ? ' — ' + x.note : '') + ')' }),
+            ddiH('button', { type: 'button', class: 'bt', style: 'margin-left:6px', text: 'Dùng', title: 'Xác nhận gán hoạt chất này cho thuốc', onclick: () => ddiUseGeneric(d, x.g) })
+          ])));
+        }
+        un.appendChild(row);
+      });
+      bd.appendChild(un);
+    }
+    ddiRenderNet(bd, res);
+    bd.appendChild(ddiH('div', { class: 'ft', text: 'Công cụ hỗ trợ rà soát dựa trên bộ quy tắc nội bộ của Helixfast (chưa bao phủ hết mọi thuốc/tương tác, chưa xét liều và bệnh nền của người bệnh). Quyết định lâm sàng thuộc về bác sĩ; nên đối chiếu thêm dược thư/Drugs.com/Lexicomp khi cần.' }));
+    p.appendChild(bd);
+  }
+
+  function ddiApplyFilter() {
+    const involved = new Map();
+    if (ddiOpen && ddiRes) {
+      ddiRes.issues.forEach((i) => [i.x, i.y].forEach((d) => {
+        const cur = involved.get(d.ref);
+        if (!cur || HLX_DDI_LV[i.lv].r > HLX_DDI_LV[cur].r) involved.set(d.ref, i.lv);
+      }));
+    }
+    const rows = ddiRes ? ddiRes.drugs.map((d) => d.ref) : [];
+    document.querySelectorAll('tr.hlx-ddi-hide, tr[class*="hlx-ddi-r-"]').forEach((r) => {
+      if (rows.indexOf(r) === -1) r.className = r.className.replace(/\s*hlx-ddi-(hide|r-\w+)/g, '');
+    });
+    rows.forEach((r) => {
+      if (!r || !r.isConnected) return;
+      r.className = r.className.replace(/\s*hlx-ddi-(hide|r-\w+)/g, '');
+      if (!ddiOpen) return;
+      const lv = involved.get(r);
+      if (lv) r.classList.add('hlx-ddi-r-' + lv);
+      else if (ddiFilter && involved.size) r.classList.add('hlx-ddi-hide');
+    });
+  }
+
+  function ddiShow() {
+    ddiOpen = true;
+    ddiRefresh(true);
+  }
+  function ddiClose() {
+    ddiOpen = false;
+    const p = document.getElementById('hlx-ddi-panel');
+    if (p) p.remove();
+    ddiApplyFilter();
+  }
+  function ddiRefresh(force) {
+    const drugs = ddiReadDrugs();
+    const sig = drugs.map((d) => d.name).join('¦') + '#' + ddiAliasVer;
+    if (!force && sig === ddiSig && ddiRes) return;
+    ddiSig = sig;
+    ddiNetFind.clear();
+    ddiRes = hlxDdiAnalyze(drugs, ddiLoadCustom());
+    ddiBadge();
+    if (ddiOpen) ddiRenderPanel();
+    setTimeout(ddiAutoNet, 0);
+    ddiApplyFilter();
+    const c = ddiRes.issues.filter((i) => i.lv === 'contra');
+    const ck = c.map((i) => i.key).join('~');
+    if (c.length && ck !== ddiNotifiedKey) {
+      ddiToast('⛔ Phối hợp chống chỉ định: ' + ddiLabel(c[0].x) + ' + ' + ddiLabel(c[0].y) + ' — đã khóa nút Lưu lại.');
+    }
+    ddiNotifiedKey = ck;
+  }
+
+  function ddiIsSaveBtn(btn) {
+    if (!btn || btn.textContent.replace(/\s+/g, ' ').trim() !== 'Lưu lại') return false;
+    if (btn.closest('.p-dialog')) return false;
+    try { if (btn === findNapButton()) return false; } catch (err) {}
+    return true;
+  }
+  function ddiApplyLock() {
+    const locked = !!(ddiRes && ddiRes.issues.some((i) => i.lv === 'contra'));
+    document.querySelectorAll('button').forEach((b) => {
+      if (!ddiIsSaveBtn(b)) { if (b.classList.contains('hlx-ddi-locked')) b.classList.remove('hlx-ddi-locked'); return; }
+      if (locked && findRxTables().length) { b.classList.add('hlx-ddi-locked'); b.title = 'Toa có phối hợp chống chỉ định: loại bỏ thuốc liên quan để lưu'; }
+      else if (b.classList.contains('hlx-ddi-locked')) { b.classList.remove('hlx-ddi-locked'); b.removeAttribute('title'); }
+    });
+  }
+
+  hlxDocListen('click', (e) => {
+    if (!isHelixfastEnabled() || !ddiOn()) return;
+    const btn = e.target && e.target.closest ? e.target.closest('button') : null;
+    if (!btn || !ddiIsSaveBtn(btn) || !findRxTables().length) return;
+    const res = ddiRun();
+    const c = res.issues.filter((i) => i.lv === 'contra');
+    if (!c.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    ddiRes = res;
+    ddiToast('⛔ Không thể lưu: ' + ddiLabel(c[0].x) + ' + ' + ddiLabel(c[0].y) + ' (' + c[0].t + '). Hãy bỏ một trong các thuốc.');
+    ddiOpen = true;
+    ddiRenderPanel();
+    ddiApplyFilter();
+  }, true);
+
+  setInterval(() => {
+    try {
+      if (!isHelixfastEnabled()) {
+        if (ddiOpen) ddiClose();
+        ['hlx-ddi-btn', 'hlx-ddi-sw'].forEach((id) => { const b = document.getElementById(id); if (b) b.remove(); });
+        document.querySelectorAll('button.hlx-ddi-locked').forEach((x) => x.classList.remove('hlx-ddi-locked'));
+        return;
+      }
+      ddiEnsureButton();
+      if (!ddiOn()) { if (ddiRes || ddiOpen) ddiTurnedOffCleanup(); ddiSyncButtons(); return; }
+      ddiRefresh(false);
+      ddiApplyLock();
+      if (ddiOpen) ddiApplyFilter();
+    } catch (err) {}
+  }, 500);
+
+  })();
 })();
 
 (function hlxQsInit() {
@@ -8604,6 +9897,10 @@
               { header: 'Siêu âm' },
               { label: 'Ổ bụng', keywords: ['Siêu âm ổ bụng'] },
               { label: 'Ổ bụng (gan mật, tụy, lách, thận, bàng quang)', keywords: ['[18.0015.0001] Siêu âm ổ bụng (gan mật, tụy, lách, thận, bàng quang)'] },
+              { label: 'Tử cung phần phụ', keywords: ['[18.0018.0001] Siêu âm tử cung phần phụ'] },
+              { label: 'Thai nhi 3 tháng đầu', keywords: ['[18.0034.0001] Siêu âm thai nhi trong 3 tháng đầu'] },
+              { label: 'Thai nhi 3 tháng giữa', keywords: ['[18.0035.0001] Siêu âm thai nhi trong 3 tháng giữa'] },
+              { label: 'Thai nhi 3 tháng cuối', keywords: ['[18.0036.0001] Siêu âm thai nhi trong 3 tháng cuối'] },
               { label: 'Tuyến vú hai bên', keywords: ['[18.0054.0001] Siêu âm tuyến vú hai bên'] },
               { label: 'Tuyến giáp', keywords: ['Siêu âm tuyến giáp'] },
               { label: 'Khớp (gối, háng, khuỷu, cổ tay...)', keywords: ['Siêu âm khớp (gối, háng, khuỷu, cổ tay...)'] },
@@ -9063,8 +10360,21 @@
     function sortByOrder(items, scope) {
         const saved = loadOrders()[scope];
         if (!Array.isArray(saved) || !saved.length) return items.slice();
-        const idx = (it) => { const i = saved.indexOf(it.label); return i < 0 ? 1e6 : i; };
-        return items.map((it, n) => ({ it, n })).sort((a, b) => (idx(a.it) - idx(b.it)) || (a.n - b.n)).map(x => x.it);
+        // Mục đã lưu thứ tự: giữ đúng thứ tự đã lưu
+        const known = items.filter(it => saved.indexOf(it.label) >= 0)
+            .sort((a, b) => saved.indexOf(a.label) - saved.indexOf(b.label));
+        const out = known.slice();
+        // Mục mới (chưa có trong thứ tự đã lưu): chèn ngay sau mục đứng trước nó trong danh sách mặc định
+        items.forEach((it, i) => {
+            if (saved.indexOf(it.label) >= 0) return;
+            let pos = 0;
+            for (let j = i - 1; j >= 0; j--) {
+                const k = out.indexOf(items[j]);
+                if (k >= 0) { pos = k + 1; break; }
+            }
+            out.splice(pos, 0, it);
+        });
+        return out;
     }
 
     function orderedSub(group) {
