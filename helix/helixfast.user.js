@@ -2944,6 +2944,41 @@
     }
   }
 
+  // Tổng S.Lg = Số ngày × (Sáng + Trưa + Chiều + Tối), làm tròn lên thành số nguyên (vd 0,5 viên × 7 ngày = 3,5 → 4)
+  function hlxParseNum(raw) {
+    const v = String(raw || '').trim().replace(',', '.');
+    if (!v) return 0;
+    const fr = v.match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
+    if (fr) return parseFloat(fr[2]) ? parseFloat(fr[1]) / parseFloat(fr[2]) : 0;
+    const n = parseFloat(v);
+    return isFinite(n) ? n : 0;
+  }
+  function hlxSyncTotal() {
+    if (hlxDoseNative()) return;
+    const qty = hlxQ(SUPPLY_QTY_SELECTOR);
+    const day = hlxQ(SUPPLY_DAY_SELECTOR);
+    if (!qty || !day || qty.disabled || qty.readOnly) return;
+    if (document.activeElement === qty) return; // người dùng đang tự sửa Tổng S.Lg: không ghi đè
+    const days = hlxParseNum(day.value);
+    let perDay = 0;
+    for (const f of DOSE_FIELDS) {
+      const el = hlxQ(f.sel);
+      if (el) perDay += hlxParseNum(el.value);
+    }
+    if (!(days > 0) || !(perDay > 0)) return;
+    const total = String(Math.ceil(days * perDay - 1e-9));
+    if ((qty.value || '').trim() === total) return;
+    hlxSetInputValue(qty, total);
+  }
+  let hlxTotalGen = 0;
+  function hlxScheduleTotalSync(delays) {
+    const gen = ++hlxTotalGen;
+    delays.forEach((d) => setTimeout(() => {
+      if (gen !== hlxTotalGen) return;
+      try { if (isHelixfastEnabled()) hlxSyncTotal(); } catch (err) {}
+    }, d));
+  }
+
   function hlxPrepareNote() {
     const nat = hlxDoseNative();
     document.querySelectorAll(NOTE_INPUT_SELECTOR).forEach((inp) => {
@@ -3008,6 +3043,20 @@
         hlxScheduleNoteSync([0, 30, 150, 350]);
       } else if (t.matches(PHARMACY_SEARCH_SELECTOR)) {
         hlxScheduleNoteSync([150, 400, 800, 1300]);
+      }
+    }, true);
+
+    // Thời gian thực: gõ/xóa/dán ở Số ngày, Sáng, Trưa, Chiều, Tối, Tổng S.Lg → sinh Cách dùng ở Ghi chú ngay, không chờ Tab/Enter
+    hlxDocListen('input', (e) => {
+      if (!e.isTrusted) return;
+      const t = e.target;
+      if (!t || !t.matches || !isHelixfastEnabled()) return;
+      if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR) || t.matches(SUPPLY_QTY_SELECTOR)) {
+        hlxScheduleNoteSync([0, 40, 150]);
+      }
+      // Số ngày / Sáng-Trưa-Chiều-Tối đổi → tính lại Tổng S.Lg ngay (gõ trực tiếp ở Tổng S.Lg thì giữ nguyên)
+      if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR)) {
+        hlxScheduleTotalSync([0, 60, 200]);
       }
     }, true);
 
