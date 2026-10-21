@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.14
+// @version      2.15
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
