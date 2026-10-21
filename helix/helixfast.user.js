@@ -11,6 +11,7 @@
 // @grant        unsafeWindow
 // @connect      rxnav.nlm.nih.gov
 // @connect      api.fda.gov
+// @connect      workers.dev
 // @updateURL    https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js
 // @downloadURL  https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js
 // ==/UserScript==
@@ -239,9 +240,13 @@
     }
     return v === undefined || v === '' ? null : v;
   }
-  function hlxStoreSet(key, val) {
+  function hlxStoreSetRaw(key, val) {
     try { if (typeof GM_setValue === 'function') GM_setValue(key, val); } catch (err) {}
     try { localStorage.setItem(key, val); } catch (err) {}
+  }
+  function hlxStoreSet(key, val) {
+    hlxStoreSetRaw(key, val);
+    try { hlxSyncMark(key); } catch (err) {} // đánh dấu thay đổi để đồng bộ đám mây
   }
   function hlxIsValidMid(v) {
     return typeof v === 'string' && /^HLF-[0-9A-Fa-f]{8}$/.test(v);
@@ -3154,7 +3159,7 @@
   );
 
   // Backspace ở ô trống (Tổng S.Lg / Tối / Chiều / Trưa / Sáng) → lùi về ô liền trước và bôi đen dữ liệu có sẵn.
-  // Ô Số ngày là ô đầu hàng: Backspace không lùi đi đâu nữa.
+  // Ô Số ngày: còn dữ liệu thì xóa, ô trống thì lùi về ô Thuốc.
   const HLX_DOSE_BACK_ORDER = [
     SUPPLY_DAY_SELECTOR,
     'input[formcontrolname="quantity_unit_s"]',
@@ -3176,8 +3181,19 @@
         if (t.matches(HLX_DOSE_BACK_ORDER[i])) { idx = i; break; }
       }
       if (idx < 0) return;
-      // Số ngày: giữ hành vi Backspace bình thường, không chuyển ô
-      if (idx === 0) return;
+      // Số ngày: còn dữ liệu thì xóa bình thường; ô đã trống thì lùi về ô Thuốc
+      if (idx === 0) {
+        if (t.value !== '') return;
+        const rootD = t.closest('#pharmacy, .p-dialog') || document;
+        const drug = rootD.querySelector(PHARMACY_SEARCH_SELECTOR) || hlxQ(PHARMACY_SEARCH_SELECTOR);
+        if (!drug || drug.disabled || drug.readOnly || drug.offsetParent === null) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try { hlxStopDayHold(); } catch (err) {}
+        drug.focus();
+        if (typeof drug.select === 'function') drug.select();
+        return;
+      }
       // Còn dữ liệu thì Backspace xóa như bình thường (lần nhấn tiếp theo mới lùi ô)
       if (t.value !== '') return;
       const root = t.closest('#pharmacy, .p-dialog') || document;
@@ -3818,6 +3834,18 @@
     return cfg;
   }
   function hlxDoseSave(cfg) {
+    // Đóng dấu thời gian sửa (mt) cho từng thuốc để gộp dữ liệu giữa các máy theo từng thuốc
+    try {
+      let prev = null;
+      try { prev = JSON.parse(hlxStoreGet(HLX_DOSE_KEY) || 'null'); } catch (err) { prev = null; }
+      const sig = (d) => HLX_DOSE_FIELDS.map((f) => String(d[f[0]] == null ? '' : d[f[0]]).trim()).join('|');
+      const pm = new Map(((prev && prev.drugs) || []).map((d) => [hlxDoseKey(d.name), d]));
+      (cfg.drugs || []).forEach((d) => {
+        const pd = pm.get(hlxDoseKey(d.name));
+        if (pd) d.mt = sig(pd) === sig(d) ? (d.mt || pd.mt || 0) : Date.now();
+        else d.mt = d.mt || (hlxDoseHas(d) ? Date.now() : 0);
+      });
+    } catch (err) {}
     hlxDoseCache = cfg;
     hlxStoreSet(HLX_DOSE_KEY, JSON.stringify(cfg));
   }
@@ -4351,7 +4379,8 @@
       const added = nd.filter((d) => d.isNew).length;
       hlxDoseSave({ updated: Date.now(), drugs: nd, prefs: hlxDosePrefs(), grp: hlxDoseLoad().grp || {} });
       msg.style.color = '#0f766e';
-      msg.textContent = '✅ Đã cập nhật: ' + res.list.length + ' thuốc (' + added + ' thuốc mới)' + (res.stopped ? ' — quét chưa đủ vì đã dừng.' : '.');
+      const dup = res.list.length - seen.size;
+      msg.textContent = '✅ Đã cập nhật: ' + nd.length + ' thuốc (' + added + ' thuốc mới)' + (dup > 0 ? ' — đọc được ' + res.list.length + ' dòng, ' + dup + ' dòng trùng tên đã gộp' : '') + (res.stopped ? ' — quét chưa đủ vì đã dừng.' : '.');
       render();
     });
     render();
@@ -4600,6 +4629,480 @@
     box.querySelector('#hlx-icd-x').addEventListener('click', hlxCloseIcdDialog);
   }
 
+  // ================= Đồng bộ đám mây (Cloudflare Worker + KV) =================
+  const HLX_SYNC_CFG_KEY = 'hlx_sync_cfg_v1';
+  const HLX_SYNC_META_KEY = 'hlx_sync_meta_v1';
+  // Địa chỉ Worker mặc định: sửa thành địa chỉ Worker của bạn sau khi deploy (hoặc nhập trong Cài đặt)
+  const HLX_SYNC_DEFAULT_URL = 'https://helixfast-sync.dhabolero.workers.dev';
+  // Các mục được đồng bộ: liều dùng tự động, cách dùng, đổi tên ICD (+ công tắc "dùng mặc định máy")
+  const HLX_SYNC_KEYS = ['hlx_dose_rules_v1', 'hlx_route_rules_v1', 'hlx_icd_names_v1', 'hlx_route_native_v1', 'hlx_dose_native_v1'];
+  const hlxSyncRt = { timer: null, busy: false, again: false, id: null, idFor: '', msg: '', msgErr: false };
+
+  function hlxSyncJson(key, def) {
+    try { const raw = hlxStoreGet(key); if (raw) { const o = JSON.parse(raw); if (o && typeof o === 'object') return o; } } catch (err) {}
+    return def;
+  }
+  function hlxSyncCfg() { return Object.assign({ on: false, code: '', url: '', last: 0 }, hlxSyncJson(HLX_SYNC_CFG_KEY, {})); }
+  function hlxSyncCfgSave(cfg) { hlxStoreSetRaw(HLX_SYNC_CFG_KEY, JSON.stringify(cfg)); }
+  function hlxSyncMeta() { return hlxSyncJson(HLX_SYNC_META_KEY, {}); }
+  function hlxSyncMetaSave(m) { hlxStoreSetRaw(HLX_SYNC_META_KEY, JSON.stringify(m)); }
+  function hlxSyncNormCode(c) { return String(c || '').trim().toUpperCase().replace(/\s+/g, ''); }
+  // Tài khoản đồng bộ = tên người dùng HIS đang đăng nhập ("Xin chào, ...") -> không cần mã
+  function hlxSyncAccount() {
+    let best = '';
+    try {
+      document.querySelectorAll('span,div,a,li,p,label,button').forEach((el) => {
+        if (el.children.length > 3) return;
+        const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
+        if (t.length > 120 || !/^Xin\s*chào/i.test(t)) return;
+        if (!best || t.length < best.length) best = t;
+      });
+    } catch (err) {}
+    const name = best.replace(/^Xin\s*chào\s*[,:]?\s*/i, '').trim();
+    const norm = (n) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toUpperCase().replace(/[^A-Z0-9]+/g, ' ').trim();
+    if (name) {
+      const c = hlxSyncCfg();
+      if (c.acct !== name) { c.acct = name; hlxSyncCfgSave(c); }
+      return { name, key: norm(name) };
+    }
+    const saved = hlxSyncCfg().acct;
+    return saved ? { name: saved, key: norm(saved) } : null;
+  }
+
+  function hlxSyncMark(key) {
+    if (HLX_SYNC_KEYS.indexOf(key) === -1) return;
+    const m = hlxSyncMeta();
+    if (!m.dirty) m.dirty = {};
+    m.dirty[key] = Date.now(); // đánh dấu "máy này đã sửa mục này kể từ lần đồng bộ trước"
+    hlxSyncMetaSave(m);
+    if (hlxSyncCfg().on) hlxSyncSchedule(2500);
+  }
+  function hlxSyncSchedule(ms) {
+    clearTimeout(hlxSyncRt.timer);
+    hlxSyncRt.timer = setTimeout(() => { hlxSyncRun('auto'); }, ms);
+  }
+  function hlxSyncInvalidate() {
+    hlxDoseCache = null;
+    hlxIcdCache = null;
+  }
+  async function hlxSyncId(code) {
+    if (hlxSyncRt.id && hlxSyncRt.idFor === code) return hlxSyncRt.id;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(code), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('helixfast-sync-v1'), iterations: 100000, hash: 'SHA-256' }, key, 256);
+    const hex = Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    hlxSyncRt.id = hex;
+    hlxSyncRt.idFor = code;
+    return hex;
+  }
+  function hlxSyncReq(base, id, payload) {
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify(payload);
+      const done = (status, text) => {
+        let j = null;
+        try { j = JSON.parse(text); } catch (err) {}
+        if (status >= 200 && status < 300 && j) resolve(j);
+        else reject(new Error((j && j.error) || ('Lỗi máy chủ (HTTP ' + status + ')')));
+      };
+      const headers = { 'Content-Type': 'application/json', 'X-Sync-Id': id };
+      if (typeof GM_xmlhttpRequest === 'function') {
+        GM_xmlhttpRequest({
+          method: 'POST', url: base + '/v1/sync', headers, data: body, timeout: 20000,
+          onload: (r) => done(r.status, r.responseText),
+          onerror: () => reject(new Error('Không kết nối được máy chủ đồng bộ')),
+          ontimeout: () => reject(new Error('Máy chủ đồng bộ không phản hồi')),
+        });
+      } else {
+        fetch(base + '/v1/sync', { method: 'POST', headers, body })
+          .then((r) => r.text().then((t) => done(r.status, t)))
+          .catch(() => reject(new Error('Không kết nối được máy chủ đồng bộ')));
+      }
+    });
+  }
+  // Gộp dữ liệu khi cả hai máy cùng sửa một mục (tránh mất dữ liệu của nhau)
+  function hlxSyncMerge(key, localStr, remoteStr) {
+    try {
+      if (key === 'hlx_dose_rules_v1') {
+        const L = JSON.parse(localStr), R = JSON.parse(remoteStr);
+        const ld = Array.isArray(L.drugs) ? L.drugs : [], rd = Array.isArray(R.drugs) ? R.drugs : [];
+        const rm = new Map(rd.map((d) => [hlxDoseKey(d.name), d]));
+        const used = new Set();
+        const out = ld.map((a) => {
+          const k = hlxDoseKey(a.name);
+          used.add(k);
+          const b = rm.get(k);
+          if (!b) return a;
+          const ta = a.mt || 0, tb = b.mt || 0;
+          if (ta !== tb) return ta > tb ? a : b;
+          return (hlxDoseHas(a) || !hlxDoseHas(b)) ? a : b;
+        });
+        rd.forEach((b) => { if (!used.has(hlxDoseKey(b.name))) out.push(b); });
+        return JSON.stringify(Object.assign({}, L, {
+          drugs: out,
+          updated: Math.max(L.updated || 0, R.updated || 0),
+          grp: Object.assign({}, R.grp || {}, L.grp || {}),
+        }));
+      }
+      if (key === 'hlx_route_rules_v1') {
+        const L = JSON.parse(localStr), R = JSON.parse(remoteStr);
+        if (!Array.isArray(L.rules) || !Array.isArray(R.rules)) return localStr;
+        const sig = (r) => JSON.stringify([(r.keywords || []).slice().sort(), r.route]);
+        const have = new Set(L.rules.map(sig));
+        R.rules.forEach((r) => { if (!have.has(sig(r))) { L.rules.push(r); have.add(sig(r)); } });
+        return JSON.stringify(L);
+      }
+      if (key === 'hlx_icd_names_v1') {
+        const L = JSON.parse(localStr), R = JSON.parse(remoteStr);
+        L.map = Object.assign({}, R.map || {}, L.map || {});
+        return JSON.stringify(L);
+      }
+    } catch (err) {}
+    return localStr;
+  }
+  // mode: 'auto' (chỉ khi đang bật) | 'now' (đồng bộ hai chiều ngay) | 'probe' (chỉ xem cloud có gì)
+  //       'pull' (tải cloud, ghi đè máy này) | 'push' (đẩy máy này, ghi đè cloud)
+  // Đồng bộ hai chiều: luôn kéo trước, gộp theo từng thuốc/mục nếu cả hai máy cùng sửa, rồi đẩy lên
+  // với kiểm tra phiên bản (nếu máy khác vừa đẩy xen vào thì kéo-gộp lại).
+  async function hlxSyncRun(mode) {
+    const rt = hlxSyncRt;
+    const cfg = hlxSyncCfg();
+    const fail = (msg) => { rt.msg = msg; rt.msgErr = true; return { ok: false, err: msg }; };
+    if (mode === 'auto' && !cfg.on) return { ok: false };
+    if (rt.busy) { if (mode === 'auto') rt.again = true; return { ok: false, err: 'Đang đồng bộ…' }; }
+    const acct = hlxSyncAccount();
+    if (!acct || acct.key.length < 3) return fail('Không đọc được tên tài khoản HIS (mục "Xin chào, …" ở góc phải). Hãy đăng nhập HIS rồi thử lại.');
+    const code = 'acct:' + acct.key;
+    const base = String(HLX_SYNC_DEFAULT_URL).trim().replace(/\/+$/, '');
+    if (!/^https:\/\//i.test(base) || /TEN-CUA-BAN/.test(base)) return fail('Chưa cấu hình địa chỉ máy chủ đồng bộ.');
+    rt.busy = true;
+    rt.msg = 'Đang đồng bộ…';
+    rt.msgErr = false;
+    try {
+      const id = await hlxSyncId(code);
+      const t0 = Date.now();
+      const meta = hlxSyncMeta();
+      if (!meta.dirty) meta.dirty = {};
+      if (!meta.base) meta.base = {};
+      const clearDirty = (k) => { if (meta.dirty[k] != null && meta.dirty[k] <= t0) delete meta.dirty[k]; };
+      let applied = 0, merged = 0;
+
+      if (mode === 'push') {
+        const items = {};
+        HLX_SYNC_KEYS.forEach((k) => { const v = hlxStoreGet(k); if (v != null) items[k] = { ts: Date.now(), v, base: 0 }; });
+        await hlxSyncReq(base, id, { items, force: true });
+        Object.keys(items).forEach((k) => { meta.base[k] = items[k].ts; clearDirty(k); });
+      } else {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          const res = await hlxSyncReq(base, id, { items: {} });
+          const remote = res.items || {};
+          if (mode === 'probe') { rt.msg = ''; return { ok: true, remoteCount: Object.keys(remote).length }; }
+          const push = {};
+          HLX_SYNC_KEYS.forEach((k) => {
+            const r = remote[k];
+            const lv = hlxStoreGet(k);
+            const dirty = meta.dirty[k] != null;
+            const take = () => { hlxStoreSetRaw(k, r.v); meta.base[k] = r.ts; if (!dirty || mode === 'pull') delete meta.dirty[k]; applied++; };
+            if (r && typeof r.v !== 'string') return;
+            if (mode === 'pull') { if (r) take(); return; }
+            if (!r) { if (lv != null) push[k] = { v: lv, base: 0, floor: 0 }; return; }
+            if (lv == null) { take(); return; }
+            if (lv === r.v) { meta.base[k] = r.ts; clearDirty(k); return; }
+            const remoteChanged = meta.base[k] !== r.ts;
+            if (!dirty && remoteChanged) { take(); return; }
+            if (dirty && !remoteChanged) { push[k] = { v: lv, base: r.ts, floor: r.ts }; return; }
+            if (dirty && remoteChanged) {
+              const m = hlxSyncMerge(k, lv, r.v);
+              if (m !== lv) { hlxStoreSetRaw(k, m); applied++; }
+              merged++;
+              if (m !== r.v) push[k] = { v: m, base: r.ts, floor: r.ts };
+              else { meta.base[k] = r.ts; clearDirty(k); }
+            }
+          });
+          const keys = Object.keys(push);
+          if (!keys.length) break;
+          const items = {};
+          keys.forEach((k) => { items[k] = { ts: Math.max(Date.now(), push[k].floor + 1), v: push[k].v, base: push[k].base }; });
+          const res2 = await hlxSyncReq(base, id, { items });
+          const conflicts = res2.conflicts || [];
+          keys.forEach((k) => { if (conflicts.indexOf(k) === -1) { meta.base[k] = items[k].ts; clearDirty(k); } });
+          if (!conflicts.length) break;
+        }
+      }
+      hlxSyncMetaSave(meta);
+      if (applied) hlxSyncInvalidate();
+      const c2 = hlxSyncCfg();
+      c2.last = Date.now();
+      hlxSyncCfgSave(c2);
+      rt.msg = merged ? 'Đã đồng bộ và gộp thay đổi từ máy khác.' : (applied ? ('Đã cập nhật ' + applied + ' mục từ đám mây.') : 'Đã đồng bộ.');
+      rt.msgErr = false;
+      return { ok: true, applied };
+    } catch (err) {
+      return fail(err && err.message ? err.message : 'Đồng bộ thất bại.');
+    } finally {
+      rt.busy = false;
+      if (rt.again) { rt.again = false; hlxSyncSchedule(1500); }
+    }
+  }
+  setTimeout(() => { if (hlxSyncCfg().on) hlxSyncRun('auto'); }, 4000);
+  setInterval(() => { if (!document.hidden && hlxSyncCfg().on) hlxSyncRun('auto'); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) { const c = hlxSyncCfg(); if (c.on && Date.now() - (c.last || 0) > 60000) hlxSyncRun('auto'); }
+  });
+
+  function hlxStEnsureCss() {
+    hlxIcdEnsureCss();
+    if (document.getElementById('hlx-st-css')) return;
+    const st = document.createElement('style');
+    st.id = 'hlx-st-css';
+    st.textContent = `
+      .hlx-st-box { width: 560px !important; }
+      .hlx-st-body { padding: 6px 22px 8px; overflow-y: auto; }
+      .hlx-st-h { font-weight: 800; font-size: 15px; margin: 10px 0 4px; }
+      .hlx-st-lb { font-weight: 700; margin: 12px 0 4px; font-size: 13px; }
+      .hlx-st-row { display: flex; gap: 8px; }
+      .hlx-st-btn { border: none; border-radius: 6px; padding: 9px 14px; font-weight: 700; cursor: pointer; color: #fff; background: #2563eb; white-space: nowrap; font-size: 13px; }
+      .hlx-st-btn.g { background: #16a34a; } .hlx-st-btn.o { background: #ea580c; } .hlx-st-btn.s { background: #64748b; }
+      .hlx-st-btns { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+      .hlx-st-btn.wide { width: 100%; padding: 11px 14px; font-size: 14px; }
+      .hlx-st-cap { font-weight: 700; font-size: 12.5px; color: #475569; margin: 16px 0 6px; padding-top: 12px; border-top: 1px solid #e2e8f0; }
+      .hlx-st-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .hlx-st-btn.out { background: #fff; color: #1d4ed8; border: 1.5px solid #2563eb; }
+      .hlx-st-btn.out:hover { background: #eff6ff; }
+      .hlx-st-btn.out.o { color: #c2410c; border-color: #ea580c; }
+      .hlx-st-btn.out.o:hover { background: #fff7ed; }
+      .hlx-st-stat { margin-top: 12px; font-size: 13px; color: #334155; min-height: 18px; }
+      .hlx-st-stat.err { color: #dc2626; font-weight: 700; }
+    `;
+    document.head.appendChild(st);
+  }
+  // Popup giữa màn hình với nhiều nút
+  function hlxStAsk(title, text, buttons) {
+    hlxStEnsureCss();
+    const ov = document.createElement('div');
+    ov.className = 'hlx-icd-cf-ov';
+    ov.style.zIndex = '1000002';
+    const dlg = document.createElement('div');
+    dlg.className = 'hlx-icd-cf';
+    dlg.style.zIndex = '1000003';
+    dlg.style.width = '460px';
+    dlg.innerHTML = '<div class="hlx-icd-cf-t"></div><div class="hlx-icd-cf-x"></div><div class="hlx-icd-cf-b" style="flex-wrap:wrap"></div>';
+    dlg.querySelector('.hlx-icd-cf-t').textContent = title;
+    dlg.querySelector('.hlx-icd-cf-x').textContent = text;
+    document.body.appendChild(ov);
+    document.body.appendChild(dlg);
+    hlxKeepAdd(ov, hlxStEnsureCss);
+    hlxKeepAdd(dlg, hlxStEnsureCss);
+    const done = () => { hlxKeepDrop(ov); hlxKeepDrop(dlg); ov.remove(); dlg.remove(); document.removeEventListener('keydown', onKey, true); };
+    const onKey = (e) => { if (e.isTrusted && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(); } };
+    document.addEventListener('keydown', onKey, true);
+    const bw = dlg.querySelector('.hlx-icd-cf-b');
+    buttons.forEach((b) => {
+      const el = document.createElement('button');
+      el.type = 'button';
+      el.textContent = b.label;
+      el.style.background = b.color || '#64748b';
+      el.addEventListener('click', () => { done(); if (b.fn) b.fn(); });
+      bw.appendChild(el);
+    });
+    ov.addEventListener('mousedown', done);
+  }
+  // Popup yêu cầu gõ "OK" để xác nhận
+  function hlxStAskOk(title, text, onYes) {
+    hlxStEnsureCss();
+    const ov = document.createElement('div');
+    ov.className = 'hlx-icd-cf-ov';
+    ov.style.zIndex = '1000002';
+    const dlg = document.createElement('div');
+    dlg.className = 'hlx-icd-cf';
+    dlg.style.zIndex = '1000003';
+    dlg.innerHTML = '<div class="hlx-icd-cf-t"></div><div class="hlx-icd-cf-x"></div>' +
+      '<input class="hlx-icd-in" id="hlx-st-ok" autocomplete="off" placeholder="Gõ OK" style="margin-top:12px;text-align:center;font-weight:800;text-transform:uppercase">' +
+      '<div class="hlx-icd-cf-b"><button type="button" class="hlx-icd-cf-y" disabled style="opacity:.4">Xác nhận</button><button type="button" class="hlx-icd-cf-n">Hủy</button></div>';
+    dlg.querySelector('.hlx-icd-cf-t').textContent = title;
+    dlg.querySelector('.hlx-icd-cf-x').textContent = text;
+    document.body.appendChild(ov);
+    document.body.appendChild(dlg);
+    hlxKeepAdd(ov, hlxStEnsureCss);
+    hlxKeepAdd(dlg, hlxStEnsureCss);
+    const inp = dlg.querySelector('#hlx-st-ok');
+    const yes = dlg.querySelector('.hlx-icd-cf-y');
+    const done = () => { hlxKeepDrop(ov); hlxKeepDrop(dlg); ov.remove(); dlg.remove(); document.removeEventListener('keydown', onKey, true); };
+    const ok = () => inp.value.trim().toUpperCase() === 'OK';
+    const go = () => { if (!ok()) return; done(); onYes(); };
+    const onKey = (e) => { if (e.isTrusted && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(); } };
+    document.addEventListener('keydown', onKey, true);
+    inp.addEventListener('input', () => { yes.disabled = !ok(); yes.style.opacity = ok() ? '1' : '.4'; });
+    inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
+    yes.addEventListener('click', go);
+    dlg.querySelector('.hlx-icd-cf-n').addEventListener('click', done);
+    ov.addEventListener('mousedown', done);
+    inp.focus();
+  }
+  function hlxCloseSettingsDialog() {
+    ['hlx-st-overlay', 'hlx-st-box'].forEach((id) => { const el = document.getElementById(id); if (el) { hlxKeepDrop(el); el.remove(); } });
+    document.removeEventListener('keydown', hlxStDialogEsc, true);
+  }
+  function hlxStDialogEsc(e) {
+    if (!e.isTrusted || e.key !== 'Escape') return;
+    if (document.querySelector('.hlx-icd-cf')) return;
+    e.preventDefault(); e.stopPropagation();
+    hlxCloseSettingsDialog();
+  }
+  function hlxOpenSettingsDialog() {
+    hlxStEnsureCss();
+    hlxCloseSettingsDialog();
+    const overlay = document.createElement('div');
+    overlay.id = 'hlx-st-overlay';
+    overlay.className = 'hlx-icd-overlay';
+    const box = document.createElement('div');
+    box.id = 'hlx-st-box';
+    box.className = 'hlx-icd-box hlx-st-box';
+    box.innerHTML =
+      '<div class="hlx-icd-head"><span>⚙ Cài đặt</span><span class="hlx-icd-x" id="hlx-st-x">✕</span></div>' +
+      '<div class="hlx-st-body">' +
+      '<div class="hlx-st-h">☁ Đồng bộ đám mây</div>' +
+      '<div class="hlx-icd-tip" style="padding:0 0 6px">Tự động đồng bộ <b>Liều dùng tự động</b>, <b>Cách dùng</b> và <b>Đổi tên ICD</b> giữa các máy. Chỉ gồm cài đặt của bạn, không có dữ liệu bệnh nhân. Đồng bộ theo tài khoản HIS đang đăng nhập: trên máy mới, đăng nhập cùng tài khoản rồi bật.</div>' +
+      '<label class="hlx-icd-on" style="padding:6px 0 4px"><input type="checkbox" id="hlx-st-on"><span class="hlx-icd-sw"></span><span id="hlx-st-onl"></span></label>' +
+      '<div class="hlx-st-lb">Tài khoản đồng bộ</div><div class="hlx-st-acct" id="hlx-st-acct" style="font-weight:700;color:#1d4ed8"></div>' +
+      '<div class="hlx-st-stat" id="hlx-st-stat"></div>' +
+      '<div class="hlx-st-btns">' +
+      '<button type="button" class="hlx-st-btn g wide" id="hlx-st-now">⟳ Đồng bộ ngay</button></div>' +
+      '<div class="hlx-st-cap">💾 Sao lưu bằng file (trên máy này)</div>' +
+      '<div class="hlx-st-grid">' +
+      '<button type="button" class="hlx-st-btn out" id="hlx-st-backup">⬇ Tải bản sao lưu</button>' +
+      '<button type="button" class="hlx-st-btn out" id="hlx-st-restore">📂 Khôi phục từ file</button>' +
+      '<input type="file" id="hlx-st-file" accept=".json,application/json" style="display:none"></div>' +
+      '<div class="hlx-st-cap">⚠ Ghi đè thủ công (một bên sẽ bị thay thế hoàn toàn)</div>' +
+      '<div class="hlx-st-grid">' +
+      '<button type="button" class="hlx-st-btn out b" id="hlx-st-pull">⬇ Tải từ cloud → máy này</button>' +
+      '<button type="button" class="hlx-st-btn out o" id="hlx-st-push">⬆ Đẩy máy này → cloud</button></div>' +
+      '</div>' +
+      '<div class="hlx-icd-foot" style="justify-content:flex-end"><button type="button" class="hlx-icd-close" id="hlx-st-close">Đóng</button></div>';
+    document.body.appendChild(overlay);
+    document.body.appendChild(box);
+    hlxKeepAdd(overlay, hlxStEnsureCss);
+    hlxKeepAdd(box, hlxStEnsureCss);
+    document.addEventListener('keydown', hlxStDialogEsc, true);
+    overlay.addEventListener('mousedown', hlxCloseSettingsDialog);
+    const q = (id) => box.querySelector(id);
+    const onCb = q('#hlx-st-on'), stat = q('#hlx-st-stat');
+    const cfg0 = hlxSyncCfg();
+    onCb.checked = !!cfg0.on;
+    const acctEl = q('#hlx-st-acct');
+    const showAcct = () => { const a = hlxSyncAccount(); acctEl.textContent = a ? a.name : 'Chưa đọc được tên tài khoản HIS'; acctEl.style.color = a ? '#1d4ed8' : '#dc2626'; };
+    showAcct();
+    const fmt = (t) => new Date(t).toLocaleString('vi-VN');
+    function paint() {
+      const c = hlxSyncCfg();
+      q('#hlx-st-onl').textContent = onCb.checked ? 'Đồng bộ tự động: BẬT' : 'Đồng bộ tự động: TẮT';
+      const rt = hlxSyncRt;
+      let t = rt.msg || (c.last ? 'Lần đồng bộ cuối: ' + fmt(c.last) : 'Chưa đồng bộ lần nào.');
+      if (!rt.msgErr && rt.msg && c.last) t += ' (' + fmt(c.last) + ')';
+      stat.textContent = t;
+      stat.classList.toggle('err', !!rt.msgErr);
+    }
+    const saveFields = () => {
+      const c = hlxSyncCfg();
+      hlxSyncCfgSave(c);
+    };
+    paint();
+    const tick = setInterval(() => { if (!document.getElementById('hlx-st-box')) clearInterval(tick); else paint(); }, 800);
+    function setOn(v) {
+      const c = hlxSyncCfg();
+      c.on = v;
+      hlxSyncCfgSave(c);
+      onCb.checked = v;
+      paint();
+    }
+    onCb.addEventListener('change', () => {
+      const want = onCb.checked;
+      onCb.checked = !want;
+      paint();
+      if (!want) {
+        hlxStAsk('Tắt đồng bộ tự động?', 'Thay đổi trên máy này sẽ không còn được gửi lên đám mây.', [{ label: 'Xác nhận', color: '#16a34a', fn: () => setOn(false) }, { label: 'Hủy' }]);
+        return;
+      }
+      saveFields();
+      showAcct();
+      hlxStAskOk('Bật đồng bộ tự động', 'Cài đặt sẽ được đồng bộ qua đám mây theo tài khoản HIS của bạn. Gõ OK để xác nhận.', () => {
+      hlxSyncRt.msg = 'Đang kiểm tra đám mây…'; hlxSyncRt.msgErr = false; paint();
+      hlxSyncRun('probe').then((r) => {
+        if (!r.ok) { paint(); return; }
+        const doPull = () => hlxSyncRun('pull').then((x) => { if (x.ok) setOn(true); paint(); });
+        const doPush = () => hlxSyncRun('push').then((x) => { if (x.ok) setOn(true); paint(); });
+        if (r.remoteCount > 0) {
+          hlxStAsk('Đám mây đã có dữ liệu', 'Mã đồng bộ này đã có cài đặt trên đám mây. Bạn muốn dùng bên nào?', [
+            { label: '⬇ Dùng dữ liệu đám mây', color: '#2563eb', fn: doPull },
+            { label: '⬆ Giữ máy này, đẩy lên', color: '#ea580c', fn: doPush },
+            { label: 'Hủy' },
+          ]);
+        } else {
+          doPush();
+        }
+      });
+      });
+    });
+    q('#hlx-st-now').addEventListener('click', () => { saveFields(); hlxSyncRun('now').then(paint); paint(); });
+    q('#hlx-st-pull').addEventListener('click', () => {
+      saveFields();
+      hlxStAsk('Tải từ đám mây?', 'Cài đặt trên máy này sẽ bị ghi đè bằng dữ liệu trên đám mây.', [{ label: 'Tải về', color: '#2563eb', fn: () => { hlxSyncRun('pull').then(paint); paint(); } }, { label: 'Hủy' }]);
+    });
+    q('#hlx-st-push').addEventListener('click', () => {
+      saveFields();
+      hlxStAsk('Đẩy lên đám mây?', 'Dữ liệu trên đám mây sẽ bị ghi đè bằng cài đặt của máy này.', [{ label: 'Đẩy lên', color: '#ea580c', fn: () => { hlxSyncRun('push').then(paint); paint(); } }, { label: 'Hủy' }]);
+    });
+    q('#hlx-st-backup').addEventListener('click', () => {
+      try {
+        const data = {};
+        HLX_SYNC_KEYS.forEach((k) => { const v = hlxStoreGet(k); if (v != null) data[k] = v; });
+        const d = new Date(), p2 = (n) => String(n).padStart(2, '0');
+        const stamp = d.getFullYear() + p2(d.getMonth() + 1) + p2(d.getDate()) + '-' + p2(d.getHours()) + p2(d.getMinutes());
+        const out = { app: 'helixfast', type: 'settings-backup', version: HELIXFAST_VERSION, exported: d.toISOString(), data };
+        hlxDownloadBlob(new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' }), 'helixfast-backup-' + stamp + '.json');
+      } catch (err) { alert('Không tải được bản sao lưu: ' + err.message); }
+    });
+    q('#hlx-st-restore').addEventListener('click', () => { const f = q('#hlx-st-file'); f.value = ''; f.click(); });
+    q('#hlx-st-file').addEventListener('change', (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        let data = null;
+        try {
+          const o = JSON.parse(String(rd.result));
+          if (o && o.app === 'helixfast' && o.type === 'settings-backup' && o.data && typeof o.data === 'object') data = o.data;
+        } catch (err) { data = null; }
+        const keys = data ? HLX_SYNC_KEYS.filter((k) => typeof data[k] === 'string') : [];
+        let bad = false;
+        keys.forEach((k) => { try { JSON.parse(data[k]); } catch (err) { if (k !== 'hlx_dose_native_v1' && k !== 'hlx_route_native_v1') bad = true; } });
+        if (!data || !keys.length || bad) { alert('File không hợp lệ: không phải bản sao lưu Helixfast.'); return; }
+        hlxStAsk('Khôi phục từ file?', 'Cài đặt trên máy này sẽ bị thay bằng nội dung file "' + file.name + '". Nên tải bản sao lưu hiện tại trước khi khôi phục.', [{
+          label: 'Khôi phục', color: '#2563eb', fn: () => {
+            try {
+              keys.forEach((k) => {
+                let v = data[k];
+                if (k === 'hlx_dose_rules_v1') {
+                  // đóng dấu mt mới để bản khôi phục không bị bản cũ trên cloud thắng khi đồng bộ
+                  const o = JSON.parse(v), now = Date.now();
+                  if (Array.isArray(o.drugs)) o.drugs.forEach((d) => { if (hlxDoseHas(d)) d.mt = now; });
+                  o.updated = now;
+                  v = JSON.stringify(o);
+                }
+                hlxStoreSet(k, v);
+              });
+              hlxSyncInvalidate();
+              alert('Đã khôi phục ' + keys.length + ' mục cài đặt. Nếu đang bật đồng bộ, dữ liệu sẽ tự gộp lên cloud. Tải lại trang (F5) để áp dụng đầy đủ.');
+            } catch (err) { alert('Khôi phục lỗi: ' + err.message); }
+          },
+        }, { label: 'Hủy' }]);
+      };
+      rd.onerror = () => alert('Không đọc được file.');
+      rd.readAsText(file);
+    });
+    q('#hlx-st-close').addEventListener('click', hlxCloseSettingsDialog);
+    q('#hlx-st-x').addEventListener('click', hlxCloseSettingsDialog);
+  }
+
   // Menu chuột phải trên nút Helixfast
   function hlxShowCtxMenu(x, y) {
     hlxRouteEnsureCss();
@@ -4659,6 +5162,16 @@
       openLicenseDialog();
     });
     menu.appendChild(itemLic);
+    const itemSet = document.createElement('button');
+    itemSet.type = 'button';
+    itemSet.textContent = '⚙ Cài đặt';
+    itemSet.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      killMenu();
+      hlxOpenSettingsDialog();
+    });
+    menu.appendChild(itemSet);
     menu.style.visibility = 'hidden';
     document.body.appendChild(menu);
     hlxKeepAdd(menu, hlxRouteEnsureCss);
