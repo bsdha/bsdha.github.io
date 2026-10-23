@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.16
+// @version      2.17
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.16';
+  const HELIXFAST_VERSION = '2.17';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -2932,17 +2932,49 @@
     }, true);
   }
 
+  // Đang gõ dở phân số (vd "1/") -> chưa đồng bộ Ghi chú/Tổng S.Lg, tránh HIS nhận giá trị dở dang và báo lỗi
+  function hlxDoseIncomplete() {
+    const ae = document.activeElement;
+    if (!ae || !ae.matches || !ae.matches(QUANTITY_UNIT_SELECTOR)) return false;
+    return /^[\/.,]|[\/.,]$/.test((ae.value || '').trim());
+  }
+
+  // Ghi chú là p-autocomplete: ghi giá trị vào đó làm HIS gọi server gợi ý -> báo "Đã xảy ra lỗi" dù không ảnh hưởng đơn.
+  // Chỉ trong vài giây sau khi script tự ghi Ghi chú, ẩn đúng thông báo lỗi đó.
+  let hlxErrSuppressUntil = 0;
+  if (!HLX_OFF) {
+    const hideErr = (n) => {
+      try {
+        if (Date.now() > hlxErrSuppressUntil || !n || n.nodeType !== 1) return;
+        const txt = (n.textContent || '').trim();
+        if (txt.indexOf('Đã xảy ra lỗi') === -1 || txt.length > 120) return;
+        let top = n;
+        while (top.parentElement && top.parentElement !== document.body &&
+               (top.parentElement.textContent || '').trim() === txt) top = top.parentElement;
+        top.style.setProperty('display', 'none', 'important');
+      } catch (err) {}
+    };
+    new MutationObserver((muts) => {
+      if (Date.now() > hlxErrSuppressUntil) return;
+      for (const m of muts) m.addedNodes.forEach(hideErr);
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   function hlxSyncNote() {
     if (hlxDoseNative()) return;
+    if (hlxDoseIncomplete()) return;
     const inp = hlxQ(NOTE_INPUT_SELECTOR);
     if (!inp || !hlxQ(DOSE_FIELDS[0].sel)) return;
     const cur = inp.value || '';
     const text = hlxBuildDoseText();
     if (cur === text) return;
     const prevFocus = document.activeElement;
+    let prevSel = null;
+    try { if (prevFocus && prevFocus.selectionStart != null) prevSel = [prevFocus.selectionStart, prevFocus.selectionEnd]; } catch (err) {}
     hlxEnsureNoteAcCss();
     hlxNoteGuardUntil = Date.now() + 1200;
     hlxUpdateNoteAcClass();
+    hlxErrSuppressUntil = Date.now() + 4000;
     hlxSetInputValue(inp, text);
 
     [0, 120, 350, 700].forEach((d) => setTimeout(() => hlxCloseNoteSuggest(inp), d));
@@ -2950,7 +2982,23 @@
 
     if (prevFocus && prevFocus !== document.body && document.activeElement !== prevFocus && prevFocus.focus) {
       try { prevFocus.focus({ preventScroll: true }); } catch (err) {  }
+      hlxRestoreCaret(prevFocus, prevSel);
     }
+  }
+
+  // Trả focus xong HIS hay tự bôi đen nội dung ô -> khôi phục con trỏ cũ (không bôi đen) để gõ tiếp không bị mất số
+  function hlxRestoreCaret(el, sel) {
+    if (!el || !sel) return;
+    const fix = () => {
+      try {
+        if (document.activeElement === el && (el.selectionStart !== sel[0] || el.selectionEnd !== sel[1])) {
+          el.setSelectionRange(sel[0], sel[1]);
+        }
+      } catch (err) {}
+    };
+    fix();
+    setTimeout(fix, 0);
+    setTimeout(fix, 60);
   }
 
   // Tổng S.Lg = Số ngày × (Sáng + Trưa + Chiều + Tối), làm tròn lên thành số nguyên (vd 0,5 viên × 7 ngày = 3,5 → 4)
@@ -2962,8 +3010,10 @@
     const n = parseFloat(v);
     return isFinite(n) ? n : 0;
   }
+  let hlxDiscLog = '';
   function hlxSyncTotal() {
     if (hlxDoseNative()) return;
+    if (hlxDoseIncomplete()) return;
     const qty = hlxQ(SUPPLY_QTY_SELECTOR);
     const day = hlxQ(SUPPLY_DAY_SELECTOR);
     if (!qty || !day || qty.disabled || qty.readOnly) return;
@@ -2975,8 +3025,15 @@
       if (el) perDay += hlxParseNum(el.value);
     }
     if (!(days > 0) || !(perDay > 0)) return;
+    // Thuốc đánh dấu "Bỏ phần dư": phần còn lại của ống/gói trong ngày không dùng sang ngày sau -> làm tròn lên theo từng ngày
+    try {
+      const dd = hlxDoseLookup(hlxPharmacySelectedText(), true);
+      if (dd && dd.disc) { perDay = Math.ceil(perDay - 1e-9); hlxDiscLog = dd.name; }
+    } catch (err) {}
     const total = String(Math.ceil(days * perDay - 1e-9));
     if ((qty.value || '').trim() === total) return;
+    if (hlxDiscLog) console.log('[Helixfast] Bỏ phần dư:', hlxDiscLog, '→ Tổng S.Lg', total);
+    hlxDiscLog = '';
     hlxSetInputValue(qty, total);
   }
   let hlxTotalGen = 0;
@@ -3017,8 +3074,11 @@
         if (Date.now() - hlxNoteClickAt < 600) return;
         const prev = hlxLastRxField;
         if (prev && prev !== t && document.contains(prev) && !prev.disabled && prev.getClientRects().length > 0) {
+          let ps = null;
+          try { if (prev.selectionStart != null) ps = [prev.selectionStart, prev.selectionEnd]; } catch (err) {}
           try { t.blur(); } catch (err) {}
           try { prev.focus({ preventScroll: true }); } catch (err) { prev.focus(); }
+          hlxRestoreCaret(prev, ps);
         }
         return;
       }
@@ -3065,9 +3125,15 @@
       }
       // Số ngày / Sáng-Trưa-Chiều-Tối đổi → tính lại Tổng S.Lg ngay (gõ trực tiếp ở Tổng S.Lg thì giữ nguyên)
       if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR)) {
-        hlxScheduleTotalSync([0, 60, 200]);
+        hlxScheduleTotalSync([0, 60, 200, 450, 800, 1300, 2000]);
       }
     }, true);
+    // HIS tự tính lại Tổng S.Lg khi rời ô/chốt giá trị -> tính lại sau đó để thuốc "Bỏ phần dư" không bị HIS ghi đè
+    ['change', 'focusout'].forEach((evn) => hlxDocListen(evn, (e) => {
+      const t = e.target;
+      if (!t || !t.matches || !isHelixfastEnabled()) return;
+      if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR)) hlxScheduleTotalSync([0, 60, 200, 450, 800, 1300]);
+    }, true));
 
     hlxDocListen('click', (e) => {
       const btn = e.target && e.target.closest ? e.target.closest('button[type="submit"]') : null;
@@ -3148,7 +3214,9 @@
           target.dispatchEvent(new Event('input', { bubbles: true }));
           target.dispatchEvent(new Event('change', { bubbles: true }));
         } catch (err) {}
+        hlxScheduleTotalSync([0, 60, 110]);
         setTimeout(() => {
+          try { hlxSyncTotal(); } catch (err) {}
           try { hlxSyncNote(); } catch (err) {}
           rxNapAndRefocus();
         }, 120);
@@ -3838,12 +3906,12 @@
     try {
       let prev = null;
       try { prev = JSON.parse(hlxStoreGet(HLX_DOSE_KEY) || 'null'); } catch (err) { prev = null; }
-      const sig = (d) => HLX_DOSE_FIELDS.map((f) => String(d[f[0]] == null ? '' : d[f[0]]).trim()).join('|');
+      const sig = (d) => HLX_DOSE_FIELDS.map((f) => String(d[f[0]] == null ? '' : d[f[0]]).trim()).join('|') + '|' + (d.disc ? 1 : 0);
       const pm = new Map(((prev && prev.drugs) || []).map((d) => [hlxDoseKey(d.name), d]));
       (cfg.drugs || []).forEach((d) => {
         const pd = pm.get(hlxDoseKey(d.name));
         if (pd) d.mt = sig(pd) === sig(d) ? (d.mt || pd.mt || 0) : Date.now();
-        else d.mt = d.mt || (hlxDoseHas(d) ? Date.now() : 0);
+        else d.mt = d.mt || (hlxDoseHas(d) || d.disc ? Date.now() : 0);
       });
     } catch (err) {}
     hlxDoseCache = cfg;
@@ -3911,12 +3979,12 @@
       return v !== '' && !/^0+([.,]0+)?$/.test(v);
     });
   }
-  function hlxDoseLookup(name) {
+  function hlxDoseLookup(name, any) {
     const n = hlxDoseKey(name);
     if (!n) return null;
     let best = null;
     hlxDoseLoad().drugs.forEach((d) => {
-      if (!hlxDoseHas(d)) return;
+      if (!any && !hlxDoseHas(d)) return;
       const k = hlxDoseKey(d.name);
       if (!k) return;
       let score = 0;
@@ -4041,6 +4109,8 @@
         border: 2px solid #3b82f6; font-family: -apple-system,Segoe UI,Roboto,Arial,sans-serif; }
       .hlx-ds-head { background: linear-gradient(135deg,#3b6fd4,#7b4fb8); color: #fff; padding: 16px 22px; display: flex;
         align-items: center; justify-content: space-between; font-weight: 800; font-size: 19px; }
+      .hlx-ds-table .hlx-ds-dc { cursor: default !important; user-select: none; }
+      .hlx-ds-table .hlx-ds-dc input { cursor: pointer !important; }
       .hlx-ds-x { cursor: pointer; font-size: 20px; padding: 0 4px; }
       .hlx-ds-bar { display: flex; align-items: center; gap: 14px; padding: 16px 22px 12px; flex-wrap: wrap; }
       .hlx-ds-search { flex: 0 0 300px; height: 40px; box-sizing: border-box; padding: 0 12px; border: 1.5px solid #cbd5e1;
@@ -4136,7 +4206,7 @@
       '<div class="hlx-ds-msg" id="hlx-ds-msg"></div>' +
       '<div class="hlx-ds-wrap"><table class="hlx-ds-table"><thead><tr><th>Tên thuốc</th><th>Nhóm</th>' +
       HLX_DOSE_FIELDS.map((f) => '<th>' + f[1] + '</th>').join('') +
-      '<th>Hành động</th></tr></thead><tbody id="hlx-ds-body"></tbody></table></div>' +
+      '<th title="Thuốc ống/gói dùng 1 lần: phần dư trong ngày bỏ đi, không dùng sang ngày sau. Tổng S.Lg = Số ngày × làm tròn lên (liều 1 ngày)">Bỏ phần dư</th><th>Hành động</th></tr></thead><tbody id="hlx-ds-body"></tbody></table></div>' +
       '<div class="hlx-ds-foot"><div class="hlx-ds-foot-l"><button type="button" class="hlx-ds-clear" id="hlx-ds-clear">🗑 Xóa toàn bộ liều đã cài</button>' +
       '<button type="button" class="hlx-ds-xls" id="hlx-ds-xls">📥 Xuất danh sách thuốc (Excel)</button></div>' +
       '<button type="button" class="hlx-ds-close" id="hlx-ds-close">Đóng</button></div>';
@@ -4191,7 +4261,7 @@
       body.textContent = '';
       if (!rows.length) {
         const tr = document.createElement('tr');
-        tr.innerHTML = '<td colspan="7" class="hlx-ds-empty">' +
+        tr.innerHTML = '<td colspan="8" class="hlx-ds-empty">' +
           (cfg.drugs.length ? 'Không có thuốc phù hợp.' : 'Chưa có danh sách. Mở tab Đơn thuốc rồi bấm "Cập nhật danh sách thuốc".') + '</td>';
         body.appendChild(tr);
         return;
@@ -4232,6 +4302,17 @@
           td.appendChild(inp);
           tr.appendChild(td);
         });
+        const tdD = document.createElement('td');
+        tdD.style.textAlign = 'center';
+        tdD.className = 'hlx-ds-dc';
+        const discCb = document.createElement('input');
+        discCb.type = 'checkbox';
+        discCb.checked = !!d.disc;
+        discCb.disabled = true;
+        discCb.style.cssText = 'width:18px;height:18px;cursor:pointer;accent-color:#2563eb';
+        discCb.title = 'Ví dụ ống Desloratadin: 0.5 ống/ngày × 5 ngày = 5 ống (không phải 2.5)';
+        tdD.appendChild(discCb);
+        tr.appendChild(tdD);
         const tdA = document.createElement('td');
         const btn = document.createElement('button');
         btn.type = 'button';
@@ -4244,6 +4325,7 @@
           if (!editing) {
             editing = true;
             HLX_DOSE_FIELDS.forEach((f) => { inputs[f[0]].disabled = false; });
+            discCb.disabled = false;
             btn.textContent = 'Lưu';
             btn.classList.add('save');
             inputs.s.focus();
@@ -4254,6 +4336,8 @@
               inputs[f[0]].value = d[f[0]];
               inputs[f[0]].disabled = true;
             });
+            d.disc = discCb.checked;
+            discCb.disabled = true;
             editing = false;
             btn.textContent = 'Chỉnh sửa';
             btn.classList.remove('save');
@@ -4370,11 +4454,11 @@
         if (seen.has(k)) return;
         seen.add(k);
         const o = old.get(k);
-        nd.push(o ? { name, s: o.s || '', tr: o.tr || '', c: o.c || '', t: o.t || '', isNew: false, added: o.added || 0 }
+        nd.push(o ? { name, s: o.s || '', tr: o.tr || '', c: o.c || '', t: o.t || '', disc: !!o.disc, isNew: false, added: o.added || 0 }
           : { name, s: '', tr: '', c: '', t: '', isNew: hadList, added: Date.now() });
       });
       // giữ lại thuốc đã cài liều dù lần quét này không thấy
-      cfg.drugs.forEach((d) => { if (hlxDoseHas(d) && !seen.has(hlxDoseKey(d.name))) nd.push(Object.assign({}, d, { isNew: false })); });
+      cfg.drugs.forEach((d) => { if ((hlxDoseHas(d) || d.disc) && !seen.has(hlxDoseKey(d.name))) nd.push(Object.assign({}, d, { isNew: false })); });
       nd.sort((a, b) => hlxDoseClean(a.name).localeCompare(hlxDoseClean(b.name), 'vi'));
       const added = nd.filter((d) => d.isNew).length;
       hlxDoseSave({ updated: Date.now(), drugs: nd, prefs: hlxDosePrefs(), grp: hlxDoseLoad().grp || {} });
