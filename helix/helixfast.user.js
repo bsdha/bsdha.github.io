@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.17
+// @version      2.20
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.17';
+  const HELIXFAST_VERSION = '2.20';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -27,6 +27,47 @@
   const HLX_OFF = (() => {
     try { return localStorage.getItem('helixfast_enabled') === '0'; } catch (err) { return false; }
   })();
+  const HLX_PAGE_GROUPS = [
+    { id: 'exam', name: 'Khám bệnh (/his/medical-examination)', path: '/his/medical-examination' },
+    { id: 'ipd', name: 'Nội trú (/his/ipd)', path: '/his/ipd' },
+    { id: 'emerg', name: 'Cấp cứu (/his/emergency)', path: '/his/emergency' },
+    { id: 'other', name: 'Các trang khác', path: '' },
+  ];
+  // Nguồn duy nhất cho: màn hình "Cấu hình của Admin" và hộp "Chức năng của công cụ" (menu chuột phải).
+  // Thêm/sửa chức năng ở đây (id + pages + name + desc) thì cả hai nơi tự cập nhật. Giữ nguyên id cũ để không mất cấu hình đã lưu.
+  const HLX_FEATS = [
+    { id: 'exam_auto', name: 'Tự điền / tự bấm khi khám (triệu chứng, Bắt đầu khám, chọn thuốc đầu, phân trang...)', pages: ['exam', 'ipd', 'emerg', 'other'],
+      desc: ['Ô Lý do khám: tự focus, điền sẵn "Tái khám" và bôi đen khi ô mở và còn trống', 'Bấm đúp dòng bệnh nhân: tự bấm Bắt đầu khám', 'Tự chọn thuốc đầu trong danh sách, tự đặt phân trang 100 dòng'] },
+    { id: 'quick', name: 'Chọn nhanh Toàn thân, Các bộ phận, CLS, Hướng điều trị', pages: ['exam', 'ipd', 'emerg'],
+      desc: ['Hộp chọn nhanh Toàn thân / Các bộ phận', 'Hộp chọn nhanh CLS và Hướng điều trị'] },
+    { id: 'cap', name: 'Tự viết hoa chữ đầu dòng', pages: ['exam', 'ipd', 'emerg'],
+      desc: ['Tự viết hoa chữ cái đầu dòng khi gõ'] },
+    { id: 'icdfill', name: 'Tự điền Chẩn đoán ra viện / ICD từ Chẩn đoán ban đầu', pages: ['exam', 'ipd', 'emerg'],
+      desc: ['Tự điền Chẩn đoán ra viện / ICD từ Chẩn đoán ban đầu'] },
+    { id: 'icdname', name: 'Đổi tên ICD mặc định (tự thay tên ICD theo bảng quy tắc)', pages: ['exam', 'ipd', 'emerg', 'other'],
+      desc: ['Khi chọn mã ICD có trong bảng quy tắc, tự thay tên ICD (chỉnh bảng: menu chuột phải → Đổi tên ICD mặc định)'] },
+    { id: 'ipdsync', name: 'Tự đồng bộ triệu chứng ↔ Toàn thân/Bộ phận', pages: ['ipd', 'emerg'],
+      desc: ['Đồng bộ triệu chứng ↔ Toàn thân / Bộ phận'] },
+    { id: 'benhan', name: 'Tab Bệnh án / Tờ điều trị tự điền', pages: ['ipd'],
+      desc: ['Tab Bệnh án và Tờ điều trị tự điền'] },
+    { id: 'ipdtreat', name: 'Xuất viện nội trú: nút chọn nhanh Phương pháp điều trị, điền sẵn "Nội khoa"', pages: ['ipd'],
+      desc: ['Hàng nút bên dưới ô Phương pháp điều trị (Nội khoa, Ngoại khoa, Xạ trị, Hoá trị, Xạ trị + Nội khoa)', 'Ô đang mở và trống thì tự điền "Nội khoa"'] },
+    { id: 'rx', name: 'Kê đơn: liều dùng, cách dùng tự động, sắp xếp thuốc', pages: ['exam', 'ipd', 'emerg', 'other'],
+      desc: ['Liều dùng tự động (Sáng/Trưa/Chiều/Tối) và Cách dùng tự động (Đ.Dùng)', 'Tổng S.Lg tự tính, hỗ trợ thuốc "Bỏ phần dư"', 'Ghi chú tự sinh cách dùng kèm " - Dùng trong x ngày"', 'Cột Số ngày trong bảng đơn; ngày Tái khám tự theo số ngày lớn nhất', 'Sắp xếp thứ tự thuốc'] },
+    { id: 'history', name: 'Popup lịch sử khám', pages: ['exam', 'ipd', 'emerg', 'other'],
+      desc: ['Popup xem lịch sử khám'] },
+    { id: 'ddi', name: 'Kiểm tra tương tác thuốc', pages: ['exam', 'ipd', 'emerg', 'other'],
+      desc: ['Rà soát tương tác giữa các thuốc trong đơn'] },
+    { id: 'room', name: 'Chọn phòng nhanh / ghim phòng / tự bấm Tìm kiếm', pages: ['other', 'exam'],
+      desc: ['Chọn phòng nhanh, ghim phòng mặc định', 'Tự bấm Tìm kiếm khi đổi phòng'] },
+    { id: 'misc', name: 'Tiện ích chung (cuộn lên đầu, con trỏ tay, kéo cột, in...)', pages: ['exam', 'ipd', 'emerg', 'other'],
+      desc: ['Cuộn lên đầu, con trỏ tay, kéo cột, nút in', 'Nút ⟳ Làm mới sau ô Họ tên: xóa Họ tên rồi tự bấm Tìm kiếm'] },
+  ];
+  const HLX_FEAT_CACHE_KEY = 'hlx_feat_cache_v1';
+  const HLX_FEAT_ADMIN_SEED = 'helixfast-admin-config-v1';
+  const HLX_FEAT_ITEM = 'hlx_feat_tiers_v1';
+  const HLX_ADMIN_DEFAULT_PW = 'bsdha';
+  let hlxFeatCfg = null; // { tiers: { 'feat@group': 'adv' }, pw: sha256hex|'' , ts }
   function hlxDocListen() {
     if (HLX_OFF) return;
     document.addEventListener.apply(document, arguments);
@@ -406,7 +447,7 @@
   hlxDocListen(
     'input',
     (e) => {
-      if (examMirrorBusy || !isHelixfastEnabled()) return;
+      if (examMirrorBusy || !hlxFeatOn('exam_auto')) return;
       const t = e.target;
       if (!t || t.tagName !== 'TEXTAREA') return;
       const list = getExamTextareas();
@@ -772,7 +813,7 @@
   hlxDocListen(
     'mousedown',
     (e) => {
-      if (e.button !== 0 || !isHelixfastEnabled()) return;
+      if (e.button !== 0 || !hlxFeatOn('rx')) return;
       const grip = e.target.closest && e.target.closest('.his-rx-grip');
       if (!grip) return;
       const row = grip.closest('tr');
@@ -857,7 +898,7 @@
       if (!btn) return;
       e.preventDefault();
       e.stopPropagation();
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('rx')) return;
       const row = btn.closest('tr');
       if (row) rxMoveRow(row, btn.classList.contains('his-rx-up') ? -1 : 1);
     },
@@ -865,7 +906,7 @@
   );
 
   function setupRxReorder() {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('rx')) return;
     const tables = findRxTables();
     if (!tables.length) return;
     injectRxCss();
@@ -991,7 +1032,7 @@
   }
 
   function onSymptomInput(e) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     capitalizeFirstChar(e.target);
     syncToProgression(e.target);
     hsHandleSymptomTextChange(e.target.value, { advanceVariant: false });
@@ -1028,7 +1069,7 @@
   }
 
   function onSymptomKeydown(e) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     if (e.key === 'Enter') {
       e.preventDefault();
       hsHandleSymptomTextChange(e.target.value, { advanceVariant: true });
@@ -1449,7 +1490,7 @@
     function (e) {
       if (e.key !== 'Enter') return;
       if (!e.target || !e.target.matches || !e.target.matches(ICD_INPUT_SELECTOR)) return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('misc')) return;
 
       const currentInput = e.target;
       let icdScope = hlxIcdScopeOf(currentInput);
@@ -1599,7 +1640,7 @@
   }
 
   function markDuplicateIcdOptions(panel) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('misc')) return;
     const currentContainer = hlxCurrentIcdContainer();
     const selectedCodes = getSelectedIcdCodes(currentContainer);
 
@@ -1650,12 +1691,37 @@
   });
   if (!HLX_OFF) dropdownWatchObserver.observe(document.body, { childList: true, subtree: true });
 
+  // Ô Lý do khám: nếu đang trống thì điền sẵn "Tái khám" và bôi đen toàn bộ (gõ đè là thay luôn); nếu đã có nội dung thì chỉ focus, không đụng vào
+  const HLX_DEFAULT_SYMPTOM = 'Tái khám';
+  // Điền "Tái khám" nếu ô đang mở + trống; withFocus: focus và bôi đen luôn. Trả về true nếu đã điền.
+  function hlxFocusSymptomPrefill(el, withFocus) {
+    if (withFocus === undefined) withFocus = true;
+    if (el.disabled) { if (withFocus) { try { el.focus(); } catch (err) {} } return false; }
+    let filled = false;
+    try {
+      if (hlxFeatOn('exam_auto') && !el.readOnly && !(el.value || '').trim()) {
+        setNativeValue(el, HLX_DEFAULT_SYMPTOM);
+        filled = true;
+      }
+    } catch (err) {}
+    if (withFocus) el.focus();
+    if (!filled || !withFocus) return filled;
+    try { el.select(); } catch (err) {}
+    // Angular/HIS có thể vẽ lại ô sau khi ghi giá trị: bôi đen lại nếu nội dung vẫn là "Tái khám" và người dùng chưa gõ gì
+    [60, 250].forEach((d) => setTimeout(() => {
+      try {
+        if (document.activeElement === el && el.value === HLX_DEFAULT_SYMPTOM) el.select();
+      } catch (err) {}
+    }, d));
+    return true;
+  }
+
   function focusSymptomFieldOnly(attemptsLeft) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     if (attemptsLeft === undefined) attemptsLeft = 30;
     const el = document.querySelector(SYMPTOM_SELECTOR);
     if (el) {
-      el.focus();
+      hlxFocusSymptomPrefill(el);
       return;
     }
     if (attemptsLeft > 0) {
@@ -1665,21 +1731,34 @@
 
   let lastAutoFocusedSymptomEl = null;
   function autoFocusSymptomFieldIfNew() {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     const el = document.querySelector(SYMPTOM_SELECTOR);
     if (el && el !== lastAutoFocusedSymptomEl) {
       lastAutoFocusedSymptomEl = el;
-      el.focus();
-    } else if (!el) {
+      hlxFocusSymptomPrefill(el, true);
+    } else if (el) {
+      // Ô đang mở + trống thì luôn điền "Tái khám" (kể cả khi bệnh nhân trước đã điền nhưng chưa lưu rồi bỏ qua)
+      if (el.disabled) { el.dataset.hlxPrev = 'd'; return; }
+      const justEnabled = el.dataset.hlxPrev === 'd';
+      el.dataset.hlxPrev = '';
+      if ((el.value || '').trim() || el.readOnly) return;
+      const ae = document.activeElement;
+      // Đang đặt con trỏ trong ô này mà ô trống (người dùng tự xóa để gõ): để yên, trừ khi ô vừa được mở
+      if (ae === el && !justEnabled) return;
+      // Không giành focus nếu người dùng đang ở ô khác, trừ khi ô vừa được mở (Bắt đầu khám)
+      const free = !ae || ae === document.body || ae === el;
+      hlxFocusSymptomPrefill(el, justEnabled || free);
+    } else {
       lastAutoFocusedSymptomEl = null;
     }
   }
+  if (!HLX_OFF) setInterval(() => { try { autoFocusSymptomFieldIfNew(); } catch (err) {} }, 400);
 
   const START_EXAM_BUTTON_SELECTOR = 'button[data-sk="control.T"]';
   const START_EXAM_AUTO_CLICK_RETRY_GAP_MS = 150;
 
   function tryAutoClickStartExamButton(attemptsLeft) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     if (attemptsLeft === undefined) attemptsLeft = 40;
     const btn = document.querySelector(START_EXAM_BUTTON_SELECTOR);
     if (btn) {
@@ -1696,7 +1775,7 @@
     (e) => {
       const row = e.target.closest && e.target.closest('tr.cur-pointer');
       if (!row) return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('exam_auto')) return;
       focusSymptomFieldOnly();
       tryAutoClickStartExamButton();
     },
@@ -1710,7 +1789,7 @@
   }
 
   function ensureFirstPharmacyItemSelected(menuEl) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     if (!menuEl) return;
     if (menuEl.querySelector(':scope > .item.selected')) return;
     const items = getVisiblePharmacyItems(menuEl);
@@ -1737,7 +1816,7 @@
     'keydown',
     (e) => {
       if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('exam_auto')) return;
       const dropdownRoot =
         e.target.closest && e.target.closest('.ui.dropdown.search, .ui.search.dropdown, .ui.dropdown');
       if (!dropdownRoot) return;
@@ -1800,7 +1879,7 @@
       btn.addEventListener('click', (ev) => {
         ev.preventDefault();
         ev.stopPropagation();
-        if (!isHelixfastEnabled()) return;
+        if (!hlxFeatOn('misc')) return;
         setNativeValue(textarea, label);
       });
       wrapper.appendChild(btn);
@@ -1810,7 +1889,7 @@
   }
 
   function scanForTreatmentTextareas() {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('misc')) return;
     findTreatmentTextareas().forEach((textarea) => {
       setupTreatmentButtons(textarea);
       if (!textarea.value || textarea.value.trim() === '') {
@@ -2418,11 +2497,11 @@
     }
 
     panel.querySelector('#his-hs-gen').addEventListener('click', () => {
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('history')) return;
       generate();
     });
     panel.querySelector('#his-hs-insert').addEventListener('click', () => {
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('history')) return;
       const text = preview.value.trim();
       if (!text) return;
 
@@ -2451,7 +2530,7 @@
       setNoteTextareaValue(text);
     });
     panel.querySelector('#his-hs-reset').addEventListener('click', () => {
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('history')) return;
       reasonCheckboxes.forEach((cb) => {
         cb.checked = false;
         cb.disabled = false;
@@ -2468,7 +2547,7 @@
     });
 
     toggleBtn.addEventListener('click', () => {
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('history')) return;
       const showing = panel.style.display !== 'none';
       panel.style.display = showing ? 'none' : 'flex';
       if (!showing && !panel.dataset.hsInit) {
@@ -2549,7 +2628,7 @@
   }
 
   function fixPharmacyDosageRow() {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('rx')) return;
     if (isAnyDropdownMenuOpen()) return;
 
     const roots = [];
@@ -2622,7 +2701,7 @@
   let lastCompletedCheckboxEl = null;
 
   function tryCheckCompletedCheckbox() {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     if (isAnyDropdownMenuOpen()) return;
     const cb = findCompletedCheckbox();
     if (!cb) {
@@ -2648,7 +2727,7 @@
   let paginatorPanelObserver = null;
 
   function trySetPaginatorTo100(attemptsLeft) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('exam_auto')) return;
     if (attemptsLeft === undefined) attemptsLeft = 0;
     if (paginatorAttemptInProgress) return;
 
@@ -2882,7 +2961,12 @@
       if (/^0+([.,]0*)?$/.test(raw)) continue;
       parts.push(f.label + ': ' + raw + (unit ? ' ' + unit : ''));
     }
-    return parts.join(', ');
+    if (!parts.length) return '';
+    // Thêm " - Dùng trong x ngày" (x = Số ngày của thuốc, cùng giá trị hiện ở cột Số ngày trong bảng đơn) để nhìn đơn biết uống mấy ngày
+    const dayEl = hlxQ(SUPPLY_DAY_SELECTOR);
+    const days = dayEl ? hlxParseNum(dayEl.value) : 0;
+    const suffix = days > 0 ? ' - Dùng trong ' + hlxDaysFmt(days) + ' ngày' : '';
+    return parts.join(', ') + suffix;
   }
 
   function hlxClearUsage() {
@@ -2920,7 +3004,7 @@
     const gen = ++hlxNoteSyncGen;
     delays.forEach((d) => setTimeout(() => {
       if (gen !== hlxNoteSyncGen) return;
-      try { if (isHelixfastEnabled()) hlxSyncNote(); } catch (err) {}
+      try { if (hlxFeatOn('rx')) hlxSyncNote(); } catch (err) {}
     }, d));
   }
   if (!HLX_OFF) {
@@ -3041,7 +3125,7 @@
     const gen = ++hlxTotalGen;
     delays.forEach((d) => setTimeout(() => {
       if (gen !== hlxTotalGen) return;
-      try { if (isHelixfastEnabled()) hlxSyncTotal(); } catch (err) {}
+      try { if (hlxFeatOn('rx')) hlxSyncTotal(); } catch (err) {}
     }, d));
   }
 
@@ -3067,7 +3151,7 @@
       if (e.isTrusted && t && t.closest && t.closest('p-autocomplete[formcontrolname="patient_note"]')) hlxNoteClickAt = Date.now();
     }, true);
     hlxDocListen('focusin', (e) => {
-      if (!isHelixfastEnabled() || hlxDoseNative()) return;
+      if (!hlxFeatOn('rx') || hlxDoseNative()) return;
       const t = e.target;
       if (!t || !t.matches || !t.closest || !t.closest('app-medical-pharmacy')) return;
       if (t.matches(NOTE_INPUT_SELECTOR)) {
@@ -3087,7 +3171,7 @@
   }
 
   function hlxRxTick() {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('rx')) return;
     hlxPrepareNote();
     hlxClearUsage();
   }
@@ -3098,7 +3182,7 @@
     const hlxUsageFrame = () => {
       try {
         const u = hlxQ(DRUG_USAGE_SELECTOR);
-        if (u && u.value !== '' && document.activeElement !== u && isHelixfastEnabled()) hlxClearUsage();
+        if (u && u.value !== '' && document.activeElement !== u && hlxFeatOn('rx')) hlxClearUsage();
       } catch (err) {  }
       requestAnimationFrame(hlxUsageFrame);
     };
@@ -3119,7 +3203,7 @@
     hlxDocListen('input', (e) => {
       if (!e.isTrusted) return;
       const t = e.target;
-      if (!t || !t.matches || !isHelixfastEnabled()) return;
+      if (!t || !t.matches || !hlxFeatOn('rx')) return;
       if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR) || t.matches(SUPPLY_QTY_SELECTOR)) {
         hlxScheduleNoteSync([0, 40, 150]);
       }
@@ -3131,7 +3215,7 @@
     // HIS tự tính lại Tổng S.Lg khi rời ô/chốt giá trị -> tính lại sau đó để thuốc "Bỏ phần dư" không bị HIS ghi đè
     ['change', 'focusout'].forEach((evn) => hlxDocListen(evn, (e) => {
       const t = e.target;
-      if (!t || !t.matches || !isHelixfastEnabled()) return;
+      if (!t || !t.matches || !hlxFeatOn('rx')) return;
       if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR)) hlxScheduleTotalSync([0, 60, 200, 450, 800, 1300]);
     }, true));
 
@@ -3145,6 +3229,102 @@
       const btn = e.target && e.target.closest ? e.target.closest('button') : null;
       if (!btn || btn.textContent.replace(/\s+/g, ' ').trim() !== 'Lưu lại') return;
       try { hlxRxTick(true); } catch (err) {}
+    }, true);
+  }
+
+  // ===== Chống mất Ghi chú (cách dùng) khi in toa =====
+  // Toa in ra do máy chủ HIS dựng từ dữ liệu đã lưu. Script ghi Ghi chú rồi bấm Nạp chỉ cách ~50ms; nếu ô Ghi chú (p-autocomplete)
+  // hiện chữ nhưng giá trị trong form của Angular chưa kịp cập nhật lúc bấm Nạp (máy chậm / ô đã sẵn chữ nên không bắn lại sự kiện),
+  // dòng thuốc được nạp với Ghi chú rỗng -> in ra chỉ còn "Uống". Vì vậy:
+  //  (1) NGAY TRƯỚC khi Nạp (bắt ở pha capture, chạy trước xử lý của HIS, cả khi người dùng tự bấm lẫn script bấm) luôn "chốt" Ghi chú vào form;
+  //  (2) Sau Nạp / trước khi in / Lưu lại: rà bảng thuốc, thuốc nào có liều mà Ghi chú trống thì báo đỏ để sửa kịp.
+  let hlxNoteUserEdited = false;
+  function hlxCommitNote() {
+    try {
+      if (!hlxFeatOn('rx') || hlxDoseNative() || hlxDoseIncomplete()) return;
+      const inp = hlxQ(NOTE_INPUT_SELECTOR);
+      if (!inp || !hlxQ(DOSE_FIELDS[0].sel)) return;
+      const text = hlxBuildDoseText();
+      const keepCustom = hlxNoteUserEdited && (inp.value || '').trim(); // người dùng tự gõ Ghi chú riêng: giữ nguyên, chỉ chốt lại vào form
+      const want = keepCustom ? inp.value : text;
+      if (!want) return; // chưa có liều -> không có gì để chốt
+      hlxEnsureNoteAcCss();
+      hlxNoteGuardUntil = Date.now() + 1200;
+      hlxUpdateNoteAcClass();
+      hlxErrSuppressUntil = Date.now() + 4000;
+      if ((inp.value || '') !== want) hlxSetInputValue(inp, want);
+      else {
+        // Chữ đã hiện sẵn nhưng chưa chắc form đã nhận: bắn lại sự kiện để Angular cập nhật giá trị (đồng bộ, xong trước khi HIS đọc form)
+        inp.dispatchEvent(new Event('input', { bubbles: true }));
+        inp.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      [0, 120].forEach((d) => setTimeout(() => hlxCloseNoteSuggest(inp), d));
+      setTimeout(hlxUpdateNoteAcClass, 1250);
+    } catch (err) {}
+  }
+
+  // Rà bảng đơn thuốc: trả về tên các thuốc có liều Sáng/Trưa/Chiều/Tối nhưng cột Ghi chú trống
+  function hlxRxNoteAudit() {
+    const missing = [];
+    if (!hlxFeatOn('rx') || hlxDoseNative()) return missing;
+    document.querySelectorAll('table.his-rx-table').forEach((tb) => {
+      const hr = tb.querySelector('thead tr');
+      if (!hr) return;
+      const ths = Array.from(hr.children).filter((c) => !c.classList.contains('hlx-days'));
+      const idx = (n) => ths.findIndex((th) => (th.textContent || '').replace(/\s+/g, ' ').trim() === n);
+      const iName = idx('Tên thuốc'), iNote = idx('Ghi chú');
+      const iDose = ['Sáng', 'Trưa', 'Chiều', 'Tối'].map(idx);
+      if (iName < 0 || iNote < 0 || iDose.some((i) => i < 0)) return;
+      const need = Math.max(iName, iNote, ...iDose);
+      const val = (td) => { const i = td.querySelector('input,textarea'); return ((i ? i.value : td.textContent) || '').replace(/\s+/g, ' ').trim(); };
+      tb.querySelectorAll('tbody tr').forEach((tr) => {
+        const tds = Array.from(tr.children).filter((c) => !c.classList.contains('hlx-days'));
+        if (tds.length <= need) return;
+        const hasDose = iDose.some((i) => hlxParseNum(val(tds[i])) > 0);
+        if (hasDose && !val(tds[iNote])) missing.push(val(tds[iName]) || '(không tên)');
+      });
+    });
+    return missing;
+  }
+  function hlxNoteWarn(list) {
+    let el = document.getElementById('hlx-note-warn');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'hlx-note-warn';
+      el.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2147483647;max-width:min(720px,92vw);' +
+        'background:#dc2626;color:#fff;padding:10px 16px;border-radius:10px;font:600 13px/1.4 -apple-system,Segoe UI,Roboto,Arial,sans-serif;' +
+        'box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;';
+      el.title = 'Bấm để đóng';
+      el.addEventListener('click', () => el.remove());
+      document.body.appendChild(el);
+    }
+    el.textContent = '⚠ Thuốc chưa có Ghi chú (cách dùng) nên khi in sẽ chỉ còn chữ "Uống": ' + list.join('; ') + '. Hãy xóa dòng thuốc và nạp lại trước khi in.';
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.remove(), 15000);
+    try { console.warn('[Helixfast] Thuốc thiếu Ghi chú:', list); } catch (err) {}
+  }
+  function hlxScheduleNoteAudit(delays) {
+    delays.forEach((d) => setTimeout(() => {
+      try { const m = hlxRxNoteAudit(); if (m.length) hlxNoteWarn(m); } catch (err) {}
+    }, d));
+  }
+  if (!HLX_OFF) {
+    hlxDocListen('input', (e) => {
+      if (e.isTrusted && e.target && e.target.matches && e.target.matches(NOTE_INPUT_SELECTOR)) hlxNoteUserEdited = true;
+    }, true);
+    hlxDocListen('click', (e) => {
+      const t = e.target;
+      if (!t || !t.closest) return;
+      const btn = t.closest('button');
+      if (!btn) return;
+      const label = btn.textContent.replace(/\s+/g, ' ').trim();
+      if (btn.type === 'submit' && label === 'Nạp') {
+        hlxCommitNote();          // chạy trước xử lý Nạp của HIS
+        hlxNoteUserEdited = false;
+        hlxScheduleNoteAudit([900, 2500]);
+      } else if (label === 'Lưu lại' || btn.id === PRINT_RX_BTN_ID || btn.id === PRINT_OUTPATIENT_BTN_ID) {
+        hlxScheduleNoteAudit([0]);
+      }
     }, true);
   }
 
@@ -3191,7 +3371,7 @@
     'keydown',
     (e) => {
       if (e.key !== 'Enter') return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('rx')) return;
       const target = e.target;
       if (!target || !target.matches) return;
 
@@ -3241,7 +3421,7 @@
     (e) => {
       if (e.key !== 'Backspace' || !e.isTrusted || e.isComposing) return;
       if (e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('rx')) return;
       const t = e.target;
       if (!t || !t.matches || t.tagName !== 'INPUT') return;
       let idx = -1;
@@ -3580,12 +3760,30 @@
     st.id = 'hlx-route-css';
     st.textContent = `
       body.hlx-route-guard .ng-dropdown-panel { visibility: hidden !important; }
-      #hlx-ctx-menu { position: fixed; z-index: 2147483647; background: #fff; border: 1px solid #cbd5e1; border-radius: 8px;
-        box-shadow: 0 8px 24px rgba(15,23,42,.25); padding: 4px; min-width: 150px;
-        font-family: -apple-system,Segoe UI,Roboto,Arial,sans-serif; }
-      #hlx-ctx-menu button { display: flex; align-items: center; gap: 8px; width: 100%; border: none; background: transparent;
-        padding: 7px 12px; font-size: 13px; color: #1e293b; cursor: pointer; border-radius: 5px; text-align: left; }
-      #hlx-ctx-menu button:hover { background: #eaf2ff; color: #1a56db; }
+      #hlx-ctx-menu { position: fixed; z-index: 2147483647; background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(15,23,42,.28), 0 2px 6px rgba(15,23,42,.12); padding: 0 0 6px; min-width: 244px; overflow: hidden;
+        font-family: -apple-system,Segoe UI,Roboto,Arial,sans-serif; animation: hlx-cm-in .12s ease-out; transform-origin: top left; }
+      @keyframes hlx-cm-in { from { opacity: 0; transform: scale(.96) translateY(-4px); } to { opacity: 1; transform: none; } }
+      #hlx-ctx-menu .hlx-cm-head { display: flex; align-items: center; gap: 8px; padding: 10px 14px; margin-bottom: 6px; color: #fff;
+        background: linear-gradient(135deg,#1d4ed8 0%,#7c3aed 55%,#db2777 100%); font-size: 13px; font-weight: 700; letter-spacing: .3px; }
+      #hlx-ctx-menu .hlx-cm-head small { margin-left: auto; font-size: 11px; font-weight: 600; background: rgba(255,255,255,.22); padding: 1px 8px; border-radius: 999px; }
+      #hlx-ctx-menu .hlx-cm-sep { height: 1px; margin: 5px 10px; background: #e2e8f0; }
+      #hlx-ctx-menu button { --c: #475569; --bg: #e2e8f0; --hv: #f1f5f9; display: flex; align-items: center; gap: 10px; width: calc(100% - 12px);
+        margin: 1px 6px; border: none; background: transparent; padding: 6px 8px; font-size: 13px; font-weight: 500; color: #1e293b;
+        cursor: pointer; border-radius: 8px; text-align: left; transition: background .12s, transform .12s; }
+      #hlx-ctx-menu button .hlx-cm-ico { flex: 0 0 auto; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center;
+        border-radius: 8px; background: var(--bg); color: var(--c); font-size: 15px; line-height: 1; transition: background .12s, color .12s; }
+      #hlx-ctx-menu button .hlx-cm-lbl { flex: 1 1 auto; }
+      #hlx-ctx-menu button .hlx-cm-badge { flex: 0 0 auto; font-size: 10.5px; font-weight: 700; color: #fff; background: #16a34a; padding: 1px 7px; border-radius: 999px; }
+      #hlx-ctx-menu button:hover { background: var(--hv); color: var(--c); transform: translateX(2px); }
+      #hlx-ctx-menu button:hover .hlx-cm-ico { background: var(--c); color: #fff; }
+      #hlx-ctx-menu button[data-c="blue"]   { --c: #2563eb; --bg: #dbeafe; --hv: #eff6ff; }
+      #hlx-ctx-menu button[data-c="green"]  { --c: #059669; --bg: #d1fae5; --hv: #ecfdf5; }
+      #hlx-ctx-menu button[data-c="amber"]  { --c: #d97706; --bg: #fef3c7; --hv: #fffbeb; }
+      #hlx-ctx-menu button[data-c="violet"] { --c: #7c3aed; --bg: #ede9fe; --hv: #f5f3ff; }
+      #hlx-ctx-menu button[data-c="rose"]   { --c: #e11d48; --bg: #ffe4e6; --hv: #fff1f2; }
+      #hlx-ctx-menu button[data-c="slate"]  { --c: #475569; --bg: #e2e8f0; --hv: #f1f5f9; }
+      #hlx-ctx-menu button[data-c="teal"]   { --c: #0d9488; --bg: #ccfbf1; --hv: #f0fdfa; }
       .hlx-rt-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 999998; }
       .hlx-rt-box { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); width: 780px; max-width: 94vw;
         max-height: 88vh; display: flex; flex-direction: column; background: #fff; border-radius: 14px; overflow: hidden;
@@ -4521,6 +4719,7 @@
     if (document.hidden) return;
     const sel = document.querySelector('app-icd-selector');
     if (!sel) return;
+    if (!hlxFeatOn('icdname')) return;
     const cfg = hlxIcdLoad();
     const now = Date.now();
     sel.querySelectorAll('tbody tr').forEach((tr) => {
@@ -5032,6 +5231,421 @@
     e.preventDefault(); e.stopPropagation();
     hlxCloseSettingsDialog();
   }
+  // ================= Cấu hình của Admin: Cơ bản / Nâng cao theo từng chức năng =================
+  let hlxFeatIdCache = null;
+  async function hlxFeatCloudId() {
+    if (hlxFeatIdCache) return hlxFeatIdCache;
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(HLX_FEAT_ADMIN_SEED), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', salt: enc.encode('helixfast-sync-v1'), iterations: 100000, hash: 'SHA-256' }, key, 256);
+    hlxFeatIdCache = Array.from(new Uint8Array(bits)).map((b) => b.toString(16).padStart(2, '0')).join('');
+    return hlxFeatIdCache;
+  }
+  function hlxFeatBaseUrl() {
+    const base = String(HLX_SYNC_DEFAULT_URL).trim().replace(/\/+$/, '');
+    if (!/^https:\/\//i.test(base)) throw new Error('Chưa cấu hình địa chỉ máy chủ.');
+    return base;
+  }
+  async function hlxSha256(t) {
+    const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t));
+    return Array.from(new Uint8Array(b)).map((x) => x.toString(16).padStart(2, '0')).join('');
+  }
+  // Kéo cấu hình từ cloud (áp dụng ngay cho mọi chức năng). Trả về { cfg, ts }
+  async function hlxFeatPull() {
+    const res = await hlxSyncReq(hlxFeatBaseUrl(), await hlxFeatCloudId(), { items: {} });
+    const r = (res.items || {})[HLX_FEAT_ITEM];
+    if (r && typeof r.v === 'string') {
+      const o = JSON.parse(r.v);
+      if (o && typeof o === 'object') {
+        o.tiers = o.tiers || {};
+        o.ts = r.ts;
+        hlxFeatCfg = o;
+        hlxStoreSetRaw(HLX_FEAT_CACHE_KEY, JSON.stringify(o));
+      }
+    }
+    return { ts: r ? r.ts : 0 };
+  }
+  async function hlxFeatPush(cfg) {
+    const cur = await hlxFeatPull();
+    const out = { tiers: cfg.tiers, pw: cfg.pw || '' };
+    const ts = Math.max(Date.now(), (cur.ts || 0) + 1);
+    const items = {};
+    items[HLX_FEAT_ITEM] = { ts, v: JSON.stringify(out), base: 0 };
+    await hlxSyncReq(hlxFeatBaseUrl(), await hlxFeatCloudId(), { items, force: true });
+    out.ts = ts;
+    hlxFeatCfg = out;
+    hlxStoreSetRaw(HLX_FEAT_CACHE_KEY, JSON.stringify(out));
+  }
+  if (!HLX_OFF) {
+    setTimeout(() => { hlxFeatPull().catch(() => {}); }, 2500);
+    setInterval(() => { if (!document.hidden) hlxFeatPull().catch(() => {}); }, 5 * 60 * 1000);
+  }
+
+  function hlxAdmEnsureCss() {
+    hlxStEnsureCss();
+    if (document.getElementById('hlx-adm-css')) return;
+    const st = document.createElement('style');
+    st.id = 'hlx-adm-css';
+    st.textContent =
+      '.hlx-adm-grp{font-weight:800;color:#1d4ed8;margin:12px 0 4px;font-size:13px;border-bottom:1px solid #dbe3ee;padding-bottom:3px;}' +
+      '.hlx-adm-row{display:flex;align-items:center;gap:8px;padding:4px 0;font-size:12.5px;}' +
+      '.hlx-adm-row .n{flex:1;min-width:0;}' +
+      '.hlx-adm-seg{display:inline-flex;border:1px solid #94a3b8;border-radius:6px;overflow:hidden;flex:none;}' +
+      '.hlx-adm-seg button{border:0;background:#fff;color:#334155;padding:3px 12px;font-size:12px;cursor:pointer;font-weight:600;}' +
+      '.hlx-adm-seg button.on.b{background:#16a34a;color:#fff;}' +
+      '.hlx-adm-seg button.on.a{background:#7c3aed;color:#fff;}' +
+      '.hlx-adm-msg{font-size:12px;padding:6px 0;color:#475569;}.hlx-adm-msg.err{color:#dc2626;}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function hlxAdmClose() {
+    ['hlx-adm-overlay', 'hlx-adm-box'].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) { hlxKeepDrop(el); el.remove(); }
+    });
+    document.removeEventListener('keydown', hlxAdmEsc, true);
+  }
+  function hlxAdmEsc(e) {
+    if (e.isTrusted && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hlxAdmClose(); }
+  }
+  // Hộp nhập mật khẩu (dùng chung cho vào Admin và đổi mật khẩu)
+  function hlxAdmPrompt(title, text, onOk, type) {
+    hlxAdmEnsureCss();
+    const ov = document.createElement('div');
+    ov.className = 'hlx-icd-cf-ov';
+    ov.style.zIndex = '1000004';
+    const dlg = document.createElement('div');
+    dlg.className = 'hlx-icd-cf';
+    dlg.style.cssText = 'z-index:1000005;width:460px;max-width:92vw;padding:24px 28px;box-sizing:border-box;';
+    dlg.innerHTML = '<div class="hlx-icd-cf-t" style="font-size:18px;margin-bottom:6px"></div><div class="hlx-icd-cf-x" style="color:#64748b;margin-bottom:12px"></div>' +
+      '<div style="position:relative"><input class="hlx-icd-in" autocomplete="off" style="width:100%;box-sizing:border-box;height:44px;font-size:16px;padding:0 46px 0 14px;border:1.5px solid #94a3b8;border-radius:8px">' +
+      '<button type="button" data-k="eye" title="Hiện/ẩn" style="position:absolute;right:4px;top:4px;width:36px;height:36px;border:0;background:transparent;font-size:18px;cursor:pointer;line-height:1">👁</button></div>' +
+      '<div class="hlx-adm-msg err" style="min-height:20px;padding:6px 2px 2px"></div>' +
+      '<div style="display:flex;gap:10px;margin-top:8px"><button type="button" data-k="ok" style="flex:1;height:42px;border:0;border-radius:8px;background:#16a34a;color:#fff;font-size:14px;font-weight:700;cursor:pointer">Xác nhận</button><button type="button" data-k="no" style="flex:1;height:42px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;font-size:14px;font-weight:600;cursor:pointer">Hủy</button></div>';
+    dlg.querySelector('.hlx-icd-cf-t').textContent = title;
+    dlg.querySelector('.hlx-icd-cf-x').textContent = text;
+    document.body.appendChild(ov);
+    document.body.appendChild(dlg);
+    hlxKeepAdd(ov, hlxAdmEnsureCss);
+    hlxKeepAdd(dlg, hlxAdmEnsureCss);
+    const inp = dlg.querySelector('input');
+    // Không dùng type=password (Chrome luôn tự điền mật khẩu đăng nhập đã lưu của trang HIS, bỏ qua autocomplete=off):
+    // dùng ô text che bằng CSS, tên ngẫu nhiên, readonly tới khi focus, và xóa giá trị nếu trình duyệt tự điền
+    const masked = (type || 'password') === 'password';
+    inp.type = 'text';
+    inp.name = 'hlx_' + Math.random().toString(36).slice(2, 10);
+    inp.setAttribute('autocomplete', 'off');
+    inp.setAttribute('data-lpignore', 'true');
+    inp.setAttribute('data-1p-ignore', 'true');
+    inp.setAttribute('data-form-type', 'other');
+    inp.setAttribute('autocapitalize', 'off');
+    inp.setAttribute('spellcheck', 'false');
+    inp.readOnly = true;
+    if (masked) inp.style.setProperty('-webkit-text-security', 'disc');
+    let typed = false;
+    inp.addEventListener('focus', () => { inp.readOnly = false; });
+    inp.addEventListener('input', (e) => { if (e.isTrusted && e.inputType) typed = true; });
+    [0, 100, 300, 700, 1500].forEach((d) => setTimeout(() => { if (!typed && inp.value) inp.value = ''; }, d));
+    const eye = dlg.querySelector('[data-k="eye"]');
+    if (!masked) eye.style.display = 'none';
+    eye.addEventListener('click', () => {
+      const show = (inp.style.getPropertyValue('-webkit-text-security') || '') !== 'none';
+      inp.style.setProperty('-webkit-text-security', show ? 'none' : 'disc');
+      eye.textContent = show ? '🙈' : '👁';
+      inp.focus();
+    });
+    const msg = dlg.querySelector('.hlx-adm-msg');
+    const done = () => { hlxKeepDrop(ov); hlxKeepDrop(dlg); ov.remove(); dlg.remove(); };
+    const submit = async () => {
+      const r = await onOk(inp.value);
+      if (r === true) done(); else { msg.textContent = r || 'Không hợp lệ.'; inp.select(); }
+    };
+    dlg.querySelector('[data-k="ok"]').addEventListener('click', submit);
+    dlg.querySelector('[data-k="no"]').addEventListener('click', done);
+    ov.addEventListener('mousedown', done);
+    inp.addEventListener('keydown', (e) => {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); submit(); }
+      else if (e.key === 'Escape') { e.preventDefault(); done(); }
+    });
+    setTimeout(() => inp.focus(), 30);
+  }
+  function hlxOpenAdminLogin() {
+    hlxAdmPrompt('Cấu hình của Admin', 'Nhập mật khẩu Admin', async (val) => {
+      let cfg = hlxFeatCfgGet();
+      try { await hlxFeatPull(); cfg = hlxFeatCfgGet(); } catch (err) {}
+      const ok = cfg.pw ? (await hlxSha256(String(val))) === cfg.pw : String(val) === HLX_ADMIN_DEFAULT_PW;
+      if (!ok) return 'Sai mật khẩu.';
+      setTimeout(hlxOpenAdminPanel, 0);
+      return true;
+    });
+  }
+  function hlxOpenAdminPanel() {
+    hlxAdmEnsureCss();
+    hlxAdmClose();
+    const draft = Object.assign({}, hlxFeatCfgGet().tiers);
+    const overlay = document.createElement('div');
+    overlay.id = 'hlx-adm-overlay';
+    overlay.className = 'hlx-icd-overlay';
+    const box = document.createElement('div');
+    box.id = 'hlx-adm-box';
+    box.className = 'hlx-icd-box hlx-st-box';
+    box.style.width = '720px';
+    box.style.maxWidth = '96vw';
+    box.innerHTML =
+      '<div class="hlx-icd-head"><span>🛠 Cấu hình của Admin</span><span class="hlx-icd-x" id="hlx-adm-x">✕</span></div>' +
+      '<div class="hlx-st-body" style="max-height:68vh;overflow:auto">' +
+      '<div class="hlx-icd-tip" style="padding:0 0 4px">Chọn từng chức năng là <b>Cơ bản</b> (mọi máy có bản quyền dùng được) hoặc <b>Nâng cao</b> (chỉ máy có mã Nâng cao). Mặc định: Cơ bản. Bấm <b>Lưu lên cloud</b> để áp dụng cho mọi máy, mọi phiên bản.</div>' +
+      '<div id="hlx-adm-list"></div><div class="hlx-adm-msg" id="hlx-adm-msg"></div></div>' +
+      '<div class="hlx-icd-foot" style="justify-content:space-between;gap:6px;flex-wrap:wrap">' +
+      '<span><button type="button" class="hlx-st-btn out" id="hlx-adm-pw">🔑 Đổi mật khẩu</button> <button type="button" class="hlx-st-btn out" id="hlx-adm-reload">⟳ Tải lại từ cloud</button></span>' +
+      '<span><button type="button" class="hlx-st-btn g" id="hlx-adm-save">💾 Lưu lên cloud</button> <button type="button" class="hlx-icd-close" id="hlx-adm-close">Đóng</button></span></div>';
+    document.body.appendChild(overlay);
+    document.body.appendChild(box);
+    hlxKeepAdd(overlay, hlxAdmEnsureCss);
+    hlxKeepAdd(box, hlxAdmEnsureCss);
+    document.addEventListener('keydown', hlxAdmEsc, true);
+    overlay.addEventListener('mousedown', hlxAdmClose);
+    const q = (s) => box.querySelector(s);
+    const msg = q('#hlx-adm-msg');
+    const say = (t, err) => { msg.textContent = t || ''; msg.classList.toggle('err', !!err); };
+    const flash = (btn, text, err) => {
+      if (btn._hlxT) clearTimeout(btn._hlxT);
+      if (btn._hlxOrig === undefined) { btn._hlxOrig = btn.textContent; btn._hlxBg = btn.style.background; }
+      btn.textContent = text;
+      btn.style.background = err ? '#dc2626' : '#16a34a';
+      btn.style.color = '#fff';
+      btn._hlxT = setTimeout(() => {
+        btn.textContent = btn._hlxOrig; btn.style.background = btn._hlxBg; btn.style.color = '';
+        btn._hlxOrig = undefined; btn._hlxT = null;
+      }, 3000);
+    };
+    function render() {
+      const list = q('#hlx-adm-list');
+      list.innerHTML = '';
+      HLX_PAGE_GROUPS.forEach((g) => {
+        const feats = HLX_FEATS.filter((f) => f.pages.indexOf(g.id) !== -1);
+        if (!feats.length) return;
+        const h = document.createElement('div');
+        h.className = 'hlx-adm-grp';
+        h.textContent = g.name;
+        list.appendChild(h);
+        feats.forEach((f) => {
+          const key = f.id + '@' + g.id;
+          const adv = draft[key] === 'adv';
+          const row = document.createElement('div');
+          row.className = 'hlx-adm-row';
+          row.innerHTML = '<span class="n"></span><span class="hlx-adm-seg"><button type="button" class="b">Cơ bản</button><button type="button" class="a">Nâng cao</button></span>';
+          row.querySelector('.n').textContent = f.name;
+          const bb = row.querySelector('button.b'), ba = row.querySelector('button.a');
+          (adv ? ba : bb).classList.add('on');
+          const set = (v) => { if (v === 'adv') draft[key] = 'adv'; else delete draft[key]; say('Có thay đổi chưa lưu.', false); render(); };
+          bb.addEventListener('click', () => set('basic'));
+          ba.addEventListener('click', () => set('adv'));
+          list.appendChild(row);
+        });
+      });
+    }
+    render();
+    q('#hlx-adm-x').addEventListener('click', hlxAdmClose);
+    q('#hlx-adm-close').addEventListener('click', hlxAdmClose);
+    q('#hlx-adm-save').addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      say('Đang lưu lên cloud…');
+      try {
+        const cfg = Object.assign({}, hlxFeatCfgGet(), { tiers: Object.assign({}, draft) });
+        await hlxFeatPush(cfg);
+        say('Đã lưu và áp dụng cho mọi máy (máy khác nhận trong tối đa 5 phút hoặc khi tải lại trang).');
+        flash(btn, '✔ Đã sao lưu');
+      } catch (err) { say(err && err.message ? err.message : 'Lưu thất bại.', true); flash(btn, '✖ Lỗi', true); }
+    });
+    q('#hlx-adm-reload').addEventListener('click', async (ev) => {
+      const btn = ev.currentTarget;
+      say('Đang tải…');
+      try {
+        await hlxFeatPull();
+        Object.keys(draft).forEach((k) => delete draft[k]);
+        Object.assign(draft, hlxFeatCfgGet().tiers);
+        render();
+        say('Đã tải cấu hình từ cloud.');
+        flash(btn, '✔ Đã phục hồi');
+      } catch (err) { say(err && err.message ? err.message : 'Tải thất bại.', true); flash(btn, '✖ Lỗi', true); }
+    });
+    q('#hlx-adm-pw').addEventListener('click', () => {
+      hlxAdmPrompt('Đổi mật khẩu Admin', 'Nhập mật khẩu mới (tối thiểu 4 ký tự)', async (val) => {
+        const v = String(val);
+        if (v.length < 4) return 'Mật khẩu quá ngắn.';
+        try {
+          const cfg = Object.assign({}, hlxFeatCfgGet(), { tiers: Object.assign({}, draft), pw: await hlxSha256(v) });
+          await hlxFeatPush(cfg);
+          say('Đã đổi mật khẩu và lưu lên cloud.');
+          return true;
+        } catch (err) { return err && err.message ? err.message : 'Lưu thất bại.'; }
+      });
+    });
+    hlxFeatPull().then(() => {
+      Object.keys(draft).forEach((k) => delete draft[k]);
+      Object.assign(draft, hlxFeatCfgGet().tiers);
+      render();
+    }).catch(() => say('Không tải được cấu hình từ cloud, đang dùng bản lưu trên máy.', true));
+  }
+  // ================= Chức năng của công cụ: liệt kê từ HLX_FEATS + cấu hình Cơ bản/Nâng cao hiện hành =================
+  let hlxFnTimer = null;
+  function hlxFnClose() {
+    ['hlx-fn-overlay', 'hlx-fn-box'].forEach((id) => { const el = document.getElementById(id); if (el) { hlxKeepDrop(el); el.remove(); } });
+    document.removeEventListener('keydown', hlxFnEsc, true);
+    if (hlxFnTimer) { clearInterval(hlxFnTimer); hlxFnTimer = null; }
+  }
+  function hlxFnEsc(e) {
+    if (e.isTrusted && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hlxFnClose(); }
+  }
+  function hlxFnEnsureCss() {
+    hlxAdmEnsureCss();
+    if (document.getElementById('hlx-fn-css')) return;
+    const st = document.createElement('style');
+    st.id = 'hlx-fn-css';
+    st.textContent =
+      '.hlx-fn-sum{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 6px;font-size:12.5px;color:#334155;}' +
+      '.hlx-fn-pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-size:11.5px;color:#fff;}' +
+      '.hlx-fn-pill.b{background:#16a34a;}.hlx-fn-pill.a{background:#7c3aed;}.hlx-fn-pill.k{background:#64748b;}' +
+      '.hlx-fn-grp{font-weight:800;color:#1d4ed8;margin:14px 0 6px;font-size:13px;border-bottom:1px solid #dbe3ee;padding-bottom:3px;}' +
+      '.hlx-fn-cols{display:grid;grid-template-columns:1fr 1fr;gap:10px;}' +
+      '.hlx-fn-col{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;}' +
+      '.hlx-fn-colh{padding:6px 10px;font-weight:800;font-size:12.5px;color:#fff;display:flex;justify-content:space-between;align-items:center;}' +
+      '.hlx-fn-col.b .hlx-fn-colh{background:linear-gradient(135deg,#16a34a,#22c55e);}' +
+      '.hlx-fn-col.a .hlx-fn-colh{background:linear-gradient(135deg,#7c3aed,#a855f7);}' +
+      '.hlx-fn-cnt{background:rgba(255,255,255,.25);border-radius:999px;padding:0 8px;font-size:11px;}' +
+      '.hlx-fn-it{padding:6px 10px;border-top:1px solid #f1f5f9;font-size:12.5px;}' +
+      '.hlx-fn-it:first-of-type{border-top:0;}' +
+      '.hlx-fn-it .n{font-weight:600;color:#0f172a;}' +
+      '.hlx-fn-it ul{margin:3px 0 0 16px;padding:0;color:#64748b;font-size:11.5px;}' +
+      '.hlx-fn-it ul li{margin:1px 0;}' +
+      '.hlx-fn-lock{display:inline-block;margin-left:6px;font-size:10.5px;font-weight:700;color:#b45309;background:#fef3c7;border-radius:999px;padding:0 7px;}' +
+      '.hlx-fn-empty{padding:8px 10px;font-size:12px;color:#94a3b8;font-style:italic;}' +
+      '@media (max-width:640px){.hlx-fn-cols{grid-template-columns:1fr;}}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function hlxOpenFeatureList() {
+    hlxFnEnsureCss();
+    hlxFnClose();
+    const overlay = document.createElement('div');
+    overlay.id = 'hlx-fn-overlay';
+    overlay.className = 'hlx-icd-overlay';
+    const box = document.createElement('div');
+    box.id = 'hlx-fn-box';
+    box.className = 'hlx-icd-box hlx-st-box';
+    box.style.width = '900px';
+    box.style.maxWidth = '96vw';
+    box.innerHTML =
+      '<div class="hlx-icd-head"><span>🧩 Chức năng của công cụ</span><span class="hlx-icd-x" id="hlx-fn-x">✕</span></div>' +
+      '<div class="hlx-st-body" style="max-height:72vh;overflow:auto"><div id="hlx-fn-sum"></div><div id="hlx-fn-list"></div></div>' +
+      '<div class="hlx-icd-foot" style="justify-content:space-between;gap:6px;flex-wrap:wrap">' +
+      '<span class="hlx-adm-msg" id="hlx-fn-msg" style="align-self:center"></span>' +
+      '<span><button type="button" class="hlx-st-btn out" id="hlx-fn-reload">⟳ Tải lại cấu hình</button> <button type="button" class="hlx-icd-close" id="hlx-fn-close">Đóng</button></span></div>';
+    document.body.appendChild(overlay);
+    document.body.appendChild(box);
+    hlxKeepAdd(overlay, hlxFnEnsureCss);
+    hlxKeepAdd(box, hlxFnEnsureCss);
+    document.addEventListener('keydown', hlxFnEsc, true);
+    overlay.addEventListener('mousedown', hlxFnClose);
+    const q = (sel) => box.querySelector(sel);
+    q('#hlx-fn-x').addEventListener('click', hlxFnClose);
+    q('#hlx-fn-close').addEventListener('click', hlxFnClose);
+    const msg = q('#hlx-fn-msg');
+    function render() {
+      const advOn = hlxAdvancedOn();
+      let nb = 0, na = 0;
+      const list = q('#hlx-fn-list');
+      list.innerHTML = '';
+      HLX_PAGE_GROUPS.forEach((g) => {
+        const feats = HLX_FEATS.filter((f) => f.pages.indexOf(g.id) !== -1);
+        if (!feats.length) return;
+        const h = document.createElement('div');
+        h.className = 'hlx-fn-grp';
+        h.textContent = g.name;
+        list.appendChild(h);
+        const cols = document.createElement('div');
+        cols.className = 'hlx-fn-cols';
+        const mk = (cls, title) => {
+          const c = document.createElement('div');
+          c.className = 'hlx-fn-col ' + cls;
+          c.innerHTML = '<div class="hlx-fn-colh"><span></span><span class="hlx-fn-cnt"></span></div>';
+          c.querySelector('.hlx-fn-colh span').textContent = title;
+          return c;
+        };
+        const cb = mk('b', 'Cơ bản'), ca = mk('a', 'Nâng cao');
+        let cntB = 0, cntA = 0;
+        feats.forEach((f) => {
+          const adv = hlxFeatTier(f.id, g.id) === 'adv';
+          const it = document.createElement('div');
+          it.className = 'hlx-fn-it';
+          const n = document.createElement('div');
+          n.className = 'n';
+          n.textContent = f.name;
+          if (adv && !advOn) {
+            const lock = document.createElement('span');
+            lock.className = 'hlx-fn-lock';
+            lock.textContent = '🔒 máy này chưa có mã Nâng cao';
+            n.appendChild(lock);
+          }
+          it.appendChild(n);
+          if (f.desc && f.desc.length) {
+            const ul = document.createElement('ul');
+            f.desc.forEach((d) => { const li = document.createElement('li'); li.textContent = d; ul.appendChild(li); });
+            it.appendChild(ul);
+          }
+          if (adv) { ca.appendChild(it); cntA++; na++; } else { cb.appendChild(it); cntB++; nb++; }
+        });
+        [[cb, cntB], [ca, cntA]].forEach(([c, k]) => {
+          c.querySelector('.hlx-fn-cnt').textContent = String(k);
+          if (!k) { const e = document.createElement('div'); e.className = 'hlx-fn-empty'; e.textContent = '— không có —'; c.appendChild(e); }
+        });
+        cols.appendChild(cb);
+        cols.appendChild(ca);
+        list.appendChild(cols);
+      });
+      q('#hlx-fn-sum').innerHTML = '<div class="hlx-fn-sum"><span>Helixfast <b>v' + HELIXFAST_VERSION + '</b></span>' +
+        '<span class="hlx-fn-pill k">Đã kích hoạt: ' + (advOn ? 'Nâng cao' : 'Cơ bản') + '</span>' +
+        '<span class="hlx-fn-pill b">Cơ bản: ' + nb + ' mục</span><span class="hlx-fn-pill a">Nâng cao: ' + na + ' mục</span></div>';
+    }
+    render();
+    const reload = async () => {
+      msg.textContent = 'Đang tải cấu hình từ cloud…';
+      try { await hlxFeatPull(); msg.textContent = 'Đã cập nhật theo cấu hình mới nhất.'; }
+      catch (err) { msg.textContent = 'Không tải được từ cloud, đang dùng bản lưu trên máy.'; }
+      if (document.getElementById('hlx-fn-box')) render();
+    };
+    q('#hlx-fn-reload').addEventListener('click', reload);
+    reload();
+    // Luôn bám cấu hình hiện hành khi hộp đang mở (vd Admin vừa lưu / máy vừa đồng bộ)
+    hlxFnTimer = setInterval(() => { if (document.getElementById('hlx-fn-box')) render(); else hlxFnClose(); }, 3000);
+  }
+  function hlxOpenSettingsChooser() {
+    hlxAdmEnsureCss();
+    const ov = document.createElement('div');
+    ov.className = 'hlx-icd-cf-ov';
+    ov.style.zIndex = '1000002';
+    const dlg = document.createElement('div');
+    dlg.className = 'hlx-icd-cf';
+    dlg.style.cssText = 'z-index:1000003;width:400px;max-width:92vw;padding:22px 24px;box-sizing:border-box;';
+    dlg.innerHTML = '<div class="hlx-icd-cf-t" style="font-size:17px;margin-bottom:4px">⚙ Cài đặt</div>' +
+      '<div class="hlx-icd-cf-x" style="margin-bottom:14px;color:#64748b">Chọn mục cần mở</div>' +
+      '<div style="display:flex;flex-direction:column;gap:10px">' +
+      '<button type="button" data-k="sync" style="width:100%;padding:12px 14px;border:0;border-radius:8px;background:#2563eb;color:#fff;font-size:14px;font-weight:700;cursor:pointer;text-align:left">☁ Đồng bộ đám mây</button>' +
+      '<button type="button" data-k="adm" style="width:100%;padding:12px 14px;border:0;border-radius:8px;background:#7c3aed;color:#fff;font-size:14px;font-weight:700;cursor:pointer;text-align:left">🛠 Cấu hình của Admin</button>' +
+      '<button type="button" data-k="no" style="width:100%;padding:9px 14px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;font-size:13px;font-weight:600;cursor:pointer">Đóng</button></div>';
+    document.body.appendChild(ov);
+    document.body.appendChild(dlg);
+    hlxKeepAdd(ov, hlxAdmEnsureCss);
+    hlxKeepAdd(dlg, hlxAdmEnsureCss);
+    const onKey = (e) => { if (e.isTrusted && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(); } };
+    const done = () => { hlxKeepDrop(ov); hlxKeepDrop(dlg); ov.remove(); dlg.remove(); document.removeEventListener('keydown', onKey, true); };
+    document.addEventListener('keydown', onKey, true);
+    dlg.querySelector('[data-k="sync"]').addEventListener('click', () => { done(); hlxOpenSettingsDialog(); });
+    dlg.querySelector('[data-k="adm"]').addEventListener('click', () => { done(); hlxOpenAdminLogin(); });
+    dlg.querySelector('[data-k="no"]').addEventListener('click', done);
+    ov.addEventListener('mousedown', done);
+  }
+
   function hlxOpenSettingsDialog() {
     hlxStEnsureCss();
     hlxCloseSettingsDialog();
@@ -5195,67 +5809,53 @@
     const menu = document.createElement('div');
     menu.id = 'hlx-ctx-menu';
     const killMenu = () => { hlxKeepDrop(menu); menu.remove(); };
-    const item0 = document.createElement('button');
-    item0.type = 'button';
-    item0.textContent = '📋 Liều dùng tự động';
-    item0.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      killMenu();
-      hlxOpenDoseDialog();
+    const head = document.createElement('div');
+    head.className = 'hlx-cm-head';
+    head.innerHTML = '<span>⚡ Helixfast</span><small>v' + HELIXFAST_VERSION + '</small>';
+    menu.appendChild(head);
+    const items = [
+      { ico: '📋', label: 'Liều dùng tự động', c: 'blue', fn: () => hlxOpenDoseDialog() },
+      { ico: '💊', label: 'Cách dùng', c: 'green', fn: () => hlxOpenRouteDialog() },
+      { ico: '🏷', label: 'Đổi tên ICD mặc định', c: 'amber', fn: () => hlxOpenIcdDialog() },
+      'sep',
+      { ico: '⟳', label: 'Cập nhật', c: 'violet', fn: () => openUpdateDialog(), badge: hlxUpdState.hasNew ? 'v' + hlxUpdState.remote : '' },
+      { ico: '🔑', label: 'Bản quyền', c: 'rose', fn: () => openLicenseDialog() },
+      'sep',
+      { ico: '⚙', label: 'Cài đặt', c: 'slate', fn: () => hlxOpenSettingsChooser() },
+      { ico: '🧩', label: 'Chức năng của công cụ', c: 'teal', fn: () => hlxOpenFeatureList() },
+    ];
+    items.forEach((it) => {
+      if (it === 'sep') {
+        const sp = document.createElement('div');
+        sp.className = 'hlx-cm-sep';
+        menu.appendChild(sp);
+        return;
+      }
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.setAttribute('data-c', it.c);
+      const ico = document.createElement('span');
+      ico.className = 'hlx-cm-ico';
+      ico.textContent = it.ico;
+      const lbl = document.createElement('span');
+      lbl.className = 'hlx-cm-lbl';
+      lbl.textContent = it.label;
+      btn.appendChild(ico);
+      btn.appendChild(lbl);
+      if (it.badge) {
+        const bd = document.createElement('span');
+        bd.className = 'hlx-cm-badge';
+        bd.textContent = 'Mới ' + it.badge;
+        btn.appendChild(bd);
+      }
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        killMenu();
+        it.fn();
+      });
+      menu.appendChild(btn);
     });
-    menu.appendChild(item0);
-    const item = document.createElement('button');
-    item.type = 'button';
-    item.textContent = '💊 Cách dùng';
-    item.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      killMenu();
-      hlxOpenRouteDialog();
-    });
-    menu.appendChild(item);
-    const itemIcd = document.createElement('button');
-    itemIcd.type = 'button';
-    itemIcd.textContent = '🏷 Đổi tên ICD mặc định';
-    itemIcd.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      killMenu();
-      hlxOpenIcdDialog();
-    });
-    menu.appendChild(itemIcd);
-    const itemUp = document.createElement('button');
-    itemUp.type = 'button';
-    itemUp.textContent = '⟳ Cập nhật' + (hlxUpdState.hasNew ? ' • có bản mới v' + hlxUpdState.remote : '');
-    if (hlxUpdState.hasNew) itemUp.style.color = '#15803d';
-    itemUp.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      killMenu();
-      openUpdateDialog();
-    });
-    menu.appendChild(itemUp);
-    const itemLic = document.createElement('button');
-    itemLic.type = 'button';
-    itemLic.textContent = '🔑 Bản quyền';
-    itemLic.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      killMenu();
-      openLicenseDialog();
-    });
-    menu.appendChild(itemLic);
-    const itemSet = document.createElement('button');
-    itemSet.type = 'button';
-    itemSet.textContent = '⚙ Cài đặt';
-    itemSet.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      killMenu();
-      hlxOpenSettingsDialog();
-    });
-    menu.appendChild(itemSet);
     menu.style.visibility = 'hidden';
     document.body.appendChild(menu);
     hlxKeepAdd(menu, hlxRouteEnsureCss);
@@ -5484,7 +6084,7 @@
       const titleEl = dialog.querySelector('.p-dialog-title');
       const titleText = titleEl ? titleEl.textContent.replace(/\s+/g, ' ').trim() : '';
       if (titleText !== COMPLETE_EXAM_DIALOG_TITLE) return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('misc')) return;
 
       awaitingCompleteExamDialog = true;
       clearTimeout(awaitingCompleteExamTimeoutId);
@@ -6457,32 +7057,44 @@
     return document.querySelector('input[plthousandformater]');
   }
 
-  function applyRxDaysMaxToTaiKham() {
+  // Ghi số ngày lớn nhất (lấy từ cột "Số ngày" của bảng thuốc) vào ô ngày Tái khám. Trả về true nếu ô đã đúng giá trị.
+  function applyRxDaysMaxToTaiKham(target) {
     const input = findTaiKhamDaysInput();
-    if (!input || input.disabled) return;
-    if (input.value === String(rxDaysMax)) return;
-    setNativeValue(input, String(rxDaysMax));
+    if (!input || input.disabled) return false;
+    if (input.value === String(target)) return true;
+    if (document.activeElement === input) return false; // người dùng đang gõ ở ô tái khám: không ghi đè
+    setNativeValue(input, String(target));
     setTimeout(() => {
       input.dispatchEvent(new Event('blur', { bubbles: true }));
       document.body.click();
     }, 50);
+    return true;
   }
 
-  hlxDocListen(
-    'keydown',
-    (e) => {
-      if (e.key !== 'Enter') return;
-      const target = e.target;
-      if (!target || target.tagName !== 'INPUT') return;
-      if (!target.matches(SUPPLY_DAY_SELECTOR)) return;
-      const val = parseInt((target.value || '').replace(/\D/g, ''), 10);
-      if (!val || val <= 0) return;
-      resetRxDaysTrackingIfPatientChanged();
-      if (val > rxDaysMax) rxDaysMax = val;
-      autoCheckTaiKhamRetry(undefined, applyRxDaysMaxToTaiKham);
-    },
-    true
-  );
+  // Số ngày lớn nhất trong cột "Số ngày" (.hlx-days) của các bảng đơn thuốc; 0 nếu chưa có thuốc/chưa có số ngày
+  function hlxRxDaysMaxFromTable() {
+    let mx = 0;
+    document.querySelectorAll('table.his-rx-table tbody td.hlx-days').forEach((td) => {
+      const n = hlxDaysNum(td.textContent);
+      if (n > mx) mx = n;
+    });
+    return mx > 0 ? Math.ceil(mx - 1e-9) : 0;
+  }
+
+  // Đồng bộ ngày Tái khám theo bảng thuốc: chạy lại mỗi khi số ngày lớn nhất đổi (thêm/xóa/sửa thuốc), không phụ thuộc phím Enter ở ô Số ngày
+  let rxTaiKhamPending = false;
+  function hlxSyncTaiKhamFromTable() {
+    resetRxDaysTrackingIfPatientChanged();
+    const mx = hlxRxDaysMaxFromTable();
+    if (mx <= 0) return; // bảng trống: autoUncheckTaiKhamIfPrescriptionEmptied lo việc bỏ tick + xóa ngày
+    if (mx === rxDaysMax || rxTaiKhamPending) return;
+    rxTaiKhamPending = true;
+    autoCheckTaiKhamRetry(undefined, () => {
+      rxTaiKhamPending = false;
+      const cur = hlxRxDaysMaxFromTable();
+      if (cur > 0 && applyRxDaysMaxToTaiKham(cur)) rxDaysMax = cur;
+    });
+  }
 
   function ensureCustomPrintButtonsPlacement() {
     const saveBtn = findToolbarButton(TOOLBAR_SAVE_BTN_SELECTOR);
@@ -6542,9 +7154,30 @@
 
   // Cổng chung cho mọi chức năng mở rộng của Helixfast
   function isHelixfastEnabled() {
+    return hlxFeatOn('misc');
+  }
+
+  // ===== Phân quyền Cơ bản / Nâng cao theo từng chức năng (Admin cấu hình, lưu trên Cloudflare) =====
+  function hlxPageGroup() {
+    const p = location.pathname;
+    for (const g of HLX_PAGE_GROUPS) if (g.path && p.indexOf(g.path) !== -1) return g.id;
+    return 'other';
+  }
+  function hlxFeatCfgGet() {
+    if (hlxFeatCfg) return hlxFeatCfg;
+    let c = null;
+    try { const raw = hlxStoreGet(HLX_FEAT_CACHE_KEY); if (raw) c = JSON.parse(raw); } catch (err) {}
+    hlxFeatCfg = c && typeof c === 'object' ? c : { tiers: {}, pw: '', ts: 0 };
+    if (!hlxFeatCfg.tiers) hlxFeatCfg.tiers = {};
+    return hlxFeatCfg;
+  }
+  function hlxFeatTier(feat, group) {
+    return hlxFeatCfgGet().tiers[feat + '@' + group] === 'adv' ? 'adv' : 'basic';
+  }
+  // Chức năng được bật khi: Helixfast bật + có bản quyền, và (mục đó là Cơ bản, hoặc máy có mã Nâng cao)
+  function hlxFeatOn(feat) {
     if (!hlxBaseEnabled()) return false;
-    if (hlxIsRestrictedPage() && !hlxAdvancedOn()) return false;
-    return true;
+    return hlxFeatTier(feat, hlxPageGroup()) === 'basic' || hlxAdvancedOn();
   }
 
   function setHelixfastEnabled(enabled) {
@@ -6980,8 +7613,10 @@
       .hlx-lic-pill{position:relative;display:inline-flex;align-items:center;gap:5px;font-weight:600;font-size:11px;
         padding:4px 10px;border-radius:20px;backdrop-filter:blur(4px);white-space:nowrap;}
       .hlx-lic-pill{font-size:12px !important;padding:5px 12px !important;font-weight:700 !important;}
-      .hlx-lic-pill.ok{background:linear-gradient(135deg,#22c55e,#15803d);color:#fff;border:1px solid #86efac;
-        box-shadow:0 2px 10px rgba(21,128,61,.55);text-shadow:0 1px 1px rgba(0,0,0,.25);}
+      .hlx-lic-pill.ok{flex-direction:column;gap:1px !important;background:rgba(16,185,129,.20);color:#d1fae5;border:1px solid #6ee7b7;
+        box-shadow:0 0 6px rgba(110,231,183,.8),0 0 16px rgba(52,211,153,.5),inset 0 0 8px rgba(110,231,183,.25);text-shadow:0 0 6px rgba(110,231,183,.9);}
+      .hlx-lic-pill .tier{font-size:10.5px;font-weight:600;opacity:.95;letter-spacing:.4px;text-shadow:none;}
+      .hlx-lic-head-row{gap:16px;}
       .hlx-lic-pill.warn{background:linear-gradient(135deg,#fbbf24,#d97706);color:#fff;border:1px solid #fde68a;
         box-shadow:0 2px 10px rgba(217,119,6,.5);text-shadow:0 1px 1px rgba(0,0,0,.25);}
       .hlx-lic-pill.bad{background:#fff;color:#b91c1c;border:1px solid #fecaca;
@@ -7048,7 +7683,7 @@
     let subText;
     let headCls = '';
     if (lic.valid && !nearExpiryDlg) {
-      pill = '<span class="hlx-lic-pill ok">● Đã kích hoạt</span>';
+      pill = '<span class="hlx-lic-pill ok"><span>● Đã kích hoạt</span><span class="tier">' + (lic.tier === 'adv' ? 'Nâng cao' : 'Cơ bản') + '</span></span>';
       subText = 'Còn ' + lic.daysLeft + ' ngày · Hết hạn: ' + hlxFormatDate(lic.exp);
     } else if (lic.valid && nearExpiryDlg) {
       pill = '<span class="hlx-lic-pill warn">● Sắp hết hạn</span>';
@@ -7067,7 +7702,7 @@
     box.innerHTML =
       '<div class="hlx-lic-head' + headCls + '">' +
       '<div class="hlx-lic-head-row">' +
-      '<div class="hlx-lic-title"><span class="ico">🔑</span>Bản quyền Helixfast <span style="opacity:.7;font-weight:500;font-size:11px;">v' + HELIXFAST_VERSION + '</span></div>' +
+      '<div class="hlx-lic-title"><span class="ico">🔑</span>Bản quyền Helixfast <span style="opacity:.7;font-weight:500;font-size:11px;margin-left:8px;">v' + HELIXFAST_VERSION + '</span></div>' +
       pill +
       '</div>' +
       '<div class="hlx-lic-sub">' + subText + '</div>' +
@@ -7500,7 +8135,7 @@
     'keydown',
     (e) => {
       if (e.key !== 'Enter' || e.isComposing || e.ctrlKey || e.altKey || e.metaKey) return;
-      if (!isHelixfastEnabled()) return;
+      if (!hlxFeatOn('exam_auto')) return;
       const t = e.target;
       if (!t || t.tagName !== 'TEXTAREA' || !t.matches(PROGRESSION_SELECTOR)) return;
 
@@ -7536,6 +8171,12 @@
   function emergIsPage() {
     return location.pathname.indexOf('/his/emergency') !== -1;
   }
+  function examIsPage() {
+    return location.pathname.indexOf('/his/medical-examination') !== -1;
+  }
+  function hlxQuickPage() {
+    return ipdIsPage() || examIsPage();
+  }
 
   function ipdFindDocxField(label) {
     const spans = document.querySelectorAll('docx-label span[title]');
@@ -7550,6 +8191,13 @@
   }
 
   function ipdVisitKey() {
+    if (examIsPage()) {
+      const box = Array.from(document.querySelectorAll('[data-bootstro-title="TT bệnh nhân"]')).find(hlxIsVisible);
+      if (!box) return '';
+      const inp = box.querySelector('input');
+      const head = box.querySelector('.width-per60') || box;
+      return (inp ? inp.value.trim() : '') + '|' + bsdhaClean(head.textContent).slice(0, 60);
+    }
     if (emergIsPage()) {
       // Trang Cấp cứu: ưu tiên ô "Mã tiếp nhận" (cùng cấu trúc với nội trú), dự phòng họ tên + ngày sinh + ngày vào viện
       const maL = bsdhaFindLabels('Mã tiếp nhận')[0];
@@ -7996,6 +8644,18 @@
         }
       }
     }
+    if (examIsPage()) {
+      try {
+        const pp = bsdhaScrapeExamPage();
+        if (pp && pp.dob) {
+          const a = exAgeFromIso(pp.dob);
+          if (a !== null && a >= 0) return a;
+        }
+        const box = Array.from(document.querySelectorAll('[data-bootstro-title="TT bệnh nhân"]')).find(hlxIsVisible);
+        const m = box && bsdhaClean(box.textContent).match(/(\d+)\s*Tuổi/i);
+        if (m) return parseInt(m[1], 10);
+      } catch (e) {}
+    }
     return null;
   }
   function exPrefix(st) {
@@ -8056,6 +8716,7 @@
     const known = [st.last[kind], baseText]
       .filter((x) => x !== null && x !== undefined)
       .map((x) => String(x).trim());
+    if (kind === 'tt' && cur.indexOf(EXAM_TOAN_THAN_BASE) === 0) known.push(cur);
     if (cur && known.indexOf(cur) === -1) {
       if (!window.confirm('Ô này đang có nội dung bạn tự nhập/sửa.\nGhi đè bằng nội dung chọn nhanh?')) return false;
     }
@@ -8336,7 +8997,7 @@
     if (!ta.dataset.hlxCap) {
       ta.dataset.hlxCap = '1';
       ta.addEventListener('input', (e) => {
-        if (e.isComposing || !isHelixfastEnabled()) return;
+        if (e.isComposing || !hlxFeatOn('quick')) return;
         const v = ta.value;
         const nv = v.replace(/(^|\n)([ \t]*)(\S)/g, (m, a, b, c) => a + b + c.toLocaleUpperCase('vi-VN'));
         if (nv === v) return;
@@ -9158,18 +9819,123 @@
     }
   }
 
+  // ---- Cột "Số ngày" trong bảng đơn thuốc: Tổng S.Lg ÷ (Sáng+Trưa+Chiều+Tối) ----
+  function hlxDaysNum(t) {
+    let x = String(t || '').replace(/\s+/g, '');
+    if (!x) return 0;
+    if (/^\d+,\d{1,2}$/.test(x)) x = x.replace(',', '.'); else x = x.replace(/,/g, '');
+    const n = parseFloat(x);
+    return isFinite(n) ? n : 0;
+  }
+  function hlxDaysFmt(n) {
+    if (Math.abs(n - Math.round(n)) < 0.05) return String(Math.round(n));
+    return String(Math.round(n * 10) / 10);
+  }
+  function hlxDaysRemove() {
+    document.querySelectorAll('.hlx-days').forEach((e) => e.remove());
+    document.querySelectorAll('td[data-hlx-colspan]').forEach((td) => {
+      td.setAttribute('colspan', td.getAttribute('data-hlx-colspan'));
+      td.removeAttribute('data-hlx-colspan');
+    });
+  }
+  function hlxDaysTick() {
+    if (!hlxFeatOn('rx')) { hlxDaysRemove(); return; }
+    document.querySelectorAll('table.his-rx-table').forEach((tb) => {
+      const hr = tb.querySelector('thead tr');
+      if (!hr) return;
+      const ths = Array.from(hr.children).filter((c) => !c.classList.contains('hlx-days'));
+      const idx = (name) => ths.findIndex((th) => (th.textContent || '').replace(/\s+/g, ' ').trim() === name);
+      const iTot = idx('Tổng S.Lg');
+      const iName = idx('Tên thuốc');
+      const iDose = ['Sáng', 'Trưa', 'Chiều', 'Tối'].map(idx);
+      if (iTot < 0 || iDose.some((i) => i < 0)) return;
+      if (!hr.querySelector('.hlx-days')) {
+        const th = document.createElement('th');
+        th.className = 'hlx-days';
+        th.style.cssText = 'width:5%;text-align:right;';
+        th.textContent = 'Số ngày';
+        hr.insertBefore(th, ths[iTot]);
+        tb.querySelectorAll('tfoot td[colspan]').forEach((td) => {
+          if (td.hasAttribute('data-hlx-colspan')) return;
+          const c = parseInt(td.getAttribute('colspan'), 10);
+          if (c > 1) { td.setAttribute('data-hlx-colspan', String(c)); td.setAttribute('colspan', String(c + 1)); }
+        });
+      }
+      tb.querySelectorAll('tbody tr').forEach((tr) => {
+        const tds = Array.from(tr.children).filter((c) => !c.classList.contains('hlx-days'));
+        if (tds.length <= Math.max(iTot, ...iDose)) return;
+        let cell = tr.querySelector('.hlx-days');
+        if (!cell) {
+          cell = document.createElement('td');
+          cell.className = 'hlx-days';
+          cell.style.cssText = 'width:5%;text-align:right;';
+          tr.insertBefore(cell, tds[iTot]);
+        }
+        const tot = hlxDaysNum(tds[iTot].textContent);
+        let daily = iDose.reduce((a2, i) => a2 + hlxDaysNum(tds[i].textContent), 0);
+        // Thuốc "Bỏ phần dư": Tổng S.Lg = Số ngày × làm tròn lên (liều 1 ngày) -> chia ngược theo liều đã làm tròn
+        try {
+          const dd = iName >= 0 ? hlxDoseLookup(tds[iName].textContent, true) : null;
+          if (dd && dd.disc && daily > 0) daily = Math.ceil(daily - 1e-9);
+        } catch (e) {}
+        const v = tot > 0 && daily > 0 ? hlxDaysFmt(tot / daily) : '';
+        if (cell.textContent !== v) cell.textContent = v;
+      });
+    });
+    try { hlxSyncTaiKhamFromTable(); } catch (e) {}
+  }
+  if (!HLX_OFF) setInterval(() => { try { hlxDaysTick(); } catch (e) {} }, 500);
+
+  function hlxPointerCss() {
+    const on = hlxFeatOn('misc');
+    let st = document.getElementById('hlx-pointer-css');
+    if (!on) { if (st) st.remove(); return; }
+    if (st) return;
+    st = document.createElement('style');
+    st.id = 'hlx-pointer-css';
+    st.textContent =
+      'input[type="checkbox"],input[type="radio"],label:has(>input[type="checkbox"]),label:has(>input[type="radio"]),label:has(>input[type="checkbox"]) *,label:has(>input[type="radio"]) *,' +
+      'label[for],.ui-chkbox,.ui-chkbox *,.ui-radiobutton,.ui-radiobutton *,.checkbox label,.checkbox label *,.p-checkbox,.p-checkbox *,mat-checkbox,mat-checkbox *' +
+      '{cursor:pointer !important;}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+  function hlxIcdAutoFill() {
+    const src = Array.from(document.querySelectorAll('input[formcontrolname="icd_free_text"]')).find(hlxIsVisible);
+    if (!src) return;
+    const v = (src.value || '').trim();
+    if (!v) return;
+    const targets = [];
+    Array.from(document.querySelectorAll('input[formcontrolname="icd_checkout_text"]')).filter(hlxIsVisible).forEach((x) => targets.push(x));
+    const nm = Array.from(document.querySelectorAll('input.icd-name-input')).filter(hlxIsVisible)[0];
+    if (nm) targets.push(nm);
+    targets.forEach((t) => {
+      if (document.activeElement === t) return;
+      const cur = (t.value || '').trim();
+      const last = t.dataset.hlxIcdAuto;
+      if ((last === undefined && !cur) || (last !== undefined && cur === last)) {
+        if (cur !== v) setNativeValue(t, v);
+        t.dataset.hlxIcdAuto = v;
+      }
+    });
+  }
   function ipdTick() {
-    if (!ipdIsPage()) return;
-    if (!isHelixfastEnabled()) {
+    try { hlxPointerCss(); } catch (e) {}
+    if (!hlxQuickPage()) return;
+    try { if (hlxFeatOn('icdfill')) hlxIcdAutoFill(); } catch (e) {}
+    if (!hlxBaseEnabled()) {
       document.querySelectorAll('.hlx-opt-box, .hlx-ex-panel').forEach((b) => b.remove());
       return;
     }
-    ipdSyncTick();
-    ipdEnsureHuongBox();
-    ipdEnsureClsBox();
-    exEnsurePanel('tt');
-    exEnsurePanel('bp');
-    if (!emergIsPage()) {
+    if (!examIsPage() && hlxFeatOn('ipdsync')) ipdSyncTick();
+    if (hlxFeatOn('quick')) {
+      ipdEnsureHuongBox();
+      ipdEnsureClsBox();
+      exEnsurePanel('tt');
+      exEnsurePanel('bp');
+    } else {
+      document.querySelectorAll('.hlx-opt-box, .hlx-ex-panel').forEach((b) => b.remove());
+    }
+    if (location.pathname.indexOf('/his/ipd') !== -1 && hlxFeatOn('benhan')) {
       ipdTreatmentProgTick();
       ipdBenhAnTick();
     }
@@ -9183,11 +9949,42 @@
     'input',
     (e) => {
       if (!e.isTrusted) return;
-      if (!isHelixfastEnabled() || !ipdIsPage()) return;
+      if (!hlxFeatOn('ipdsync') || !ipdIsPage()) return;
       const t = e.target;
       if (!t || t.tagName !== 'TEXTAREA' || !t.matches(SYMPTOM_SELECTOR)) return;
       if (!(t.value || '').trim()) return;
       setTimeout(ipdApplyOnSymptom, 0);
+    },
+    true
+  );
+
+  // ---- Tự viết hoa chữ đầu dòng ----
+  const HLX_CAP_LABELS = ['Toàn thân', 'Các bộ phận', 'Yêu cầu xét nghiệm CLS', 'Chỉ định CLS', 'Hướng điều trị'];
+  function hlxCapTarget(t) {
+    if (!t || !t.closest) return false;
+    if (t.tagName !== 'TEXTAREA' && !(t.tagName === 'INPUT' && (t.type || 'text') === 'text')) return false;
+    const ctl = t.closest('docx-control');
+    const row = t.closest('.ui-form-group');
+    if (!ctl || !row) return false;
+    const sp = row.querySelector('docx-label span[title]');
+    return !!sp && HLX_CAP_LABELS.indexOf((sp.getAttribute('title') || '').trim()) !== -1;
+  }
+  hlxDocListen(
+    'input',
+    (e) => {
+      if (!e.isTrusted || e.isComposing) return;
+      if (!hlxFeatOn('cap') || !hlxQuickPage()) return;
+      const t = e.target;
+      if (!hlxCapTarget(t)) return;
+      const v = t.value || '';
+      const up = (c) => c.toLocaleUpperCase('vi-VN');
+      const nv = t.tagName === 'TEXTAREA'
+        ? v.replace(/(^|\n)([ \t]*)(\S)/g, (m, a, b, c) => a + b + up(c))
+        : v.replace(/^(\s*)(\S)/, (m, a, c) => a + up(c));
+      if (nv === v) return;
+      const ss = t.selectionStart, se = t.selectionEnd;
+      setNativeValue(t, nv);
+      try { t.setSelectionRange(ss, se); } catch (err) {}
     },
     true
   );
@@ -9307,7 +10104,7 @@
     hlxSafe(hlxTabUpdate);
   }
   hlxDocListen('click', function (e) {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('misc')) return;
     const a = e.target && e.target.closest ? e.target.closest('a[data-toggle="tab"][href="#opd_visit_list"]') : null;
     if (!a) return;
 
@@ -9338,7 +10135,7 @@
   function hlxMainTick() {
     hlxSafe(ensureHelixfastToggleButton);
     let enabled = false;
-    hlxSafe(() => { enabled = isHelixfastEnabled(); });
+    hlxSafe(() => { enabled = hlxFeatOn('misc'); });
     if (!enabled) return;
     hlxSafe(bindSymptomEl);
     hlxSafe(scanForTreatmentTextareas);
@@ -9360,7 +10157,7 @@
 
   hlxSafe(ensureHelixfastToggleButton);
   hlxSafe(() => {
-    if (!isHelixfastEnabled()) return;
+    if (!hlxFeatOn('misc')) return;
     hlxSafe(bindSymptomEl);
     hlxSafe(scanForTreatmentTextareas);
     hlxSafe(trySetPaginatorTo100);
@@ -9372,6 +10169,142 @@
   });
 
   setInterval(() => { hlxSafe(ensureHelixfastToggleButton); }, 1500);
+
+  // ===== Nút "Làm mới" ngay sau ô Họ tên của form tìm kiếm (PID / Mã KB / Họ tên): xóa Họ tên rồi tự bấm Tìm kiếm =====
+  function hlxFindNameSearchForms() {
+    const out = [];
+    document.querySelectorAll('input[formcontrolname="full_name"]').forEach((inp) => {
+      const grp = inp.closest('.ui-form-group');
+      if (!grp || !grp.querySelector('input[formcontrolname="person_code"]') || !grp.querySelector('input[formcontrolname="visit_code"]')) return;
+      out.push(inp);
+    });
+    return out;
+  }
+  function hlxFindSearchBtnFor(inp) {
+    const isVis = (b) => !!(b && b.getClientRects && b.getClientRects().length);
+    const txt = (b) => (b.textContent || '').replace(/\s+/g, ' ').trim();
+    const scopes = [];
+    const f = inp.closest('form');
+    if (f) scopes.push(f);
+    let n = inp.parentElement;
+    for (let i = 0; n && i < 8; i++, n = n.parentElement) scopes.push(n);
+    for (const sc of scopes) {
+      const btns = Array.from(sc.querySelectorAll('button')).filter((b) => !b.classList.contains('hlx-namerefresh') && !b.disabled);
+      const hit = btns.find((b) => isVis(b) && b.type === 'submit' && b.classList.contains('btn-primary') && /^tìm kiếm$/i.test(txt(b))) ||
+        btns.find((b) => isVis(b) && /^tìm kiếm$/i.test(txt(b))) ||
+        btns.find((b) => isVis(b) && b.querySelector('i.fa-search')) ||
+        btns.find((b) => isVis(b) && b.type === 'submit') ||
+        btns.find((b) => isVis(b) && /tìm kiếm/i.test(txt(b)));
+      if (hit) return hit;
+    }
+    return null;
+  }
+  function hlxNameRefreshClick(inp) {
+    if (inp.disabled) return;
+    setNativeValue(inp, '');
+    inp.dispatchEvent(new Event('blur', { bubbles: true }));
+    setTimeout(() => {
+      const b = hlxFindSearchBtnFor(inp);
+      if (b) b.click();
+      else console.log('[Helixfast] Làm mới Họ tên: không tìm thấy nút Tìm kiếm');
+      try { inp.focus({ preventScroll: true }); } catch (err) {}
+    }, 120);
+  }
+  function hlxNameRefreshTick() {
+    const on = hlxFeatOn('misc');
+    if (!on) { document.querySelectorAll('.hlx-namerefresh-wrap').forEach((w) => w.remove()); return; }
+    if (!document.getElementById('hlx-namerefresh-css')) {
+      const st = document.createElement('style');
+      st.id = 'hlx-namerefresh-css';
+      st.textContent =
+        '.hlx-namerefresh-wrap{display:flex;align-items:center;gap:6px;}' +
+        '.hlx-namerefresh-wrap>input{flex:1 1 auto;min-width:0;}' +
+        'button.hlx-namerefresh{flex:0 0 auto;display:inline-flex;align-items:center;gap:4px;height:30px;padding:0 10px;border:0;border-radius:6px;' +
+        'background:linear-gradient(135deg,#0ea5e9,#2563eb);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;' +
+        'box-shadow:0 1px 3px rgba(37,99,235,.35);transition:filter .12s,transform .12s;}' +
+        'button.hlx-namerefresh:hover{filter:brightness(1.1);transform:translateY(-1px);}' +
+        'button.hlx-namerefresh:active{transform:none;filter:brightness(.95);}';
+      (document.head || document.documentElement).appendChild(st);
+    }
+    hlxFindNameSearchForms().forEach((inp) => {
+      const host = inp.parentElement;
+      if (!host) return;
+      if (host.querySelector(':scope > button.hlx-namerefresh')) return;
+      host.classList.add('hlx-namerefresh-wrap');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'hlx-namerefresh';
+      btn.title = 'Xóa Họ tên và tìm kiếm lại';
+      btn.innerHTML = '<span style="font-size:14px;line-height:1">⟳</span><span>Làm mới</span>';
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        hlxNameRefreshClick(inp);
+      });
+      inp.insertAdjacentElement('afterend', btn);
+    });
+  }
+  if (!HLX_OFF) setInterval(() => { hlxSafe(hlxNameRefreshTick); }, 700);
+
+  // ===== Xuất viện nội trú: nút chọn nhanh "Phương pháp điều trị" (textarea treatments) + điền sẵn "Nội khoa" =====
+  const HLX_TREAT_OPTS = ['Nội khoa', 'Ngoại khoa', 'Xạ trị', 'Hoá trị', 'Xạ trị + Nội khoa'];
+  const HLX_TREAT_DEFAULT = 'Nội khoa';
+  function hlxTreatTick() {
+    const on = hlxFeatOn('ipdtreat');
+    if (!on) { document.querySelectorAll('.hlx-treat-bar').forEach((b) => b.remove()); return; }
+    document.querySelectorAll('.hlx-treat-bar').forEach((b) => { if (!b.parentElement || !b.parentElement.classList.contains('hlx-treat-wrap')) b.remove(); });
+    if (!document.getElementById('hlx-treat-css')) {
+      const st = document.createElement('style');
+      st.id = 'hlx-treat-css';
+      st.textContent =
+        '.hlx-treat-wrap{display:block;flex:1 1 0%;min-width:0;width:100%;box-sizing:border-box;}' +
+        '.hlx-treat-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;width:100%;margin:6px 0 2px;}' +
+        '.hlx-treat-bar button{flex:0 0 auto;white-space:nowrap;line-height:1.3;border:1px solid #93c5fd;background:#eff6ff;color:#1d4ed8;border-radius:999px;padding:3px 12px;font-size:12px;font-weight:600;cursor:pointer;transition:background .12s,color .12s,transform .12s;}' +
+        '.hlx-treat-bar button:hover{background:#dbeafe;transform:translateY(-1px);}' +
+        '.hlx-treat-bar button.on{background:linear-gradient(135deg,#16a34a,#22c55e);border-color:#16a34a;color:#fff;}';
+      (document.head || document.documentElement).appendChild(st);
+    }
+    document.querySelectorAll('textarea[formcontrolname="treatments"]').forEach((ta) => {
+      if (!ta.getClientRects().length) return;
+      // Gói ô vào một khung riêng (block, chiếm hết chỗ còn lại của hàng) để hàng nút nằm NGAY DƯỚI ô, không bị đẩy sang cạnh
+      let wrap = ta.parentElement;
+      if (!wrap || !wrap.classList.contains('hlx-treat-wrap')) {
+        wrap = document.createElement('div');
+        wrap.className = 'hlx-treat-wrap';
+        ta.parentElement.insertBefore(wrap, ta);
+        wrap.appendChild(ta);
+        ta.style.width = '100%';
+        ta.style.boxSizing = 'border-box';
+      }
+      let bar = wrap.querySelector(':scope > .hlx-treat-bar');
+      if (!bar) {
+        bar = document.createElement('div');
+        bar.className = 'hlx-treat-bar';
+        HLX_TREAT_OPTS.forEach((t) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.textContent = t;
+          b.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (ta.disabled || ta.readOnly) return;
+            setNativeValue(ta, t);
+            ta.dispatchEvent(new Event('blur', { bubbles: true }));
+            hlxTreatTick();
+          });
+          bar.appendChild(b);
+        });
+        wrap.appendChild(bar);
+      }
+      // Ô đang mở + trống (và người dùng không đang đặt con trỏ trong ô) -> điền sẵn "Nội khoa"
+      if (!ta.disabled && !ta.readOnly && !(ta.value || '').trim() && document.activeElement !== ta) {
+        setNativeValue(ta, HLX_TREAT_DEFAULT);
+      }
+      const cur = (ta.value || '').trim().toLowerCase();
+      bar.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.textContent.toLowerCase() === cur));
+    });
+  }
+  if (!HLX_OFF) setInterval(() => { hlxSafe(hlxTreatTick); }, 500);
   // Tự kiểm tra bản mới: sau khi tải trang và mỗi 6 giờ
   setTimeout(() => { hlxCheckUpdate(); }, 4000);
   setInterval(() => { hlxCheckUpdate(); }, 6 * 3600 * 1000);
@@ -9669,7 +10602,7 @@
 
     function tick() {
       let host = null, enabled = false;
-      try { host = document.querySelector(HOST_SEL); enabled = isHelixfastEnabled(); } catch (err) {}
+      try { host = document.querySelector(HOST_SEL); enabled = hlxFeatOn('room'); } catch (err) {}
       const bar = document.getElementById('hlx-room-bar');
       if (!host || !enabled) { if (bar) bar.remove(); hostSince = 0; return; }
       if (!hostSince) hostSince = Date.now();
@@ -9686,7 +10619,7 @@
     setInterval(() => {
       try {
         const host = document.querySelector(HOST_SEL);
-        if (!host || !isHelixfastEnabled()) { lastSeen = null; return; }
+        if (!host || !hlxFeatOn('room')) { lastSeen = null; return; }
         const cur = nz(curName(host));
         if (busy) return; // luồng chọn nhanh/ghim tự xử lý tìm kiếm
         if (lastSeen === null) { lastSeen = cur; return; }
@@ -9749,7 +10682,7 @@
     clopidogrel: ['Clopidogrel', 'antiplatelet', 'clopidogrel|plavix|tunadimet'],
     ticagrelor: ['Ticagrelor', 'antiplatelet', 'ticagrelor|brilinta'],
     prasugrel: ['Prasugrel', 'antiplatelet', 'prasugrel|effient'],
-    warfarin: ['Warfarin', 'anticoag', 'warfarin|coumadin'],
+    warfarin: ['Warfarin', 'anticoag vka', 'warfarin|coumadin'],
     rivaroxaban: ['Rivaroxaban', 'anticoag doac', 'rivaroxaban|xarelto'],
     apixaban: ['Apixaban', 'anticoag doac', 'apixaban|eliquis'],
     dabigatran: ['Dabigatran', 'anticoag doac', 'dabigatran|pradaxa'],
@@ -9775,8 +10708,8 @@
     trimetazidine: ['Trimetazidin', '', 'trimetazidin|vastarel|vaspycar'],
     magnesium: ['Magnesi', 'chelator', 'magnesi|magne|mazzgin'],
     calcium: ['Calci', 'chelator', 'calcium|calci carbonat'],
-    iron: ['Sắt', 'chelator', 'sat fumarat|sat sulfat|ferrous|tardyferon|ferrovit'],
-    aluminium: ['Nhôm hydroxid (antacid)', 'chelator', 'aluminium|nhom hydroxid|maalox|phosphalugel|almagate'],
+    iron: ['Sắt', 'chelator', 'sat fumarat|sat sulfat|sat gluconat|ferrous|tardyferon|ferrovit'],
+    aluminium: ['Nhôm hydroxid (antacid)', 'chelator', 'aluminium|nhom hydroxid|nhom hydroxyd|magnesi hydroxyd|magnesi hydroxid|maalox|phosphalugel|almagate|hamigel'],
     nitrate: ['Nitrat', 'nitrate', 'isosorbid|nitroglycerin|nitromint|imdur|nitrostad'],
     sildenafil: ['Sildenafil', 'pde5', 'sildenafil|viagra'],
     tadalafil: ['Tadalafil', 'pde5', 'tadalafil|cialis'],
@@ -9803,16 +10736,16 @@
     digoxin: ['Digoxin', '', 'digoxin|lanoxin'],
     amiodarone: ['Amiodaron', '', 'amiodaron|cordarone'],
     verapamil: ['Verapamil', 'ndhp', 'verapamil|isoptin'],
-    amlodipine: ['Amlodipin', '', 'amlodipin|amlor|norvasc'],
+    amlodipine: ['Amlodipin', 'dhp', 'amlodipin|amlor|norvasc'],
     allopurinol: ['Allopurinol', '', 'allopurinol|zyloric'],
     azathioprine: ['Azathioprin', '', 'azathioprin|imuran'],
     theophylline: ['Theophyllin', '', 'theophyllin|theostat'],
-    tizanidine: ['Tizanidin', '', 'tizanidin|sirdalud'],
+    tizanidine: ['Tizanidin', 'musclerelax', 'tizanidin|sirdalud'],
     ergotamine: ['Ergotamin', '', 'ergotamin|dihydroergotamin'],
     lithium: ['Lithi', '', 'lithi|lithium'],
     spironolactone: ['Spironolacton', 'kspare', 'spironolacton|aldactone'],
-    potassium: ['Kali clorid', 'kspare', 'kali clorid|kcl|potassium'],
-    furosemide: ['Furosemid', '', 'furosemid|lasix'],
+    potassium: ['Kali clorid', 'kspare', 'kali clorid|kcl|potassium chlorid'],
+    furosemide: ['Furosemid', 'loop kwasting', 'furosemid|lasix'],
     prednisolone: ['Prednisolon', 'corticoid', 'prednisolon|medrol|methylprednisolon|dexamethason|hydrocortison'],
     gabapentin: ['Gabapentin/Pregabalin', 'cnsdep', 'gabapentin|pregabalin|lyrica'],
     benzodiazepine: ['Benzodiazepin', 'cnsdep', 'diazepam|alprazolam|lorazepam|clonazepam|seduxen'],
@@ -9841,7 +10774,66 @@
   carbapenem: ['Carbapenem', 'carbapenem', 'meropenem|imipenem|ertapenem|meronem|tienam'],
   triptan: ['Triptan', '', 'sumatriptan|rizatriptan|zolmitriptan|naratriptan|imigran'],
   nicorandil: ['Nicorandil', 'nitrate', 'nicorandil|sigmart'],
-  bblocker: ['Chẹn beta', 'bblocker', 'metoprolol|betaloc|bisoprolol|concor|carvedilol|atenolol|propranolol|nebivolol']
+  bblocker: ['Chẹn beta', 'bblocker', 'metoprolol|betaloc|bisoprolol|concor|carvedilol|atenolol|propranolol|nebivolol'],
+    // ===== Bổ sung theo danh mục thuốc bệnh viện (v2.18) =====
+    acenocoumarol: ['Acenocoumarol', 'anticoag vka', 'acenocoumarol|acenocoumarin|sintrom|azenmarol'],
+    tenoxicam: ['Tenoxicam', 'nsaid', 'tenoxicam|tilcotil'],
+    ciprofibrate: ['Ciprofibrat', 'fibrate', 'ciprofibrat|lipanor'],
+    azithromycin: ['Azithromycin', 'macrolide', 'azithromycin|azizi|zithromax'],
+    spiramycin: ['Spiramycin', '', 'spiramycin|rovamycin|infecin'],
+    amoxicillin: ['Amoxicilin (± acid clavulanic)', 'penicillin', 'amoxicilin|amoxicillin|augmentin|curam|midantin|moxacin|clavulan'],
+    penicillinv: ['Penicilin V', 'penicillin', 'penicilin v|penicillin v|phenoxymethylpenicilin|phenoxy methylpenicilin|ospen'],
+    cefpodoxime: ['Cefpodoxim', 'cephalosporin', 'cefpodoxim|cebest'],
+    cefixime: ['Cefixim', 'cephalosporin', 'cefixim|imexime|suprax'],
+    acetazolamide: ['Acetazolamid', 'kwasting', 'acetazolamid|diamox'],
+    acyclovir: ['Aciclovir', '', 'aciclovir|acyclovir|zovirax|cadirovib'],
+    tenofovir: ['Tenofovir', '', 'tenofovir|agifovir|viread'],
+    dutasteride: ['Dutasterid', '', 'dutasterid|avodart'],
+    budesonide: ['Budesonid', 'inhcs', 'budesonid|benita|pulmicort'],
+    fluticasone: ['Fluticason', 'inhcs', 'fluticason|meseca|flixonase'],
+    fluorometholone: ['Fluorometholon (nhỏ mắt)', '', 'fluorometholon|flumetholon'],
+    pirenoxine: ['Pirenoxin (nhỏ mắt)', '', 'pirenoxin|kary uni'],
+    hyaluronate: ['Natri hyaluronat (nhỏ mắt)', '', 'natri hyaluronat|hyaluronat|tearbalance'],
+    acetylcysteine: ['Acetylcystein', 'mucolytic', 'acetylcystein|stacytine|acemuc'],
+    bromhexine: ['Bromhexin', 'mucolytic', 'bromhexin|bisolvon'],
+    ambroxol: ['Ambroxol', 'mucolytic', 'ambroxol|mucosolvan'],
+    carbocisteine: ['Carbocistein', 'mucolytic', 'carbocistein|xalermus|mucitux'],
+    diosmin: ['Diosmin/Hesperidin', '', 'diosmin|hesperidin|agiosmin|daflon'],
+    montelukast: ['Montelukast', '', 'montelukast|singulair|airlukast'],
+    cetirizine: ['Cetirizin', 'antihist', 'cetirizin|zyrtec|certiryl'],
+    desloratadine: ['Desloratadin', 'antihist', 'desloratadin|aerius|setbozi'],
+    rupatadine: ['Rupatadin', 'antihist sedhist', 'rupatadin|rupafin|rustifim'],
+    bilastine: ['Bilastin', 'antihist', 'bilastin|bilaxten'],
+    chlorpheniramine: ['Clorpheniramin', 'antihist sedhist', 'clorpheniramin|chlorpheniramin|chlorphenamin'],
+    alimemazine: ['Alimemazin', 'antihist sedhist neuroleptic', 'alimemazin|thenadin|theralen'],
+    sulpiride: ['Sulpirid', 'neuroleptic', 'sulpirid|dogmatil'],
+    drotaverine: ['Drotaverin', '', 'drotaverin|no spa|drotusc'],
+    dydrogesterone: ['Dydrogesteron', 'progestogen', 'dydrogesteron|duphaston'],
+    progesterone: ['Progesteron', 'progestogen', 'progesteron|utrogestan'],
+    lactulose: ['Lactulose', '', 'lactulose|duphalac'],
+    diosmectite: ['Diosmectit', 'adsorbent', 'diosmectit|smecta'],
+    racecadotril: ['Racecadotril', '', 'racecadotril|hidrasec'],
+    sboulardii: ['Saccharomyces boulardii', '', 'saccharomyces boulardii|boulardii|bolabio|normagut'],
+    bclausii: ['Bacillus clausii', '', 'bacillus clausii|enterogolds|enterogermina'],
+    nystatin: ['Nystatin', '', 'nystatin|nystatab'],
+    simethicone: ['Simethicon', '', 'simethicon|simecol'],
+    piracetam: ['Piracetam', '', 'piracetam|kacetam|nootropil'],
+    alphachymo: ['Alpha chymotrypsin', '', 'chymotrypsin|katrypsin'],
+    nacleucine: ['N-acetyl-leucin', '', 'acetyl dl leucin|acetyl leucin|gikanin|tanganil'],
+    cmpump: ['Cytidin/Uridin', '', 'cytidin|uridin|hornol'],
+    mecobalamin: ['Mecobalamin', '', 'mecobalamin|methylcobalamin|mebaal'],
+    vitaminb6: ['Vitamin B6', '', 'pyridoxin|vitamin b6'],
+    vitaminc: ['Vitamin C', '', 'acid ascorbic|vitamin c|natri ascorbat|cesyrup'],
+    vitamine: ['Vitamin E', '', 'vitamin e|tocopherol|incepavit'],
+    zinc: ['Kẽm', 'chelator', 'zinc|kem gluconat|kem sulfat'],
+    copper: ['Đồng', '', 'dong sulfat|dong gluconat|gysudo'],
+    manganese: ['Mangan', '', 'mangan gluconat|mangan sulfat'],
+    indapamide: ['Indapamid', 'thiazide kwasting', 'indapamid|natrilix|natrixam'],
+    hydrochlorothiazide: ['Hydroclorothiazid', 'thiazide kwasting', 'hydroclorothiazid|hydrochlorothiazid|hctz'],
+    nifedipine: ['Nifedipin', 'dhp', 'nifedipin|adalat'],
+    methyldopa: ['Methyldopa', '', 'methyldopa|aldomet'],
+    eperisone: ['Eperison', 'musclerelax', 'eperison|myonal'],
+    thiocolchicoside: ['Thiocolchicosid', 'musclerelax', 'thiocolchicosid|lucitromyl|coltramyl']
   };
 
   function hlxDdiNorm(s) {
@@ -9849,7 +10841,10 @@
       .replace(/[đĐ]/g, 'd').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
   }
   function hlxDdiBrandKey(name) {
-    return hlxDdiNorm(String(name || '').replace(/\([^)]*\)/g, ' ').replace(/\d+([.,]\d+)?\s*(mg|mcg|g|ml|iu|%)?/gi, ' '));
+    const full = String(name || '');
+    const head = full.split('(')[0];
+    const base = head.trim() ? head : full.replace(/\([^)]*\)/g, ' ');
+    return hlxDdiNorm(base.replace(/\d+([.,]\d+)?\s*(mg|mcg|g|ml|iu|%)?/gi, ' '));
   }
   const HLX_DDI_ALIASES = (() => {
     const out = [];
@@ -9896,7 +10891,7 @@
     { a: ['arni'], b: ['acei'], lv: 'contra', t: 'Sacubitril/valsartan + ức chế men chuyển',
     why: 'Nguy cơ phù mạch nặng. Nhãn chống chỉ định; phải ngừng ACEi ≥36 giờ trước khi dùng sacubitril/valsartan.',
     adv: 'Không dùng chung.' },
-  { a: ['maoi'], b: ['linezolid', 'triptan', 'carbamazepine'], lv: 'contra', t: 'Thuốc ức chế MAO + linezolid/triptan/carbamazepin',
+  { a: ['maoi'], b: ['linezolid', 'triptan', 'carbamazepine', 'methyldopa'], lv: 'contra', t: 'Thuốc ức chế MAO + linezolid/triptan/carbamazepin/methyldopa',
     why: 'Nguy cơ hội chứng serotonin, cơn tăng huyết áp hoặc tăng độc tính (nhãn các thuốc này chống chỉ định phối hợp với MAOI).',
     adv: 'Không dùng chung; cần thời gian rửa thuốc theo nhãn.' },
   { a: ['triptan'], b: ['ergotamine'], lv: 'contra', t: 'Triptan + ergotamin',
@@ -9942,10 +10937,10 @@
   { a: ['ivabradine'], b: ['ndhp'], lv: 'major', t: 'Ivabradin + verapamil/diltiazem',
     why: 'Tăng nồng độ ivabradin và cộng hưởng làm chậm nhịp.',
     adv: 'Không khuyến cáo phối hợp.' },
-  { a: ['amiodarone'], b: ['clarithromycin', 'erythromycin', 'moxifloxacin', 'levofloxacin'], lv: 'major', t: 'Amiodaron + thuốc kéo dài QT',
+  { a: ['amiodarone'], b: ['clarithromycin', 'erythromycin', 'azithromycin', 'spiramycin', 'moxifloxacin', 'levofloxacin', 'sulpiride'], lv: 'major', t: 'Amiodaron + thuốc kéo dài QT',
     why: 'Cộng hưởng kéo dài QT → nguy cơ xoắn đỉnh, loạn nhịp thất.',
     adv: 'Tránh phối hợp hoặc theo dõi ECG, điện giải.' },
-  { a: ['amiodarone'], b: ['warfarin'], lv: 'major', t: 'Amiodaron + warfarin',
+  { a: ['amiodarone'], b: ['warfarin', 'acenocoumarol'], lv: 'major', t: 'Amiodaron + warfarin/acenocoumarol',
     why: 'Amiodaron làm tăng mạnh tác dụng warfarin (tăng INR).', adv: 'Giảm liều warfarin và theo dõi INR sát.' },
   { a: ['carbamazepine'], b: ['clarithromycin', 'erythromycin', 'verapamil', 'diltiazem'], lv: 'major', t: 'Carbamazepin + macrolid/verapamil/diltiazem',
     why: 'Tăng nồng độ carbamazepin → ngộ độc (chóng mặt, nhìn đôi, thất điều).', adv: 'Tránh hoặc theo dõi nồng độ thuốc.' },
@@ -9976,8 +10971,8 @@
     { a: ['acei'], b: ['arb'], lv: 'major', skipIf: ['arni'], t: 'Ức chế men chuyển + chẹn thụ thể angiotensin',
       why: 'Phong tỏa kép hệ renin-angiotensin → tăng kali máu, hạ huyết áp, suy thận cấp mà không thêm lợi ích rõ.',
       adv: 'Thường tránh phối hợp.' },
-    { a: ['warfarin'], b: ['clarithromycin', 'erythromycin', 'fluconazole', 'ketoconazole', 'itraconazole', 'ciprofloxacin', 'levofloxacin', 'metronidazole', 'cotrimoxazole'],
-      lv: 'major', t: 'Warfarin + kháng sinh/kháng nấm',
+    { a: ['warfarin', 'acenocoumarol'], b: ['clarithromycin', 'erythromycin', 'fluconazole', 'ketoconazole', 'itraconazole', 'ciprofloxacin', 'levofloxacin', 'metronidazole', 'cotrimoxazole'],
+      lv: 'major', t: 'Warfarin/acenocoumarol + kháng sinh/kháng nấm',
       why: 'Làm tăng tác dụng warfarin (tăng INR) → nguy cơ chảy máu.',
       adv: 'Theo dõi INR sát, cân nhắc đổi thuốc hoặc chỉnh liều warfarin.' },
     { a: ['tramadol'], b: ['ssri'], lv: 'major', t: 'Tramadol + SSRI',
@@ -10001,7 +10996,7 @@
     { a: ['allopurinol'], b: ['azathioprine', 'mercaptopurine'], lv: 'major', t: 'Allopurinol + azathioprin/mercaptopurin',
       why: 'Giảm chuyển hóa azathioprin → ức chế tủy xương nặng.',
       adv: 'Giảm liều azathioprin theo hướng dẫn và theo dõi công thức máu.' },
-    { a: ['lithium'], b: ['nsaid', 'raas'], lv: 'major', t: 'Lithi + NSAID/ACEi/ARB',
+    { a: ['lithium'], b: ['nsaid', 'raas', 'thiazide'], lv: 'major', t: 'Lithi + NSAID/ACEi/ARB/thiazid',
       why: 'Giảm thải lithi → tăng nồng độ, ngộ độc lithi.',
       adv: 'Theo dõi nồng độ lithi hoặc tránh phối hợp.' },
     // ---- VỪA ----
@@ -10035,7 +11030,7 @@
     { a: ['quinolone', 'tetracycline', 'levothyroxine', 'bisphosphonate'], b: ['chelator'], lv: 'moderate', t: 'Thuốc bị giảm hấp thu bởi Mg/Ca/Fe/nhôm',
       why: 'Tạo phức khó hấp thu ở ruột nên giảm nồng độ thuốc.',
       adv: 'Uống cách nhau ít nhất 2–6 giờ (đọc nhãn từng thuốc).' },
-    { a: ['warfarin'], b: ['fenofibrate'], lv: 'moderate', t: 'Warfarin + fenofibrat',
+    { a: ['warfarin', 'acenocoumarol'], b: ['fenofibrate'], lv: 'moderate', t: 'Warfarin/acenocoumarol + fenofibrat',
       why: 'Có thể tăng INR.', adv: 'Theo dõi INR.' },
     { a: ['amlodipine'], b: ['simvastatin'], lv: 'moderate', t: 'Amlodipin + simvastatin',
       why: 'Tăng nồng độ simvastatin → nguy cơ độc tính cơ.',
@@ -10051,12 +11046,138 @@
   { a: ['corticoid'], b: ['sulfonylurea', 'metformin', 'insulin'], lv: 'moderate', t: 'Corticoid + thuốc hạ đường huyết',
       why: 'Corticoid làm tăng đường huyết, giảm hiệu quả thuốc đái tháo đường.',
       adv: 'Theo dõi đường huyết, có thể cần chỉnh liều.' },
+    // ===== Quy tắc bổ sung theo danh mục thuốc bệnh viện (v2.18) =====
+    // -- Quan trọng
+    { a: ['sulpiride'], b: ['amiodarone', 'clarithromycin', 'erythromycin', 'azithromycin', 'spiramycin', 'moxifloxacin', 'levofloxacin', 'domperidone'], lv: 'major', t: 'Sulpirid + thuốc kéo dài QT',
+      why: 'Cộng hưởng kéo dài khoảng QT → nguy cơ xoắn đỉnh, loạn nhịp thất.', adv: 'Tránh phối hợp; nếu cần phải theo dõi ECG và điện giải (K, Mg).' },
+    { a: ['fibrate'], b: ['fibrate'], lv: 'major', same: true, t: 'Hai fibrat cùng lúc',
+      why: 'Không tăng hiệu quả mà tăng nguy cơ bệnh cơ/tiêu cơ vân, độc gan.', adv: 'Chỉ giữ một fibrat.' },
+    { a: ['methotrexate'], b: ['penicillin'], lv: 'major', t: 'Methotrexat + penicilin/amoxicilin',
+      why: 'Penicilin làm giảm thải trừ methotrexat qua thận → tăng độc tính (ức chế tủy, loét niêm mạc).', adv: 'Tránh hoặc theo dõi công thức máu, chức năng thận, nồng độ methotrexat.' },
+    // -- Vừa
+    { a: ['vka'], b: ['azithromycin'], lv: 'moderate', t: 'Warfarin/acenocoumarol + azithromycin',
+      why: 'Có thể làm tăng INR và nguy cơ chảy máu.', adv: 'Theo dõi INR trong và sau đợt kháng sinh.' },
+    { a: ['vka'], b: ['ciprofibrate'], lv: 'moderate', t: 'Warfarin/acenocoumarol + ciprofibrat',
+      why: 'Fibrat làm tăng tác dụng thuốc chống đông kháng vitamin K (tăng INR).', adv: 'Theo dõi INR sát, có thể cần giảm liều thuốc chống đông.' },
+    { a: ['vka'], b: ['tetracycline'], lv: 'moderate', t: 'Warfarin/acenocoumarol + doxycyclin/tetracyclin',
+      why: 'Có thể làm tăng INR.', adv: 'Theo dõi INR.' },
+    { a: ['azithromycin'], b: ['digoxin'], lv: 'moderate', t: 'Azithromycin + digoxin',
+      why: 'Có thể tăng nồng độ digoxin (ức chế P-gp) → nguy cơ ngộ độc digoxin.', adv: 'Theo dõi triệu chứng, nồng độ digoxin và ECG.' },
+    { a: ['azithromycin'], b: ['colchicine'], lv: 'moderate', t: 'Azithromycin + colchicin',
+      why: 'Có thể tăng nồng độ colchicin → nguy cơ ngộ độc, nhất là khi suy thận.', adv: 'Theo dõi triệu chứng tiêu hóa/độc tính; giảm liều colchicin nếu cần.' },
+    { a: ['azithromycin', 'spiramycin'], b: ['domperidone'], lv: 'moderate', t: 'Macrolid + domperidon',
+      why: 'Cộng hưởng nguy cơ kéo dài QT.', adv: 'Tránh phối hợp ở bệnh nhân có bệnh tim, rối loạn điện giải.' },
+    { a: ['statin'], b: ['ciprofibrate'], lv: 'moderate', t: 'Statin + ciprofibrat',
+      why: 'Tăng nguy cơ bệnh cơ/tiêu cơ vân.', adv: 'Theo dõi đau cơ, CK nếu có triệu chứng.' },
+    { a: ['thiazide'], b: ['nsaid'], lv: 'moderate', t: 'Thiazid/indapamid + NSAID',
+      why: 'NSAID làm giảm tác dụng lợi tiểu, hạ áp và tăng nguy cơ suy thận cấp.', adv: 'Theo dõi huyết áp, creatinin/eGFR, điện giải.' },
+    { a: ['thiazide'], b: ['sulfonylurea', 'metformin', 'insulin'], lv: 'moderate', t: 'Thiazid/indapamid + thuốc hạ đường huyết',
+      why: 'Thiazid có thể làm tăng đường huyết, giảm hiệu quả thuốc đái tháo đường.', adv: 'Theo dõi đường huyết, chỉnh liều nếu cần.' },
+    { a: ['thiazide'], b: ['thiazide'], lv: 'moderate', same: true, t: 'Hai thuốc lợi tiểu thiazid/tương tự',
+      why: 'Tăng nguy cơ hạ natri, hạ kali, mất nước mà không thêm lợi ích rõ.', adv: 'Thường chỉ giữ một thuốc; kiểm tra có chủ ý hay không.' },
+    { a: ['kwasting'], b: ['digoxin'], lv: 'moderate', t: 'Lợi tiểu thải kali/acetazolamid + digoxin',
+      why: 'Hạ kali máu làm tăng độc tính của digoxin (loạn nhịp).', adv: 'Theo dõi kali, magnesi và ECG.' },
+    { a: ['kwasting'], b: ['amiodarone'], lv: 'moderate', t: 'Lợi tiểu thải kali/acetazolamid + amiodaron',
+      why: 'Hạ kali/magnesi làm tăng nguy cơ kéo dài QT và loạn nhịp.', adv: 'Theo dõi điện giải và ECG.' },
+    { a: ['corticoid'], b: ['loop', 'thiazide', 'acetazolamide'], lv: 'moderate', t: 'Corticoid + lợi tiểu thải kali/acetazolamid',
+      why: 'Cộng hưởng gây hạ kali máu.', adv: 'Theo dõi kali máu, bổ sung nếu cần.' },
+    { a: ['calcium'], b: ['thiazide'], lv: 'minor', t: 'Calci + thiazid/indapamid',
+      why: 'Thiazid giảm thải calci qua thận → có thể tăng calci máu khi dùng calci liều cao kéo dài.', adv: 'Theo dõi calci máu nếu dùng lâu dài.' },
+    { a: ['acetazolamide'], b: ['aspirin'], lv: 'moderate', t: 'Acetazolamid + aspirin',
+      why: 'Aspirin liều cao làm tăng độc tính acetazolamid (toan chuyển hóa, ngộ độc thần kinh) và ngược lại.', adv: 'Tránh aspirin liều cao; theo dõi nếu bắt buộc.' },
+    { a: ['acetazolamide'], b: ['lithium'], lv: 'moderate', t: 'Acetazolamid + lithi',
+      why: 'Acetazolamid làm tăng thải lithi, giảm nồng độ lithi.', adv: 'Theo dõi nồng độ lithi.' },
+    { a: ['acetazolamide'], b: ['carbamazepine'], lv: 'moderate', t: 'Acetazolamid + carbamazepin',
+      why: 'Tăng nồng độ carbamazepin và nguy cơ hạ natri máu.', adv: 'Theo dõi nồng độ carbamazepin và natri máu.' },
+    { a: ['acetazolamide'], b: ['metformin'], lv: 'minor', t: 'Acetazolamid + metformin',
+      why: 'Cùng có thể gây toan chuyển hóa → tăng nguy cơ nhiễm toan lactic.', adv: 'Thận trọng khi suy thận; theo dõi điện giải, bicarbonat.' },
+    { a: ['methyldopa'], b: ['iron'], lv: 'moderate', t: 'Methyldopa + sắt',
+      why: 'Sắt làm giảm hấp thu methyldopa → giảm tác dụng hạ áp.', adv: 'Uống cách nhau ≥2 giờ; theo dõi huyết áp.' },
+    { a: ['methyldopa'], b: ['lithium'], lv: 'moderate', t: 'Methyldopa + lithi',
+      why: 'Có thể gây độc thần kinh do lithi dù nồng độ lithi chưa tăng.', adv: 'Tránh hoặc theo dõi sát triệu chứng thần kinh.' },
+    { a: ['methyldopa'], b: ['nsaid'], lv: 'minor', t: 'Methyldopa + NSAID',
+      why: 'NSAID có thể làm giảm tác dụng hạ áp.', adv: 'Theo dõi huyết áp.' },
+    { a: ['dhp'], b: ['ndhp'], lv: 'moderate', t: 'Amlodipin/nifedipin + diltiazem/verapamil',
+      why: 'Diltiazem/verapamil ức chế CYP3A4 làm tăng nồng độ nhóm dihydropyridin → hạ huyết áp, phù, nhịp nhanh phản xạ.', adv: 'Theo dõi huyết áp; cân nhắc giảm liều dihydropyridin.' },
+    { a: ['dhp'], b: ['clarithromycin', 'erythromycin', 'ketoconazole', 'itraconazole'], lv: 'moderate', t: 'Amlodipin/nifedipin + ức chế CYP3A4 mạnh',
+      why: 'Tăng nồng độ thuốc chẹn kênh calci → hạ huyết áp, phù.', adv: 'Theo dõi huyết áp, cân nhắc giảm liều.' },
+    { a: ['dhp'], b: ['dhp'], lv: 'moderate', same: true, t: 'Hai thuốc chẹn kênh calci dihydropyridin',
+      why: 'Cùng nhóm, không tăng hiệu quả mà tăng tác dụng phụ (phù, hạ áp).', adv: 'Chỉ giữ một thuốc, trừ khi thuốc phối hợp có chủ ý.' },
+    { a: ['sulpiride'], b: ['aluminium'], lv: 'moderate', t: 'Sulpirid + antacid nhôm/magnesi',
+      why: 'Antacid làm giảm hấp thu sulpirid.', adv: 'Uống cách nhau ≥2 giờ.' },
+    { a: ['sulpiride', 'sedhist'], b: ['benzodiazepine', 'gabapentin', 'opioid'], lv: 'moderate', t: 'Sulpirid/kháng histamin an thần + benzodiazepin/opioid/gabapentinoid',
+      why: 'Cộng hưởng ức chế thần kinh trung ương: buồn ngủ, giảm tỉnh táo, ức chế hô hấp.', adv: 'Dùng liều thấp nhất, thận trọng ở người lớn tuổi, dặn tránh lái xe.' },
+    { a: ['neuroleptic'], b: ['neuroleptic'], lv: 'moderate', same: true, t: 'Hai thuốc an thần kinh/phenothiazin',
+      why: 'Cộng hưởng an thần, hạ huyết áp, kéo dài QT, triệu chứng ngoại tháp.', adv: 'Chỉ giữ một thuốc nếu không có chỉ định phối hợp rõ.' },
+    { a: ['sedhist'], b: ['sulpiride'], lv: 'moderate', skipIf: ['alimemazine'], t: 'Kháng histamin an thần + sulpirid',
+      why: 'Cộng hưởng an thần, giảm tỉnh táo.', adv: 'Dặn bệnh nhân tránh lái xe/vận hành máy.' },
+    { a: ['rupatadine'], b: ['clarithromycin', 'erythromycin', 'ketoconazole', 'itraconazole'], lv: 'moderate', t: 'Rupatadin + ức chế CYP3A4 mạnh',
+      why: 'Tăng nồng độ rupatadin → nguy cơ tác dụng phụ (buồn ngủ, QT).', adv: 'Tránh phối hợp hoặc đổi thuốc.' },
+    { a: ['antihist'], b: ['antihist'], lv: 'minor', same: true, t: 'Hai thuốc kháng histamin H1',
+      why: 'Cùng nhóm, tăng tác dụng phụ (buồn ngủ, khô miệng) mà ít thêm lợi ích.', adv: 'Thường chỉ giữ một thuốc.' },
+    { a: ['bilastine'], b: ['ketoconazole', 'erythromycin', 'diltiazem', 'verapamil'], lv: 'minor', t: 'Bilastin + ức chế P-gp',
+      why: 'Tăng nồng độ bilastin trong máu.', adv: 'Theo dõi tác dụng phụ.' },
+    { a: ['musclerelax'], b: ['musclerelax'], lv: 'moderate', same: true, t: 'Hai thuốc giãn cơ',
+      why: 'Cộng hưởng an thần, chóng mặt, hạ huyết áp.', adv: 'Chỉ giữ một thuốc giãn cơ.' },
+    { a: ['tenofovir'], b: ['nsaid'], lv: 'moderate', t: 'Tenofovir + NSAID',
+      why: 'Tăng nguy cơ tổn thương thận (độc thận cộng hưởng).', adv: 'Tránh NSAID liều cao/kéo dài; theo dõi creatinin, eGFR.' },
+    { a: ['tenofovir'], b: ['acyclovir'], lv: 'moderate', t: 'Tenofovir + aciclovir',
+      why: 'Cạnh tranh bài xuất ở ống thận và cùng độc thận → tăng nồng độ cả hai thuốc.', adv: 'Theo dõi chức năng thận; chỉnh liều theo độ thanh thải creatinin.' },
+    { a: ['acyclovir'], b: ['cyclosporine'], lv: 'moderate', t: 'Aciclovir + ciclosporin',
+      why: 'Cộng hưởng độc thận.', adv: 'Theo dõi chức năng thận, bù đủ dịch.' },
+    { a: ['acyclovir'], b: ['theophylline'], lv: 'minor', t: 'Aciclovir + theophyllin',
+      why: 'Aciclovir có thể làm tăng nồng độ theophyllin.', adv: 'Theo dõi triệu chứng ngộ độc theophyllin.' },
+    { a: ['inhcs'], b: ['ketoconazole', 'itraconazole', 'clarithromycin'], lv: 'moderate', t: 'Corticoid hít/xịt mũi + ức chế CYP3A4 mạnh',
+      why: 'Tăng tác dụng toàn thân của budesonid/fluticason (hội chứng Cushing, ức chế thượng thận).', adv: 'Tránh phối hợp kéo dài; theo dõi tác dụng toàn thân.' },
+    { a: ['progestogen'], b: ['carbamazepine'], lv: 'moderate', t: 'Progesteron/dydrogesteron + carbamazepin',
+      why: 'Carbamazepin cảm ứng enzym gan, làm giảm nồng độ progestogen → giảm hiệu quả.', adv: 'Theo dõi đáp ứng điều trị, cân nhắc tăng liều hoặc đổi thuốc.' },
+    { a: ['progestogen'], b: ['ketoconazole', 'itraconazole', 'clarithromycin'], lv: 'minor', t: 'Progestogen + ức chế CYP3A4 mạnh',
+      why: 'Có thể tăng nồng độ progestogen.', adv: 'Theo dõi tác dụng phụ.' },
+    { a: ['progestogen'], b: ['progestogen'], lv: 'moderate', same: true, t: 'Hai thuốc progestogen cùng lúc',
+      why: 'Trùng nhóm, nguy cơ quá liều nội tiết.', adv: 'Kiểm tra chỉ định; thường chỉ giữ một thuốc.' },
+    { a: ['dutasteride'], b: ['diltiazem', 'verapamil', 'ketoconazole', 'itraconazole', 'clarithromycin'], lv: 'minor', t: 'Dutasterid + ức chế CYP3A4',
+      why: 'Có thể tăng nồng độ dutasterid.', adv: 'Thường không cần chỉnh liều; theo dõi tác dụng phụ.' },
+    { a: ['cefpodoxime'], b: ['aluminium', 'ppi'], lv: 'moderate', t: 'Cefpodoxim + antacid/PPI',
+      why: 'Giảm pH dạ dày làm giảm hấp thu cefpodoxim → giảm hiệu quả kháng sinh.', adv: 'Uống antacid cách cefpodoxim ≥2 giờ; cân nhắc có cần PPI hay không.' },
+    { a: ['adsorbent'], b: ['quinolone', 'tetracycline', 'levothyroxine', 'digoxin', 'cephalosporin', 'macrolide', 'iron', 'vka'], lv: 'moderate', t: 'Diosmectit (Smecta) + thuốc uống khác',
+      why: 'Diosmectit có thể hấp phụ và làm giảm/chậm hấp thu thuốc uống dùng cùng lúc.', adv: 'Uống Smecta cách các thuốc khác ≥2 giờ.' },
+    { a: ['racecadotril'], b: ['acei', 'arni'], lv: 'moderate', t: 'Racecadotril + ACEi/sacubitril',
+      why: 'Cùng ức chế thoái giáng bradykinin → tăng nguy cơ phù mạch.', adv: 'Thận trọng; dặn bệnh nhân báo ngay khi sưng môi, mặt, lưỡi.' },
+    { a: ['mucolytic'], b: ['codeine', 'dextromethorphan'], lv: 'moderate', t: 'Thuốc tiêu nhầy + thuốc ho trung ương',
+      why: 'Thuốc ho ức chế phản xạ ho trong khi thuốc tiêu nhầy làm loãng đờm → đờm ứ đọng ở đường thở.', adv: 'Tránh phối hợp, nhất là ở trẻ em, người già, bệnh phổi mạn.' },
+    { a: ['mucolytic'], b: ['mucolytic'], lv: 'minor', same: true, t: 'Hai thuốc tiêu nhầy/long đờm',
+      why: 'Cùng nhóm, ít thêm lợi ích, tăng tác dụng phụ tiêu hóa.', adv: 'Thường chỉ giữ một thuốc.' },
+    { a: ['acetylcysteine'], b: ['nitrate'], lv: 'moderate', t: 'Acetylcystein + nitrat',
+      why: 'Acetylcystein làm tăng tác dụng giãn mạch của nitroglycerin → đau đầu, hạ huyết áp.', adv: 'Theo dõi huyết áp, triệu chứng đau đầu.' },
+    { a: ['sboulardii'], b: ['azole'], lv: 'moderate', t: 'Saccharomyces boulardii + thuốc kháng nấm azol',
+      why: 'Thuốc kháng nấm tiêu diệt men sống nên làm mất tác dụng của chế phẩm.', adv: 'Không nên dùng chung; dùng sau khi hết đợt kháng nấm.' },
+    { a: ['sboulardii'], b: ['nystatin'], lv: 'minor', t: 'Saccharomyces boulardii + nystatin',
+      why: 'Nystatin đường uống có thể tiêu diệt men sống (không áp dụng nếu nystatin dùng tại chỗ/đặt âm đạo).', adv: 'Xem đường dùng của nystatin; tránh dùng chung nếu là đường uống.' },
+    { a: ['zinc'], b: ['copper'], lv: 'minor', t: 'Kẽm + đồng',
+      why: 'Kẽm liều cao dùng lâu ngày làm giảm hấp thu đồng.', adv: 'Chỉ cần lưu ý khi dùng kéo dài.' },
+    { a: ['vitamine'], b: ['anticoag', 'antiplatelet'], lv: 'minor', t: 'Vitamin E liều cao + thuốc chống đông/chống kết tập tiểu cầu',
+      why: 'Vitamin E liều cao (≥400 UI) có thể làm tăng nguy cơ chảy máu.', adv: 'Theo dõi dấu hiệu chảy máu, INR nếu dùng warfarin/acenocoumarol.' },
+    { a: ['piracetam'], b: ['vka'], lv: 'minor', t: 'Piracetam + warfarin/acenocoumarol',
+      why: 'Piracetam liều cao có thể ảnh hưởng đông máu, làm thay đổi INR.', adv: 'Theo dõi INR khi bắt đầu hoặc ngừng piracetam.' },
+    { a: ['alphachymo'], b: ['anticoag'], lv: 'minor', t: 'Alpha chymotrypsin + thuốc chống đông',
+      why: 'Enzym có thể làm tăng nguy cơ chảy máu khi dùng cùng thuốc chống đông.', adv: 'Thận trọng, theo dõi dấu hiệu chảy máu.' },
+    { a: ['vka'], b: ['cephalosporin', 'penicillin'], lv: 'minor', t: 'Warfarin/acenocoumarol + cephalosporin/penicilin',
+      why: 'Kháng sinh phổ rộng có thể làm tăng INR (giảm vi khuẩn tạo vitamin K, một số cephalosporin ảnh hưởng đông máu).', adv: 'Theo dõi INR trong đợt kháng sinh.' },
+    { a: ['spiramycin'], b: ['digoxin'], lv: 'minor', t: 'Spiramycin + digoxin',
+      why: 'Có thể tăng nhẹ nồng độ digoxin.', adv: 'Theo dõi triệu chứng, nồng độ digoxin nếu cần.' },
     // ---- LƯU Ý ----
-    { a: ['warfarin'], b: ['paracetamol'], lv: 'minor', t: 'Warfarin + paracetamol',
+    { a: ['warfarin', 'acenocoumarol'], b: ['paracetamol'], lv: 'minor', t: 'Warfarin/acenocoumarol + paracetamol',
       why: 'Paracetamol liều cao kéo dài có thể làm tăng INR.', adv: 'Theo dõi INR nếu dùng đều đặn.' }
   ];
 
   // Phân tích một toa. drugs = [{ name, idx }], custom = { khóa: [id,...] } (người dùng tự gán hoạt chất)
+  // Hoạt chất trùng lặp ít nguy hiểm → chỉ cảnh báo mức 'Lưu ý' thay vì 'Vừa'
+  const HLX_DDI_DUP_MINOR = { vitaminc: 1, vitaminb6: 1, zinc: 1, simethicone: 1, magnesium: 1, calcium: 1, lactulose: 1, mecobalamin: 1, aluminium: 1, hyaluronate: 1 };
+  // Thuốc dùng tại chỗ (nhỏ mắt/mũi, tuýp bôi): bỏ qua tương tác toàn thân (trừ corticoid hít/xịt mũi)
+  function hlxDdiTopical(name) {
+    const s = String(name || '');
+    return /-\s*(lọ|tuýp|tuyp)\s*(\(|$)/i.test(s) || /(ophthalmic|nhỏ mắt|nhỏ mũi|xịt mũi|bôi ngoài da)/i.test(s);
+  }
   function hlxDdiAnalyze(drugs, custom) {
     custom = custom || {};
     const list = drugs.map((d) => {
@@ -10064,26 +11185,30 @@
       const cu = custom[key];
       const ignored = !!(cu && cu.indexOf('_none') !== -1);
       const ids = cu ? cu.filter((x) => x !== '_none' && HLX_DDI_ING[x]) : hlxDdiAutoIds(hlxDdiNorm(d.name));
+      const topical = hlxDdiTopical(d.name);
       const tags = new Set();
       ids.forEach((id) => {
+        const gtags = String(HLX_DDI_ING[id][1] || '').split(' ').filter(Boolean);
+        if (topical && gtags.indexOf('inhcs') === -1) return;
         tags.add(id);
-        String(HLX_DDI_ING[id][1] || '').split(' ').forEach((t) => { if (t) tags.add(t); });
+        gtags.forEach((t) => tags.add(t));
       });
-      return { name: d.name, idx: d.idx, ref: d.ref, key, ids, tags, ignored, byUser: !!cu };
+      return { name: d.name, idx: d.idx, ref: d.ref, key, ids, tags, ignored, byUser: !!cu, topical };
     });
     const has = (d, arr) => arr.some((t) => d.tags.has(t));
     const issues = [];
     for (let i = 0; i < list.length; i++) {
       for (let j = i + 1; j < list.length; j++) {
         const X = list[i], Y = list[j];
-        const shared = X.ids.filter((id) => Y.ids.indexOf(id) !== -1);
+        if (!X.tags.size || !Y.tags.size) continue;
+        const shared = (X.topical || Y.topical) ? [] : X.ids.filter((id) => Y.ids.indexOf(id) !== -1);
         shared.forEach((id) => {
           if (id === 'paracetamol') {
             issues.push({ lv: 'minor', x: X, y: Y, t: 'Cùng chứa paracetamol',
               why: 'Hai thuốc cùng chứa paracetamol: dễ vượt tổng liều an toàn.',
               adv: 'Tổng paracetamol ≤ 4 g/ngày (≤ 3 g/ngày nếu người lớn tuổi, suy gan, nghiện rượu, suy dinh dưỡng).' });
           } else {
-            issues.push({ lv: 'moderate', x: X, y: Y, t: 'Trùng hoạt chất: ' + HLX_DDI_ING[id][0],
+            issues.push({ lv: HLX_DDI_DUP_MINOR[id] ? 'minor' : 'moderate', x: X, y: Y, t: 'Trùng hoạt chất: ' + HLX_DDI_ING[id][0],
               why: 'Cùng một hoạt chất xuất hiện ở hai dòng thuốc → nguy cơ quá liều.',
               adv: 'Kiểm tra có chủ ý hay không; thường chỉ giữ một dòng.' });
           }
@@ -10145,7 +11270,7 @@
     });
     return out;
   }
-  function ddiRun() { return hlxDdiAnalyze(ddiReadDrugs(), ddiLoadCustom()); }
+  function ddiRun() { return hlxDdiAnalyze(ddiReadDrugs(), ddiCustomAll()); }
 
   function ddiH(tag, props, kids) {
     const el = document.createElement(tag);
@@ -10193,6 +11318,17 @@
     #hlx-ddi-btn .hlx-ddi-tg::after { content:''; position:absolute; top:2px; left:16px; width:12px; height:12px; border-radius:50%; background:#fff; transition:left .15s; }
     #hlx-ddi-btn.off .hlx-ddi-tg { background:#64748b; }
     #hlx-ddi-btn.off .hlx-ddi-tg::after { left:2px; }
+    #hlx-ddi-btn.hlx-ddi-inrow { margin:0 0 0 14px; vertical-align:middle; padding:3px 10px; font-size:13px; }
+    #hlx-ddi-btn.hlx-ddi-hot { background:var(--hb,#dc2626) !important; border-color:var(--hb,#dc2626) !important; color:#fff !important; transition:none !important; }
+    #hlx-ddi-btn.hlx-ddi-hot .hlx-ddi-badge { background:#fff !important; color:var(--hb,#b91c1c) !important; border-color:#fff !important; }
+    #hlx-ddi-btn.hlx-ddi-hot-contra { --hb:#7f1d1d; }
+    #hlx-ddi-btn.hlx-ddi-hot-major { --hb:#dc2626; }
+    #hlx-ddi-btn.hlx-ddi-hot-moderate { --hb:#ea580c; }
+    #hlx-ddi-btn.hlx-ddi-hot-minor { --hb:#ca8a04; }
+    #hlx-ddi-panel .catlist { max-height:220px; overflow:auto; margin-top:6px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; }
+    #hlx-ddi-panel .catlist .it { padding:4px 8px; border-bottom:1px solid #e2e8f0; font-size:12px; line-height:1.35; }
+    #hlx-ddi-panel .bt.pri { background:#1d4ed8; border-color:#1d4ed8; color:#fff; font-weight:600; }
+    #hlx-ddi-panel .bt.pri:hover { background:#1e40af; }
     tr.hlx-ddi-hide { display:none !important; }
       tr.hlx-ddi-r-contra > td:first-child { box-shadow: inset 5px 0 0 #7f1d1d; }
       tr.hlx-ddi-r-major > td:first-child { box-shadow: inset 5px 0 0 #dc2626; }
@@ -10262,21 +11398,40 @@
     document.querySelectorAll('button.hlx-ddi-locked').forEach((x) => { x.classList.remove('hlx-ddi-locked'); x.removeAttribute('title'); });
   }
 
-  function ddiEnsureButton() {
-    ddiCss();
-    const foot = Array.from(document.querySelectorAll('.p-datatable-footer p-button')).find((p) => /Kê vật tư/.test(p.textContent || ''));
-    const cur = document.getElementById('hlx-ddi-btn');
-    const old = document.getElementById('hlx-ddi-sw');
-    if (old) old.remove();
-    if (!foot) { if (cur && !cur.isConnected) cur.remove(); return; }
-    if (cur && cur.nextElementSibling === foot) return;
-    if (cur) cur.remove();
+  function ddiBuildBtn() {
     const tg = ddiH('span', { class: 'hlx-ddi-tg', onclick: (e) => { e.preventDefault(); e.stopPropagation(); ddiSetOn(!ddiOn()); } });
-    const btn = ddiH('button', {
+    return ddiH('button', {
       id: 'hlx-ddi-btn', type: 'button', class: 'p-ripple p-element p-button p-component',
       onclick: (e) => { e.preventDefault(); e.stopPropagation(); if (!ddiOn()) return; ddiOpen ? ddiClose() : ddiShow(); }
     }, [tg, ddiH('span', { class: 'p-button-label', text: 'Kiểm tra tương tác thuốc' }), ddiH('span', { class: 'hlx-ddi-badge', style: 'display:none' })]);
-    foot.parentNode.insertBefore(btn, foot);
+  }
+  // Vùng checkbox "Thang YHCT" / "Theo đợt": đặt nút ngay sau checkbox cuối cùng
+  function ddiFindHost() {
+    const cbs = Array.from(document.querySelectorAll('p-checkbox')).filter((p) => /Theo đợt|Thang YHCT/.test(p.textContent || ''));
+    if (!cbs.length) return null;
+    const after = cbs[cbs.length - 1];
+    return after.parentNode ? { host: after.parentNode, after } : null;
+  }
+  function ddiEnsureButton() {
+    ddiCss();
+    const cur = document.getElementById('hlx-ddi-btn');
+    const old = document.getElementById('hlx-ddi-sw');
+    if (old) old.remove();
+    const tgt = ddiFindHost();
+    const foot = Array.from(document.querySelectorAll('.p-datatable-footer p-button')).find((p) => /Kê vật tư/.test(p.textContent || ''));
+    if (!tgt && !foot) { if (cur && !cur.isConnected) cur.remove(); return; }
+    if (tgt) {
+      if (cur && cur.parentNode === tgt.host && cur.previousElementSibling === tgt.after) return;
+      const btn = cur || ddiBuildBtn();
+      btn.classList.add('hlx-ddi-inrow');
+      tgt.host.insertBefore(btn, tgt.after.nextSibling);
+    } else {
+      // Dự phòng: không thấy vùng checkbox thì để tạm ở chân bảng như cũ
+      if (cur && cur.nextElementSibling === foot) return;
+      const btn = cur || ddiBuildBtn();
+      btn.classList.remove('hlx-ddi-inrow');
+      foot.parentNode.insertBefore(btn, foot);
+    }
     ddiSyncButtons();
   }
 
@@ -10472,6 +11627,140 @@
     bd.appendChild(box);
   }
 
+  // ===== Danh mục thuốc bệnh viện: quét trực tiếp từ HIS (cùng cách dò như modal "Liều dùng tự động") =====
+  const HLX_DDI_CAT_KEY = 'helixfast_ddi_cat_v1';
+  let ddiCatBusy = false, ddiCatMsg = '', ddiCatStat = null, ddiCatStatVer = -1, ddiCatShow = false, ddiCatQ = '';
+  function ddiCatLoad() {
+    try { const c = JSON.parse(hlxStoreGet(HLX_DDI_CAT_KEY) || 'null'); if (c && Array.isArray(c.names)) return c; } catch (err) {}
+    return { t: 0, names: [] };
+  }
+  // Bảng biệt dược -> hoạt chất dựng từ danh mục đã quét (tên đầy đủ có hoạt chất trong ngoặc).
+  // Dùng cho bảng kê đơn vì HIS chỉ hiện tên biệt dược, ví dụ "Atocib 120".
+  let ddiCatMapCache = null, ddiCatMapT = -1;
+  function ddiCatMap() {
+    const c = ddiCatLoad();
+    if (ddiCatMapCache && ddiCatMapT === c.t) return ddiCatMapCache;
+    const m = {};
+    c.names.forEach((n) => {
+      const k = hlxDdiBrandKey(n);
+      if (!k) return;
+      const ids = hlxDdiAutoIds(hlxDdiNorm(n));
+      if (!ids.length) return;
+      const cur = m[k] || [];
+      ids.forEach((id) => { if (cur.indexOf(id) === -1) cur.push(id); });
+      m[k] = cur;
+    });
+    ddiCatMapCache = m; ddiCatMapT = c.t;
+    return m;
+  }
+  // Gán tay của người dùng được ưu tiên hơn bảng từ danh mục
+  function ddiCustomAll() { return Object.assign({}, ddiCatMap(), ddiLoadCustom()); }
+  function ddiCatSave(c) { try { hlxStoreSet(HLX_DDI_CAT_KEY, JSON.stringify(c)); } catch (err) {} }
+  function ddiCatSetMsg(m) {
+    ddiCatMsg = m;
+    const el = document.getElementById('hlx-ddi-cat-msg');
+    if (el) el.textContent = m;
+  }
+  // Phân tích mọi cặp trong danh mục (bỏ qua cảnh báo "trùng hoạt chất" vì nhiều biệt dược cùng hoạt chất là bình thường)
+  function ddiCatCompute(force) {
+    const c = ddiCatLoad();
+    if (!force && ddiCatStat && ddiCatStatVer === ddiAliasVer && ddiCatStat.t === c.t) return ddiCatStat;
+    const res = hlxDdiAnalyze(c.names.map((n, i) => ({ name: n, idx: i + 1 })), ddiCustomAll());
+    const issues = res.issues.filter((i) => !/^(Trùng hoạt chất|Cùng chứa)/.test(i.t));
+    const cnt = { contra: 0, major: 0, moderate: 0, minor: 0 };
+    issues.forEach((i) => cnt[i.lv]++);
+    ddiCatStat = { t: c.t, total: res.drugs.length, unresolved: res.unresolved, issues, cnt };
+    ddiCatStatVer = ddiAliasVer;
+    return ddiCatStat;
+  }
+  function ddiCatSummary() {
+    const c = ddiCatLoad();
+    if (!c.names.length) return 'Chưa có danh mục. Mở tab Đơn thuốc rồi bấm “Tra cứu tương tác thuốc mới” để đọc danh sách thuốc trực tiếp từ HIS.';
+    const st = ddiCatCompute(false);
+    const d = new Date(c.t);
+    return st.total + ' thuốc · ' + (st.total - st.unresolved.length) + ' đã nhận diện · ' + st.unresolved.length + ' chưa nhận diện · ' +
+      st.issues.length + ' cặp tương tác (' + ['contra', 'major', 'moderate', 'minor'].map((k) => HLX_DDI_LV[k].ic + st.cnt[k]).join(' ') + ')' +
+      ' — quét lúc ' + d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  }
+  async function ddiCatScan() {
+    if (ddiCatBusy) return;
+    ddiCatBusy = true;
+    hlxDoseScanStop = false;
+    ddiCatSetMsg('Đang chuẩn bị quét…');
+    ddiRenderPanel();
+    try {
+      const r = await hlxDoseScan((m) => ddiCatSetMsg(m));
+      if (r.error) { ddiCatSetMsg('⚠ ' + r.error); return; }
+      const seen = new Map();
+      (r.list || []).forEach((raw) => {
+        if (hlxDoseGrp(raw) === 'yhct') return;
+        const nm = hlxDoseClean(raw), k = hlxDoseKey(raw);
+        if (nm && !seen.has(k)) seen.set(k, nm);
+      });
+      const names = Array.from(seen.values());
+      if (!names.length) { ddiCatSetMsg('⚠ Không đọc được thuốc nào từ ô “Thuốc”. Hãy mở tab Đơn thuốc rồi thử lại.'); return; }
+      ddiCatSave({ t: Date.now(), names });
+      ddiAliasVer++;
+      ddiCatSetMsg('Đã đọc ' + names.length + ' thuốc. Đang đối chiếu hoạt chất…');
+      await hlxDoseSleep(50);
+      const st = ddiCatCompute(true);
+      const todo = st.unresolved.slice();
+      for (let i = 0; i < todo.length && !hlxDoseScanStop; i++) {
+        ddiCatSetMsg('Tra online hoạt chất ' + (i + 1) + '/' + todo.length + ': ' + ddiLabel(todo[i]));
+        if (!ddiNetSug.has(todo[i].key) && !ddiLoadCustom()[todo[i].key]) await ddiNetSuggest(todo[i], '');
+        await hlxDoseSleep(250);
+      }
+      ddiCatCompute(true);
+      ddiCatSetMsg((hlxDoseScanStop ? '⏹ Đã dừng. ' : '✅ Xong. ') + ddiCatSummary());
+    } catch (err) {
+      ddiCatSetMsg('⚠ Lỗi khi quét: ' + (err && err.message ? err.message : err));
+    } finally {
+      ddiCatBusy = false;
+      ddiRefresh(true);
+      ddiRenderPanel();
+    }
+  }
+  function ddiCatBox() {
+    const box = ddiH('div', { class: 'un', style: 'border-style:solid;background:#eff6ff;border-color:#93c5fd;margin-top:0' });
+    box.appendChild(ddiH('div', { style: 'font-weight:700;margin-bottom:4px', text: '📚 Danh mục thuốc bệnh viện' }));
+    box.appendChild(ddiH('div', { id: 'hlx-ddi-cat-msg', style: 'font-size:12px;color:#334155;margin:2px 0;line-height:1.4', text: ddiCatMsg || ddiCatSummary() }));
+    const row = ddiH('div', {});
+    row.appendChild(ddiH('button', { type: 'button', class: 'bt pri', text: ddiCatBusy ? 'Đang quét…' : '🔄 Tra cứu tương tác thuốc mới',
+      title: 'Đọc toàn bộ danh sách thuốc trực tiếp từ ô “Thuốc” của HIS (giống Liều dùng tự động), tự nhận diện hoạt chất và rà soát các cặp tương tác',
+      onclick: () => { if (!ddiCatBusy) ddiCatScan(); } }));
+    if (ddiCatBusy) row.appendChild(ddiH('button', { type: 'button', class: 'bt', text: '⏹ Dừng', onclick: () => { hlxDoseScanStop = true; } }));
+    const c = ddiCatLoad();
+    if (c.names.length && !ddiCatBusy) {
+      row.appendChild(ddiH('button', { type: 'button', class: 'bt', text: ddiCatShow ? '▲ Ẩn danh sách cặp' : '▼ Xem các cặp tương tác', onclick: () => { ddiCatShow = !ddiCatShow; ddiRenderPanel(); } }));
+    }
+    box.appendChild(row);
+    if (ddiCatShow && c.names.length && !ddiCatBusy) {
+      const st = ddiCatCompute(false);
+      const inp = ddiH('input', { type: 'text', class: 'ddi-in', style: 'width:97%;margin-top:6px', placeholder: 'Lọc theo tên thuốc / hoạt chất…', value: ddiCatQ });
+      const list = ddiH('div', { class: 'catlist' });
+      const draw = () => {
+        list.textContent = '';
+        const q = hlxDdiNorm(ddiCatQ);
+        const rows = st.issues.filter((i) => !q || hlxDdiNorm(i.x.name + ' ' + i.y.name + ' ' + i.t).indexOf(q) !== -1);
+        rows.slice(0, 150).forEach((i) => {
+          const col = HLX_DDI_COL[i.lv];
+          list.appendChild(ddiH('div', { class: 'it', style: 'border-left:4px solid ' + col[0] + ';background:' + col[1], title: i.why + ' — ' + i.adv }, [
+            ddiH('b', { text: HLX_DDI_LV[i.lv].ic + ' ' + i.x.name.replace(/\s*\(.*$/, '') + '  ⟷  ' + i.y.name.replace(/\s*\(.*$/, '') }),
+            ddiH('div', { text: i.t })
+          ]));
+        });
+        if (!rows.length) list.appendChild(ddiH('div', { class: 'it', text: 'Không có cặp nào khớp.' }));
+        else if (rows.length > 150) list.appendChild(ddiH('div', { class: 'it', style: 'color:#64748b', text: 'Hiển thị 150/' + rows.length + ' cặp — gõ vào ô lọc để thu hẹp.' }));
+      };
+      inp.addEventListener('input', () => { ddiCatQ = inp.value; draw(); });
+      draw();
+      box.appendChild(inp);
+      box.appendChild(list);
+      if (st.unresolved.length) box.appendChild(ddiH('div', { style: 'font-size:11.5px;color:#92400e;margin-top:4px', text: 'Chưa nhận diện: ' + st.unresolved.slice(0, 12).map((d) => d.name.replace(/\s*\(.*$/, '')).join(', ') + (st.unresolved.length > 12 ? '…' : '') }));
+    }
+    return box;
+  }
+
   function ddiRenderPanel() {
     let p = document.getElementById('hlx-ddi-panel');
     if (!p) { p = ddiH('div', { id: 'hlx-ddi-panel' }); document.body.appendChild(p); }
@@ -10484,6 +11773,7 @@
       ddiH('button', { class: 'x', type: 'button', title: 'Đóng', text: '✕', onclick: ddiClose })
     ]));
     const bd = ddiH('div', { class: 'bd' });
+    bd.appendChild(ddiCatBox());
     bd.appendChild(ddiH('div', { style: 'margin-bottom:8px', text:
       res.drugs.length + ' thuốc · ' + res.issues.length + ' tương tác' +
       (res.issues.length ? '  (' + ['contra', 'major', 'moderate', 'minor'].filter((k) => cnt[k]).map((k) => HLX_DDI_LV[k].ic + cnt[k]).join(' ') + ')' : '') }));
@@ -10602,11 +11892,11 @@
   }
   function ddiRefresh(force) {
     const drugs = ddiReadDrugs();
-    const sig = drugs.map((d) => d.name).join('¦') + '#' + ddiAliasVer;
+    const sig = drugs.map((d) => d.name).join('¦') + '#' + ddiAliasVer + '#' + ddiCatMapT;
     if (!force && sig === ddiSig && ddiRes) return;
     ddiSig = sig;
     ddiNetFind.clear();
-    ddiRes = hlxDdiAnalyze(drugs, ddiLoadCustom());
+    ddiRes = hlxDdiAnalyze(drugs, ddiCustomAll());
     ddiBadge();
     if (ddiOpen) ddiRenderPanel();
     setTimeout(ddiAutoNet, 0);
@@ -10634,8 +11924,22 @@
     });
   }
 
+  // Nhấp nháy cảnh báo (1 chu kỳ/giây): nền trắng chữ cam <-> nền màu theo mức tương tác cao nhất (đỏ sẫm/đỏ/cam/vàng sậm) chữ trắng
+  const HLX_DDI_BLINK_MS = 500;
+  let ddiBlinkOn = false;
+  setInterval(() => {
+    try {
+      const b = document.getElementById('hlx-ddi-btn');
+      if (!b) return;
+      const alert = hlxFeatOn('ddi') && ddiOn() && ddiRes && ddiRes.issues.length > 0;
+      ['contra', 'major', 'moderate', 'minor'].forEach((k) => b.classList.toggle('hlx-ddi-hot-' + k, !!alert && ddiRes.issues[0].lv === k));
+      if (alert) { ddiBlinkOn = !ddiBlinkOn; b.classList.toggle('hlx-ddi-hot', ddiBlinkOn); }
+      else { ddiBlinkOn = false; b.classList.remove('hlx-ddi-hot'); }
+    } catch (err) {}
+  }, HLX_DDI_BLINK_MS);
+
   hlxDocListen('click', (e) => {
-    if (!isHelixfastEnabled() || !ddiOn()) return;
+    if (!hlxFeatOn('ddi') || !ddiOn()) return;
     const btn = e.target && e.target.closest ? e.target.closest('button') : null;
     if (!btn || !ddiIsSaveBtn(btn) || !findRxTables().length) return;
     const res = ddiRun();
@@ -10653,7 +11957,7 @@
 
   setInterval(() => {
     try {
-      if (!isHelixfastEnabled()) {
+      if (!hlxFeatOn('ddi')) {
         if (ddiOpen) ddiClose();
         ['hlx-ddi-btn', 'hlx-ddi-sw'].forEach((id) => { const b = document.getElementById(id); if (b) b.remove(); });
         document.querySelectorAll('button.hlx-ddi-locked').forEach((x) => x.classList.remove('hlx-ddi-locked'));
