@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.21
+// @version      2.22
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.21';
+  const HELIXFAST_VERSION = '2.22';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -3337,6 +3337,7 @@
       if (!btn) return;
       const label = btn.textContent.replace(/\s+/g, ' ').trim();
       if (btn.type === 'submit' && label === 'Nạp') {
+        try { if (hlxDdiLearnHook) hlxDdiLearnHook(hlxPharmacySelectedText()); } catch (err) {}
         hlxCommitNote();          // chạy trước xử lý Nạp của HIS
         hlxNoteUserEdited = false;
         hlxScheduleNoteAudit([900, 2500]);
@@ -3356,6 +3357,7 @@
     }, true);
   }
 
+  let hlxDdiLearnHook = null; // được module Kiểm tra tương tác gán (ddiCatLearn): ghi nhớ tên đầy đủ (có hoạt chất trong ngoặc) của thuốc vừa chọn
   const SUPPLY_QTY_RECALC_DELAY_MS = 50;
   const NAP_BUTTON_WAIT_RETRY_GAP_MS = 150;
 
@@ -11683,7 +11685,7 @@
   function ddiAutoNet() {
     if (!ddiRes || !ddiOn()) return;
     const ext = ddiLoadExt();
-    ddiRes.unresolved.forEach((d) => { if (!ddiNetSug.has(d.key)) ddiNetSuggest(d, ''); });
+    ddiRes.unresolved.forEach((d) => { if (ddiAutoFromCat(d)) return; if (!ddiNetSug.has(d.key)) ddiNetSuggest(d, ''); });
     ddiRes.drugs.forEach((d) => { if (ext[d.key] && !ddiNetFind.has(d.key)) ddiNetCheck(d); });
   }
 
@@ -11742,6 +11744,195 @@
   // Gán tay của người dùng được ưu tiên hơn bảng từ danh mục
   function ddiCustomAll() { return Object.assign({}, ddiCatMap(), ddiLoadCustom()); }
   function ddiCatSave(c) { try { hlxStoreSet(HLX_DDI_CAT_KEY, JSON.stringify(c)); } catch (err) {} }
+  // Tên thuốc HIS hiện ở ô Thuốc luôn kèm hoạt chất trong ngoặc, vd "Elitan (Metoclopramid hydroclorid) 10mg/2ml - Ống".
+  // Mỗi khi người dùng chọn/nạp một thuốc, ghi nhớ tên đầy đủ vào danh mục (gộp với các lần quét, không ghi đè) -> bảng kê đơn
+  // chỉ hiện "Elitan" vẫn biết hoạt chất, không phải tra tay.
+  function ddiCatLearn(raw) {
+    try {
+      if (!raw || hlxDoseGrp(raw) === 'yhct') return;
+      const nm = hlxDoseClean(raw);
+      if (!nm) return;
+      const k = hlxDoseKey(raw);
+      const c = ddiCatLoad();
+      if (c.names.some((n) => hlxDoseKey(n) === k)) return;
+      c.names.push(nm);
+      c.scan = c.scan || c.t || 0;
+      c.t = Date.now();
+      ddiCatSave(c);
+      ddiAliasVer++;
+      ddiCatMapCache = null;
+      setTimeout(() => { try { ddiRefresh(true); } catch (err) {} }, 300);
+    } catch (err) {}
+  }
+  hlxDdiLearnHook = ddiCatLearn;
+  // ===== Tải sẵn dữ liệu tương tác từ nhãn FDA cho MỌI hoạt chất trong danh mục =====
+  // Sau khi quét danh mục: lấy hoạt chất (ngoặc trong tên đầy đủ) -> tải mục "Tương tác thuốc" trên nhãn FDA của từng hoạt chất ->
+  // dò xem nhãn của hoạt chất A có nhắc tới hoạt chất B không -> lưu bảng cặp (kèm trích đoạn) để đối chiếu ngay khi kê đơn, không cần gọi mạng lại.
+  const HLX_DDI_GRAPH_KEY = 'helixfast_ddi_graph_v1';
+  const HLX_DDI_STEM_STOP = new Set(['acid', 'natri', 'calci', 'kali', 'magnesi', 'sat', 'kem', 'vitamin', 'dung', 'dich', 'sodium', 'potassium', 'calcium']);
+  // "gốc" tên hoạt chất: đủ ngắn để tên Việt (metoclopramid, clavulanic) khớp tên Mỹ (metoclopramide, clavulanate)
+  function ddiGenStem(g) {
+    const ws = hlxDdiNorm(g).split(' ').filter(Boolean);
+    const w = ws.find((x) => x.length >= 5 && !HLX_DDI_STEM_STOP.has(x)) || ws[0] || '';
+    return w.length > 8 ? w.slice(0, 8) : w;
+  }
+  function ddiFindWord(txt, stem) {
+    let i = txt.indexOf(stem);
+    while (i !== -1) {
+      if (i === 0 || !/[a-z]/.test(txt.charAt(i - 1))) return i;
+      i = txt.indexOf(stem, i + 1);
+    }
+    return -1;
+  }
+  const ddiStemCache = new Map();
+  async function ddiFdaLabelStem(stem) {
+    if (ddiStemCache.has(stem)) return ddiStemCache.get(stem);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const j = await ddiHttp('https://api.fda.gov/drug/label.json?limit=3&search=openfda.generic_name:' + encodeURIComponent(stem + '*'));
+        let txt = '';
+        (j.results || []).forEach((r) => { (r.drug_interactions || []).forEach((x) => { txt += ' ' + x; }); });
+        txt = txt.toLowerCase().replace(/\s+/g, ' ');
+        ddiStemCache.set(stem, txt);
+        return txt;
+      } catch (err) { await hlxDoseSleep(4000); } // quá hạn mức / lỗi mạng: chờ rồi thử lại 1 lần
+    }
+    return null;
+  }
+  let ddiGraphCache = null, ddiGraphRaw = null;
+  function ddiGraphLoad() {
+    const raw = hlxStoreGet(HLX_DDI_GRAPH_KEY) || '';
+    if (ddiGraphCache && raw === ddiGraphRaw) return ddiGraphCache;
+    let g = { t: 0, ings: {}, pairs: {}, nolabel: [] };
+    try { const o = JSON.parse(raw || 'null'); if (o && o.pairs) g = o; } catch (err) {}
+    ddiGraphCache = g; ddiGraphRaw = raw;
+    return g;
+  }
+  async function ddiNetBuild() {
+    const c = ddiCatLoad();
+    const ing = new Map(); // gốc -> tên hoạt chất
+    c.names.forEach((n) => ddiCatGenerics(n).forEach((g) => {
+      const st = ddiGenStem(g);
+      if (st && st.length >= 5 && !ing.has(st)) ing.set(st, g.toLowerCase());
+    }));
+    const stems = Array.from(ing.keys());
+    if (!stems.length) { ddiCatSetMsg('⚠ Danh mục chưa có hoạt chất nào để tải dữ liệu tương tác.'); return; }
+    const texts = new Map();
+    const nolabel = [];
+    let fail = 0;
+    for (let i = 0; i < stems.length && !hlxDoseScanStop; i++) {
+      ddiCatSetMsg('Tải nhãn tương tác FDA ' + (i + 1) + '/' + stems.length + ': ' + ing.get(stems[i]));
+      const t = await ddiFdaLabelStem(stems[i]);
+      if (t === null) { if (++fail >= 5) { ddiCatSetMsg('⚠ Không kết nối được openFDA (lỗi liên tiếp). Thử lại sau.'); break; } }
+      else if (!t) nolabel.push(ing.get(stems[i]));
+      else texts.set(stems[i], t);
+      await hlxDoseSleep(350);
+    }
+    if (!texts.size) { if (!hlxDoseScanStop) ddiCatSetMsg('⚠ Không tải được nhãn FDA nào.'); return; }
+    ddiCatSetMsg('Đang đối chiếu các cặp hoạt chất…');
+    await hlxDoseSleep(30);
+    const pairs = {};
+    let n = 0;
+    texts.forEach((txtA, a) => {
+      stems.forEach((b) => {
+        if (b === a || n >= 4000) return;
+        const i = ddiFindWord(txtA, b);
+        if (i === -1) return;
+        pairs[a + '|' + b] = ('…' + txtA.slice(Math.max(0, i - 60), i + 110).trim() + '…');
+        n++;
+      });
+    });
+    const ings = {};
+    stems.forEach((st) => { ings[st] = ing.get(st); });
+    try { hlxStoreSetRaw(HLX_DDI_GRAPH_KEY, JSON.stringify({ t: Date.now(), ings, pairs, nolabel })); } catch (err) {}
+    ddiGraphCache = null;
+    ddiCatSetMsg((hlxDoseScanStop ? '⏹ Đã dừng. ' : '✅ Xong. ') + 'Đã tải nhãn FDA của ' + texts.size + '/' + stems.length + ' hoạt chất, ghi nhận ' + n + ' cặp có nhắc tới nhau.');
+  }
+  async function ddiNetBuildRun() {
+    if (ddiCatBusy) return;
+    ddiCatBusy = true;
+    hlxDoseScanStop = false;
+    ddiRenderPanel();
+    try { await ddiNetBuild(); }
+    catch (err) { ddiCatSetMsg('⚠ Lỗi: ' + (err && err.message ? err.message : err)); }
+    finally { ddiCatBusy = false; ddiRefresh(true); ddiRenderPanel(); }
+  }
+  // Gốc hoạt chất của một dòng thuốc trong toa (từ gán tay/online, danh mục, hoặc bộ quy tắc nội bộ)
+  function ddiDrugStems(d) {
+    const out = new Set();
+    const add = (g) => { const st = ddiGenStem(g); if (st && st.length >= 5) out.add(st); };
+    (ddiLoadExt()[d.key] || []).forEach(add);
+    const full = ddiCatLoad().names.find((n) => hlxDdiBrandKey(n) === d.key);
+    if (full) ddiCatGenerics(full).forEach(add);
+    (d.ids || []).forEach((id) => String((HLX_DDI_ING[id] || [])[2] || '').split('|').forEach(add));
+    return Array.from(out);
+  }
+  // Các cặp thuốc TRONG TOA mà nhãn FDA của thuốc này nhắc tới thuốc kia (bỏ cặp đã có kết luận từ bộ quy tắc nội bộ)
+  function ddiGraphHits(res) {
+    const g = ddiGraphLoad();
+    if (!g.t) return [];
+    const have = new Set(res.issues.map((i) => i.x.idx + '|' + i.y.idx));
+    const stems = res.drugs.map((d) => ddiDrugStems(d));
+    const hits = [];
+    for (let i = 0; i < res.drugs.length; i++) {
+      for (let j = i + 1; j < res.drugs.length; j++) {
+        if (have.has(res.drugs[i].idx + '|' + res.drugs[j].idx)) continue;
+        let hit = null;
+        stems[i].forEach((a) => stems[j].forEach((b) => {
+          if (hit || a === b) return;
+          if (g.pairs[a + '|' + b]) hit = { by: g.ings[a] || a, other: g.ings[b] || b, snip: g.pairs[a + '|' + b] };
+          else if (g.pairs[b + '|' + a]) hit = { by: g.ings[b] || b, other: g.ings[a] || a, snip: g.pairs[b + '|' + a] };
+        }));
+        if (hit) hits.push({ x: res.drugs[i], y: res.drugs[j], hit });
+      }
+    }
+    return hits;
+  }
+  function ddiRenderGraph(bd, res) {
+    const g = ddiGraphLoad();
+    if (!g.t) return;
+    const hits = ddiGraphHits(res);
+    if (!hits.length) return;
+    const box = ddiH('div', { class: 'un' }, [ddiH('div', { style: 'font-weight:700;margin-bottom:4px', text: '📥 Nhãn FDA (đã tải sẵn) có nhắc tới nhau — ' + hits.length + ' cặp, chưa phân mức độ:' })]);
+    hits.forEach((h) => box.appendChild(ddiH('div', { class: 'net' }, [
+      ddiH('b', { text: ddiLabel(h.x) + '  ⟷  ' + ddiLabel(h.y) }),
+      ddiH('div', { class: 'sn', text: 'Trích nhãn ' + h.hit.by + ' (nhắc tới ' + h.hit.other + '): ' + h.hit.snip })
+    ])));
+    box.appendChild(ddiH('div', { class: 'sn', style: 'color:#b45309;font-size:11.5px', text: 'Dò từ khóa tự động trên nhãn tiếng Anh của Mỹ: có thể chỉ là cảnh báo chung, cần bác sĩ/dược sĩ đọc lại.' }));
+    bd.appendChild(box);
+  }
+  // Hoạt chất trong ngoặc đầu tiên của tên đầy đủ (bỏ qua ngoặc quy cách như "(Hộp 2 vỉ x 5 ống)")
+  function ddiCatGenerics(full) {
+    const groups = String(full || '').match(/\([^()]*\)/g) || [];
+    for (const g of groups) {
+      const inner = g.slice(1, -1).trim();
+      if (!inner || /^\d/.test(inner) || /^(hộp|vỉ|lọ|chai|ống|viên|gói|túi|bơm|bút)\b/i.test(inner) || !/[A-Za-zÀ-ỹ]{3}/.test(inner)) continue;
+      return inner.split(/\s*(?:\+|,|;|\/|\svà\s)\s*/i).map((x) => x.trim()).filter(Boolean);
+    }
+    return [];
+  }
+  // Thuốc trong toa chưa nhận diện nhưng danh mục đã có tên đầy đủ -> tự lấy hoạt chất từ ngoặc:
+  // trùng bộ quy tắc nội bộ thì dùng luôn; không thì gán "hoạt chất tra online" để tự quét nhãn FDA
+  function ddiAutoFromCat(d) {
+    const full = ddiCatLoad().names.find((n) => hlxDdiBrandKey(n) === d.key);
+    if (!full) return false;
+    const gens = ddiCatGenerics(full);
+    if (!gens.length) return false;
+    const map = ddiLoadCustom();
+    const ids = [];
+    gens.forEach((g) => hlxDdiAutoIds(hlxDdiNorm(g)).forEach((id) => { if (ids.indexOf(id) === -1) ids.push(id); }));
+    if (ids.length) map[d.key] = ids;
+    else {
+      const ext = ddiLoadExt();
+      ext[d.key] = gens.map((g) => g.toLowerCase());
+      ddiSaveExt(ext);
+      map[d.key] = ['_none'];
+    }
+    ddiSaveCustom(map);
+    ddiNetSug.delete(d.key); ddiNetFind.clear();
+    setTimeout(() => ddiRefresh(true), 0);
+    return true;
+  }
   function ddiCatSetMsg(m) {
     ddiCatMsg = m;
     const el = document.getElementById('hlx-ddi-cat-msg');
@@ -11763,7 +11954,7 @@
     const c = ddiCatLoad();
     if (!c.names.length) return 'Chưa có danh mục. Mở tab Đơn thuốc rồi bấm “Tra cứu tương tác thuốc mới” để đọc danh sách thuốc trực tiếp từ HIS.';
     const st = ddiCatCompute(false);
-    const d = new Date(c.t);
+    const d = new Date(c.scan || c.t);
     return st.total + ' thuốc · ' + (st.total - st.unresolved.length) + ' đã nhận diện · ' + st.unresolved.length + ' chưa nhận diện · ' +
       st.issues.length + ' cặp tương tác (' + ['contra', 'major', 'moderate', 'minor'].map((k) => HLX_DDI_LV[k].ic + st.cnt[k]).join(' ') + ')' +
       ' — quét lúc ' + d.toLocaleDateString('vi-VN') + ' ' + d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
@@ -11783,9 +11974,14 @@
         const nm = hlxDoseClean(raw), k = hlxDoseKey(raw);
         if (nm && !seen.has(k)) seen.set(k, nm);
       });
-      const names = Array.from(seen.values());
-      if (!names.length) { ddiCatSetMsg('⚠ Không đọc được thuốc nào từ ô “Thuốc”. Hãy mở tab Đơn thuốc rồi thử lại.'); return; }
-      ddiCatSave({ t: Date.now(), names });
+      const scanned = Array.from(seen.values());
+      if (!scanned.length) { ddiCatSetMsg('⚠ Không đọc được thuốc nào từ ô “Thuốc”. Hãy mở tab Đơn thuốc rồi thử lại.'); return; }
+      // Gộp với danh mục đã có (mỗi kho một danh sách khác nhau) thay vì ghi đè
+      const keyOf = (n) => hlxDoseKey(n);
+      const have = new Set(ddiCatLoad().names.map(keyOf));
+      const names = ddiCatLoad().names.concat(scanned.filter((n) => !have.has(keyOf(n))));
+      const now = Date.now();
+      ddiCatSave({ t: now, scan: now, names });
       ddiAliasVer++;
       ddiCatSetMsg('Đã đọc ' + names.length + ' thuốc. Đang đối chiếu hoạt chất…');
       await hlxDoseSleep(50);
@@ -11797,6 +11993,7 @@
         await hlxDoseSleep(250);
       }
       ddiCatCompute(true);
+      if (!hlxDoseScanStop) await ddiNetBuild();
       ddiCatSetMsg((hlxDoseScanStop ? '⏹ Đã dừng. ' : '✅ Xong. ') + ddiCatSummary());
     } catch (err) {
       ddiCatSetMsg('⚠ Lỗi khi quét: ' + (err && err.message ? err.message : err));
@@ -11816,6 +12013,14 @@
       onclick: () => { if (!ddiCatBusy) ddiCatScan(); } }));
     if (ddiCatBusy) row.appendChild(ddiH('button', { type: 'button', class: 'bt', text: '⏹ Dừng', onclick: () => { hlxDoseScanStop = true; } }));
     const c = ddiCatLoad();
+    if (c.names.length && !ddiCatBusy) {
+      row.appendChild(ddiH('button', { type: 'button', class: 'bt', text: '🌐 Tải tương tác FDA', title: 'Tải mục tương tác trên nhãn FDA cho mọi hoạt chất trong danh mục (không quét lại HIS)', onclick: () => ddiNetBuildRun() }));
+    }
+    const gr = ddiGraphLoad();
+    if (gr.t) {
+      const gd = new Date(gr.t);
+      box.appendChild(ddiH('div', { style: 'font-size:11.5px;color:#475569;margin:2px 0', text: 'Dữ liệu FDA: ' + Object.keys(gr.ings).length + ' hoạt chất, ' + Object.keys(gr.pairs).length + ' cặp — tải lúc ' + gd.toLocaleDateString('vi-VN') + ' ' + gd.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }) }));
+    }
     if (c.names.length && !ddiCatBusy) {
       row.appendChild(ddiH('button', { type: 'button', class: 'bt', text: ddiCatShow ? '▲ Ẩn danh sách cặp' : '▼ Xem các cặp tương tác', onclick: () => { ddiCatShow = !ddiCatShow; ddiRenderPanel(); } }));
     }
@@ -11895,6 +12100,7 @@
       card.appendChild(dt);
       bd.appendChild(card);
     });
+    ddiRenderGraph(bd, res);
     if (res.unresolved.length) {
       const un = ddiH('div', { class: 'un' }, [ddiH('div', { style: 'font-weight:700;margin-bottom:4px', text: '❓ Chưa nhận diện hoạt chất, CHƯA được kiểm tra:' })]);
       const opts = Object.keys(HLX_DDI_ING).sort((a, b) => HLX_DDI_ING[a][0].localeCompare(HLX_DDI_ING[b][0], 'vi'));
