@@ -15,14 +15,14 @@
                 radial-gradient(900px 500px at 110% 10%, #e0e7ff 0%, transparent 55%),
                 #f1f5f9;
   }
-  .wrap { width: 100%; max-width: 420px; zoom: 1.5; }
+  .wrap { width: 100%; max-width: 380px; zoom: 1.25; }
   .card {
     background: #fff; border-radius: 16px; overflow: hidden;
     box-shadow: 0 24px 64px rgba(30,64,175,.14), 0 2px 8px rgba(15,23,42,.06);
     border: 1px solid rgba(148,163,184,.15);
   }
   .head {
-    position: relative; overflow: hidden; color: #fff; padding: 22px 24px 20px;
+    position: relative; overflow: hidden; color: #fff; padding: 14px 18px 12px;
     background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 45%, #3b82f6 100%);
   }
   .head::before {
@@ -42,28 +42,30 @@
     border-radius: 9px; background: rgba(255,255,255,.16); font-size: 15px;
   }
   .head-sub { position: relative; font-size: 11.5px; color: rgba(255,255,255,.78); margin-top: 6px; margin-left: 39px; }
-  .body { padding: 22px 24px 24px; }
+  .body { padding: 14px 18px 16px; }
   label {
     display: block; font-weight: 700; font-size: 12.5px; color: #1e293b; margin-bottom: 6px;
     letter-spacing: .2px;
   }
-  .field { margin-bottom: 16px; }
+  .field { margin-bottom: 10px; }
   input[type=text], input[type=date], input[type=number], textarea {
-    width: 100%; padding: 9px 11px; border: 2px solid #cbd5e1; border-radius: 8px;
+    width: 100%; padding: 6px 9px; border: 2px solid #cbd5e1; border-radius: 8px;
     font-size: 13px; font-family: inherit; background: #fff; color: #1e293b;
     transition: border-color .15s, box-shadow .15s, background .15s;
   }
+  select { width: 100%; padding: 6px 9px; border: 2px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-family: inherit; background: #fff; color: #1e293b; }
+  select:focus { outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
   input[readonly] { background: #f1f5f9; color: #475569; }
   input[type=text]:focus, input[type=date]:focus, input[type=number]:focus, textarea:focus {
     outline: none; border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.15); background: #fff;
   }
   textarea { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; resize: vertical; }
-  textarea#tokenOut { min-height: 84px; }
+  textarea#tokenOut { min-height: 64px; }
   .row { display: flex; gap: 10px; }
   .row > div { flex: 1; }
   .btnrow { display: flex; gap: 8px; margin-top: 4px; }
   button {
-    border: none; border-radius: 8px; padding: 10px 18px; font-size: 13px; font-weight: 700;
+    border: none; border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 700;
     cursor: pointer; transition: .15s;
   }
   button#genBtn {
@@ -73,10 +75,10 @@
   button#genBtn:hover { box-shadow: 0 4px 16px rgba(37,99,235,.45); transform: translateY(-1px); }
   button.secondary { background: #fff; color: #475569; border: 1.5px solid #e2e8f0; }
   button.secondary:hover { background: #f1f5f9; border-color: #cbd5e1; }
-  .result { margin-top: 18px; padding-top: 18px; border-top: 1px dashed #e2e8f0; display: none; }
+  .result { margin-top: 12px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: none; }
   .result.show { display: block; }
   .muted { color: #94a3b8; font-size: 11.5px; margin-top: 8px; }
-  .footer-contact { text-align: center; margin-top: 18px; font-size: 12px; color: #64748b; }
+  .footer-contact { text-align: center; margin-top: 10px; font-size: 12px; color: #64748b; }
   .footer-contact .zalo-row { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 4px; }
   .footer-contact .zalo-row svg { flex: none; }
 </style>
@@ -86,7 +88,7 @@
   <div class="card">
     <div class="head">
       <div class="head-title"><span class="ico">🔑</span>Helixfast License</div>
-      <div class="head-sub">Tạo mã kích hoạt bản quyền theo máy</div>
+      
     </div>
     <div class="body">
       <input type="hidden" id="secret" value="3780ca6bca82cf7389f693dfc26a3ff69dde2433c2649c9e122598af5d7be435">
@@ -94,6 +96,14 @@
       <div class="field">
         <label>Mã máy</label>
         <input type="text" id="machineCode" placeholder="HLF-...">
+      </div>
+
+      <div class="field">
+        <label>Gói</label>
+        <select id="tier">
+          <option value="basic">Cơ bản</option>
+          <option value="adv">Nâng cao</option>
+        </select>
       </div>
 
       <div class="row field">
@@ -231,6 +241,8 @@ document.getElementById('genBtn').addEventListener('click', () => {
     exp: Math.floor(expiryDate.getTime() / 1000),
     iat: Math.floor(Date.now() / 1000),
   };
+  const tier = document.getElementById('tier').value;
+  if (tier === 'adv') payload.t = 'adv'; // Cơ bản: không có t (giống mã cũ)
   const payloadB64 = base64urlEncode(JSON.stringify(payload));
   const sig = hmacSha256Hex(secret, payloadB64);
   const token = payloadB64 + '.' + sig;
@@ -241,7 +253,7 @@ document.getElementById('genBtn').addEventListener('click', () => {
   const pad = n => String(n).padStart(2, '0');
   const fmt = d => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
   document.getElementById('expInfo').textContent =
-    `${fmt(activateDate)} → ${fmt(expiryDate)}`;
+    `Gói ${tier === 'adv' ? 'Nâng cao' : 'Cơ bản'} · ${fmt(activateDate)} → ${fmt(expiryDate)}`;
 });
 
 document.getElementById('copyBtn').addEventListener('click', () => {
