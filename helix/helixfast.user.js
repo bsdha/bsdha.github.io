@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.20
+// @version      2.21
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-idle
@@ -19,7 +19,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.20';
+  const HELIXFAST_VERSION = '2.21';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -2980,17 +2980,35 @@
 
   let hlxNoteGuardUntil = 0;
   function hlxUpdateNoteAcClass() {
-    if (hlxDoseNative()) { document.body.classList.remove('hlx-note-ac'); return; }
+    if (hlxDoseNative()) { document.body.classList.remove('hlx-note-ac'); document.body.classList.remove('hlx-note-off'); return; }
     const inp = hlxQ(NOTE_INPUT_SELECTOR);
     const focused = !!inp && document.activeElement === inp;
     document.body.classList.toggle('hlx-note-ac', focused || Date.now() < hlxNoteGuardUntil);
+    // Ghi chú do Helixfast tự sinh: không bao giờ hiện khung gợi ý (kể cả khi kết quả gợi ý về trễ sau Nạp)
+    document.body.classList.toggle('hlx-note-off', hlxFeatOn('rx'));
   }
   function hlxEnsureNoteAcCss() {
     if (document.getElementById('hlx-note-ac-css')) return;
     const st = document.createElement('style');
     st.id = 'hlx-note-ac-css';
-    st.textContent = 'body.hlx-note-ac .p-autocomplete-panel{display:none !important;}';
+    st.textContent = 'body.hlx-note-ac .p-autocomplete-panel{display:none !important;}' +
+      'body.hlx-note-off p-autocomplete[formcontrolname="patient_note"] .p-autocomplete-panel,' +
+      'body.hlx-note-off p-autocomplete[formcontrolname="patient_note"] .p-overlay,' +
+      '.p-autocomplete-panel.hlx-note-hide{display:none !important;}';
     (document.head || document.documentElement).appendChild(st);
+  }
+  // Panel gợi ý có thể được gắn thẳng vào <body>: nhận ra bằng nội dung dạng "Sáng: 1 Viên ..." và ẩn đi
+  if (!HLX_OFF) {
+    setInterval(() => {
+      try {
+        hlxUpdateNoteAcClass();
+        if (!document.body.classList.contains('hlx-note-off')) return;
+        document.querySelectorAll('.p-autocomplete-panel').forEach((pn) => {
+          if (pn.classList.contains('hlx-note-hide')) return;
+          if (/(^|\s)(Sáng|Trưa|Chiều|Tối)\s*:/.test((pn.textContent || '').trim())) pn.classList.add('hlx-note-hide');
+        });
+      } catch (err) {}
+    }, 250);
   }
   function hlxCloseNoteSuggest(inp) {
     try {
@@ -3322,7 +3340,17 @@
         hlxCommitNote();          // chạy trước xử lý Nạp của HIS
         hlxNoteUserEdited = false;
         hlxScheduleNoteAudit([900, 2500]);
-      } else if (label === 'Lưu lại' || btn.id === PRINT_RX_BTN_ID || btn.id === PRINT_OUTPATIENT_BTN_ID) {
+      } else if (btn.id === PRINT_RX_BTN_ID || btn.id === PRINT_OUTPATIENT_BTN_ID) {
+        // Trước khi in: còn thuốc có liều mà Ghi chú trống -> toa in ra sẽ chỉ còn chữ "Uống": hỏi lại thay vì in sai
+        const miss = hlxRxNoteAudit();
+        if (miss.length) {
+          hlxNoteWarn(miss);
+          if (!window.confirm('Thuốc chưa có Ghi chú (cách dùng): ' + miss.join('; ') + '\n\nIn toa bây giờ sẽ thiếu cách dùng.\nBấm OK để vẫn in, Hủy để quay lại sửa.')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        }
+      } else if (label === 'Lưu lại') {
         hlxScheduleNoteAudit([0]);
       }
     }, true);
@@ -3732,10 +3760,27 @@
     return null;
   }
 
+  // Nhận diện thuốc TIÊM/TRUYỀN từ tên + đơn vị: có chữ tiêm/truyền/inj/vial..., hoặc đơn vị Ống/Lọ kèm hàm lượng mà KHÔNG có dấu hiệu thuốc uống
+  // (Ống/Lọ cũng có dạng uống nhưng tên thuốc dạng uống luôn có chữ uống/siro/viên/gói...)
+  const HLX_ORAL_ROUTE_RE = /^(uống|nhai|ngậm|đặt dưới lưỡi)/;
+  function hlxRouteIsInjectable(nameNorm, unitNorm) {
+    const n = nameNorm || '';
+    const u = unitNorm || '';
+    if (/uống|siro|sirô|syrup|viên|nang|\bgói\b|cốm|nhai|ngậm|hỗn dịch|\boral\b|tablet|capsule|sachet|nhỏ mắt|nhỏ mũi|nhỏ tai|xịt|khí dung|\bbôi\b|đặt /.test(n)) return false;
+    if (/tiêm|\binj\b|injection|\bvial\b|pha tiêm|truyền|infusion|lyophil|đông khô/.test(n)) return true;
+    const amp = /^(ống|lọ|bơm tiêm|ống tiêm|vial)$/.test(u) || /(^|[-–(]\s*)(ống|lọ)\b/.test(n) || /x\s*\d+\s*(ống|lọ)\b/.test(n);
+    return amp && /\d\s*(mg|mcg|µg|g|ui|iu|%|mmol|meq)\b/.test(n);
+  }
+
   // Từ khóa dài/cụ thể nhất khớp tên thuốc được ưu tiên; không khớp thì đoán theo dạng bào chế; cuối cùng mới dùng mặc định
+  // Thuốc TIÊM (vd Elitan = metoclopramid dạng ống) khớp từ khóa của dạng UỐNG -> không dùng "Uống...", chuyển sang "Tiêm"
+  // (hlxRouteApply giữ nguyên Đ.Dùng "Tiêm ..." cụ thể mà HIS đã đặt sẵn, chỉ đổi khi HIS đang để kiểu khác)
   function hlxRouteResolve(name, cfgIn, unitIn) {
     const cfg = cfgIn || hlxRouteLoad();
     const n = hlxRouteNorm(name);
+    let u = hlxRouteNorm(unitIn);
+    if (/^chọn/.test(u)) u = '';
+    const inj = hlxRouteIsInjectable(n, u);
     let best = null;
     cfg.rules.forEach((r) => {
       r.keywords.forEach((k) => {
@@ -3743,11 +3788,13 @@
         if (kk && n.indexOf(kk) !== -1 && (!best || kk.length > best.kw.length)) best = { route: r.route, kw: kk };
       });
     });
-    if (best) return { route: best.route, kw: best.kw };
+    if (best) {
+      if (inj && HLX_ORAL_ROUTE_RE.test(hlxRouteNorm(best.route))) return { route: 'Tiêm', kw: best.kw, inj: true };
+      return { route: best.route, kw: best.kw };
+    }
+    if (inj) return { route: 'Tiêm', kw: null, inj: true };
     // Thuốc VIÊN không khớp từ khóa -> dùng mặc định (Uống sau ăn). Dạng khác (chai, lọ, bút tiêm...) -> để mặc định của máy (route = null)
     // Dạng thuốc lấy theo ô "Đơn vị" của HIS (Viên / Chai / Lọ / Bút / Ống...); chưa có đơn vị thì xét theo tên thuốc
-    let u = hlxRouteNorm(unitIn);
-    if (/^chọn/.test(u)) u = '';
     const isTablet = u ? u === 'viên' : /viên|nang|tablet|capsule/.test(n);
     if (isTablet) return { route: cfg.def, kw: null };
     return { route: null, kw: null, webDefault: true };
@@ -5967,6 +6014,8 @@
     try {
       if (st.cancelled || !combo) return;
       if (!target) return; // dạng thuốc không phải viên & không khớp quy tắc: để nguyên mặc định của máy
+      // Thuốc tiêm: HIS đã đặt sẵn Đ.Dùng dạng Tiêm/Truyền/Pha (tiêm bắp, tiêm TM...) thì giữ nguyên, không ghi đè
+      if (res.inj && /^(tiêm|truyền|pha)/.test(hlxRouteNorm(hlxRouteCurrent(combo)))) return;
       if (hlxRouteNorm(hlxRouteCurrent(combo)) === hlxRouteNorm(target)) return;
 
       const dayEl0 = hlxQ(SUPPLY_DAY_SELECTOR);
@@ -9969,22 +10018,59 @@
     const sp = row.querySelector('docx-label span[title]');
     return !!sp && HLX_CAP_LABELS.indexOf((sp.getAttribute('title') || '').trim()) !== -1;
   }
+  // Mọi ô văn bản của hồ sơ (textarea; ô text trong docx-control...) trừ ô của Helixfast, ô chọn/tìm kiếm, mã, số, mật khẩu
+  function hlxCapTargetAll(t) {
+    if (!t || !t.closest || t.disabled || t.readOnly) return false;
+    if (t.tagName === 'TEXTAREA') {
+      if (t.closest('.hlx-rt-box, .hlx-icd-box, .hlx-st-box, [id^="hlx-"], .hlx-treat-wrap')) return false;
+      return true;
+    }
+    if (t.tagName === 'INPUT' && (t.type || 'text') === 'text') {
+      if (t.closest('p-autocomplete, ng-select, p-calendar, p-dropdown, p-inputnumber, .ui.dropdown, [id^="hlx-"], .hlx-rt-box, .hlx-icd-box, .hlx-st-box')) return false;
+      return hlxCapTarget(t) || !!t.closest('docx-control');
+    }
+    return false;
+  }
+  // Viết hoa chữ cái đầu của MỌI dòng (kể cả sau gạch đầu dòng "- " / "1. "); dòng đã gõ thường trước đó cũng được sửa lại
+  function hlxCapFix(t) {
+    const v = t.value || '';
+    const up = (c) => c.toLocaleUpperCase('vi-VN');
+    const nv = t.tagName === 'TEXTAREA'
+      ? v.replace(/(^|\n)([ \t]*(?:[-–•*+]\s+|\d+[.)]\s+)?)(\S)/g, (m, a, b, c) => a + b + up(c))
+      : v.replace(/^(\s*)(\S)/, (m, a, c) => a + up(c));
+    if (nv === v) return;
+    const ss = t.selectionStart, se = t.selectionEnd;
+    setNativeValue(t, nv);
+    try { t.setSelectionRange(ss, se); } catch (err) {}
+  }
   hlxDocListen(
     'input',
     (e) => {
       if (!e.isTrusted || e.isComposing) return;
-      if (!hlxFeatOn('cap') || !hlxQuickPage()) return;
+      if (!hlxFeatOn('cap')) return;
       const t = e.target;
-      if (!hlxCapTarget(t)) return;
-      const v = t.value || '';
-      const up = (c) => c.toLocaleUpperCase('vi-VN');
-      const nv = t.tagName === 'TEXTAREA'
-        ? v.replace(/(^|\n)([ \t]*)(\S)/g, (m, a, b, c) => a + b + up(c))
-        : v.replace(/^(\s*)(\S)/, (m, a, c) => a + up(c));
-      if (nv === v) return;
-      const ss = t.selectionStart, se = t.selectionEnd;
-      setNativeValue(t, nv);
-      try { t.setSelectionRange(ss, se); } catch (err) {}
+      if (!hlxCapTargetAll(t)) return;
+      hlxCapFix(t);
+    },
+    true
+  );
+  // Sau Enter (xuống dòng) và khi rời ô (kể cả nội dung do script/HIS điền vào): rà lại toàn bộ các dòng
+  hlxDocListen(
+    'keyup',
+    (e) => {
+      if (!e.isTrusted || e.key !== 'Enter') return;
+      if (!hlxFeatOn('cap')) return;
+      const t = e.target;
+      if (t && t.tagName === 'TEXTAREA' && hlxCapTargetAll(t)) hlxCapFix(t);
+    },
+    true
+  );
+  hlxDocListen(
+    'focusout',
+    (e) => {
+      if (!hlxFeatOn('cap')) return;
+      const t = e.target;
+      if (hlxCapTargetAll(t)) hlxCapFix(t);
     },
     true
   );
