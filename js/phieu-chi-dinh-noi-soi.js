@@ -90,6 +90,7 @@
     ".ns-inp-sex{width:52px;flex:0 0 auto;}",
     ".ns-inp-addr{flex:1 1 auto;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:uppercase;}",
     ".ns-diag-fixed{font-weight:bold;}",
+    ".ns-inp-diag{flex:1 1 auto;min-width:120px;font-family:inherit;font-weight:bold;border:none;border-bottom:1px dotted #000;background:transparent;color:#000;}",
     ".ns-inp-type{min-width:200px;}",
     ".ns-table{width:100%;border-collapse:collapse;margin:2.5mm 0 4mm;font-size:11.5px;}",
     ".ns-table th,.ns-table td{border:1px solid #000;padding:1.2mm 1.6mm;vertical-align:middle;}",
@@ -117,7 +118,7 @@
     /* ---- Giao diện điền liệu trên màn hình: chỉ hiện các ô cần điền,
        to rõ, cân đối — KHÔNG ảnh hưởng bản in (bản in vẫn đủ nguyên gốc). */
     "@media screen{",
-    "  #nsWrap .ns-hd,#nsWrap .ns-title,#nsWrap .ns-tinhtrang,#nsWrap #nsDiagLine,#nsWrap #nsTable{display:none !important;}",
+    "  #nsWrap .ns-hd,#nsWrap .ns-title,#nsWrap .ns-tinhtrang,#nsWrap #nsTable{display:none !important;}",
     "  .ns-stage{background:var(--surface,#fff);border:1px solid var(--border,#e2e2e2);border-radius:12px;padding:20px;justify-content:flex-start;}",
     "  .ns-sheet-outer{box-shadow:none;background:transparent;width:100%;}",
     "  #nsSheet{width:auto;max-width:760px;min-height:0;margin:0 auto;padding:6px;font-size:16px;}",
@@ -130,6 +131,7 @@
     "  .ns-inp-sex{width:80px;}",
     "  .ns-inp-addr{min-width:300px;white-space:normal;overflow:visible;text-overflow:clip;}",
     "  .ns-inp-type{min-width:340px;max-width:100%;}",
+    "  .ns-inp-diag{min-width:300px;}",
     "  .ns-footer{justify-content:center;margin-top:10px;}",
     "  .ns-footer-col{width:auto;max-width:380px;}",
     "  .ns-footer .ns-daterow{font-size:16px;gap:10px;}",
@@ -236,7 +238,7 @@
               '</div>' +
               '<div class="ns-field-line" id="nsDiagLine">' +
                 '<label>Chẩn đoán:</label>' +
-                '<span class="ns-diag-fixed" id="nsDiagText"></span>' +
+                '<input type="text" id="nsDiagText" class="ns-inp-diag" placeholder="Nhập chẩn đoán...">' +
               '</div>' +
               '<table class="ns-table" id="nsTable">' +
                 '<thead><tr>' +
@@ -335,8 +337,31 @@
   var nsBsSelect = document.getElementById("nsBsName");
   var nsBsSyncStatus = document.getElementById("nsBsSyncStatus"); // tuỳ chọn, không bắt buộc có trong HTML
 
+  // Chuẩn hoá tên bác sĩ: "BS. Họ Tên" (BS. viết hoa, có dấu chấm; mỗi chữ cái đầu hoa, còn lại thường)
+  function normalizeDoctorName(raw) {
+    var n = String(raw || "").replace(/\s+/g, " ").trim();
+    n = n.replace(/^(bác\s*sĩ|bac\s*si|bs|b\.s|bsck\s*[12i]*|ths\.?\s*bs|ts\.?\s*bs)\s*[.\-:]*\s*/i, "");
+    n = n.replace(/^[.\s]+/, "").trim();
+    if (!n) return "";
+    n = n.split(" ").map(function (w) {
+      var l = w.toLocaleLowerCase("vi");
+      return l.charAt(0).toLocaleUpperCase("vi") + l.slice(1);
+    }).join(" ");
+    return "BS. " + n;
+  }
+  function normalizeDoctorList(list) {
+    var out = [];
+    (Array.isArray(list) ? list : []).forEach(function (x) {
+      var n = normalizeDoctorName(x);
+      if (n && out.indexOf(n) === -1) out.push(n);
+    });
+    return out;
+  }
   function loadDoctorList() {
-    try { return JSON.parse(localStorage.getItem(LS_DOCTORS) || "[]"); } catch (e) { return []; }
+    try { return normalizeDoctorList(JSON.parse(localStorage.getItem(LS_DOCTORS) || "[]")); } catch (e) { return []; }
+  }
+  function getDefaultDoctor() {
+    return normalizeDoctorName(localStorage.getItem(LS_DOCTOR_DEFAULT) || "");
   }
   function saveDoctorListLocal(list) { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); }
   function saveDoctorList(list) {
@@ -359,7 +384,7 @@
         key: CLOUD_DOCTOR_KEY,
         value: JSON.stringify({
           list: loadDoctorList(),
-          def: localStorage.getItem(LS_DOCTOR_DEFAULT) || "",
+          def: getDefaultDoctor(),
         }),
       };
       fetch(SUPABASE_URL + "/rest/v1/logo", {
@@ -383,9 +408,15 @@
     }).then(function (rows) {
       if (rows && rows[0] && rows[0].value) {
         var cfg = JSON.parse(rows[0].value);
-        if (Array.isArray(cfg.list)) saveDoctorListLocal(cfg.list);
-        if (cfg.def) localStorage.setItem(LS_DOCTOR_DEFAULT, cfg.def);
-        renderDoctorSelect();
+        var rawList = Array.isArray(cfg.list) ? cfg.list : [];
+        var normList = normalizeDoctorList(rawList);
+        var normDef = normalizeDoctorName(cfg.def || "");
+        saveDoctorListLocal(normList);
+        if (normDef) localStorage.setItem(LS_DOCTOR_DEFAULT, normDef); else localStorage.removeItem(LS_DOCTOR_DEFAULT);
+        var cur = nsBsSelect.value;
+        renderDoctorSelect(cur && normList.indexOf(cur) !== -1 ? cur : undefined);
+        // Tên trên máy chủ chưa đúng chuẩn → ghi đè lại bản đã chuẩn hoá
+        if (JSON.stringify(rawList) !== JSON.stringify(normList) || (cfg.def || "") !== normDef) pushDoctorsToCloud();
         if (nsBsSyncStatus) nsBsSyncStatus.textContent = "Đã lấy danh sách mới nhất từ máy chủ ✓";
       }
     }).catch(function () {
@@ -395,7 +426,7 @@
 
   function renderDoctorSelect(selectValue) {
     var list = loadDoctorList();
-    var def = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
+    var def = getDefaultDoctor();
     var blankOpt = '<option value="">(Ký, ghi rõ họ tên)</option>';
     var defBtn = document.getElementById("nsBsNameDefBtn");
     if (list.length === 0) {
@@ -420,7 +451,7 @@
   renderDoctorSelect();
   pullDoctorsFromCloud();
   nsBsSelect.addEventListener("change", function () {
-    var def = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
+    var def = getDefaultDoctor();
     var defBtn = document.getElementById("nsBsNameDefBtn");
     if (defBtn) defBtn.classList.toggle("is-default", !!nsBsSelect.value && nsBsSelect.value === def);
   });
@@ -428,7 +459,7 @@
   document.getElementById("nsBsNameAddBtn").addEventListener("click", function () {
     var name = window.prompt("Thêm bác sĩ mới (VD: BS. Nguyễn Văn A):", "");
     if (!name) return;
-    var trimmed = name.trim();
+    var trimmed = normalizeDoctorName(name);
     if (!trimmed) return;
     var list = loadDoctorList();
     if (list.indexOf(trimmed) === -1) {
@@ -439,7 +470,7 @@
   });
   document.getElementById("nsBsNameDefBtn").addEventListener("click", function () {
     if (!nsBsSelect.value) return;
-    var curDef = localStorage.getItem(LS_DOCTOR_DEFAULT) || "";
+    var curDef = getDefaultDoctor();
     if (curDef === nsBsSelect.value) {
       localStorage.removeItem(LS_DOCTOR_DEFAULT);
     } else {
@@ -454,7 +485,7 @@
     var removed = nsBsSelect.value;
     var list = loadDoctorList().filter(function (n) { return n !== removed; });
     saveDoctorList(list);
-    if (localStorage.getItem(LS_DOCTOR_DEFAULT) === removed) localStorage.removeItem(LS_DOCTOR_DEFAULT);
+    if (getDefaultDoctor() === removed) localStorage.removeItem(LS_DOCTOR_DEFAULT);
     renderDoctorSelect();
   });
 
@@ -464,7 +495,7 @@
   function applyNoiSoiType() {
     var sel = document.getElementById("nsLoaiNoiSoi");
     var t = NOISOI_TYPES[parseInt(sel.value, 10)] || NOISOI_TYPES[0];
-    document.getElementById("nsDiagText").textContent = t.chanDoan;
+    document.getElementById("nsDiagText").value = t.chanDoan;
     var first = tbody.querySelector(".ns-fld-noidung");
     if (first) first.value = t.name;
   }
@@ -549,7 +580,7 @@
     });
     return {
       tinhTrang: document.getElementById("nsTinhTrang").value,
-      chanDoan: document.getElementById("nsDiagText").textContent,
+      chanDoan: document.getElementById("nsDiagText").value.trim(),
       hoTen: document.getElementById("nsHoTen").value.trim(),
       namSinh: document.getElementById("nsNamSinh").value.trim(),
       gioiTinh: document.getElementById("nsGioiTinh").value,
