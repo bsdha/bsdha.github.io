@@ -494,8 +494,29 @@
   const doctorSelect = $('rxDoctorSelect'), doctorDefBtn = $('rxDoctorDefBtn');
   const doctorSyncStatus = $('rxDoctorSyncStatus'); // tuỳ chọn: thêm <span id="rxDoctorSyncStatus"> trong HTML nếu muốn hiện trạng thái
   const CLOUD_DOCTOR_KEY = 'rx_doctor_list';
+  // Chuẩn hoá tên bác sĩ: "BS. Họ Tên" (BS. viết hoa, có dấu chấm; mỗi chữ cái đầu hoa, còn lại thường)
+  function normalizeDoctorName(raw) {
+    let n = String(raw || '').replace(/\s+/g, ' ').trim();
+    n = n.replace(/^(bác\s*sĩ|bac\s*si|bs|b\.s|bsck\s*[12i]*|ths\.?\s*bs|ts\.?\s*bs)\s*[.\-:]*\s*/i, '');
+    n = n.replace(/^[.\s]+/, '').trim();
+    if (!n) return '';
+    n = n.split(' ').map((w) => {
+      const l = w.toLocaleLowerCase('vi');
+      return l.charAt(0).toLocaleUpperCase('vi') + l.slice(1);
+    }).join(' ');
+    return 'BS. ' + n;
+  }
+  function normalizeDoctorList(list) {
+    const out = [];
+    (Array.isArray(list) ? list : []).forEach((x) => {
+      const n = normalizeDoctorName(x);
+      if (n && !out.includes(n)) out.push(n);
+    });
+    return out;
+  }
+  function getDefaultDoctor() { return normalizeDoctorName(localStorage.getItem(LS_DOCTOR_DEFAULT) || ''); }
   function loadDoctorList() {
-    try { return JSON.parse(localStorage.getItem(LS_DOCTORS) || '[]'); } catch (e) { return []; }
+    try { return normalizeDoctorList(JSON.parse(localStorage.getItem(LS_DOCTORS) || '[]')); } catch (e) { return []; }
   }
   function saveDoctorListLocal(list) { localStorage.setItem(LS_DOCTORS, JSON.stringify(list)); }
   function saveDoctorList(list) {
@@ -512,7 +533,7 @@
           key: CLOUD_DOCTOR_KEY,
           value: JSON.stringify({
             list: loadDoctorList(),
-            def: localStorage.getItem(LS_DOCTOR_DEFAULT) || '',
+            def: getDefaultDoctor(),
           }),
         };
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/logo`, {
@@ -536,9 +557,15 @@
       const rows = await resp.json();
       if (rows && rows[0] && rows[0].value) {
         const cfg = JSON.parse(rows[0].value);
-        if (Array.isArray(cfg.list)) saveDoctorListLocal(cfg.list);
-        if (cfg.def) localStorage.setItem(LS_DOCTOR_DEFAULT, cfg.def);
-        renderDoctorSelect();
+        const rawList = Array.isArray(cfg.list) ? cfg.list : [];
+        const normList = normalizeDoctorList(rawList);
+        const normDef = normalizeDoctorName(cfg.def || '');
+        saveDoctorListLocal(normList);
+        if (normDef) localStorage.setItem(LS_DOCTOR_DEFAULT, normDef); else localStorage.removeItem(LS_DOCTOR_DEFAULT);
+        const cur = doctorSelect.value;
+        renderDoctorSelect(cur && normList.includes(cur) ? cur : undefined);
+        // Tên trên máy chủ chưa đúng chuẩn → ghi đè lại bản đã chuẩn hoá
+        if (JSON.stringify(rawList) !== JSON.stringify(normList) || (cfg.def || '') !== normDef) pushDoctorsToCloud();
         if (doctorSyncStatus) doctorSyncStatus.textContent = 'Đã lấy danh sách mới nhất từ máy chủ ✓';
       }
     } catch (err) {
@@ -548,8 +575,8 @@
 
   function renderDoctorSelect(selectValue) {
     const list = loadDoctorList();
-    const def = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
-    const blankOpt = '<option value="">— Tự đóng dấu tên (để trống) —</option>';
+    const def = getDefaultDoctor();
+    const blankOpt = '<option value="">(Ký, ghi rõ họ tên)</option>';
     if (list.length === 0) {
       doctorSelect.innerHTML = blankOpt;
       doctorDefBtn.classList.remove('is-default');
@@ -560,7 +587,7 @@
     ).join('');
     const toSelect = selectValue !== undefined && (selectValue === '' || list.includes(selectValue))
       ? selectValue
-      : (def && list.includes(def) ? def : list[0]);
+      : (def && list.includes(def) ? def : '');
     doctorSelect.value = toSelect;
     doctorDefBtn.classList.toggle('is-default', doctorSelect.value === def && !!def);
   }
@@ -568,14 +595,15 @@
   pullDoctorsFromCloud();
 
   doctorSelect.addEventListener('change', () => {
-    const def = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
+    const def = getDefaultDoctor();
     doctorDefBtn.classList.toggle('is-default', doctorSelect.value === def && !!def);
   });
 
   $('rxDoctorAddBtn').addEventListener('click', async () => {
     const name = await customPrompt('Thêm bác sĩ mới', 'VD: BS. Nguyễn Văn A', '');
     if (!name) return;
-    const trimmed = name.trim();
+    const trimmed = normalizeDoctorName(name);
+    if (!trimmed) return;
     const list = loadDoctorList();
     if (!list.includes(trimmed)) {
       list.push(trimmed);
@@ -586,7 +614,7 @@
 
   $('rxDoctorDefBtn').addEventListener('click', () => {
     if (!doctorSelect.value) return;
-    const curDef = localStorage.getItem(LS_DOCTOR_DEFAULT) || '';
+    const curDef = getDefaultDoctor();
     if (curDef === doctorSelect.value) {
       localStorage.removeItem(LS_DOCTOR_DEFAULT);
     } else {
@@ -602,7 +630,7 @@
     if (!ok) return;
     const list = loadDoctorList().filter((n) => n !== doctorSelect.value);
     saveDoctorList(list);
-    if (localStorage.getItem(LS_DOCTOR_DEFAULT) === doctorSelect.value) localStorage.removeItem(LS_DOCTOR_DEFAULT);
+    if (getDefaultDoctor() === doctorSelect.value) localStorage.removeItem(LS_DOCTOR_DEFAULT);
     renderDoctorSelect();
   });
 
