@@ -66,6 +66,84 @@
 
   function pad2(n) { return String(n).padStart(2, '0'); }
 
+  // ---- Ô "Bắt đầu mức này lúc" dạng mặt nạ HH:MM (giống các công cụ truyền dịch khác) ----
+  // Luôn hiển thị đủ HH:MM (điền sẵn giờ hiện tại), gõ 4 số liên tục -> 08:30,
+  // gõ xong 2 số giờ tự nhảy sang phút, giờ 00-23, phút 00-59.
+  let timeSeg = 0, timeBuf = '', timeHH = '00', timeMM = '00';
+  (function setupTimeMask() {
+    if (!startInput) return;
+    if (!startInput.value) {
+      const now = new Date();
+      startInput.value = pad2(now.getHours()) + ':' + pad2(now.getMinutes());
+    }
+    function sync() {
+      const m = /^([0-9]{2}):([0-9]{2})$/.exec(startInput.value || '');
+      if (m) { timeHH = m[1]; timeMM = m[2]; } else { timeHH = '00'; timeMM = '00'; }
+    }
+    function render() {
+      startInput.value = timeHH + ':' + timeMM;
+      if (timeSeg === 0) startInput.setSelectionRange(0, 2); else startInput.setSelectionRange(3, 5);
+    }
+    function selectSeg(seg) { timeSeg = seg; timeBuf = ''; render(); }
+    sync();
+
+    startInput.addEventListener('focus', () => { sync(); selectSeg(0); });
+    startInput.addEventListener('click', () => { render(); });
+    startInput.addEventListener('keydown', (e) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (timeSeg === 0) selectSeg(1); else if (typeof calc === 'function') calc();
+        return;
+      }
+      if (e.key === 'Tab') { if (timeSeg === 0 && !e.shiftKey) { e.preventDefault(); selectSeg(1); } return; }
+      if (e.key === 'Backspace' || e.key === 'Delete') {
+        e.preventDefault(); timeBuf = '';
+        if (timeSeg === 0) timeHH = '00'; else timeMM = '00';
+        render(); return;
+      }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); selectSeg(0); return; }
+      if (e.key === 'ArrowRight') { e.preventDefault(); selectSeg(1); return; }
+      if (!/^[0-9]$/.test(e.key)) { e.preventDefault(); return; }
+      e.preventDefault();
+      applyDigit(e.key);
+    });
+    // Bàn phím ảo/điện thoại có thể không bắn keydown đúng -> xử lý thêm qua beforeinput
+    startInput.addEventListener('beforeinput', (e) => {
+      if (e.inputType === 'insertText' && /^[0-9]$/.test(e.data || '')) { e.preventDefault(); applyDigit(e.data); }
+      else if (e.inputType && e.inputType.indexOf('insert') === 0) { e.preventDefault(); }
+    });
+    function applyDigit(ch) {
+      const maxVal = timeSeg === 0 ? 23 : 59;
+      timeBuf += ch;
+      if (timeBuf.length === 1) {
+        const d = parseInt(timeBuf, 10);
+        const maxFirstDigit = timeSeg === 0 ? 2 : 5;
+        if (d > maxFirstDigit) {
+          const val = pad2(d);
+          if (timeSeg === 0) { timeHH = val; selectSeg(1); } else { timeMM = val; timeBuf = ''; render(); }
+          return;
+        }
+        if (timeSeg === 0) timeHH = pad2(d); else timeMM = pad2(d);
+        render(); return;
+      }
+      let val = parseInt(timeBuf, 10);
+      if (val > maxVal) val = maxVal;
+      const f = pad2(val);
+      if (timeSeg === 0) { timeHH = f; selectSeg(1); } else { timeMM = f; timeBuf = ''; render(); }
+    }
+    startInput.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const text = (e.clipboardData || window.clipboardData).getData('text');
+      const digits = text.replace(/\D/g, '').slice(0, 4);
+      if (digits.length === 4) {
+        timeHH = pad2(Math.min(parseInt(digits.slice(0, 2), 10), 23));
+        timeMM = pad2(Math.min(parseInt(digits.slice(2, 4), 10), 59));
+        selectSeg(1);
+      }
+    });
+  })();
+
   function renderStages() {
     const proto = PROTOCOLS[currentAge];
     stageToggle.innerHTML = '';
