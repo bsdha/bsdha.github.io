@@ -751,7 +751,7 @@
   // (cho "Trong Bệnh viện") và vào localStorage key rxLocalDrugsOutside (cho "Ngoài Bệnh viện"),
   // cùng đúng định dạng mà loadDrugList()/loadOutsideDrugList() ở trên đọc ra.
 
-  // ---------- Chọn chế độ kê đơn: Trong BV / Ngoài BV / In toa viết tay ----------
+  // ---------- Chọn chế độ kê đơn: Trong BV / Ngoài BV / In toa thuốc trống ----------
   let rxPrescribeMode = localStorage.getItem(LS_RX_MODE) || 'hospital';
   const modeRadios = document.querySelectorAll('input[name="rxPrescribeMode"]');
   const digitalDrugArea = $('rxDigitalDrugArea');
@@ -2457,7 +2457,7 @@
 
   function rxModeLabel(mode) {
     if (mode === 'outside') return 'Ngoài Bệnh viện';
-    if (mode === 'handwritten') return 'Viết tay';
+    if (mode === 'handwritten') return 'Toa trống';
     if (mode === 'mixed') return 'Trong BV + Ngoài BV';
     return 'Trong Bệnh viện';
   }
@@ -2535,7 +2535,7 @@
 
   function printHistoryRx(row) {
     if (row.mode === 'handwritten') {
-      customAlert('Không thể in lại', 'Đơn này là toa viết tay (chỉ lưu khung trống để bác sĩ tự ghi tay) — không có dữ liệu thuốc để in lại.');
+      customAlert('Không thể in lại', 'Đơn này là toa thuốc trống (chỉ lưu khung trống để bác sĩ tự ghi tay) — không có dữ liệu thuốc để in lại.');
       return;
     }
     try {
