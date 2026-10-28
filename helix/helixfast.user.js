@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.22
+// @version      2.24
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
-// @run-at       document-idle
+// @run-at       document-start
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_xmlhttpRequest
@@ -15,11 +15,20 @@
 // @updateURL    https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js
 // @downloadURL  https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js
 // ==/UserScript==
+(function hlxBoot() {
+  if (window.__hlxBooted) return;
+  window.__hlxBooted = true;
+  function run() {
+    const setInterval = (fn, ms, ...args) => window.setInterval(function () {
+      if (document.hidden) return;
+      return fn.apply(this, arguments);
+    }, ms, ...args);
+
 
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.22';
+  const HELIXFAST_VERSION = '2.24';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -48,8 +57,10 @@
       desc: ['Khi chọn mã ICD có trong bảng quy tắc, tự thay tên ICD (chỉnh bảng: menu chuột phải → Đổi tên ICD mặc định)'] },
     { id: 'ipdsync', name: 'Tự đồng bộ triệu chứng ↔ Toàn thân/Bộ phận', pages: ['ipd', 'emerg'],
       desc: ['Đồng bộ triệu chứng ↔ Toàn thân / Bộ phận'] },
-    { id: 'benhan', name: 'Tab Bệnh án / Tờ điều trị tự điền', pages: ['ipd'],
-      desc: ['Tab Bệnh án và Tờ điều trị tự điền'] },
+    { id: 'benhan', name: 'Tab Bệnh án (vỏ bệnh án) tự điền + nút chọn nhanh', pages: ['ipd'],
+      desc: ['Tự chọn Trực tiếp vào / Nơi giới thiệu; tự điền Vào ngày thứ, Quá trình bệnh lý, Bản thân, Gia đình, Toàn thân, các cơ quan, CLS cần làm',
+        'Nút chọn nhanh Tiên lượng, Phương pháp điều trị, Tình trạng người bệnh ra viện; điền sẵn Hướng dẫn điều trị, Hướng điều trị tiếp theo',
+        'Nút ✨ Tạo tóm tắt bệnh án và ⤓ Trích xuất kết quả xét nghiệm; tự cộng Số tờ Toàn bộ hồ sơ'] },
     { id: 'ipdtreat', name: 'Xuất viện nội trú: nút chọn nhanh Phương pháp điều trị, điền sẵn "Nội khoa"', pages: ['ipd'],
       desc: ['Hàng nút bên dưới ô Phương pháp điều trị (Nội khoa, Ngoại khoa, Xạ trị, Hoá trị, Xạ trị + Nội khoa)', 'Ô đang mở và trống thì tự điền "Nội khoa"'] },
     { id: 'rx', name: 'Kê đơn: liều dùng, cách dùng tự động, sắp xếp thuốc', pages: ['exam', 'ipd', 'emerg', 'other'],
@@ -934,12 +945,21 @@
 
   let hsProgressionLocked = false;
 
+  // Nội dung bệnh sử do script sinh ra gần nhất; ô có nội dung khác thế (người dùng/HIS đã nhập hoặc sửa) thì giữ nguyên
+  let hsLastProg = null;
+  function hsProgIsUserText(el) {
+    const v = (el.value || '').trim();
+    return !!v && v !== String(hsLastProg == null ? '' : hsLastProg).trim();
+  }
+
   function hsApplyQuickVariant(text, index) {
     const progressionEl = document.querySelector(PROGRESSION_SELECTOR);
     if (!progressionEl) return;
+    if (hsProgIsUserText(progressionEl)) return;
     const variants = hsQuickVariants(text);
     const generated = variants[index % variants.length];
     setNativeValue(progressionEl, generated);
+    hsLastProg = generated;
     hsProgressionLocked = true;
     setNoteTextareaValue(generated);
   }
@@ -951,8 +971,10 @@
       hsProgressionLocked = false;
     }
     if (hsProgressionLocked) return;
+    if (hsProgIsUserText(progressionEl)) return;
     if (progressionEl.value !== symptomEl.value) {
       setNativeValue(progressionEl, symptomEl.value);
+      hsLastProg = symptomEl.value;
     }
   }
 
@@ -9210,7 +9232,7 @@
 
   // ===== Tab "Bệnh án": chọn sẵn / điền sẵn các mục (mỗi lượt khám chỉ làm 1 lần mỗi mục) =====
   const BA_CONSTANTS = [
-    ['6.2.1', 'Tim đều, không âm thổi bệnh lý'],
+    ['6.2.1', 'Tim đều'],
     ['6.2.2', 'Phổi không rale'],
     ['6.2.3', 'Bụng mềm, gan lách không sờ chạm'],
     ['6.2.4', 'Chạm thận (-)'],
@@ -9223,7 +9245,34 @@
   ];
   const baDone = {};
 
+  // Vỏ bệnh án MỚI: form low-code (app-single-record-form), mỗi ô nằm trong .lc-layout-field với <label> là tên ô, không còn đánh số.
+  // Ánh xạ mã mục cũ (1.1, 6.4, 10.3...) -> tên ô mới để mọi chức năng tự điền / nút bên dưới dùng chung cho cả hai cấu trúc.
+  const BA_LABEL = {
+    '1.1': 'Trực tiếp vào', '1.2': 'Nơi giới thiệu', '4.0': 'Lý do vào viện', '4.1': 'Vào ngày thứ',
+    '5.1': 'Quá trình bệnh lý', '5.2.1': 'Bản thân', '5.2.3': 'Gia đình',
+    '6.1': 'Toàn thân', '6.2.1': 'Tuần hoàn', '6.2.2': 'Hô hấp', '6.2.3': 'Tiêu hoá', '6.2.4': 'Thận - Tiết niệu - Sinh dục',
+    '6.2.5': 'Thần kinh', '6.2.6': 'Cơ - Xương - Khớp', '6.2.7': 'Tai - Mũi - Họng', '6.2.8': 'Răng - Hàm - Mặt', '6.2.9': 'Mắt',
+    '6.2.10': 'Nội tiết, dinh dưỡng và các bệnh lý khác', '6.3': 'Các xét nghiệm cận lâm sàng cần làm', '6.4': 'Tóm tắt bệnh án',
+    '8': 'Tiên lượng', '9': 'Hướng dẫn điều trị',
+    '10.1': 'Quá trình bệnh lý và diễn biến lâm sàng', '10.2': 'Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán',
+    '10.3': 'Phương pháp điều trị', '10.4': 'Tình trạng người bệnh ra viện', '10.5': 'Hướng điều trị và các chế độ tiếp theo',
+    '10.6': 'Số tờ X-quang', '10.7': 'Số tờ CT Scanner', '10.8': 'Số tờ Siêu âm', '10.9': 'Số tờ Xét nghiệm',
+    '10.10': 'Hồ sơ, phim, ảnh Khác', '10.11': 'Số tờ khác', '10.12': 'Số tờ Toàn bộ hồ sơ',
+  };
+  function blRoot() {
+    return Array.from(document.querySelectorAll('app-single-record-form')).find(hlxIsVisible) || null;
+  }
   function baFindRow(num) {
+    const root = blRoot();
+    if (root) {
+      const want = BA_LABEL[num];
+      if (!want) return null;
+      for (const f of root.querySelectorAll('.lc-layout-field')) {
+        const lb = f.querySelector('label');
+        if (lb && baNorm(lb.textContent) === want) return hlxIsVisible(f) ? f : null;
+      }
+      return null;
+    }
     const re = new RegExp('^' + num.replace(/\./g, '\\.') + '\\.\\s');
     const spans = document.querySelectorAll('docx-label span[title]');
     let any = null;
@@ -9240,7 +9289,7 @@
 
   function baFindTextarea(num) {
     const row = baFindRow(num);
-    return row ? row.querySelector('docx-control textarea') : null;
+    return row ? (row.querySelector('docx-control textarea') || row.querySelector('textarea')) : null;
   }
 
   // Nguồn ở phần nhập khoa: tìm theo tiêu đề, chấp nhận cả khi tab đang ẩn
@@ -9321,7 +9370,20 @@
       done.add(id);
     };
 
-    fillFrom('5.1', () => baSourceByTitle('Diễn biến vào viện'));
+    // Nguồn: "Diễn biến vào viện" (phần nhập khoa); chưa có thì lấy "Diễn biến bệnh", cuối cùng mới tới "Lý do khám"
+    const srcDienBien = () => {
+      const has = (e) => e && (e.value || '').trim();
+      const a = baSourceByTitle('Diễn biến vào viện');
+      if (has(a)) return a;
+      const b = baSourceByControl('progression');
+      if (has(b)) return b;
+      return a;
+    };
+    fillFrom('5.1', srcDienBien);
+    fillFrom('4.0', () => { // Lý do vào viện: CHỈ lấy từ ô "Lý do khám" (tab tiếp nhận), không lấy ô nào khác
+      const els = Array.from(document.querySelectorAll('textarea[formcontrolname="symptom"]'));
+      return els.find((e) => (e.value || '').trim()) || null;
+    });
     // 4.1 Vào ngày thứ: suy ra từ "Diễn biến vào viện" (cách nhập viện N ngày / giờ / phút / cùng ngày → 1)
     if (!done.has('4.1')) {
       const f41 = baFindField('4.1');
@@ -9362,7 +9424,7 @@
   let baLast102 = '';
   const BA_102_ITEMS = [
     ['ctm', 'Công thức máu'], ['dgd', 'Điện giải đồ'], ['dhmm', 'ĐHMM'],
-    ['ns1', 'NS1Ag'], ['sa', 'Siêu âm'], ['xq', 'X-quang'],
+    ['ns1', 'NS1Ag'], ['hs', 'Sinh hoá khác'], ['sa', 'Siêu âm'], ['xq', 'X-quang'], ['ecg', 'Điện tim'],
   ];
 
   const baSleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -9385,7 +9447,8 @@
     const row = baFindRow(num);
     if (!row) return null;
     return row.querySelector('docx-control textarea') ||
-      row.querySelector('docx-control input[type="text"], docx-control input:not([type])');
+      row.querySelector('docx-control input[type="text"], docx-control input:not([type])') ||
+      row.querySelector('textarea, input.p-inputnumber-input, input.p-inputtext[type="text"]');
   }
 
   function baEnsureCss() {
@@ -9405,6 +9468,38 @@
   }
 
   // Nút chọn nhanh cho 1 ô; def điền sẵn 1 lần
+  // Nút chọn nhanh dạng thêm/bớt từng dòng (không ghi đè nội dung đã có)
+  function baEnsureLineOptions(num, cls, options) {
+    const f = baFindField(num);
+    if (!f || f.tagName !== 'TEXTAREA') return;
+    baEnsureCss();
+    const lines = () => String(f.value || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+    let box = f.parentElement.querySelector('.' + cls);
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'hlx-ba-opts ' + cls;
+      options.forEach((o) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'hlx-ba-opt';
+        b.textContent = o;
+        b.addEventListener('click', (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const ff = baFindField(num);
+          if (!ff) return;
+          const cur = String(ff.value || '').split(/\r?\n/).map((x) => x.trim()).filter(Boolean);
+          const has = cur.some((x) => x.toLowerCase() === o.toLowerCase());
+          const next = has ? cur.filter((x) => x.toLowerCase() !== o.toLowerCase()) : cur.concat(o);
+          setNativeValue(ff, next.join('\n'));
+        });
+        box.appendChild(b);
+      });
+      f.insertAdjacentElement('afterend', box);
+    }
+    const cur = lines().map((x) => x.toLowerCase());
+    box.querySelectorAll('.hlx-ba-opt').forEach((b) => b.classList.toggle('on', cur.indexOf(b.textContent.toLowerCase()) !== -1));
+  }
+
   function baEnsureOptions(num, cls, options, def, done) {
     const f = baFindField(num);
     if (!f) return;
@@ -9439,6 +9534,19 @@
 
   // ---- đọc dữ liệu bệnh nhân ----
   function baReadGender() {
+    // Ưu tiên chip bệnh nhân trên đầu trang: <li class="mx-bc-patient"> ... <span class="mx-bc-meta">Nam|Nữ</span>
+    const chips = Array.from(document.querySelectorAll('li.mx-bc-patient'));
+    const chip = chips.find(hlxIsVisible) || chips[0];
+    if (chip) {
+      const metas = Array.from(chip.querySelectorAll('.mx-bc-meta'));
+      for (const m of metas) {
+        const t = baNorm(m.textContent);
+        if (/^nữ$/i.test(t)) return 'Nữ';
+        if (/^nam$/i.test(t)) return 'Nam';
+      }
+      if (chip.querySelector('.fa-female')) return 'Nữ';
+      if (chip.querySelector('.fa-male')) return 'Nam';
+    }
     const spans = Array.from(document.querySelectorAll('td[pltablecolumncell="gender"] span[title]'));
     if (!spans.length) return '';
     const sel = spans.find((s) => {
@@ -9567,6 +9675,36 @@
     return text;
   }
 
+  // Popup chọn giới tính (2 nút tròn) khi không đọc được từ thông tin bệnh nhân
+  function baAskGender() {
+    return new Promise((resolve) => {
+      const wrap = document.createElement('div');
+      wrap.style.cssText = 'position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;font-family:inherit';
+      wrap.innerHTML =
+        '<div style="background:#fff;border-radius:16px;padding:26px 30px;min-width:300px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">' +
+        '<div style="font-size:17px;font-weight:700;color:#0f172a;margin-bottom:4px">Chọn giới tính bệnh nhân</div>' +
+        '<div style="font-size:13px;color:#64748b;margin-bottom:18px">Không đọc được giới tính từ thông tin bệnh nhân</div>' +
+        '<div style="display:flex;gap:28px;justify-content:center;margin-bottom:22px">' +
+        ['Nam', 'Nữ'].map((g, i) =>
+          '<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:16px;color:#0f172a">' +
+          '<input type="radio" name="hlx-gender" value="' + g + '"' + (i === 0 ? ' checked' : '') + ' style="width:20px;height:20px;accent-color:#0d9488;cursor:pointer">' + g + '</label>').join('') +
+        '</div>' +
+        '<div style="display:flex;gap:10px;justify-content:center">' +
+        '<button type="button" data-a="cancel" style="padding:8px 20px;border-radius:999px;border:1px solid #cbd5e1;background:#fff;color:#475569;cursor:pointer">Hủy</button>' +
+        '<button type="button" data-a="ok" style="padding:8px 24px;border-radius:999px;border:0;background:#0d9488;color:#fff;font-weight:600;cursor:pointer">Xác nhận</button>' +
+        '</div></div>';
+      const done = (v) => { document.removeEventListener('keydown', onKey, true); wrap.remove(); resolve(v); };
+      const onKey = (e) => { if (e.key === 'Escape') { e.stopPropagation(); done(null); } else if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); done((wrap.querySelector('input:checked') || {}).value || null); } };
+      wrap.addEventListener('click', (e) => {
+        const a = e.target && e.target.getAttribute && e.target.getAttribute('data-a');
+        if (a === 'ok') done((wrap.querySelector('input:checked') || {}).value || null);
+        else if (a === 'cancel' || e.target === wrap) done(null);
+      });
+      document.addEventListener('keydown', onKey, true);
+      document.body.appendChild(wrap);
+    });
+  }
+
   async function baGenerateSummary(btn, stEl) {
     if (baBusy) return;
     baBusy = true;
@@ -9576,7 +9714,12 @@
     try {
       let sex = baReadGender();
       let age = baReadAge();
-      if (!sex) { const a = window.prompt('Không đọc được giới tính. Nhập Nam hoặc Nữ:', 'Nam'); sex = /nữ|nu/i.test(a || '') ? 'Nữ' : 'Nam'; }
+      if (!sex) {
+        hidePrintOverlay(); // overlay khóa chuột/phím nên tạm tắt để chọn
+        sex = await baAskGender();
+        if (!sex) { setSt('Đã hủy'); return; }
+        showPrintOverlay('Đang tạo tóm tắt bệnh án, vui lòng chờ...');
+      }
       if (age === null) { const a = window.prompt('Không đọc được tuổi. Nhập tuổi:', ''); age = exParseAge(a || ''); }
       const src = baSourceByControl('symptom');
       let reason = src ? baNorm(src.value).replace(/[.\s]+$/, '') : '';
@@ -9633,29 +9776,40 @@
     const root = baResultRoot();
     const out = [];
     if (!root) return out;
+    // Vị trí cột theo tiêu đề (HIS có thể ẩn/hiện cột); không thấy thì dùng vị trí mặc định
+    const ths = Array.from(root.querySelectorAll('thead th')).map((th) => baNorm(th.textContent));
+    const find = (re, def) => { const i = ths.findIndex((t) => re.test(t)); return i === -1 ? def : i; };
+    const iName = find(/^Tên chỉ số/i, 2), iUnit = find(/^Đơn vị/i, 4), iRes = find(/^Kết quả$/i, 5);
     let group = '';
     root.querySelectorAll('tbody > tr').forEach((tr) => {
       const tds = tr.querySelectorAll(':scope > td');
       if (tds.length === 2 && tds[1].getAttribute('colspan')) { group = baNorm(tds[1].textContent); return; }
-      if (tds.length < 6) return;
-      out.push({ group, name: baNorm(tds[2].textContent), unit: baNorm(tds[4].textContent), res: baNorm(tds[5].textContent) });
+      if (tds.length <= Math.max(iName, iUnit, iRes)) return;
+      out.push({ group, name: baNorm(tds[iName].textContent).replace(/^\d+\s*[.)]\s*/, ''), unit: baNorm(tds[iUnit].textContent), res: baNorm(tds[iRes].textContent) });
     });
     return out;
   }
 
-  const baFmt = (it) => it.name + ': ' + it.res + (it.unit ? (/^10\^/.test(it.unit) ? ' x ' : ' ') + it.unit : '');
+  const baCleanName = (n) => n.replace(/\[[^\]]*\]/g, '').replace(/\(\*+\)/g, '').replace(/^(đo hoạt độ|định lượng|xét nghiệm)\s+/i, '').replace(/\s+/g, ' ').trim();
+  const baFmt = (it) => baCleanName(it.name) + ': ' + it.res + (it.unit ? (/^10\^/.test(it.unit) ? ' x ' : ' ') + it.unit : '');
 
+  // Mỗi mục xét nghiệm nhận diện theo tên chỉ số (không phụ thuộc tên nhóm); chỉ số đã lấy từ phiếu cũ hơn thì bỏ qua
+  const BA_LABCAT = {
+    ctm: (g, n) => /^(wbc|rbc|hgb|hb|hct|plt)\b/.test(n),
+    dgd: (g, n) => /^(na|k|cl)\s*[+-]?$/.test(n),
+    dhmm: (g, n) => /đường (máu )?mao mạch|đhmm/.test(g + ' ' + n),
+    ns1: (g, n) => /ns1/.test(g + ' ' + n),
+    hs: (g, n) => /^(ure|urea|creatinin|creatinine|ast|alt|got|gpt|calci|ca\+\+|bilirubin|albumin|protein|cholesterol|triglycerid|hdl|ldl|hba1c|crp|glucose|đường huyết|egfr)/.test(n) || (!/mao mạch/.test(n) && /\b(ure|urea|creatinin|creatinine|egfr|ast|alt|got|gpt|bilirubin|albumin|cholesterol|triglycerid|hdl-?c?|ldl-?c?|hba1c|crp|glucose|amylase|lipase|ggt|ldh|ck-?mb?|troponin)\b|calci|acid uric/.test(n)),
+  };
   function baPickItems(items, key, found) {
-    if (found[key].size) return; // chỉ lấy 1 phiếu đại diện (xa nhất) cho mỗi mục
-    const add = (k, s) => { if (!found[key].has(k)) found[key].set(k, s); };
+    const test = BA_LABCAT[key];
+    if (!test) return;
     items.forEach((it) => {
       if (!it.res) return;
       const g = it.group.toLowerCase();
       const n = it.name.toLowerCase();
-      if (key === 'ctm' && /tế bào máu/.test(g) && /^(wbc|rbc|hct|plt)$/.test(n)) add(n, baFmt(it));
-      if (key === 'dgd' && /điện giải/.test(g) && /^(na\+|k\+|cl-)$/.test(n)) add(n, baFmt(it));
-      if (key === 'dhmm' && /đường (máu )?mao mạch|đhmm/.test(g + ' ' + n)) add(n, 'ĐHMM: ' + it.res + (it.unit ? ' ' + it.unit : ''));
-      if (key === 'ns1' && /ns1/.test(g + ' ' + n)) add(n, 'NS1Ag: ' + it.res);
+      if (!test(g, n) || found[key].has(n)) return;
+      found[key].set(n, key === 'dhmm' ? 'ĐHMM: ' + it.res + (it.unit ? ' ' + it.unit : '') : key === 'ns1' ? 'NS1Ag: ' + it.res : baFmt(it));
     });
   }
 
@@ -9672,6 +9826,16 @@
       .filter(Boolean).join('; ');
   }
 
+  // Điện tim: dự phòng khi kết quả không nằm trong khung kết luận / bảng chỉ số
+  function baParseEcgFallback() {
+    const root = baResultRoot();
+    if (!root) return '';
+    const vals = Array.from(root.querySelectorAll('textarea, input[type="text"]')).map((e) => baNorm(e.value)).filter(Boolean);
+    if (vals.length) return vals.join('; ');
+    const m = baNorm(root.textContent).match(/kết luận\s*:?\s*(.+)$/i);
+    return m ? m[1].replace(/[;.\s]+$/, '').slice(0, 300) : '';
+  }
+
   function baShortService(name) {
     return baNorm(name).replace(/\(PACS\)/i, '').replace(/\[[^\]]*\]/g, '').replace(/\([^)]*\)/g, '')
       .replace(/^chụp\s+xquang/i, 'X-quang').replace(/\s+/g, ' ').trim();
@@ -9683,9 +9847,13 @@
   };
 
   function baFindKqLink() {
-    const row = baFindRow('6.4');
     const isLink = (el) => baNorm(Array.from(el.childNodes).filter((x) => x.nodeType === 3).map((x) => x.textContent).join('')) === 'KQ chỉ định';
-    let link = row && Array.from(row.querySelectorAll('a, span, b')).find(isLink);
+    let link = null;
+    ['10.2', '6.4'].forEach((num) => {
+      if (link) return;
+      const row = baFindRow(num);
+      link = row && Array.from(row.querySelectorAll('a, span, b')).find(isLink);
+    });
     if (!link) link = Array.from(document.querySelectorAll('a.bolder.pull-left')).find((a) => hlxIsVisible(a) && isLink(a));
     return link || null;
   }
@@ -9696,7 +9864,7 @@
     let opened = false;
     if (!baResultRoot()) {
       const link = baFindKqLink();
-      if (!link) throw new Error('Không thấy nút "KQ chỉ định" cạnh mục 6.4');
+      if (!link) throw new Error('Không thấy nút "KQ chỉ định" trong vỏ bệnh án');
       link.click();
       opened = true;
       if (!(await baWaitFor(() => baResultRoot() && baResultRoot().closest('#subclinical_result') && baResultRoot().closest('#subclinical_result').querySelector('p-table tbody tr.hover'), 6000))) {
@@ -9707,30 +9875,39 @@
     const pane = baResultRoot().closest('#subclinical_result') || document;
     const tb = pane.querySelector('p-table tbody');
     const all = tb ? Array.from(tb.querySelectorAll('tr.hover')) : [];
-    // xa thời điểm hiện tại nhất trước; cùng giờ thì dòng dưới cùng trước
+    // Từ phiếu CŨ NHẤT (kết quả lúc mới vào viện có ý nghĩa nhất) đến mới nhất; cùng giờ thì dòng dưới cùng trước (danh sách xếp mới ở trên, cũ ở dưới)
     const rows = all.map((r, i) => ({ r, i, t: baListTime(r) })).sort((a, b) => (a.t - b.t) || (b.i - a.i)).map((x) => x.r);
     const sig = () => { const r = baResultRoot(); return r ? r.textContent.replace(/\s+/g, ' ').slice(0, 600) : ''; };
-    const need = (k) => wanted.indexOf(k) !== -1 && !found[k].size;
-    const labKeys = ['ctm', 'dgd', 'dhmm', 'ns1'];
+    const labKeys = ['ctm', 'dgd', 'dhmm', 'ns1', 'hs'];
+    const wantLab = labKeys.some((k) => wanted.indexOf(k) !== -1);
+    let done = 0;
     for (const r of rows) {
-      if (!need('ctm') && !need('dgd') && !need('dhmm') && !need('ns1') && !need('sa') && !need('xq')) break;
-      if (r.classList.contains('not-completed')) continue;
+      done++;
+      if (r.classList.contains('not-completed')) continue; // chưa có kết quả
       const name = r.children[2] ? baNorm(r.children[2].textContent).replace(/\(PACS\)/i, '').trim() : '';
       const isSA = /siêu âm/i.test(name);
       const isXQ = /x-?quang/i.test(name);
-      const isLab = !isSA && !isXQ && /xét nghiệm|test|định lượng|đường|điện giải|tổng phân tích|hba1c|calci/i.test(name);
-      const labNeeded = labKeys.some(need);
-      if (!((isSA && need('sa')) || (isXQ && need('xq')) || (isLab && labNeeded))) continue;
-      setSt('Đang đọc: ' + (baShortService(name) || name) + '...');
+      const isECG = /điện tim|điện tâm đồ|\becg\b|\bekg\b/i.test(name);
+      const isLab = !isSA && !isXQ && !isECG && /xét nghiệm|test|định lượng|đường|điện giải|tổng phân tích|hba1c|calci/i.test(name);
+      if (!((isSA && wanted.indexOf('sa') !== -1) || (isXQ && wanted.indexOf('xq') !== -1) || (isECG && wanted.indexOf('ecg') !== -1) || (isLab && wantLab))) continue;
+      const short = baShortService(name) || name;
+      // Siêu âm / X-quang: cùng một dịch vụ đã lấy từ phiếu cũ hơn thì bỏ qua, khỏi mở phiếu
+      const cdhaKey = isSA ? 'sa' : isXQ ? 'xq' : isECG ? 'ecg' : '';
+      if (cdhaKey && found[cdhaKey].has(short)) continue;
+      setSt('Đang đọc phiếu ' + done + '/' + rows.length + ': ' + short + '...');
       const before = sig();
       const selected = r.classList.contains('view-detail');
       (r.children[1] || r).click();
       if (!selected) await baWaitFor(() => sig() !== before, 2500);
       await baSleep(350);
-      if (isSA || isXQ) {
-        const key = isSA ? 'sa' : 'xq';
-        const concl = baParseConclusion();
-        if (concl) found[key].set('x', baShortService(name) + ': ' + concl);
+      if (cdhaKey) {
+        let concl = baParseConclusion();
+        if (!concl && cdhaKey === 'ecg') {
+          // Điện tim: kết quả có thể nằm trong bảng chỉ số thay vì khung kết luận
+          concl = baParseResults().filter((it) => it.res).map((it) => it.name + ': ' + it.res).join('; ');
+        }
+        if (!concl && cdhaKey === 'ecg') concl = baParseEcgFallback();
+        if (concl) found[cdhaKey].set(short, short + ': ' + concl); // chưa có kết quả thì bỏ qua
       } else {
         const items = baParseResults();
         wanted.forEach((k) => { if (labKeys.indexOf(k) !== -1) baPickItems(items, k, found); });
@@ -9750,7 +9927,7 @@
     baEnsureCss();
     const bar = document.createElement('div');
     bar.className = 'hlx-ba-bar hlx-ba-ext';
-    const saved = exPrefs().ba102 || ['ctm'];
+    const saved = exPrefs().ba102v3 || BA_102_ITEMS.map((x) => x[0]);
     BA_102_ITEMS.forEach((it) => {
       const lb = document.createElement('label');
       lb.className = 'hlx-ba-chk';
@@ -9759,7 +9936,7 @@
       cb.value = it[0];
       cb.checked = saved.indexOf(it[0]) !== -1;
       cb.addEventListener('change', () => {
-        exPrefSet('ba102', Array.from(bar.querySelectorAll('input:checked')).map((x) => x.value));
+        exPrefSet('ba102v3', Array.from(bar.querySelectorAll('input:checked')).map((x) => x.value));
       });
       lb.appendChild(cb);
       lb.appendChild(document.createTextNode(it[1]));
@@ -9775,6 +9952,7 @@
       e.preventDefault(); e.stopPropagation();
       if (baBusy) return;
       const wanted = Array.from(bar.querySelectorAll('input:checked')).map((x) => x.value);
+      if (wanted.indexOf('ecg') === -1) wanted.push('ecg'); // Điện tim thường đã có kết quả thì luôn chèn
       if (!wanted.length) { st.textContent = 'Hãy tích chọn mục cần lấy.'; return; }
       baBusy = true;
       b.disabled = true;
@@ -9785,7 +9963,7 @@
         const extra = [];
         wanted.forEach((k) => {
           const vals = Array.from(found[k].values());
-          if (k === 'sa' || k === 'xq') extra.push(...vals); else labs.push(...vals);
+          if (k === 'sa' || k === 'xq' || k === 'ecg') extra.push(...vals); else labs.push(...vals);
         });
         const text = [labs.join(', ')].concat(extra).filter(Boolean).join('\n');
         const f = baFindField('10.2');
@@ -9833,11 +10011,18 @@
         if (src) { setNativeValue(t9, src.value.trim()); done.add('9'); }
       }
     }
+    baEnsureLineOptions('9', 'hlx-ba-hd', ['Theo dõi sinh hiệu', 'Dùng thuốc đúng liều, đúng giờ', 'Chế độ ăn phù hợp bệnh lý', 'Hạn chế muối, đường', 'Nghỉ ngơi, tránh gắng sức', 'Uống đủ nước', 'Tái khám đúng hẹn', 'Tái khám ngay khi có dấu hiệu bất thường']);
     // 10.1 <-> 5.1 đồng bộ 2 chiều
     const a = baFindTextarea('5.1');
     const b = baFindField('10.1');
     if (a && b) {
       const st = baSyncSt[key] || (baSyncSt[key] = { a: null, b: null });
+      // HIS tự điền sẵn bản tóm tắt dạng "HỌ TÊN - Nữ - 67 tuổi. (I10) ..." vào ô này: coi là chưa nhập, thay bằng Quá trình bệnh lý cùng tab
+      const av = (a.value || '').trim();
+      const bv = (b.value || '').trim();
+      if (av && bv && av !== bv && /^[^\n]{2,80}? - (Nam|Nữ) - \d+ tuổi\./i.test(bv)) {
+        setNativeValue(b, a.value);
+      }
       ipdSyncPair(st, a, b);
     }
     baEnsureSummaryBar();
@@ -9865,7 +10050,10 @@
         if (!isNaN(n)) { s += n; any = true; }
       });
       const want = any ? String(s) : '';
-      if ((any || total.dataset.hlxSum) && total.value !== want) setNativeValue(total, want);
+      if ((any || total.dataset.hlxSum) && total.value !== want) {
+        setNativeValue(total, want);
+        if (total.classList.contains('p-inputnumber-input')) total.dispatchEvent(new Event('blur', { bubbles: true }));
+      }
       if (any) total.dataset.hlxSum = '1'; else delete total.dataset.hlxSum;
     }
   }
@@ -9969,6 +10157,25 @@
       }
     });
   }
+  // Nội trú/Cấp cứu: Toàn thân + Các bộ phận tự điền sẵn mặc định khi ô còn trống (mỗi lượt khám 1 lần); "Chọn nhanh" chỉ để sửa/bổ sung
+  const exDefSeen = {};
+  const exDefDone = new Set();
+  function exDefaultTick() {
+    const key = ipdVisitKey() || '_';
+    ['tt', 'bp'].forEach((kind) => {
+      const id = key + '|' + kind;
+      if (exDefDone.has(id)) return;
+      const f = ipdFindDocxField(kind === 'tt' ? EXAM_LABEL_TOAN_THAN : EXAM_LABEL_CAC_BO_PHAN);
+      if (!f || f.tagName !== 'TEXTAREA' || f.offsetParent === null) return;
+      if ((f.value || '').trim()) { exDefDone.add(id); return; }
+      if (f.disabled || f.readOnly || document.activeElement === f) return;
+      const now = Date.now();
+      if (!exDefSeen[id]) exDefSeen[id] = now;
+      if (now - exDefSeen[id] < 1500) return; // chờ HIS nạp dữ liệu đã lưu
+      exDefDone.add(id);
+      exApply(kind);
+    });
+  }
   function ipdTick() {
     try { hlxPointerCss(); } catch (e) {}
     if (!hlxQuickPage()) return;
@@ -9983,6 +10190,7 @@
       ipdEnsureClsBox();
       exEnsurePanel('tt');
       exEnsurePanel('bp');
+      if (!examIsPage()) exDefaultTick();
     } else {
       document.querySelectorAll('.hlx-opt-box, .hlx-ex-panel').forEach((b) => b.remove());
     }
@@ -10076,6 +10284,17 @@
     },
     true
   );
+
+  // Quét định kỳ: mọi ô văn bản nhập tay được tự viết hoa đầu dòng, không cần click vào ô rồi click ra
+  function hlxCapSweep() {
+    if (!hlxFeatOn('cap')) return;
+    const ae = document.activeElement;
+    document.querySelectorAll('textarea, docx-control input[type="text"], docx-control input:not([type])').forEach((t) => {
+      if (t === ae || !t.value) return;
+      if (hlxCapTargetAll(t)) hlxCapFix(t);
+    });
+  }
+  if (!HLX_OFF) setInterval(() => { try { hlxCapSweep(); } catch (err) {} }, 600);
 
   function ensureHelixfastToggleButton() {
     const settingsLink = document.querySelector(HELIXFAST_SETTINGS_LINK_SELECTOR);
@@ -10400,6 +10619,8 @@
   document.addEventListener('visibilitychange', () => { if (!document.hidden) hlxMainTick(); });
   window.addEventListener('pageshow', () => hlxMainTick());
   window.addEventListener('load', () => setTimeout(hlxMainTick, 300));
+  if (document.readyState === 'complete') setTimeout(hlxMainTick, 100);
+  [1000, 3000, 6000].forEach((ms) => setTimeout(() => { try { hlxMainTick(); } catch (err) {} }, ms));
 
   // ===== Chọn phòng nhanh + ghim phòng mặc định + tự bấm Tìm kiếm (danh sách thăm khám) =====
   (function hlxRoomModule() {
@@ -13484,4 +13705,14 @@
     try { console.log('[Helixfast] Kéo cột: sẵn sàng'); } catch (err) {}
   })();
 
+})();
+
+  }
+  if (document.body) run();
+  else {
+    let started = false;
+    const go = () => { if (started || !document.body) return; started = true; run(); };
+    document.addEventListener('DOMContentLoaded', go, { once: true });
+    new MutationObserver((m, o) => { if (document.body) { o.disconnect(); go(); } }).observe(document.documentElement, { childList: true });
+  }
 })();
