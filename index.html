@@ -143,6 +143,7 @@
 
     <div class="nav-group-divider"></div>
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
+    <a href="/clinic-queue" class="nav-item" data-page="clinicqueue" data-path="/clinic-queue"><span class="ic">📢</span> Gọi số khám bệnh</a>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> In phiếu STT - Sinh hiệu</a>
     <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In STT Khám SKTD</a>
@@ -199,6 +200,7 @@
     <a href="/bp-trend-chart" class="nav-item soon" data-page="soon:bp-trend-chart" data-path="/bp-trend-chart"><span class="ic">📶</span> Biểu đồ huyết áp</a>
 
     <div class="nav-group-divider"></div>
+    <a href="/clinic-queue" class="nav-item" data-page="clinicqueue" data-path="/clinic-queue"><span class="ic">📢</span> Gọi số khám bệnh</a>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> STT - Sinh hiệu</a>
     <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In STT Khám SKTD</a>
@@ -553,6 +555,13 @@
         <span>NỘI BỘ BVĐK BD CS2</span>
       </div>
       <div class="hgrid">
+        <a href="/clinic-queue" class="hcard" data-page="clinicqueue" data-path="/clinic-queue" data-kw="gọi số khám bệnh loa phòng chờ hàng đợi quầy bệnh nhân">
+          <div class="ic">📢</div>
+          <h2>Gọi số khám bệnh</h2>
+          <p>Gọi số bệnh nhân bằng giọng đọc ghi sẵn, hiển thị số đang gọi theo từng quầy, dùng chung nhiều máy.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
         <a href="/thongkekcb-bvdkbdcs2" class="hcard" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2" data-kw="thống kê tiếp nhận dashboard số liệu khám bệnh his">
           <div class="ic">📈</div>
           <h2>Thống kê tiếp nhận</h2>
@@ -728,6 +737,9 @@
   </div>
 
   <script defer src="js/sinh-hieu.js"></script>
+
+  <div class="page" id="page-clinicqueue"><div id="clinic-queue-host"></div></div>
+  <script defer src="js/clinic-queue.js"></script>
 
   <div class="page" id="page-sttsktd">
     <style id="skPageSizeStyle"></style>
