@@ -145,6 +145,7 @@
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> In phiếu STT - Sinh hiệu</a>
+    <a href="/nhan-stt" class="nav-item" data-page="nhanstt" data-path="/nhan-stt"><span class="ic">🏷️</span> In nhãn số thứ tự</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê toa thuốc</a>
     <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu chỉ định nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
@@ -200,6 +201,7 @@
     <div class="nav-group-divider"></div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> STT - Sinh hiệu</a>
+    <a href="/nhan-stt" class="nav-item" data-page="nhanstt" data-path="/nhan-stt"><span class="ic">🏷️</span> Nhãn số thứ tự</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Toa thuốc</a>
     <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
@@ -565,6 +567,13 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
+        <a href="/nhan-stt" class="hcard" data-page="nhanstt" data-path="/nhan-stt" data-kw="in nhãn số thứ tự sinh hiệu bốc số tem label đơn vị">
+          <div class="ic">🏷️</div>
+          <h2>In nhãn số thứ tự</h2>
+          <p>Lưới nhãn 5 cột × 8 hàng (40 nhãn/trang) — sửa tên đơn vị, ngày, số lượng rồi in.</p>
+          <span class="tag">Đang hoạt động</span>
+        </a>
+
         <a href="/donthuoc" class="hcard" data-page="donthuoc" data-path="/donthuoc" data-kw="kê toa thuốc dịch vụ đơn thuốc biệt dược hoạt chất">
           <div class="ic">💊</div>
           <h2>Kê toa thuốc dịch vụ</h2>
@@ -719,6 +728,53 @@
   </div>
 
   <script defer src="js/sinh-hieu.js"></script>
+
+  <div class="page" id="page-nhanstt">
+    <style id="nsPageSizeStyle"></style>
+
+    <div class="ns-toolbar">
+      <div class="ns-title-block">
+        <h1>Nhãn số thứ tự — tạo bản in</h1>
+      </div>
+      <div class="ns-toolbar-left">
+        <div class="ns-group ns-group-wide">
+          <label for="nsUnitInput">Tên đơn vị</label>
+          <input type="text" id="nsUnitInput" value="ĐH THỦ DẦU MỘT" maxlength="40">
+        </div>
+        <div class="ns-group">
+          <label for="nsDateInput">Ngày</label>
+          <input type="text" id="nsDateInput" value="" maxlength="10" placeholder="dd/mm/yyyy" inputmode="numeric">
+          <button type="button" id="nsTodayBtn" class="ns-mini" title="Lấy ngày hôm nay">Hôm nay</button>
+        </div>
+        <div class="ns-group">
+          <label for="nsStartInput">Từ số</label>
+          <input type="number" id="nsStartInput" value="1" min="1" max="9999">
+          <span class="ns-dash">→</span>
+          <label for="nsEndInput">đến số</label>
+          <input type="number" id="nsEndInput" value="40" min="1" max="9999">
+        </div>
+        <div class="ns-group">
+          <label for="nsQtyInput">Số lượng</label>
+          <input type="number" id="nsQtyInput" value="40" min="1" max="2000">
+          <select id="nsQtyQuick" aria-label="Chọn nhanh số lượng">
+            <option value="">Chọn nhanh</option>
+            <option value="40">40 (1 trang)</option>
+            <option value="80">80 (2 trang)</option>
+            <option value="200">200 (5 trang)</option>
+            <option value="400">400 (10 trang)</option>
+          </select>
+        </div>
+      </div>
+      <div class="ns-print-wrap">
+        <button class="ns-print-btn" id="nsPrintBtn">🖨️ In</button>
+      </div>
+    </div>
+
+    <div class="ns-sub" id="nsSummaryLabel"></div>
+    <div id="nsSheets"></div>
+  </div>
+
+  <script defer src="js/nhan-stt.js"></script>
 
   <div class="page" id="page-insulin">
     <div class="wrap">
