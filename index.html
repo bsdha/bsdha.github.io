@@ -145,7 +145,7 @@
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> In phiếu STT - Sinh hiệu</a>
-    <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In nhãn STT</a>
+    <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In STT Khám SKTD</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê toa thuốc</a>
     <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu chỉ định nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
@@ -201,7 +201,7 @@
     <div class="nav-group-divider"></div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> STT - Sinh hiệu</a>
-    <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In nhãn STT</a>
+    <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In STT Khám SKTD</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Toa thuốc</a>
     <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
@@ -569,8 +569,8 @@
 
         <a href="/stt-sktd" class="hcard" data-page="sttsktd" data-path="/stt-sktd" data-kw="in nhãn số thứ tự sinh hiệu bốc số tem label đơn vị">
           <div class="ic">🏷️</div>
-          <h2>In nhãn số thứ tự</h2>
-          <p>Lưới nhãn 5 cột × 8 hàng (40 nhãn/trang) — sửa tên đơn vị, ngày, số lượng rồi in.</p>
+          <h2>In STT Khám SKTD</h2>
+          <p>Lưới nhãn 5 cột × 8 hàng, khổ A4, 40 nhãn/trang — sửa tên đơn vị, ngày, số lượng rồi in.</p>
           <span class="tag">Đang hoạt động</span>
         </a>
 
@@ -736,8 +736,8 @@
       <div class="sk-head">
         <div class="sk-head-text">
           <div class="sk-eyebrow">Nội bộ · Tiện ích in ấn</div>
-          <h1>In nhãn số thứ tự</h1>
-          <p>Lưới nhãn 5 cột × 8 hàng, khổ Letter, 40 nhãn mỗi trang.</p>
+          <h1>In STT Khám SKTD</h1>
+          <p>Lưới nhãn 5 cột × 8 hàng, khổ A4, 40 nhãn mỗi trang.</p>
         </div>
         <button type="button" class="sk-print-btn" id="skPrintBtn">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7" rx="1"/><path d="M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/></svg>
@@ -751,9 +751,13 @@
           <input type="text" id="skUnitInput" value="BẮC TÂN UYÊN" maxlength="40" autocomplete="off" spellcheck="false">
         </div>
         <div class="sk-field sk-f-date">
-          <label for="skDateInput">Ngày <em>gõ liền 8 số</em></label>
+          <label for="skDateInput">Ngày</label>
           <div class="sk-inline">
             <input type="text" id="skDateInput" inputmode="numeric" autocomplete="off" spellcheck="false">
+            <button type="button" id="skCalBtn" class="sk-icon-btn" title="Chọn ngày từ lịch" aria-label="Chọn ngày từ lịch">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            </button>
+            <input type="date" id="skDatePicker" class="sk-date-native" tabindex="-1" aria-hidden="true">
             <button type="button" id="skTodayBtn" class="sk-ghost">Hôm nay</button>
           </div>
         </div>
@@ -784,7 +788,7 @@
           <span class="sk-pill" id="skPillRange"></span>
           <span class="sk-pill" id="skPillCount"></span>
           <span class="sk-pill" id="skPillPages"></span>
-          <span class="sk-hint">Bản xem trước · in khổ Letter, lề None, tắt Headers and footers</span>
+          <span class="sk-hint">Bản xem trước · in khổ A4, lề tối thiểu, tắt Đầu trang và chân trang</span>
         </div>
         <div class="sk-desk" id="skDesk"><div id="skSheets"></div></div>
       </div>
