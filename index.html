@@ -145,7 +145,7 @@
     <div class="nav-group-title">Nội bộ BVĐK Bình Dương CS2</div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> In phiếu STT - Sinh hiệu</a>
-    <a href="/nhan-stt" class="nav-item" data-page="nhanstt" data-path="/nhan-stt"><span class="ic">🏷️</span> In nhãn số thứ tự</a>
+    <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In nhãn STT</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Kê toa thuốc</a>
     <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu chỉ định nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
@@ -201,7 +201,7 @@
     <div class="nav-group-divider"></div>
     <a href="/thongkekcb-bvdkbdcs2" class="nav-item" data-page="thongke" data-path="/thongkekcb-bvdkbdcs2"><span class="ic">📈</span> Thống kê tiếp nhận</a>
     <a href="/sinhhieu" class="nav-item" data-page="sinhhieu" data-path="/sinhhieu"><span class="ic">📋</span> STT - Sinh hiệu</a>
-    <a href="/nhan-stt" class="nav-item" data-page="nhanstt" data-path="/nhan-stt"><span class="ic">🏷️</span> Nhãn số thứ tự</a>
+    <a href="/stt-sktd" class="nav-item" data-page="sttsktd" data-path="/stt-sktd"><span class="ic">🏷️</span> In nhãn STT</a>
     <a href="/donthuoc" class="nav-item" data-page="donthuoc" data-path="/donthuoc"><span class="ic">💊</span> Toa thuốc</a>
     <a href="/phieu-noi-soi" class="nav-item" data-page="noisoi" data-path="/phieu-noi-soi"><span class="ic">🔬</span> Phiếu nội soi</a>
     <a href="/ghepcccd" class="nav-item" data-page="cccd" data-path="/ghepcccd"><span class="ic">🪪</span> In CCCD 2 mặt</a>
@@ -567,7 +567,7 @@
           <span class="tag">Đang hoạt động</span>
         </a>
 
-        <a href="/nhan-stt" class="hcard" data-page="nhanstt" data-path="/nhan-stt" data-kw="in nhãn số thứ tự sinh hiệu bốc số tem label đơn vị">
+        <a href="/stt-sktd" class="hcard" data-page="sttsktd" data-path="/stt-sktd" data-kw="in nhãn số thứ tự sinh hiệu bốc số tem label đơn vị">
           <div class="ic">🏷️</div>
           <h2>In nhãn số thứ tự</h2>
           <p>Lưới nhãn 5 cột × 8 hàng (40 nhãn/trang) — sửa tên đơn vị, ngày, số lượng rồi in.</p>
@@ -729,52 +729,70 @@
 
   <script defer src="js/sinh-hieu.js"></script>
 
-  <div class="page" id="page-nhanstt">
-    <style id="nsPageSizeStyle"></style>
+  <div class="page" id="page-sttsktd">
+    <style id="skPageSizeStyle"></style>
+    <div class="sk-wrap">
 
-    <div class="ns-toolbar">
-      <div class="ns-title-block">
-        <h1>Nhãn số thứ tự — tạo bản in</h1>
+      <div class="sk-head">
+        <div class="sk-head-text">
+          <div class="sk-eyebrow">Nội bộ · Tiện ích in ấn</div>
+          <h1>In nhãn số thứ tự</h1>
+          <p>Lưới nhãn 5 cột × 8 hàng, khổ Letter, 40 nhãn mỗi trang.</p>
+        </div>
+        <button type="button" class="sk-print-btn" id="skPrintBtn">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9V3h12v6"/><rect x="6" y="14" width="12" height="7" rx="1"/><path d="M6 17H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/></svg>
+          <span>In nhãn</span>
+        </button>
       </div>
-      <div class="ns-toolbar-left">
-        <div class="ns-group ns-group-wide">
-          <label for="nsUnitInput">Tên đơn vị</label>
-          <input type="text" id="nsUnitInput" value="ĐH THỦ DẦU MỘT" maxlength="40">
+
+      <div class="sk-panel">
+        <div class="sk-field sk-f-unit">
+          <label for="skUnitInput">Tên đơn vị</label>
+          <input type="text" id="skUnitInput" value="BẮC TÂN UYÊN" maxlength="40" autocomplete="off" spellcheck="false">
         </div>
-        <div class="ns-group">
-          <label for="nsDateInput">Ngày</label>
-          <input type="text" id="nsDateInput" value="" maxlength="10" placeholder="dd/mm/yyyy" inputmode="numeric">
-          <button type="button" id="nsTodayBtn" class="ns-mini" title="Lấy ngày hôm nay">Hôm nay</button>
+        <div class="sk-field sk-f-date">
+          <label for="skDateInput">Ngày <em>gõ liền 8 số</em></label>
+          <div class="sk-inline">
+            <input type="text" id="skDateInput" inputmode="numeric" autocomplete="off" spellcheck="false">
+            <button type="button" id="skTodayBtn" class="sk-ghost">Hôm nay</button>
+          </div>
         </div>
-        <div class="ns-group">
-          <label for="nsStartInput">Từ số</label>
-          <input type="number" id="nsStartInput" value="1" min="1" max="9999">
-          <span class="ns-dash">→</span>
-          <label for="nsEndInput">đến số</label>
-          <input type="number" id="nsEndInput" value="40" min="1" max="9999">
+        <div class="sk-field sk-f-num">
+          <label for="skStartInput">Từ số</label>
+          <input type="number" id="skStartInput" value="1" min="1" max="9999">
         </div>
-        <div class="ns-group">
-          <label for="nsQtyInput">Số lượng</label>
-          <input type="number" id="nsQtyInput" value="40" min="1" max="2000">
-          <select id="nsQtyQuick" aria-label="Chọn nhanh số lượng">
-            <option value="">Chọn nhanh</option>
-            <option value="40">40 (1 trang)</option>
-            <option value="80">80 (2 trang)</option>
-            <option value="200">200 (5 trang)</option>
-            <option value="400">400 (10 trang)</option>
-          </select>
+        <div class="sk-field sk-f-num">
+          <label for="skEndInput">Đến số</label>
+          <input type="number" id="skEndInput" value="40" min="1" max="9999">
+        </div>
+        <div class="sk-field sk-f-num">
+          <label for="skQtyInput">Số lượng</label>
+          <input type="number" id="skQtyInput" value="40" min="1" max="2000">
+        </div>
+        <div class="sk-chips" id="skChips">
+          <span class="sk-chips-label">Chọn nhanh</span>
+          <button type="button" data-q="40">40</button>
+          <button type="button" data-q="80">80</button>
+          <button type="button" data-q="120">120</button>
+          <button type="button" data-q="200">200</button>
+          <button type="button" data-q="400">400</button>
         </div>
       </div>
-      <div class="ns-print-wrap">
-        <button class="ns-print-btn" id="nsPrintBtn">🖨️ In</button>
+
+      <div class="sk-preview">
+        <div class="sk-preview-bar">
+          <span class="sk-pill" id="skPillRange"></span>
+          <span class="sk-pill" id="skPillCount"></span>
+          <span class="sk-pill" id="skPillPages"></span>
+          <span class="sk-hint">Bản xem trước · in khổ Letter, lề None, tắt Headers and footers</span>
+        </div>
+        <div class="sk-desk" id="skDesk"><div id="skSheets"></div></div>
       </div>
+
     </div>
-
-    <div class="ns-sub" id="nsSummaryLabel"></div>
-    <div id="nsSheets"></div>
   </div>
 
-  <script defer src="js/nhan-stt.js"></script>
+  <script defer src="js/stt-sktd.js"></script>
 
   <div class="page" id="page-insulin">
     <div class="wrap">
