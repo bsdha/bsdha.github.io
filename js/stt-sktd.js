@@ -72,7 +72,7 @@
     box.style.zoom = (sheetW > 0 && avail < sheetW) ? (avail / sheetW) : 1;
   }
   function render(){
-    el('skPageSizeStyle').textContent = '@page{ size:letter portrait; margin:0; }';
+    el('skPageSizeStyle').textContent = '@page{ size:A4 portrait; margin:0; }';
     const unit = el('skUnitInput').value.trim();
     const date = labelDate();
     let start = Math.max(1, intVal('skStartInput', 1));
@@ -113,6 +113,24 @@
     e.target.value = e.target.value.toUpperCase();
     try{ e.target.setSelectionRange(p, p); }catch(_){}
     render();
+  });
+  // Lịch chọn ngày nhanh (hộp lịch gốc của trình duyệt)
+  const picker = el('skDatePicker');
+  el('skCalBtn').addEventListener('click', () => {
+    if(digits.length === 8){
+      picker.value = digits.slice(4) + '-' + digits.slice(2,4) + '-' + digits.slice(0,2);
+    } else {
+      const d = new Date();
+      picker.value = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    if(picker.showPicker){ try{ picker.showPicker(); return; }catch(e){} }
+    picker.focus(); picker.click();
+  });
+  picker.addEventListener('change', () => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(picker.value);
+    if(!m) return;
+    digits = m[3] + m[2] + m[1];
+    paintDate(); render();
   });
   el('skTodayBtn').addEventListener('click', () => { setToday(); dateEl.focus(); });
   el('skStartInput').addEventListener('input', fromQty);
