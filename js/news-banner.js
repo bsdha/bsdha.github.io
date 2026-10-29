@@ -11,7 +11,7 @@
   const READ_API = `${USAGE_WORKER_URL}/read`; // lấy nội dung bài viết để hiển thị trong popup
 
   const ICONS = {
-    icd_search: "🔎", sinhhieu_generate: "📋", donthuoc_save: "💊",
+    icd_search: "🔎", sinhhieu_generate: "📋", nhanstt_generate: "🏷️", donthuoc_save: "💊",
     egfr_calc: "🧪", insulin_calc: "💉", ldl_calc: "🩸",
     pdf2word_convert: "📄", pdftools_use: "🛠️", ddi_check: "⚠️",
     nghiviec_print: "📝", giayravien_print: "🏥", chuyentuyen_print: "🚑",
@@ -21,7 +21,7 @@
     clinicalscores_braden: "📈", clinicalscores_morse: "📈",
   };
   const LABELS = {
-    icd_search: "lượt tra ICD-10", sinhhieu_generate: "phiếu sinh hiệu",
+    icd_search: "lượt tra ICD-10", sinhhieu_generate: "phiếu sinh hiệu", nhanstt_generate: "nhãn số thứ tự",
     donthuoc_save: "lượt kê toa thuốc", egfr_calc: "lượt tính eGFR",
     insulin_calc: "lượt tính Insulin", ldl_calc: "lượt tính LDL-C",
     pdf2word_convert: "lượt chuyển đổi tài liệu", pdftools_use: "lượt dùng Công cụ PDF",
