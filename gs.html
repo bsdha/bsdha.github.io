@@ -19,7 +19,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px 6px;b
 <div class="err" id="e"></div><button class="p" id="go" style="margin-top:8px">Đăng nhập</button></div>
 <div id="m" hidden>
 <div class="c"><b>Tạo mã kích hoạt</b>
-<div class="row"><div><label>Mã máy (do máy hiển thị)<span style="display:flex;gap:6px"><input id="mid" placeholder="XXXX" maxlength="40"><button type="button" id="pst">Dán</button></span></label></div>
+<div class="row"><div><label>Mã máy (do máy hiển thị)<span style="display:flex;gap:6px"><input id="mid" placeholder="XXXX" maxlength="12" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button type="button" id="pst">Dán</button></span></label></div>
 <div><label>Tên máy<input id="nm" placeholder="Quầy 1"></label></div>
 <button class="p" id="mk">Tạo mã</button></div>
 <div class="err" id="e2"></div><div class="res"><span id="r"></span> <button type="button" id="cpr" hidden>Chép mã</button></div></div>
@@ -41,7 +41,7 @@ T.appendChild(tr)})}).catch(function(e){$("e").textContent=typeof e==="string"?e
 function cp(t,b){var o=b.textContent;function ok(){b.textContent="Đã chép";setTimeout(function(){b.textContent=o},1200)}
 function fb(){var x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();try{document.execCommand("copy");ok()}catch(e){}x.remove()}
 if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb()}
-function nid(s){var u=String(s||"").toUpperCase(),m=u.match(/[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}/)||u.match(/\b[A-Z0-9]{4}\b/g);return m?(Array.isArray(m)?m[m.length-1]:m[0]):String(s||"").trim()}
+function nid(s){var t=String(s||"").toUpperCase().trim();if(t.length<=4)return t;var m=t.match(/(?:^|[^A-Z0-9])([A-Z0-9]{4})\s*$/);return m?m[1]:t.slice(0,4)}
 var last="";
 $("go").onclick=list;
 $("a").onkeydown=$("u").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();list()}};
@@ -50,6 +50,6 @@ $("mid").onkeydown=$("nm").onkeydown=function(e){if(e.key==="Enter"){e.preventDe
 $("pst").onclick=function(){$("e2").textContent="";if(navigator.clipboard&&navigator.clipboard.readText)navigator.clipboard.readText().then(function(t){$("mid").value=nid(t);$("nm").focus()}).catch(function(){$("e2").textContent="Trình duyệt chặn dán tự động, hãy bấm vào ô và nhấn Ctrl+V.";$("mid").focus()});else{$("e2").textContent="Hãy bấm vào ô và nhấn Ctrl+V để dán.";$("mid").focus()}};
 $("cpr").onclick=function(){cp(last,this)};
 $("mk").onclick=function(){$("e2").textContent="";$("r").textContent="";$("cpr").hidden=true;
-call({op:"create",mid:$("mid").value,name:$("nm").value}).then(function(j){last=j.code;$("cpr").hidden=false;$("r").textContent="Mã kích hoạt: "+j.code+(j.existing?" (máy này đã có mã)":"");$("mid").value="";$("nm").value="";list()}).catch(function(e){$("e2").textContent=e==="Lỗi 400"?"Mã máy gồm 4 ký tự (máy hiển thị) và cần có tên máy.":e})};
+call({op:"create",mid:$("mid").value,name:$("nm").value}).then(function(j){last=j.code;$("cpr").hidden=false;$("r").textContent="Mã kích hoạt: "+j.code+(j.existing?" (máy này đã có mã)":"");$("mid").value="";$("nm").value="";list()}).catch(function(e){$("e2").textContent=e==="Lỗi 400"?"Mã máy gồm 4 ký tự và cần có tên máy.":e})};
 })();
 </script></body></html>
