@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Quản trị máy gọi số</title>
+<style>
+:root{--bg:#e8f1f4;--ink:#10303a;--mut:#5a7781;--card:#fff;--line:#c6d9df;--acc:#0b7a75}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:500 16px/1.4 system-ui,"Segoe UI",Roboto,sans-serif}
+.w{max-width:860px;margin:0 auto;padding:18px}h1{font-size:22px;margin:0 0 4px}.sub{color:var(--mut);font-size:13px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-top:14px}
+label{display:block;font-size:13px;color:var(--mut);margin-top:8px}
+input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit}
+button{font:inherit;font-weight:700;border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 14px;cursor:pointer}
+.p{background:var(--acc);color:#fff;border:0}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>div{flex:1 1 200px}
+.res{font-size:26px;font-weight:800;letter-spacing:.06em;margin:8px 0}.err{color:#c0392b;min-height:20px;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}
+.off{opacity:.5}.mono{font-variant-numeric:tabular-nums;letter-spacing:.03em}
+</style></head><body><div class="w">
+<h1>Quản trị máy gọi số</h1><div class="sub">Tạo mã kích hoạt cho từng máy. Giữ trang này riêng tư.</div>
+<div class="c"><label>Địa chỉ Worker<input id="u" value="https://clinic-queue.dhabolero.workers.dev/"></label>
+<label>Mật khẩu quản trị<input id="a" type="password" autocomplete="off" placeholder="G******2"></label>
+<div class="err" id="e"></div><button class="p" id="go" style="margin-top:8px">Đăng nhập</button></div>
+<div id="m" hidden>
+<div class="c"><b>Tạo mã kích hoạt</b>
+<div class="row"><div><label>Mã máy (do máy hiển thị)<span style="display:flex;gap:6px"><input id="mid" placeholder="XXXX" maxlength="12" style="text-transform:uppercase;letter-spacing:.2em;font-weight:800"><button type="button" id="pst">Dán</button></span></label></div>
+<div><label>Tên máy<input id="nm" placeholder="Quầy 1"></label></div>
+<button class="p" id="mk">Tạo mã</button></div>
+<div class="err" id="e2"></div><div class="res"><span id="r"></span> <button type="button" id="cpr" hidden>Chép mã</button></div></div>
+<div class="c"><b>Danh sách máy</b><div style="overflow:auto"><table><thead><tr><th>Tên</th><th>Mã kích hoạt</th><th>Mã máy</th><th>Dùng lần cuối</th><th></th></tr></thead><tbody id="t"></tbody></table></div></div>
+</div></div>
+<script>
+(function(){
+var $=function(i){return document.getElementById(i)};
+function H(){return{"content-type":"application/json","x-admin":$("a").value}}
+function U(){return $("u").value.replace(/\/+$/,"")+"/admin"}
+function call(o){return fetch(U(),o?{method:"POST",headers:H(),body:JSON.stringify(o)}:{headers:H()}).then(function(r){if(r.status===401)throw"Sai mật khẩu quản trị.";if(!r.ok)throw"Lỗi "+r.status;return r.json()})}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function list(){call().then(function(rows){$("m").hidden=false;$("e").textContent="";var T=$("t");T.innerHTML="";
+rows.forEach(function(r){var tr=document.createElement("tr");if(!r.active)tr.className="off";
+tr.innerHTML="<td>"+esc(r.name)+(r.active?"":" (khóa)")+"</td><td class=mono>"+esc(r.code)+"</td><td class=mono>"+(r.dev?esc(r.dev):"chưa gắn")+"</td><td>"+esc(r.used||"")+"</td><td></td>";
+var cb=document.createElement("button");cb.textContent="Chép";cb.style.marginLeft="6px";cb.onclick=function(){cp(r.code,cb)};tr.children[1].appendChild(cb);var td=tr.lastChild;[[r.active?"Khóa":"Mở","lock"],["Xóa","delete"]].forEach(function(x){var b=document.createElement("button");b.textContent=x[0];b.style.marginLeft="4px";
+b.onclick=function(){if(x[1]==="delete"&&!confirm("Xóa máy "+r.name+"?"))return;call({op:x[1]==="lock"?(r.active?"lock":"unlock"):"delete",code:r.code}).then(list).catch(function(e){$("e2").textContent=e})};td.appendChild(b)});
+T.appendChild(tr)})}).catch(function(e){$("e").textContent=typeof e==="string"?e:"Không kết nối được máy chủ."})}
+function cp(t,b){var o=b.textContent;function ok(){b.textContent="Đã chép";setTimeout(function(){b.textContent=o},1200)}
+function fb(){var x=document.createElement("textarea");x.value=t;document.body.appendChild(x);x.select();try{document.execCommand("copy");ok()}catch(e){}x.remove()}
+if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t).then(ok,fb);else fb()}
+function nid(s){var t=String(s||"").toUpperCase().trim();if(t.length<=4)return t;var m=t.match(/(?:^|[^A-Z0-9])([A-Z0-9]{4})\s*$/);return m?m[1]:t.slice(0,4)}
+var last="";
+$("go").onclick=list;
+$("a").onkeydown=$("u").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();list()}};
+$("mid").oninput=function(){var v=nid(this.value);if(v!==this.value)this.value=v};
+$("mid").onkeydown=$("nm").onkeydown=function(e){if(e.key==="Enter"){e.preventDefault();$("mk").click()}};
+$("pst").onclick=function(){$("e2").textContent="";if(navigator.clipboard&&navigator.clipboard.readText)navigator.clipboard.readText().then(function(t){$("mid").value=nid(t);$("nm").focus()}).catch(function(){$("e2").textContent="Trình duyệt chặn dán tự động, hãy bấm vào ô và nhấn Ctrl+V.";$("mid").focus()});else{$("e2").textContent="Hãy bấm vào ô và nhấn Ctrl+V để dán.";$("mid").focus()}};
+$("cpr").onclick=function(){cp(last,this)};
+$("mk").onclick=function(){$("e2").textContent="";$("r").textContent="";$("cpr").hidden=true;
+call({op:"create",mid:$("mid").value,name:$("nm").value}).then(function(j){last=j.code;$("cpr").hidden=false;$("r").textContent="Mã kích hoạt: "+j.code+(j.existing?" (máy này đã có mã)":"");$("mid").value="";$("nm").value="";list()}).catch(function(e){$("e2").textContent=e==="Lỗi 400"?"Mã máy gồm 4 ký tự và cần có tên máy.":e})};
+})();
+</script></body></html>
