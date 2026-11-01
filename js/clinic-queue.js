@@ -67,7 +67,7 @@ window.addEventListener("storage",function(e){if(e.key===KL&&!cfg.url){try{S=JSO
 var VO={},ctx=null,bufs={},srcs=[];
 function ac(){if(!ctx){var C=window.AudioContext||window.webkitAudioContext;ctx=new C()}if(ctx.state==="suspended")ctx.resume();return ctx}
 function b2ab(b){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a.buffer}
-function loadClips(id){if(bufs[id])return bufs[id];var c=ac(),ks=Object.keys(VO[id].c);bufs[id]=Promise.all(ks.map(function(k){return new Promise(function(r,j){c.decodeAudioData(b2ab(VO[id].c[k]),r,j)})})).then(function(a){var o={};ks.forEach(function(k,i){o[k]=a[i]});return o});return bufs[id]}
+function loadClips(id){if(bufs[id])return bufs[id];var c=ac(),ks=Object.keys(VO[id].c);bufs[id]=Promise.all(ks.map(function(k){return new Promise(function(r,j){c.decodeAudioData(VO[id].c[k].slice(0),r,j)})})).then(function(a){var o={};ks.forEach(function(k,i){o[k]=a[i]});return o});return bufs[id]}
 function fillVoices(){var s=$("vsel"),cur=ls("goiso_voice2")||"";s.innerHTML="";Object.keys(VO).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=VO[k].l;s.appendChild(o)});var o=document.createElement("option");o.value="machine";o.textContent="Giọng máy (mặc định)";s.appendChild(o);if(!Object.keys(VO).length){var l=document.createElement("option");l.disabled=true;l.textContent="Giọng ghi sẵn: bật Nhiều máy và nhập mã để mở";s.appendChild(l)}s.value=(cur&&(cur==="machine"||VO[cur]))?cur:(Object.keys(VO)[0]||"machine")}
 fillVoices();var ss=ls("goiso_spd");if(ss)$("vspd").value=ss;
 $("vsel").onchange=function(){ls("goiso_voice2",this.value);say(123,1)};
@@ -76,7 +76,8 @@ $("vtest").onclick=function(){say(123,1)};
 function hex2u8(x){var a=new Uint8Array(x.length/2);for(var i=0;i<a.length;i++)a[i]=parseInt(x.substr(i*2,2),16);return a}
 function loadVoiceFile(){return new Promise(function(res,rej){if(window.GOISO_VOENC)return res(window.GOISO_VOENC);var s=document.createElement("script");s.src=BASE+"clinic-queue-voice.js";s.onload=function(){window.GOISO_VOENC?res(window.GOISO_VOENC):rej()};s.onerror=rej;document.head.appendChild(s)})}
 function unlockVoices(k){if(!(window.crypto&&crypto.subtle))return Promise.reject();
-return loadVoiceFile().then(function(VE){return crypto.subtle.importKey("raw",hex2u8(k),"AES-GCM",false,["decrypt"]).then(function(key){return Promise.all(Object.keys(VE).map(function(id){var e=VE[id];return crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(b2ab(e.iv))},key,b2ab(e.d)).then(function(buf){VO[id]={l:e.l,c:JSON.parse(new TextDecoder().decode(buf))}})}))})}).then(function(){bufs={};fillVoices()})}
+return loadVoiceFile().then(function(VE){return crypto.subtle.importKey("raw",hex2u8(k),"AES-GCM",false,["decrypt"]).then(function(key){return Promise.all(Object.keys(VE).map(function(id){var e=VE[id];return crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(b2ab(e.iv))},key,b2ab(e.d)).then(function(buf){VO[id]={l:e.l,c:unpack(buf)}})}))})}).then(function(){bufs={};fillVoices()})}
+function unpack(buf){var hl=new DataView(buf).getUint32(0),hd=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,4,hl))),o=4+hl,c={};hd.k.forEach(function(k,i){c[k]=buf.slice(o,o+hd.n[i]);o+=hd.n[i]});return c}
 function fetchKey(){if(!cfg.url)return Promise.resolve();
 return fetch(NETURL+"?vkey=1",{headers:{"x-token":cfg.token||"","x-dev":devId()}}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(j){if(!j.k)throw 0;ls("goiso_vk",j.k);return unlockVoices(j.k)})}
 var vk=ls("goiso_vk");if(vk)unlockVoices(vk).catch(function(e){window.__err=String(e)});
