@@ -2731,6 +2731,17 @@ html.rx-only .rx-wrap { padding-top: 10px; }
       }
       #page-sinhhieu #shSheetsQuick:hover{background:#e6eae4;}
       #page-sinhhieu #shSheetsQuick:focus{outline:1px solid var(--sh-accent);}
+      #page-sinhhieu #shPerSheet{
+        border:1px solid var(--sh-border, #d8ddd8);
+        background:#f4f6f3;
+        border-radius:6px;
+        padding:4px 8px;
+        font-size:12.5px;
+        cursor:pointer;
+        color:#2c3a37;
+      }
+      #page-sinhhieu #shPerSheet:hover{background:#e6eae4;}
+      #page-sinhhieu #shPerSheet:focus{outline:1px solid var(--sh-accent);}
 
       #page-sinhhieu #shSheets{
         overflow-x:auto;
@@ -2743,11 +2754,11 @@ html.rx-only .rx-wrap { padding-top: 10px; }
         padding:8mm;
         box-shadow:0 2px 10px rgba(0,0,0,.12);
         display:grid;
-        grid-template-columns:repeat(2, 1fr);
-        grid-template-rows:repeat(3, 1fr);
+        grid-template-columns:repeat(var(--sh-c,2), 1fr);
+        grid-template-rows:repeat(var(--sh-r,3), 1fr);
         align-content:start;
         justify-content:center;
-        gap:4mm 8mm;
+        gap:var(--sh-gy,4mm) var(--sh-gx,8mm);
         box-sizing:border-box;
       }
       #page-sinhhieu .sh-sheet.sh-a4{
@@ -2756,9 +2767,10 @@ html.rx-only .rx-wrap { padding-top: 10px; }
         padding:5mm 7mm;
       }
 
+      /* --k = hệ số co chữ/khoảng cách theo số phiếu trên một tờ (JS đặt trên .sh-sheet) */
       #page-sinhhieu .sh-slip{
         border:1.2px solid #000;
-        padding:3mm 4mm;
+        padding:calc(3mm * var(--k,1)) calc(4mm * var(--k,1));
         display:flex;
         flex-direction:column;
         justify-content:center;
@@ -2779,7 +2791,7 @@ html.rx-only .rx-wrap { padding-top: 10px; }
         gap:0.3mm;
       }
       #page-sinhhieu .sh-hosp-name{
-        font-size:6.3pt;
+        font-size:calc(6.3pt * var(--k,1));
         font-weight:700;
         letter-spacing:.01em;
         line-height:1.1;
@@ -2788,31 +2800,96 @@ html.rx-only .rx-wrap { padding-top: 10px; }
       }
       #page-sinhhieu .sh-slip-no{
         font-weight:700;
-        font-size:28pt;
+        font-size:calc(28pt * var(--k,1));
         line-height:1;
       }
       #page-sinhhieu .sh-row2{
         display:flex;
-        gap:4mm;
+        gap:calc(4mm * var(--k,1));
       }
       #page-sinhhieu .sh-row2 .sh-field{flex:1;min-width:0;}
-      #page-sinhhieu .sh-row2 .sh-field .sh-label{font-size:clamp(8.5pt,2.4vw,10.5pt);}
+      #page-sinhhieu .sh-row2 .sh-field .sh-label{font-size:calc(10.5pt * var(--k,1));}
       #page-sinhhieu .sh-row2 .sh-field .sh-box{margin-left:1.5mm;}
       #page-sinhhieu .sh-field{
         display:flex;
         justify-content:space-between;
         align-items:center;
-        padding:1.2mm 0;
+        padding:calc(1.2mm * var(--k,1)) 0;
         min-width:0;
       }
-      #page-sinhhieu .sh-field .sh-label{font-size:10.5pt;white-space:nowrap;flex-shrink:0;}
+      #page-sinhhieu .sh-field .sh-label{font-size:calc(10.5pt * var(--k,1));white-space:nowrap;flex-shrink:0;}
       #page-sinhhieu .sh-field .sh-box{
         flex:1;
         min-width:0;
         margin-left:3mm;
         border-bottom:1px solid #999;
-        height:3.6mm;
+        height:calc(3.6mm * var(--k,1));
       }
+
+      /* Phiếu nhỏ (8 phiếu/tờ trở lên): các dòng chia đều chiều cao, đường kẻ nằm sát đáy để dễ viết tay */
+      #page-sinhhieu .sh-slip.sh-p{
+        justify-content:flex-start;
+        padding:calc(2.5mm * var(--k,1)) calc(3mm * var(--k,1));
+      }
+      #page-sinhhieu .sh-p .sh-hosp-name{white-space:normal;}
+      #page-sinhhieu .sh-p .sh-slip-head.sh-hc{
+        flex-direction:row;
+        justify-content:space-between;
+        align-items:center;
+        padding-bottom:.6mm;
+        margin-bottom:.8mm;
+        gap:calc(2mm * var(--k,1));
+      }
+      #page-sinhhieu .sh-p .sh-hc .sh-slip-no{font-size:calc(24pt * var(--k,1));}
+      #page-sinhhieu .sh-p .sh-hc .sh-hosp-name{
+        font-size:max(4.8pt, calc(6pt * var(--k,1)));
+        text-align:right;
+        line-height:1.15;
+      }
+      #page-sinhhieu .sh-p .sh-rowp{
+        display:flex;
+        gap:calc(3mm * var(--k,1));
+        flex:1 1 0;
+        min-height:0;
+      }
+      #page-sinhhieu .sh-p .sh-field{
+        flex:1;
+        min-width:0;
+        padding:0 0 .4mm 0;
+        align-items:flex-end;
+      }
+      #page-sinhhieu .sh-p .sh-field .sh-label{font-size:calc(10pt * var(--k,1));align-self:flex-end;}
+      #page-sinhhieu .sh-p .sh-field .sh-box{
+        align-self:stretch;
+        height:auto;
+        margin-left:calc(2mm * var(--k,1));
+        border-bottom:1px solid #777;
+      }
+      #page-sinhhieu .sh-box.u{
+        display:flex;
+        justify-content:flex-end;
+        align-items:flex-end;
+        font-size:calc(7pt * var(--k,1));
+      }
+      #page-sinhhieu .sh-box.u-kg::after{content:"kg";}
+      #page-sinhhieu .sh-box.u-cm::after{content:"cm";}
+      #page-sinhhieu .sh-norule .sh-slip-head{border-bottom:none;padding-bottom:0;}
+      #page-sinhhieu .sh-slip-head.sh-nonm{gap:0;}
+      #page-sinhhieu .sh-p .sh-slip-head.sh-hc.sh-nonm{justify-content:center;}
+
+      /* Bảng tùy chỉnh nội dung phiếu */
+      #page-sinhhieu .sh-opt{flex-basis:100%;background:#fff;border:1px solid var(--sh-line);border-radius:8px;padding:8px 12px;}
+      #page-sinhhieu .sh-opt summary{cursor:pointer;font-weight:600;font-size:13.5px;color:var(--sh-ink);}
+      #page-sinhhieu .sh-opt-body{margin-top:10px;display:flex;flex-direction:column;gap:10px;}
+      #page-sinhhieu .sh-opt-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;}
+      #page-sinhhieu .sh-opt-row > label:not(.sh-chk){font-size:12.5px;color:#5a6b68;}
+      #page-sinhhieu .sh-opt-cap{font-size:12.5px;color:#5a6b68;}
+      #page-sinhhieu .sh-opt select{border:1px solid var(--sh-border,#d8ddd8);background:#f4f6f3;border-radius:6px;padding:4px 8px;font-size:12.5px;color:#2c3a37;}
+      #page-sinhhieu .sh-chk{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--sh-ink);margin-right:10px;white-space:nowrap;cursor:pointer;}
+      #page-sinhhieu .sh-chk input{width:auto;margin:0;}
+      #page-sinhhieu #shFields{display:flex;flex-wrap:wrap;gap:4px 0;}
+      #page-sinhhieu #shOptReset{border:1px solid var(--sh-border,#d8ddd8);background:#f4f6f3;border-radius:6px;padding:4px 10px;font-size:12.5px;cursor:pointer;color:#2c3a37;}
+      #page-sinhhieu .sh-opt-note{font-size:12px;color:#6b7a75;}
 
       @media print{
         body *{ visibility:hidden; }
@@ -2823,7 +2900,6 @@ html.rx-only .rx-wrap { padding-top: 10px; }
         #page-sinhhieu .sh-toolbar{display:none;}
         #page-sinhhieu #shSummaryLabel{display:none;}
         #page-sinhhieu .sh-sheet{box-shadow:none;margin:0;page-break-after:always;align-content:start;padding-top:0;}
-        #page-sinhhieu .sh-sheet.sh-a4{gap:2.5mm 8mm;}
         @page{margin:8mm;}
       }
 
