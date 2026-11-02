@@ -724,11 +724,57 @@
             <option value="200">200 tờ</option>
           </select>
         </div>
+        <div class="sh-sheets-group sh-per-group">
+          <label for="shPerSheet">Số phiếu / tờ</label>
+          <select id="shPerSheet" title="Số phiếu in trên một tờ A4 (nhiều phiếu hơn = mảnh nhỏ hơn)">
+            <option value="4">4 phiếu (to)</option>
+            <option value="6" selected>6 phiếu (mặc định)</option>
+            <option value="8">8 phiếu</option>
+            <option value="10">10 phiếu</option>
+            <option value="12">12 phiếu</option>
+            <option value="15">15 phiếu (nhỏ)</option>
+            <option value="18">18 phiếu (nhỏ)</option>
+            <option value="24">24 phiếu (rất nhỏ)</option>
+          </select>
+        </div>
       </div>
 
       <div class="sh-print-wrap">
         <button class="sh-print-btn" id="shPrintBtn">🖨️ In</button>
       </div>
+
+      <details class="sh-opt" id="shOpt">
+        <summary>⚙ Tùy chỉnh nội dung phiếu (cho phiếu gọn hơn)</summary>
+        <div class="sh-opt-body">
+          <div class="sh-opt-row">
+            <label for="shTitle">Tiêu đề bệnh viện</label>
+            <select id="shTitle">
+              <option value="full">Đầy đủ (Bệnh viện Đa khoa Bình Dương - Cơ sở 2)</option>
+              <option value="short">Rút gọn (BVĐK Bình Dương CS2)</option>
+              <option value="none">Ẩn tiêu đề</option>
+            </select>
+            <label class="sh-chk"><input type="checkbox" id="shRule"> Đường kẻ ngang dưới số phiếu</label>
+            <label class="sh-chk"><input type="checkbox" id="shAbbr"> Viết gọn nhãn (NS, KP, CP, M, T, HA, NT, CN, CC)</label>
+          </div>
+          <div class="sh-opt-row">
+            <span class="sh-opt-cap">Các mục trên phiếu:</span>
+            <span id="shFields">
+              <label class="sh-chk"><input type="checkbox" data-f="name"> Họ và tên</label>
+              <label class="sh-chk"><input type="checkbox" data-f="yob"> Năm sinh (NS)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="kp"> Khám phòng (KP)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="cp"> Chuyển phòng (CP)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="m"> Mạch (M)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="t"> Nhiệt độ (T)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="ha"> Huyết áp (HA)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="nt"> Nhịp thở (NT)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="cn"> Cân nặng (CN)</label>
+              <label class="sh-chk"><input type="checkbox" data-f="cc"> Chiều cao (CC)</label>
+            </span>
+            <button type="button" id="shOptReset">Đặt lại mặc định</button>
+          </div>
+          <div class="sh-opt-note">Lựa chọn được nhớ trong trình duyệt này.</div>
+        </div>
+      </details>
     </div>
 
     <div class="sh-sub" id="shSummaryLabel" style="max-width:1080px;margin:0 auto 14px auto;text-align:center;"></div>
