@@ -415,7 +415,7 @@
   let hsQuickLastText = '';
 
   // Lý do khám "Tái khám" (mặc định): Bệnh sử / Diễn biến vào viện dùng chung 1 nội dung cố định
-  const HS_TAIKHAM_DEFAULT_TEXT = 'Bệnh nhân đến khám theo lịch hẹn tái khám của bác sĩ, tại Cơ sở 2 - Bệnh viện Đa khoa Bình Dương';
+  const HS_TAIKHAM_DEFAULT_TEXT = 'Bệnh nhân đến tái khám theo lịch hẹn của bác sĩ, tại Cơ sở 2 - Bệnh viện Đa khoa Bình Dương';
   function hsIsPlainTaiKham(text) {
     return String(text || '').trim().replace(/[.\s]+$/, '').toLowerCase() === 'tái khám';
   }
