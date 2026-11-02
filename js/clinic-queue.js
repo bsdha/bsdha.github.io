@@ -11,10 +11,11 @@ var KP="goiso_pin",KC="goiso_cfg",KL="goiso_local",QN=5,$=function(i){return sha
 function p2(n){return(n<10?"0":"")+n}
 function vn(){var d=new Date(Date.now()+25200000);return{date:p2(d.getUTCDate())+"/"+p2(d.getUTCMonth()+1)+"/"+d.getUTCFullYear(),t:p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())+":"+p2(d.getUTCSeconds())}}
 function fresh(d){return{date:d,last:0,cur:null,lanes:{},hist:[],skipped:[],issued:0,seq:0,ver:0}}
-function fr(S,d){var f=fresh(d);f.ver=S.ver;f.seq=S.seq;return f}
+function fr(S,d){var f=fresh(d);f.ver=S.ver;f.seq=S.seq;f.aid=S.aid||0;return f}
+function aq(S,n,q){S.ann=S.ann||[];S.ann.push({id:S.aid=(S.aid|0)+1,n:n,q:q});if(S.ann.length>40)S.ann.shift()}
 function R(S,a,v){if(S.date!==v.date)S=fr(S,v.date);var n;
-if(a.type==="next"||a.type==="call"){n=a.type==="next"?S.last+1:(a.n|0);if(n<1||n>9999)return S;var q=a.q|0;if(q<1||q>5)q=1;var e={n:n,q:q,t:v.t};S.cur=e;S.lanes[q]=e;S.hist.push(e);if(S.hist.length>1000)S.hist.shift();if(n>S.last)S.last=n;S.skipped=S.skipped.filter(function(x){return x!==n});S.seq++}
-else if(a.type==="recall"){if(S.cur)S.seq++}
+if(a.type==="next"||a.type==="call"){n=a.type==="next"?S.last+1:(a.n|0);if(n<1||n>9999)return S;var q=a.q|0;if(q<1||q>5)q=1;var e={n:n,q:q,t:v.t};S.cur=e;S.lanes[q]=e;S.hist.push(e);if(S.hist.length>1000)S.hist.shift();if(n>S.last)S.last=n;S.skipped=S.skipped.filter(function(x){return x!==n});aq(S,n,q);S.seq++}
+else if(a.type==="recall"){if(S.cur){aq(S,S.cur.n,S.cur.q);S.seq++}}
 else if(a.type==="skip"){if(S.cur&&S.skipped.indexOf(S.cur.n)<0)S.skipped.push(S.cur.n)}
 else if(a.type==="issued"){S.issued=Math.max(0,Math.min(9999,a.n|0))}
 else if(a.type==="reset"){S=fr(S,v.date)}
@@ -58,7 +59,7 @@ function api(){return cfg.url.replace(/\/+$/,"")+"/?room="+encodeURIComponent(cf
 function devId(){var d=ls("goiso_dev3");if(!d||d.length!==4){var al="ABCDEFGHJKMNPQRSTUVWXYZ23456789",a=new Uint8Array(4);(window.crypto||{getRandomValues:function(x){for(var i=0;i<x.length;i++)x[i]=Math.random()*256}}).getRandomValues(a);d="";for(var i=0;i<4;i++)d+=al[a[i]%al.length];ls("goiso_dev3",d)}return d}
 function hd(){var h={"content-type":"application/json","x-dev":devId()};if(cfg.token)h["x-token"]=cfg.token;return h}
 function done(a){var c=a.type==="next"||a.type==="call"||a.type==="recall";render(c&&a.type!=="recall");
-if(c&&S.cur){var dl=sayLater(S.cur,S.now);$("status").textContent="Đã gọi số "+pad(S.cur.n)+" tại quầy "+S.cur.q+"."+(dl>300?" Máy khác đang đọc, sẽ đọc sau "+Math.ceil(dl/1000)+" giây.":"")}
+if(c&&S.cur){hearAll(S,true);var w=vq.length+(playing?1:0);$("status").textContent="Đã gọi số "+pad(S.cur.n)+" tại quầy "+S.cur.q+"."+(w>1?" Đang xếp hàng đọc: "+w+" số.":"")}
 else if(a.type==="skip")$("status").textContent="Đã bỏ qua số hiện tại. Bấm Gọi số tiếp theo."}
 function act(a){
 if(closed&&a.type!=="reset")return;
@@ -67,8 +68,8 @@ if(!cfg.url){S=R(S,a,vn());ls(KL,JSON.stringify(S));done(a);return}
 fetch(api(),{method:"POST",headers:hd(),body:JSON.stringify(a)}).then(function(r){if(r.status===401){$("status").textContent="Mã máy không hợp lệ hoặc đã bị khóa.";setSt("bad");throw 401}if(!r.ok)throw 0;return r.json()}).then(function(s){S=s;conn(true);done(a)}).catch(function(e){if(e===401)return;conn(false);$("status").textContent="Chưa gửi được lên máy chủ, thử lại."})}
 function poll(){if(!cfg.url||!on())return;
 fetch(api(),{headers:hd()}).then(function(r){if(r.status===401){var c=$("conn");c.textContent="Mã máy không hợp lệ hoặc đã bị khóa";c.className="pill bad";setSt("bad");throw 401}if(!r.ok)throw 0;return r.json()}).then(function(s){conn(true);if(st!=="ok")setSt("ok");
-if(first){first=false;S=s;render(false);return}
-if(s.ver!==S.ver||s.date!==S.date){var ch=s.seq!==lastSeq,disp=r.classList.contains("show");S=s;render(ch);if(ch&&disp&&s.cur)sayLater(s.cur,s.now)}}).catch(function(e){if(e!==401)conn(false)})}
+if(first){first=false;S=s;floor=maxId(s);render(false);return}
+if(s.ver!==S.ver||s.date!==S.date){var ch=s.seq!==lastSeq;S=s;render(ch);hearAll(s,false)}}).catch(function(e){if(e!==401)conn(false)})}
 setInterval(poll,2000);
 window.addEventListener("storage",function(e){if(e.key===KL&&!cfg.url){try{S=JSON.parse(e.newValue);render(true)}catch(x){}}});
 var VO={},ctx=null,bufs={},srcs=[];
@@ -88,25 +89,37 @@ function tok(){var t=ls("goiso_tok");if(!t&&cfg&&cfg.token){t=cfg.token;ls("gois
 var st=tok()?"ok":"none";
 var vk=ls("goiso_vk"),vkP=Promise.resolve();if(vk&&tok())vkP=unlockVoices(vk).catch(function(e){window.__err=String(e)});
 function chime(c,t){[[988,0],[740,.42]].forEach(function(x){var o=c.createOscillator(),g=c.createGain(),s=t+x[1];o.type="sine";o.frequency.value=x[0];o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(.35,s+.03);g.gain.exponentialRampToValueAtTime(.001,s+.8);o.start(s);o.stop(s+.85)})}
-function sayMachine(n,qq){
-if(!window.speechSynthesis)return;
+var mT=0,qT=0,endT=0,vq=[],playing=false,seen={},floor=0,gen=0;
+function annOf(s){if(s&&s.ann&&s.ann.length)return s.ann;return s&&s.cur?[{id:s.seq,n:s.cur.n,q:s.cur.q,at:s.cur.at}]:[]}
+function maxId(s){var m=0;annOf(s).forEach(function(a){if(a.id>m)m=a.id});return m}
+function hearAll(s,own){var A=annOf(s),sh=r.classList.contains("show"),now=s.now||0,base=Date.now();
+A.forEach(function(a,i){if(a.id<=floor||seen[a.id])return;seen[a.id]=1;
+if(sh||(own&&i===A.length-1)){var d=a.at&&now?Math.max(0,Math.min(300000,a.at-now)):0;vq.push({n:a.n,q:a.q,t:base+d})}});
+pump()}
+function after(g){return function(){if(g!==gen)return;playing=false;pump()}}
+function pump(){if(playing||!vq.length)return;clearTimeout(qT);var it=vq[0],w=it.t-Date.now();
+if(w>50){qT=setTimeout(pump,w);return}
+vq.shift();playing=true;var g=gen,f=after(g);speak(it.n,it.q).then(f,f)}
+function halt(){gen++;clearTimeout(qT);clearTimeout(endT);clearTimeout(mT);vq=[];playing=false;srcs.forEach(function(x){try{x.stop()}catch(e){}});srcs=[];if(window.speechSynthesis)speechSynthesis.cancel()}
+function speakMachine(n,qq){return new Promise(function(res){
+if(!window.speechSynthesis)return res();
 var dg=pad(n).split("").map(function(c){return c==="0"?"không":["","một","hai","ba","bốn","năm","sáu","bảy","tám","chín"][+c]}).join(" ");
 var u=new SpeechSynthesisUtterance("Mời bệnh nhân số "+dg+", đến quầy số "+qq);
 var vs=speechSynthesis.getVoices().filter(function(v){return v.lang.toLowerCase().indexOf("vi")===0});
-u.lang="vi-VN";if(vs[0])u.voice=vs[0];speechSynthesis.cancel();
-if(chimeOn){chime(ac(),ac().currentTime+.05);mT=setTimeout(function(){speechSynthesis.speak(u)},1000)}else speechSynthesis.speak(u)}
-var sayT=0,mT=0;
-function sayLater(c,now){clearTimeout(sayT);var d=c.at&&now?Math.max(0,Math.min(60000,c.at-now)):0;if(d>300)sayT=setTimeout(function(){say(c.n,c.q)},d);else say(c.n,c.q);return d}
-function say(n,qq){
-if(!voiceOn)return;var id=$("vsel").value;
-if(id==="machine"||!VO[id]){sayMachine(n,qq);return}
-loadClips(id).then(function(B){
-srcs.forEach(function(s){try{s.stop()}catch(e){}});srcs=[];
-var c=ctx,r=+$("vspd").value,t=c.currentTime+.08,d=pad(n).split(""),qs=[["moi",.14]];
+u.lang="vi-VN";if(vs[0])u.voice=vs[0];
+var fin=false,ft=0,end=function(){if(fin)return;fin=true;clearTimeout(ft);res()};
+u.onend=end;u.onerror=end;ft=setTimeout(end,20000);
+if(chimeOn){chime(ac(),ac().currentTime+.05);mT=setTimeout(function(){speechSynthesis.speak(u)},1000)}else speechSynthesis.speak(u)})}
+function speak(n,qq){if(!voiceOn)return Promise.resolve();var id=$("vsel").value;
+if(id==="machine"||!VO[id])return speakMachine(n,qq);
+return loadClips(id).then(function(B){
+var c=ctx,sp=+$("vspd").value||1,t=c.currentTime+.08,d=pad(n).split(""),qs=[["moi",.14]];
 if(chimeOn){chime(c,t);t+=1}
 d.forEach(function(x,i){qs.push([x,i===d.length-1?.16:.05])});qs.push(["den",.07]);qs.push([String(qq),0]);
-qs.forEach(function(e){var s=c.createBufferSource();s.buffer=B[e[0]];s.playbackRate.value=r;s.connect(c.destination);s.start(t);srcs.push(s);t+=(B[e[0]].duration+e[1])/r})
+qs.forEach(function(e){var s=c.createBufferSource();s.buffer=B[e[0]];s.playbackRate.value=sp;s.connect(c.destination);s.start(t);srcs.push(s);s.onended=function(){var k=srcs.indexOf(s);if(k>=0)srcs.splice(k,1)};t+=(B[e[0]].duration+e[1])/sp});
+return new Promise(function(res){endT=setTimeout(res,Math.max(0,(t-c.currentTime)*1000)+150)})
 }).catch(function(){$("status").textContent="Không phát được âm thanh, thử bấm vào trang rồi gọi lại."})}
+function say(n,qq){halt();playing=true;var f=after(gen);speak(n,qq).then(f,f)}
 $("next").onclick=function(){act({type:"next",q:+q.value})};
 $("again").onclick=function(){if(!S.cur){$("status").textContent="Chưa có số nào để gọi lại.";return}act({type:"recall"})};
 $("skip").onclick=function(){if(!S.cur){$("status").textContent="Chưa có số nào để bỏ qua.";return}act({type:"skip"})};
@@ -123,7 +136,7 @@ else if(!sh&&(k==="b"||k==="B")){$("skip").click()}
 else if(!sh&&(k==="g"||k==="G")){e.preventDefault();$("spec").focus()}
 else if(!sh&&(k==="m"||k==="M")){$("sbt").click()}
 else if(!sh&&(k==="c"||k==="C")){$("setb").click()}});
-$("voice").onclick=function(){voiceOn=!voiceOn;ls("goiso_von",voiceOn?"1":"0");this.textContent="Giọng đọc: "+(voiceOn?"Bật":"Tắt");if(!voiceOn&&window.speechSynthesis)speechSynthesis.cancel()};
+$("voice").onclick=function(){voiceOn=!voiceOn;ls("goiso_von",voiceOn?"1":"0");this.textContent="Giọng đọc: "+(voiceOn?"Bật":"Tắt");if(!voiceOn)halt()};
 $("chime").onclick=function(){chimeOn=!chimeOn;ls("goiso_con",chimeOn?"1":"0");this.textContent="Chuông: "+(chimeOn?"Bật":"Tắt")};
 $("show").onclick=function(){var on=r.classList.toggle("show");lbl(this,on?"Thoát màn hình chờ":"Màn hình chờ","W");fitD();if(on)ac();
 try{if(on&&r.requestFullscreen)r.requestFullscreen();else if(!on&&document.fullscreenElement)document.exitFullscreen()}catch(e){}};
@@ -134,7 +147,7 @@ $("f").onsubmit=function(e){e.preventDefault();if($("pv").value!==(ls(KP)||"1234
 $("unlock").onclick=function(){pm="unlock";$("pt").textContent="Mở khóa ngoài giờ";$("pp").textContent="Nhập PIN để dùng tạm ngoài giờ gọi số (đến khi tải lại trang).";$("pv").value="";$("err").textContent="";$("dlg").showModal();$("pv").focus()};
 var NETURL="https://clinic-queue.dhabolero.workers.dev/";
 function netBtn(){$("net").textContent="Nhiều máy: "+(cfg.url?"Bật":"Tắt");$("net").style.opacity=(st==="ok"||cfg.url)?"":".5";$("net").title=st==="ok"||cfg.url?"":"Cần kích hoạt máy trước"}
-function goLocal(){cfg={};ls(KC,"{}");first=true;try{S=JSON.parse(ls(KL))}catch(x){}if(!S||S.date!==vn().date)S=fresh(vn().date);render(false);conn(true);netBtn()}
+function goLocal(){cfg={};ls(KC,"{}");first=true;try{S=JSON.parse(ls(KL))}catch(x){}if(!S||S.date!==vn().date)S=fresh(vn().date);floor=maxId(S);render(false);conn(true);netBtn()}
 function setSt(x){st=x;var p=$("actst");p.textContent="Trạng thái: "+(x==="ok"?"Đã kích hoạt":x==="bad"?"Mã bị khóa/không hợp lệ":"Chưa kích hoạt");p.className="pill"+(x==="ok"?" ok":x==="bad"?" bad":"");netBtn();if($("dlg2").open)renderInfo()}
 function renderInfo(){var ok=st==="ok",L="margin:4px 0 10px;padding-left:20px;color:var(--mut);font-size:14px";
 $("ibody").innerHTML=ok?"<p><b>Đã kích hoạt.</b> Máy này được dùng:</p><ul style='"+L+"'><li>Giọng đọc ghi sẵn (chọn ở mục Giọng)</li><li>Chạy nhiều máy, đồng bộ số giữa các máy (bật trong Cài đặt)</li></ul>"
@@ -169,7 +182,7 @@ sbCss();sbApply(false);
 $("sbt").onclick=function(){sbApply(!sbOn)};
 $("setb").onclick=function(){$("nerr").textContent="";$("dlgS").showModal()};
 $("cxS").onclick=function(){$("dlgS").close()};
-function stopSay(){clearTimeout(sayT);clearTimeout(mT);srcs.forEach(function(x){try{x.stop()}catch(e){}});srcs=[];if(window.speechSynthesis)speechSynthesis.cancel();$("status").textContent="Đã dừng đọc."}
+function stopSay(){halt();$("status").textContent="Đã dừng đọc."}
 $("stop").onclick=stopSay;
 function setTab(f){histF=f;$("tAll").classList.toggle("on",f==="all");$("tSkip").classList.toggle("on",f==="skip");render(false)}
 $("tAll").onclick=function(){setTab("all")};
@@ -216,7 +229,7 @@ function applyClosed(){var c=!isOpen()&&!ovr;if(c===closed)return;closed=c;r.cla
 ["next","again","skip","callSpec","issb","spec","iss"].forEach(function(id){$(id).disabled=c});render(false);
 $("status").textContent=c?"Ngoài giờ gọi số (thứ Hai đến thứ Sáu: 07:00 đến 11:30 và 13:00 đến 16:30).":"Phím tắt: Space gọi số tiếp theo, R gọi lại, S dừng đọc."}
 function tick(){if(!on())return;$("clock").textContent=vn().t;applyClosed()}tick();setInterval(tick,1000);
-conn(true);render(false);setSt(st);fitD();if(cfg.url)poll();if(tok())activate(tok(),false);
+if(!cfg.url)floor=maxId(S);conn(true);render(false);setSt(st);fitD();if(cfg.url)poll();if(tok())activate(tok(),false);
 
 return{resume:function(g){if(g)sbApply(false);tick();poll();fitD()}};
 }
