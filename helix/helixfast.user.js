@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.24
+// @version      2.25
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -28,7 +28,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.24';
+  const HELIXFAST_VERSION = '2.25';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -414,7 +414,14 @@
   let hsQuickVariantIndex = 0;
   let hsQuickLastText = '';
 
+  // Lý do khám "Tái khám" (mặc định): Bệnh sử / Diễn biến vào viện dùng chung 1 nội dung cố định
+  const HS_TAIKHAM_DEFAULT_TEXT = 'Bệnh nhân đến khám theo lịch hẹn tái khám của bác sĩ, tại Cơ sở 2 - Bệnh viện Đa khoa Bình Dương';
+  function hsIsPlainTaiKham(text) {
+    return String(text || '').trim().replace(/[.\s]+$/, '').toLowerCase() === 'tái khám';
+  }
+
   function hsQuickVariants(text) {
+    if (hsIsPlainTaiKham(text)) return [HS_TAIKHAM_DEFAULT_TEXT];
     return [
       `Bệnh nhân đến khám vì ${text}, đến khám tại ${HS_DEST}.`,
       `Ghi nhận bệnh nhân ${text}, nên đến khám tại ${HS_DEST}.`,
@@ -1037,6 +1044,25 @@
       if (opened) closeIcdDropdownIfEmpty(inp);
     }, 40);
   }
+
+  // Trang Khám bệnh: Bệnh sử <-> Diễn biến vào viện (ô ghi chú) đồng bộ hai chiều khi người dùng gõ vào 1 trong 2 ô
+  hlxDocListen(
+    'input',
+    (e) => {
+      if (!e.isTrusted || !hlxFeatOn('exam_auto') || !examIsPage()) return;
+      const t = e.target;
+      if (!t || t.tagName !== 'TEXTAREA') return;
+      const prog = document.querySelector(PROGRESSION_SELECTOR);
+      const note = getVisibleNoteTextarea();
+      if (!prog || !note) return;
+      const other = t === prog ? note : t === note ? prog : null;
+      if (!other || other.value === t.value) return;
+      setNativeValue(other, t.value);
+      hsLastProg = null;
+      hsProgressionLocked = true;
+    },
+    true
+  );
 
   function focusIcdInput() {
     const tryFocus = (attemptsLeft) => {
@@ -3135,14 +3161,20 @@
     return isFinite(n) ? n : 0;
   }
   let hlxDiscLog = '';
-  function hlxSyncTotal() {
+  // Số ngày do NGƯỜI DÙNG gõ (HIS hay tự tính ngược Số ngày = Tổng S.Lg / liều → 5 ống / 0.5 = 10 ngày, làm hỏng thuốc "Bỏ phần dư")
+  let hlxDaysIntent = { val: 0, drug: '' };
+  function hlxSyncTotal(force) {
     if (hlxDoseNative()) return;
     if (hlxDoseIncomplete()) return;
     const qty = hlxQ(SUPPLY_QTY_SELECTOR);
     const day = hlxQ(SUPPLY_DAY_SELECTOR);
     if (!qty || !day || qty.disabled || qty.readOnly) return;
     if (document.activeElement === qty) return; // người dùng đang tự sửa Tổng S.Lg: không ghi đè
-    const days = hlxParseNum(day.value);
+    let days = hlxParseNum(day.value);
+    let hlxIsDisc = false;
+    try { const d0 = hlxDoseLookup(hlxPharmacySelectedText(), true); hlxIsDisc = !!(d0 && d0.disc); } catch (err) {}
+    const intentOk = hlxIsDisc && hlxDaysIntent.val > 0 && hlxDaysIntent.drug === hlxPharmacySelectedText();
+    if (intentOk && days !== hlxDaysIntent.val) days = hlxDaysIntent.val; // HIS đã tự đổi Số ngày → dùng số ngày người dùng đã gõ
     let perDay = 0;
     for (const f of DOSE_FIELDS) {
       const el = hlxQ(f.sel);
@@ -3155,10 +3187,24 @@
       if (dd && dd.disc) { perDay = Math.ceil(perDay - 1e-9); hlxDiscLog = dd.name; }
     } catch (err) {}
     const total = String(Math.ceil(days * perDay - 1e-9));
-    if ((qty.value || '').trim() === total) return;
+    // force (ngay trước khi Nạp): luôn ghi lại + bắn sự kiện để model Angular nhận đúng Tổng S.Lg, tránh HIS ghi đè 10 ống muộn sau lần sync cuối
+    if (!force && (qty.value || '').trim() === total) return;
     if (hlxDiscLog) console.log('[Helixfast] Bỏ phần dư:', hlxDiscLog, '→ Tổng S.Lg', total);
     hlxDiscLog = '';
     hlxSetInputValue(qty, total);
+    if (intentOk) {
+      // HIS vừa tính ngược Số ngày từ Tổng S.Lg → trả Số ngày về đúng số người dùng gõ (chỉ bắn 'input', không đụng Tổng S.Lg)
+      [40, 150, 400].forEach((ms) => setTimeout(() => {
+        try {
+          const dEl = hlxQ(SUPPLY_DAY_SELECTOR);
+          if (!dEl || document.activeElement === dEl) return;
+          if (hlxParseNum(dEl.value) === hlxDaysIntent.val) return;
+          const desc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+          if (desc && desc.set) desc.set.call(dEl, String(hlxDaysIntent.val)); else dEl.value = String(hlxDaysIntent.val);
+          dEl.dispatchEvent(new Event('input', { bubbles: true }));
+        } catch (err) {}
+      }, ms));
+    }
   }
   let hlxTotalGen = 0;
   function hlxScheduleTotalSync(delays) {
@@ -3247,6 +3293,7 @@
       if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR) || t.matches(SUPPLY_QTY_SELECTOR)) {
         hlxScheduleNoteSync([0, 40, 150]);
       }
+      if (t.matches(SUPPLY_DAY_SELECTOR)) { try { hlxDaysIntent = { val: hlxParseNum(t.value), drug: hlxPharmacySelectedText() }; } catch (err) {} }
       // Số ngày / Sáng-Trưa-Chiều-Tối đổi → tính lại Tổng S.Lg ngay (gõ trực tiếp ở Tổng S.Lg thì giữ nguyên)
       if (t.matches(QUANTITY_UNIT_SELECTOR) || t.matches(SUPPLY_DAY_SELECTOR)) {
         hlxScheduleTotalSync([0, 60, 200, 450, 800, 1300, 2000]);
@@ -3262,7 +3309,9 @@
     hlxDocListen('click', (e) => {
       const btn = e.target && e.target.closest ? e.target.closest('button[type="submit"]') : null;
       if (!btn || btn.textContent.replace(/\s+/g, ' ').trim() !== 'Nạp') return;
+      try { if (hlxFeatOn('rx')) hlxSyncTotal(true); } catch (err) {}
       try { hlxRxTick(true); } catch (err) {}
+      setTimeout(() => { hlxDaysIntent = { val: 0, drug: '' }; }, 1800); // hết lượt nạp: bỏ số ngày đã nhớ
     }, true);
 
     hlxDocListen('click', (e) => {
@@ -3448,7 +3497,7 @@
         } catch (err) {}
         hlxScheduleTotalSync([0, 60, 110]);
         setTimeout(() => {
-          try { hlxSyncTotal(); } catch (err) {}
+          try { hlxSyncTotal(true); } catch (err) {}
           try { hlxSyncNote(); } catch (err) {}
           rxNapAndRefocus();
         }, 120);
