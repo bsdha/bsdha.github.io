@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.25
+// @version      2.26
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -28,7 +28,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.25';
+  const HELIXFAST_VERSION = '2.26';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -415,7 +415,7 @@
   let hsQuickLastText = '';
 
   // Lý do khám "Tái khám" (mặc định): Bệnh sử / Diễn biến vào viện dùng chung 1 nội dung cố định
-  const HS_TAIKHAM_DEFAULT_TEXT = 'Bệnh nhân đến tái khám theo lịch hẹn của bác sĩ, tại Cơ sở 2 - Bệnh viện Đa khoa Bình Dương';
+  const HS_TAIKHAM_DEFAULT_TEXT = 'Bệnh nhân đến khám theo lịch hẹn tái khám của bác sĩ, tại Cơ sở 2 - Bệnh viện Đa khoa Bình Dương';
   function hsIsPlainTaiKham(text) {
     return String(text || '').trim().replace(/[.\s]+$/, '').toLowerCase() === 'tái khám';
   }
@@ -8463,6 +8463,24 @@
     (document.head || document.documentElement).appendChild(st);
   }
 
+  // Ghi giá trị vào ô và kiểm tra lại: nếu form (Angular) ghi đè / ô chưa sẵn sàng thì ghi lại, tối đa ~1s
+  const ipdWriteTok = {};
+  function ipdWriteVerified(key, items) {
+    const tok = (ipdWriteTok[key] = (ipdWriteTok[key] || 0) + 1);
+    let tries = 0;
+    const step = () => {
+      if (ipdWriteTok[key] !== tok) return;
+      let pending = false;
+      items.forEach((it) => {
+        const el = it.get();
+        if (!el) { pending = true; return; }
+        if (el.value !== it.text) { setNativeValue(el, it.text); pending = true; }
+      });
+      if (pending && tries++ < 6) setTimeout(step, 150);
+    };
+    step();
+  }
+
   function ipdBuildOptionBox(extraClass, options, onToggle) {
     ipdEnsureOptCss();
     const box = document.createElement('div');
@@ -8472,15 +8490,41 @@
       const cb = document.createElement('input');
       cb.type = 'checkbox';
       cb.value = o;
-      cb.addEventListener('change', () => onToggle(o, cb.checked));
+      // bàn phím (click không do chuột): dùng sự kiện change như cũ
+      cb.addEventListener('change', () => {
+        if (box._hlxPtr) return;
+        box._hlxHold = Date.now() + 700;
+        onToggle(o, cb.checked);
+      });
       lb.appendChild(cb);
       lb.appendChild(document.createTextNode(o));
       box.appendChild(lb);
     });
+    // Chuột/cảm ứng: xử lý ngay lúc nhấn xuống (pointerdown) để không bị mất cú nhấp khi hộp bị vẽ lại giữa lúc nhấn và nhả
+    box.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const lb = e.target && e.target.closest ? e.target.closest('label') : null;
+      if (!lb || !box.contains(lb)) return;
+      const cb = lb.querySelector('input[type="checkbox"]');
+      if (!cb) return;
+      e.preventDefault();
+      box._hlxPtr = Date.now() + 500;
+      cb.checked = !cb.checked;
+      box._hlxHold = Date.now() + 700;
+      onToggle(cb.value, cb.checked);
+    }, true);
+    // chặn cú click tiếp theo của chuột (đã xử lý ở pointerdown) để không bật/tắt lần 2
+    box.addEventListener('click', (e) => {
+      if (box._hlxPtr && Date.now() < box._hlxPtr && e.detail > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    }, true);
     return box;
   }
 
   function ipdRefreshBox(box, haveNorm) {
+    if (box._hlxHold && Date.now() < box._hlxHold) return;
     box.querySelectorAll('input[type="checkbox"]').forEach((cb) => {
       const want = haveNorm.indexOf(ipdNormPart(cb.value)) !== -1;
       if (cb.checked !== want) cb.checked = want;
@@ -8498,7 +8542,7 @@
         const norm = ipdNormPart(o);
         const parts = ipdParseParts(field.value).filter((p) => ipdNormPart(p) !== norm);
         if (checked) parts.push(o);
-        setNativeValue(field, ipdBuildParts(parts));
+        ipdWriteVerified('ht', [{ get: () => ipdFindDocxField(IPD_LABEL_HUONG_DIEU_TRI), text: ipdBuildParts(parts) }]);
       });
       inp.insertAdjacentElement('afterend', box);
     }
@@ -8523,8 +8567,10 @@
         const lines = ipdParseLines(c.value).filter((l) => ipdNormPart(l) !== norm);
         if (checked) lines.push(o);
         const text = lines.join('\n');
-        setNativeValue(c, text);
-        if (y) setNativeValue(y, text);
+        ipdWriteVerified('cls', [
+          { get: () => ipdFindDocxField(EXAM_LABEL_CHI_DINH), text },
+          { get: () => ipdFindDocxField(EXAM_LABEL_YC_XN), text },
+        ]);
       });
       cd.insertAdjacentElement('afterend', box);
     }
@@ -12911,26 +12957,62 @@
         return true;
     }
 
+    // Chuẩn hóa để so khớp bền: bỏ dấu câu / "..." / khoảng trắng lạ (tên dịch vụ trên HIS có thể là "tay...." thay vì "tay...")
+    function normSvc(x) {
+        return String(x || '')
+            .normalize('NFC')
+            .toLowerCase()
+            .replace(/[^\p{L}\p{N}]+/gu, ' ')
+            .trim();
+    }
+
     function findBestMatchingRow(keyword) {
         const rows = getRows();
-        const kwLower = keyword.trim().toLowerCase();
         const hasCode = /^\s*\[/.test(keyword);
-        const nameOnly = searchTextOf(keyword).toLowerCase();
+        const kwNorm = normSvc(keyword);
+        const nameOnly = normSvc(searchTextOf(keyword));
         let exact = null;
         let contains = null;
         for (const row of rows) {
-            const name = getServiceName(row).toLowerCase();
-            if (!name) continue;
+            const raw = getServiceName(row);
+            if (!raw) continue;
             if (hasCode) {
-
-                if (!exact && name.startsWith(kwLower)) exact = row;
-                if (!contains && name.includes(kwLower)) contains = row;
+                const name = normSvc(raw);
+                if (!exact && name.startsWith(kwNorm)) exact = row;
+                if (!contains && name.includes(kwNorm)) contains = row;
             } else {
-                if (!exact && name.includes('] ' + nameOnly)) exact = row;
+                const name = normSvc(searchTextOf(raw));
+                if (!exact && (name === nameOnly || name.startsWith(nameOnly + ' '))) exact = row;
                 if (!contains && name.includes(nameOnly)) contains = row;
             }
         }
         return exact || contains || null;
+    }
+
+    // Chờ dòng kết quả thật sự xuất hiện (máy chủ phản hồi chậm thì không bị bỏ sót)
+    async function waitForMatch(keyword, timeout = 6000) {
+        const t0 = Date.now();
+        while (Date.now() - t0 < timeout) {
+            const r = findBestMatchingRow(keyword);
+            if (r) return r;
+            await sleep(120);
+        }
+        return null;
+    }
+
+    // Chờ cột "Đã chỉ định" đổi giá trị sau khi bấm thêm/bỏ
+    async function waitCountChange(keyword, prev, dir, timeout = 3500) {
+        const t0 = Date.now();
+        let c = prev;
+        while (Date.now() - t0 < timeout) {
+            const r = findBestMatchingRow(keyword);
+            if (r) {
+                c = getOrderedCount(r);
+                if (dir > 0 ? c > prev : c < prev) return c;
+            }
+            await sleep(150);
+        }
+        return c;
     }
 
     function findConfirmDialog() {
@@ -12964,7 +13046,12 @@
     async function locateKeyword(keyword) {
         const ok = await searchKeyword(keyword);
         if (!ok) return null;
-        const row = findBestMatchingRow(keyword);
+        let row = await waitForMatch(keyword);
+        if (!row) {
+            // thử tìm lại 1 lần nữa phòng khi lần gửi tìm kiếm đầu bị bỏ lỡ
+            if (!(await searchKeyword(keyword))) return null;
+            row = await waitForMatch(keyword);
+        }
         if (!row) return null;
         return { count: getOrderedCount(row) };
     }
@@ -12978,10 +13065,10 @@
         let guard = 0;
 
         while (count < targetCount && guard < 6) {
-            const row = freshRow(keyword);
+            const row = (await waitForMatch(keyword, 4000));
             if (!row) break;
             const addBtn = getAddButton(row);
-            if (!addBtn || addBtn.disabled) break;
+            if (!addBtn || addBtn.disabled) { await sleep(300); guard++; continue; }
             addBtn.click();
 
             const dialogResult = await dismissDialogIfAny();
@@ -12990,24 +13077,20 @@
                 break;
             }
 
-            await sleep(400);
-            const rowAfter = freshRow(keyword);
-            count = rowAfter ? getOrderedCount(rowAfter) : count;
+            count = await waitCountChange(keyword, count, 1);
             guard++;
         }
 
         guard = 0;
         while (count > targetCount && guard < 6) {
-            const row = freshRow(keyword);
+            const row = (await waitForMatch(keyword, 4000));
             if (!row) break;
             const removeBtn = getRemoveButton(row);
-            if (!removeBtn || removeBtn.disabled) break;
+            if (!removeBtn || removeBtn.disabled) { await sleep(300); guard++; continue; }
             removeBtn.click();
 
             await dismissDialogIfAny();
-            await sleep(400);
-            const rowAfter = freshRow(keyword);
-            count = rowAfter ? getOrderedCount(rowAfter) : count;
+            count = await waitCountChange(keyword, count, -1);
             guard++;
         }
 
