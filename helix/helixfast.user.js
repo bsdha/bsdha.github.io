@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.26
+// @version      2.27
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -28,7 +28,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.26';
+  const HELIXFAST_VERSION = '2.27';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -995,7 +995,16 @@
       bubbles: true,
       cancelable: true,
     });
-    inputEl.dispatchEvent(escEvent);
+    // Escape giả chỉ để đóng dropdown ng-select: chặn nổi bọt lên ngoài ng-select,
+    // nếu không popup/sidebar (Bệnh án ngoại trú, phím tắt Esc = Thoát) sẽ bị đóng theo.
+    const host = inputEl.closest('ng-select') || inputEl.closest(ICD_CONTAINER_SELECTOR);
+    const stopFakeEsc = (ev) => { if (!ev.isTrusted) ev.stopPropagation(); };
+    if (host) host.addEventListener('keydown', stopFakeEsc);
+    try {
+      inputEl.dispatchEvent(escEvent);
+    } finally {
+      if (host) host.removeEventListener('keydown', stopFakeEsc);
+    }
   }
 
   function suppressIcdFlicker(inputEl) {
@@ -10570,7 +10579,17 @@
     hlxSafe(setupRxReorder);
   });
 
-  setInterval(() => { hlxSafe(ensureHelixfastToggleButton); }, 1500);
+  // Dùng window.setInterval (không bị chặn khi tab ẩn) để nút luôn được dựng lại khi trình duyệt vừa khởi động / khôi phục tab
+  window.setInterval(() => { hlxSafe(ensureHelixfastToggleButton); }, 1500);
+  (function hlxStartupRetry() {
+    const t0 = Date.now();
+    const iv = window.setInterval(() => {
+      hlxSafe(ensureHelixfastToggleButton);
+      if (document.getElementById(HELIXFAST_TOGGLE_LI_ID) || Date.now() - t0 > 90000) window.clearInterval(iv);
+    }, 250);
+    window.addEventListener('focus', () => hlxSafe(ensureHelixfastToggleButton));
+    window.addEventListener('online', () => hlxSafe(ensureHelixfastToggleButton));
+  })();
 
   // ===== Nút "Làm mới" ngay sau ô Họ tên của form tìm kiếm (PID / Mã KB / Họ tên): xóa Họ tên rồi tự bấm Tìm kiếm =====
   function hlxFindNameSearchForms() {
@@ -10928,7 +10947,9 @@
       st.id = 'hlx-room-css';
       st.textContent = `
         #hlx-room-bar { position:absolute; left:100%; top:0; bottom:0; display:flex; align-items:center; gap:4px; padding-left:6px; white-space:nowrap; z-index:5; }
+        #hlx-room-bar.atbtn { left:0; top:0; bottom:auto; padding-left:0; }
         #hlx-room-bar.busy { opacity:.6; pointer-events:none; }
+        #hlx-room-bar.below { left:0; top:100%; bottom:auto; height:28px; padding-left:0; margin-top:2px; }
         #hlx-room-bar .tg { position:relative; flex:none; width:26px; height:14px; border-radius:7px; background:#94a3b8; cursor:pointer; transition:background .15s; margin-right:2px; }
         #hlx-room-bar .tg::after { content:''; position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:#fff; transition:left .15s; }
         #hlx-room-bar .tg.on { background:#16a34a; }
@@ -10947,8 +10968,9 @@
       css();
       const old = document.getElementById('hlx-room-bar');
       if (old) old.remove();
+      const sb = atBtnMode(host);
       const col = host.parentElement;
-      if (col) col.style.position = 'relative';
+      if (col && !sb) col.style.position = 'relative';
       const bar = document.createElement('div');
       bar.id = 'hlx-room-bar';
       const tg = document.createElement('span');
@@ -10977,13 +10999,54 @@
         });
         bar.appendChild(b);
       });
-      host.insertAdjacentElement('afterend', bar);
+      if (sb) {
+        bar.classList.add('atbtn');
+        if (sb.parentElement) sb.parentElement.style.position = 'relative';
+        sb.insertAdjacentElement('afterend', bar);
+      } else host.insertAdjacentElement('afterend', bar);
       return bar;
+    }
+
+    // Riêng trang Báo cáo CĐHA: thanh nằm ngay sau nút Tìm kiếm (các trang khác giữ nguyên: bên phải ô Phòng)
+    function atBtnMode(host) {
+      if (!/radiology-report/.test(location.pathname)) return null;
+      const f = host.closest('form');
+      return f && f.querySelector('button[type="submit"]');
+    }
+    function place(sb, bar) {
+      const l = sb.offsetLeft + sb.offsetWidth + 8;
+      const t = sb.offsetTop + Math.round((sb.offsetHeight - bar.offsetHeight) / 2);
+      if (bar.style.left !== l + 'px') bar.style.left = l + 'px';
+      if (bar.style.top !== t + 'px') bar.style.top = t + 'px';
+    }
+
+    // Thanh 05/06/07 mặc định nằm bên phải ô Phòng; nếu đè lên nút/công tắc khác của trang thì chuyển xuống dưới ô Phòng
+    const OVL_SEL = 'button,input,select,textarea,a,label,[role="button"],[role="switch"],[class*="switch"],[class*="toggle"],[class*="btn"]';
+    function avoidOverlap(host, bar) {
+      const els = document.querySelectorAll(OVL_SEL);
+      const hr = host.getBoundingClientRect();
+      const key = [els.length, Math.round(hr.left), Math.round(hr.top), Math.round(hr.width), window.innerWidth].join('|');
+      if (bar.dataset.ovk === key) return;
+      bar.dataset.ovk = key;
+      bar.classList.remove('below');
+      const r = bar.getBoundingClientRect();
+      if (!r.width) return;
+      const col = host.parentElement;
+      let hit = r.right > window.innerWidth - 4;
+      if (!hit) {
+        for (const el of els) {
+          if (bar.contains(el) || (col && col.contains(el))) continue;
+          const b = el.getBoundingClientRect();
+          if (b.width && b.height && b.left < r.right && b.right > r.left && b.top < r.bottom && b.bottom > r.top) { hit = true; break; }
+        }
+      }
+      if (hit) bar.classList.add('below');
     }
 
     function refresh(host) {
       const bar = document.getElementById('hlx-room-bar');
       if (!bar) return;
+      try { const sb = atBtnMode(host); if (sb && bar.classList.contains('atbtn')) place(sb, bar); else if (!sb) bar.classList.remove('below'); } catch (err) {}
       const tg = bar.querySelector('.tg');
       const def = getDef();
       tg.classList.toggle('on', isOn());
@@ -11010,7 +11073,8 @@
       const bar = document.getElementById('hlx-room-bar');
       if (!host || !enabled) { if (bar) bar.remove(); hostSince = 0; return; }
       if (!hostSince) hostSince = Date.now();
-      if (!bar || bar.previousElementSibling !== host) build(host);
+      const sb = atBtnMode(host);
+      if (!bar || bar.previousElementSibling !== (sb || host) || bar.classList.contains('atbtn') !== !!sb) build(host);
       if (!busy) refresh(host);
       if (!autoDone && !busy && Date.now() - hostSince > 900) {
         autoDone = true;
@@ -12946,14 +13010,26 @@
         return String(keyword).replace(/^\s*\[[^\]]*\]\s*/, '').trim();
     }
 
+    // Chữ ký bảng kết quả (tên dịch vụ + số lần đã chỉ định): biết HIS đã trả kết quả mới hay chưa
+    function tableSig() {
+        return getRows().map(r => getServiceName(r) + '#' + getOrderedCount(r)).join('|');
+    }
+
     async function searchKeyword(keyword) {
         const input = getSearchInput();
         const submitBtn = getSearchSubmitBtn();
         if (!input || !submitBtn) return false;
+        const before = tableSig();
         setNativeInputValue(input, searchTextOf(keyword));
-        await sleep(80);
+        await sleep(40);
         submitBtn.click();
-        await waitForTableRefresh();
+        // Đi tiếp ngay khi bảng đổi (thay cho chờ cố định ~0,6s). Kết quả y hệt lần trước thì chỉ chờ ngắn.
+        const t0 = Date.now();
+        while (Date.now() - t0 < 3000) {
+            await sleep(40);
+            if (tableSig() !== before) break;
+            if (Date.now() - t0 > 300) break;
+        }
         return true;
     }
 
@@ -12995,7 +13071,7 @@
         while (Date.now() - t0 < timeout) {
             const r = findBestMatchingRow(keyword);
             if (r) return r;
-            await sleep(120);
+            await sleep(50);
         }
         return null;
     }
@@ -13010,7 +13086,7 @@
                 c = getOrderedCount(r);
                 if (dir > 0 ? c > prev : c < prev) return c;
             }
-            await sleep(150);
+            await sleep(50);
         }
         return c;
     }
@@ -13046,11 +13122,11 @@
     async function locateKeyword(keyword) {
         const ok = await searchKeyword(keyword);
         if (!ok) return null;
-        let row = await waitForMatch(keyword);
+        let row = await waitForMatch(keyword, 2500);
         if (!row) {
             // thử tìm lại 1 lần nữa phòng khi lần gửi tìm kiếm đầu bị bỏ lỡ
             if (!(await searchKeyword(keyword))) return null;
-            row = await waitForMatch(keyword);
+            row = await waitForMatch(keyword, 3500);
         }
         if (!row) return null;
         return { count: getOrderedCount(row) };
@@ -13058,6 +13134,27 @@
 
     function freshRow(keyword) {
         return findBestMatchingRow(keyword);
+    }
+
+    // Sau khi bấm thêm/bỏ: thấy hộp xác nhận thì xử lý ngay; thấy số "Đã chỉ định" đổi thì đi tiếp ngay (không chờ cố định)
+    async function afterClick(keyword, prev, dir, timeout = 3500) {
+        const t0 = Date.now();
+        while (Date.now() - t0 < timeout) {
+            const dialog = findConfirmDialog();
+            if (dialog) {
+                const already = /đã có trong phiếu/i.test(dialog.textContent || '');
+                const cancelBtn = getDialogButton(dialog, /Thoát|Hủy|Đóng|Cancel/i);
+                if (cancelBtn) { cancelBtn.click(); await sleep(150); }
+                return { dialog: already ? 'already' : 'other', count: prev };
+            }
+            const r = findBestMatchingRow(keyword);
+            if (r) {
+                const c = getOrderedCount(r);
+                if (dir > 0 ? c > prev : c < prev) return { dialog: null, count: c };
+            }
+            await sleep(50);
+        }
+        return { dialog: null, count: prev };
     }
 
     async function setKeywordCount(keyword, currentCount, targetCount) {
@@ -13068,16 +13165,15 @@
             const row = (await waitForMatch(keyword, 4000));
             if (!row) break;
             const addBtn = getAddButton(row);
-            if (!addBtn || addBtn.disabled) { await sleep(300); guard++; continue; }
+            if (!addBtn || addBtn.disabled) { await sleep(200); guard++; continue; }
             addBtn.click();
 
-            const dialogResult = await dismissDialogIfAny();
-            if (dialogResult === 'already') {
+            const res = await afterClick(keyword, count, 1);
+            if (res.dialog === 'already') {
                 count = Math.max(count, 1);
                 break;
             }
-
-            count = await waitCountChange(keyword, count, 1);
+            count = res.dialog ? await waitCountChange(keyword, count, 1, 2000) : res.count;
             guard++;
         }
 
@@ -13086,11 +13182,11 @@
             const row = (await waitForMatch(keyword, 4000));
             if (!row) break;
             const removeBtn = getRemoveButton(row);
-            if (!removeBtn || removeBtn.disabled) { await sleep(300); guard++; continue; }
+            if (!removeBtn || removeBtn.disabled) { await sleep(200); guard++; continue; }
             removeBtn.click();
 
-            await dismissDialogIfAny();
-            count = await waitCountChange(keyword, count, -1);
+            const res = await afterClick(keyword, count, -1);
+            count = res.dialog ? await waitCountChange(keyword, count, -1, 2000) : res.count;
             guard++;
         }
 
@@ -13131,37 +13227,47 @@
         setToolbarDisabled(true);
         showOverlay(`Đang chọn "${label}", vui lòng chờ...`);
 
-        const located = [];
-        let allActive = true;
+        const missed = [];
+        const infos = [];   // các mục đã dò thấy, theo thứ tự: { kw, count }
+        let added = 0;
+
+        // Lượt 1 (mỗi mục chỉ dò 1 lần): mục nào chưa chọn thì thêm luôn.
+        // Chỉ khi TẤT CẢ mục đều đã chọn sẵn (không phải thêm gì) mới chuyển sang bỏ chọn ở lượt 2.
         for (const kw of keywords) {
             const kwShown = searchTextOf(kw);
-            setStatus(`[${label}] Đang dò: ${kwShown}`);
-            overlaySetText(`Đang dò "${label}"\n${kwShown}`);
+            setStatus(`[${label}] Đang chọn: ${kwShown}`);
+            overlaySetText(`Đang chọn "${label}"\n${kwShown}`);
             const info = await locateKeyword(kw);
-            if (!info) {
-                located.push({ kw, found: false, count: 0 });
-                allActive = false;
-                continue;
-            }
-            located.push({ kw, found: true, count: info.count });
-            if (info.count < 1) allActive = false;
+            if (!info) { missed.push(kw); continue; }
+            const item = { kw, count: info.count };
+            infos.push(item);
+            if (item.count >= 1) continue;
+            item.count = await setKeywordCount(kw, item.count, 1);
+            if (item.count >= 1) added++; else missed.push(kw);
         }
 
+        const allActive = keywords.length > 0 && missed.length === 0 &&
+            infos.length === keywords.length && added === 0 && infos.every(i => i.count >= 1);
         const target = allActive ? 0 : 1;
-        const action = allActive ? 'Đang bỏ chọn' : 'Đang chọn';
-
         let okCount = 0;
-        let missed = [];
-        for (const item of located) {
-            if (!item.found) { missed.push(item.kw); continue; }
-            const kwShown = searchTextOf(item.kw);
-            setStatus(`[${label}] ${action}: ${kwShown}`);
-            overlaySetText(`${action} "${label}"\n${kwShown}`);
-            const ok = await searchKeyword(item.kw);
-            if (!ok) { missed.push(item.kw); continue; }
-            const finalCount = await setKeywordCount(item.kw, item.count, target);
-            if (finalCount === target) okCount++;
-            else missed.push(item.kw);
+
+        if (allActive) {
+            // Lượt 2 (hiếm): bỏ chọn. Mục dò cuối cùng đang hiện sẵn trên bảng nên không phải dò lại.
+            for (let i = infos.length - 1; i >= 0; i--) {
+                const item = infos[i];
+                const kwShown = searchTextOf(item.kw);
+                setStatus(`[${label}] Đang bỏ chọn: ${kwShown}`);
+                overlaySetText(`Đang bỏ chọn "${label}"\n${kwShown}`);
+                if (i !== infos.length - 1) {
+                    const ok = await searchKeyword(item.kw);
+                    if (!ok) { missed.push(item.kw); continue; }
+                }
+                const finalCount = await setKeywordCount(item.kw, item.count, 0);
+                if (finalCount === 0) okCount++;
+                else missed.push(item.kw);
+            }
+        } else {
+            okCount = infos.filter(i => i.count >= 1).length;
         }
 
         setToolbarDisabled(false);
@@ -13173,7 +13279,7 @@
                 ? `Đã CHỌN nhóm "${label}" (${okCount}/${keywords.length}).`
                 : `Đã BỎ CHỌN nhóm "${label}" (${okCount}/${keywords.length}).`;
             setStatus(doneMsg);
-            hideOverlayWithSuccess(target === 1 ? 'Đã chọn xong!' : 'Đã bỏ chọn xong!');
+            hideOverlayWithSuccess(target === 1 ? 'Đã chọn xong!' : 'Đã bỏ chọn xong!', 300);
         } else {
             const errMsg = `Nhóm "${label}": xong ${okCount}, lỗi/không tìm thấy: ${missed.map(searchTextOf).join(', ')}`;
             setStatus(errMsg);
@@ -13840,11 +13946,22 @@
 })();
 
   }
-  if (document.body) run();
-  else {
-    let started = false;
-    const go = () => { if (started || !document.body) return; started = true; run(); };
-    document.addEventListener('DOMContentLoaded', go, { once: true });
-    new MutationObserver((m, o) => { if (document.body) { o.disconnect(); go(); } }).observe(document.documentElement, { childList: true });
+  // Khởi động bền: không phụ thuộc document.documentElement/body đã có hay chưa (trình duyệt vừa mở / khôi phục tab)
+  let started = false;
+  const go = () => {
+    if (started || !document.body) return;
+    started = true;
+    try { run(); } catch (err) { try { console.error('[Helixfast] lỗi khởi động', err); } catch (e2) {} }
+  };
+  go();
+  if (!started) {
+    document.addEventListener('DOMContentLoaded', go);
+    document.addEventListener('readystatechange', go);
+    window.addEventListener('load', go);
+    const t0 = Date.now();
+    const iv = window.setInterval(() => {
+      go();
+      if (started || Date.now() - t0 > 60000) window.clearInterval(iv);
+    }, 25);
   }
 })();
