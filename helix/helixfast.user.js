@@ -61,6 +61,9 @@
       desc: ['Tự chọn Trực tiếp vào / Nơi giới thiệu; tự điền Vào ngày thứ, Quá trình bệnh lý, Bản thân, Gia đình, Toàn thân, các cơ quan, CLS cần làm',
         'Nút chọn nhanh Tiên lượng, Phương pháp điều trị, Tình trạng người bệnh ra viện; điền sẵn Hướng dẫn điều trị, Hướng điều trị tiếp theo',
         'Nút ✨ Tạo tóm tắt bệnh án và ⤓ Trích xuất kết quả xét nghiệm; tự cộng Số tờ Toàn bộ hồ sơ'] },
+    { id: 'benhan_nt', name: 'Khám bệnh: popup Bệnh án ngoại trú tự điền từ tab Khám bệnh', pages: ['exam'],
+      desc: ['Mở popup Bệnh án ngoại trú: tự lấy Toàn thân, Các bộ phận, Đã xử lý, Quá trình bệnh lý, Tóm tắt CLS, Phương pháp điều trị, Hướng điều trị tiếp theo, ngày khám (từ ngày / đến ngày), Nơi giới thiệu = Tự đến',
+        'Tự chọn mã ICD: Chẩn đoán khi ra viện / Bệnh chính / Bệnh kèm theo theo danh sách ICD của tab Khám bệnh'] },
     { id: 'ipdtreat', name: 'Xuất viện nội trú: nút chọn nhanh Phương pháp điều trị, điền sẵn "Nội khoa"', pages: ['ipd'],
       desc: ['Hàng nút bên dưới ô Phương pháp điều trị (Nội khoa, Ngoại khoa, Xạ trị, Hoá trị, Xạ trị + Nội khoa)', 'Ô đang mở và trống thì tự điền "Nội khoa"'] },
     { id: 'rx', name: 'Kê đơn: liều dùng, cách dùng tự động, sắp xếp thuốc', pages: ['exam', 'ipd', 'emerg', 'other'],
@@ -10261,6 +10264,251 @@
       }
     });
   }
+  // ===== Khám bệnh (ngoại trú): popup "Bệnh án ngoại trú" tự điền từ tab Khám bệnh của cùng bệnh nhân =====
+  // Quy tắc giống vỏ bệnh án nội trú: chỉ điền ô còn trống, mỗi ô 1 lần mỗi lượt khám, người dùng đã sửa/xóa thì không điền lại.
+  const BAN_FILL_ICD = true; // đặt false nếu chỉ muốn điền chữ, không tự chọn mã ICD
+  // Giá trị điền sẵn cho các ô không có nguồn ở tab Khám bệnh (giống nội trú; sửa tại đây nếu cần)
+  const BAN_DEF_PP = 'Nội khoa';
+  const BAN_DEF_TT = 'Tạm ổn';
+  const BAN_DEF_HD = 'Toa về, tái khám theo hẹn';
+  const banDone = {};
+  const banRxLast = {};
+  let banRxBusy = false;
+  const banSeen = {};
+  const banTry = {};
+  let banBusy = false;
+
+  function banRoot() {
+    const forms = Array.from(document.querySelectorAll('app-single-record-form')).filter(hlxIsVisible);
+    for (const f of forms) {
+      const mc = f.closest('.modal-content');
+      const ti = mc && mc.querySelector('.modal-title');
+      if (ti && /Bệnh án ngoại trú/i.test(ti.textContent || '')) return f;
+    }
+    return null;
+  }
+  function banFieldBox(root, label) {
+    const want = baNorm(label);
+    for (const f of root.querySelectorAll('.lc-layout-field')) {
+      const lb = f.querySelector('label');
+      if (lb && baNorm(lb.textContent) === want) return f;
+    }
+    return null;
+  }
+  function banCtl(box) {
+    return box && (box.querySelector('textarea') ||
+      box.querySelector('p-calendar input') ||
+      box.querySelector('input.p-inputtext[type="text"], input[type="text"]:not([role="combobox"])'));
+  }
+  const banOneLine = (s) => String(s || '').replace(/\s*\r?\n\s*/g, '; ').replace(/(;\s*){2,}/g, '; ').replace(/[;\s]+$/, '').trim();
+
+  // Ngày khám (dd/MM/yyyy) lấy từ ô "Ngày khám" của tab Khám bệnh; không có thì lấy ngày hôm nay
+  function banExamDate() {
+    // Ưu tiên "Ngày tiếp nhận" rồi "Ngày khám" của chính lượt khám đang mở; KHÔNG lấy ngày hôm nay (làm hồ sơ vài hôm sau vẫn đúng ngày khám)
+    const sels = ['examination_date', 'created_date_time'];
+    for (const n of sels) {
+      const inp = document.querySelector('p-calendar[formcontrolname="' + n + '"] input');
+      const m = inp && /(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(inp.value || '');
+      if (m) return m[1].padStart(2, '0') + '/' + m[2].padStart(2, '0') + '/' + m[3];
+    }
+    return '';
+  }
+
+  // Các mã ICD đã chọn ở tab Khám bệnh (không lấy từ popup)
+  function banSourceIcds(root) {
+    const out = [];
+    document.querySelectorAll('app-examination app-icd-selector .ng-select .ng-value').forEach((v) => {
+      if (root && root.contains(v)) return;
+      const c = baNorm(v.textContent).split(/\s|-/)[0];
+      if (c && /^[A-Za-z]\d/.test(c) && out.indexOf(c) === -1) out.push(c);
+    });
+    return out;
+  }
+  function banIcdRows(box) {
+    return box ? Array.from(box.querySelectorAll('.icd-search-container ng-select')) : [];
+  }
+  function banIcdEmpty(box) {
+    const rows = banIcdRows(box);
+    return rows.length > 0 && rows.every((r) => !r.querySelector('.ng-value'));
+  }
+  async function banPickIcd(selectEl, code) {
+    const inp = selectEl.querySelector('input[role="combobox"]');
+    if (!inp) return false;
+    inp.focus();
+    inp.click();
+    await baSleep(120);
+    setNativeValue(inp, code);
+    const re = new RegExp('^\\s*' + code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9.])', 'i');
+    const opt = await baWaitFor(() => Array.from(document.querySelectorAll('.ng-dropdown-panel .ng-option'))
+      .find((o) => re.test(baNorm(o.textContent))), 3500, 100);
+    if (!opt) { try { inp.blur(); } catch (e) {} return false; }
+    opt.click();
+    await baSleep(250);
+    return !!selectEl.querySelector('.ng-value');
+  }
+  async function banFillIcd(root, done) {
+    const codes = banSourceIcds(root);
+    if (!codes.length) return;
+    banBusy = true;
+    try {
+      const plan = [
+        ['icd_out', 'Chẩn đoán khi ra viện', codes],
+        ['icd_main', 'Bệnh chính', codes.slice(0, 1)],
+        ['icd_sub', 'Bệnh kèm theo (nếu có)', codes.slice(1)],
+      ];
+      for (const [id, label, list] of plan) {
+        if (done.has(id)) continue;
+        if (!list.length) { done.add(id); continue; }
+        const box = banFieldBox(root, label);
+        if (!box) continue;
+        if (!banIcdEmpty(box)) { done.add(id); continue; } // đã có ICD: không đụng vào
+        const rows = banIcdRows(box);
+        for (let i = 0; i < list.length && i < rows.length; i++) {
+          if (!banRoot()) return; // popup đã đóng giữa chừng
+          await banPickIcd(rows[i], list[i]);
+          await baSleep(150);
+        }
+        done.add(id);
+      }
+    } finally { banBusy = false; }
+  }
+
+  // Đã xử lý: lấy từ "Tất cả đơn thuốc đã chỉ định" (tab Đơn thuốc). Danh sách thuốc chỉ có trong DOM khi dòng đơn đang mở,
+  // nên tạm mở các đơn đang thu gọn, đọc xong thì thu gọn lại như cũ.
+  function banDrugName(s) {
+    let out = '', d = 0;
+    for (const ch of baNorm(s)) {
+      if (ch === '(') { d++; continue; }
+      if (ch === ')') { if (d > 0) d--; continue; }
+      if (d === 0) out += ch;
+    }
+    return out.replace(/\s+/g, ' ').trim();
+  }
+  function banDedupeWords(s) {
+    const w = baNorm(s).split(' ');
+    return w.filter((x, i) => !(i > 0 && x.toLowerCase() === w[i - 1].toLowerCase())).join(' ');
+  }
+  async function banReadRx() {
+    const host = document.querySelector('#pharmacy app-pharmacy-placer-order') || document.querySelector('app-pharmacy-placer-order');
+    if (!host) return '';
+    const heads = Array.from(host.querySelectorAll('a.btn-expand'));
+    if (!heads.length) return '';
+    const opened = heads.filter((a) => !a.classList.contains('expanded'));
+    opened.forEach((a) => a.click());
+    if (opened.length) await baSleep(600);
+    const lines = [];
+    try {
+      host.querySelectorAll('tbody tr').forEach((tr) => {
+        const tds = tr.querySelectorAll(':scope > td');
+        if (tds.length < 5 || tds[0].hasAttribute('colspan')) return;
+        const table = tr.closest('table');
+        const ths = Array.from((table || host).querySelectorAll('thead th')).map((th) => baNorm(th.textContent));
+        const iNote = ths.indexOf('Ghi chú');
+        const iQty = ths.indexOf('S.Lg');
+        const name = banDrugName(tds[0].textContent);
+        if (!name) return;
+        const note = iNote >= 0 && tds[iNote] ? banDedupeWords(tds[iNote].textContent) : '';
+        const qty = iQty >= 0 && tds[iQty] ? baNorm(tds[iQty].textContent) : '';
+        let line = '- ' + name + (note ? ': ' + note : '') + (qty ? ' (SL: ' + qty + ')' : '');
+        if (lines.indexOf(line) === -1) lines.push(line);
+      });
+    } finally {
+      opened.forEach((a) => { if (a.classList.contains('expanded')) a.click(); });
+    }
+    return lines.join('\n');
+  }
+  async function banFillRx(el, done) {
+    banRxBusy = true;
+    try {
+      const text = await banReadRx();
+      if (text && banRoot() && !(el.value || '').trim()) { setNativeValue(el, text); done.add('xl'); }
+    } finally { banRxBusy = false; }
+  }
+
+  function exBenhAnNgoaiTick() {
+    const root = banRoot();
+    const key = ipdVisitKey() || '_';
+    if (!root) { delete banDone[key]; delete banSeen[key]; delete banTry[key]; return; }
+    const done = banDone[key] || (banDone[key] = new Set());
+    const now = Date.now();
+    if (!banSeen[key]) banSeen[key] = now;
+    if (now - banSeen[key] < 1200) return; // chờ popup nạp xong dữ liệu đã lưu (nếu có)
+
+    // Nơi giới thiệu: mặc định "2.Tự đến" (giống nội trú)
+    if (!done.has('ref')) {
+      const box = banFieldBox(root, 'Nơi giới thiệu');
+      if (box) {
+        const radios = Array.from(box.querySelectorAll('p-radiobutton'));
+        const lbl = (r) => baNorm((r.querySelector('label') || {}).textContent);
+        if (radios.some((r) => r.querySelector('.p-radiobutton-checked'))) done.add('ref');
+        else {
+          const w = radios.find((r) => lbl(r) === '2.Tự đến');
+          if (w) { (w.querySelector('.p-radiobutton-box') || w).click(); done.add('ref'); }
+        }
+      }
+    }
+
+    const fill = (id, label, getText, oneLine) => {
+      if (done.has(id)) return;
+      const box = banFieldBox(root, label);
+      const el = banCtl(box);
+      if (!el || el.disabled || el.readOnly) return;
+      if ((el.value || '').trim()) { done.add(id); return; }
+      if (document.activeElement === el) return;
+      let text = String(getText() || '').trim();
+      if (!text) return; // nguồn chưa có: thử lại lần sau
+      if (oneLine) text = banOneLine(text);
+      setNativeValue(el, text);
+      done.add(id);
+    };
+    const val = (e) => (e ? e.value : '');
+    fill('tt', 'Toàn thân', () => val(baSourceByTitle('Toàn thân')));
+    fill('bp', 'Các bộ phận', () => val(baSourceByTitle('Các bộ phận')), true); // ô một dòng: nối các dòng bằng "; "
+    if (!done.has('xl') && !banRxBusy) {
+      const el = banCtl(banFieldBox(root, 'Đã xử lý'));
+      if (el && !el.disabled && !el.readOnly) {
+        if ((el.value || '').trim()) done.add('xl');
+        else if (document.activeElement !== el && now - (banRxLast[key] || 0) > 2500) {
+          banRxLast[key] = now; // chưa kê đơn thì thử lại mỗi ~2,5 giây
+          banFillRx(el, done).catch(() => { banRxBusy = false; });
+        }
+      }
+    }
+    fill('qt', 'Quá trình bệnh lý và diễn biến lâm sàng', () => {
+      const a = val(baSourceByControl('progression'));
+      if (String(a || '').trim()) return a;
+      const s = Array.from(document.querySelectorAll('textarea[formcontrolname="symptom"]')).find((e) => (e.value || '').trim());
+      return s ? s.value : '';
+    });
+    fill('cls', 'Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán', () => val(baSourceByControl('subclinical_result_summary')));
+    fill('pp', 'Phương pháp điều trị', () => BAN_DEF_PP);
+    fill('tt2', 'Tình trạng người bệnh ra viện', () => BAN_DEF_TT);
+    fill('hd', 'Hướng điều trị và các chế độ tiếp theo', () => {
+      const r = val(baSourceByControl('recommendation'));
+      return String(r || '').trim() ? r : BAN_DEF_HD;
+    });
+
+    // Điều trị ngoại trú: từ ngày / đến ngày = ngày khám (tối đa 3 lần thử, tránh lặp vô hạn nếu ô từ chối giá trị)
+    ['từ ngày', 'đến ngày'].forEach((label, i) => {
+      const id = 'd' + i;
+      if (done.has(id)) return;
+      const el = banCtl(banFieldBox(root, label));
+      if (!el) return;
+      if ((el.value || '').trim()) { done.add(id); return; }
+      if (document.activeElement === el) return;
+      banTry[key] = banTry[key] || {};
+      banTry[key][id] = (banTry[key][id] || 0) + 1;
+      if (banTry[key][id] > 3) { done.add(id); return; }
+      const dstr = banExamDate();
+      if (!dstr) return; // chưa đọc được ngày khám: chờ lần sau
+      setNativeValue(el, dstr);
+      el.dispatchEvent(new Event('blur', { bubbles: true }));
+      setTimeout(() => { if ((el.value || '').trim()) done.add(id); }, 400);
+    });
+
+    if (BAN_FILL_ICD && !banBusy) banFillIcd(root, done).catch(() => { banBusy = false; });
+  }
+
   // Nội trú/Cấp cứu: Toàn thân + Các bộ phận tự điền sẵn mặc định khi ô còn trống (mỗi lượt khám 1 lần); "Chọn nhanh" chỉ để sửa/bổ sung
   const exDefSeen = {};
   const exDefDone = new Set();
@@ -10298,6 +10546,7 @@
     } else {
       document.querySelectorAll('.hlx-opt-box, .hlx-ex-panel').forEach((b) => b.remove());
     }
+    if (examIsPage() && hlxFeatOn('benhan_nt')) exBenhAnNgoaiTick();
     if (location.pathname.indexOf('/his/ipd') !== -1 && hlxFeatOn('benhan')) {
       ipdTreatmentProgTick();
       ipdBenhAnTick();
