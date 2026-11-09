@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.28
+// @version      2.29
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -19,17 +19,28 @@
   if (window.__hlxBooted) return;
   window.__hlxBooted = true;
   function run() {
-    const setInterval = (fn, ms, ...args) => window.setInterval(function () {
-      if (document.hidden) return;
-      return fn.apply(this, arguments);
-    }, ms, ...args);
+    const setInterval = (fn, ms, ...args) => {
+      let skip = 0;
+      return window.setInterval(function () {
+        if (document.hidden) return;
+        if (skip > 0) { skip--; return; }
+        const t0 = performance.now();
+        try {
+          return fn.apply(this, arguments);
+        } finally {
+          // Tick tốn d ms thì bỏ qua vài nhịp kế tiếp để chiếm tối đa ~10% CPU, nhịp tối đa ~1.5s. Tick nhẹ (<5ms) giữ nguyên nhịp.
+          const d = performance.now() - t0;
+          if (d > 5 && ms > 0) skip = Math.max(0, Math.min(Math.ceil(d * 10 / ms) - 1, Math.floor(1500 / ms) - 1));
+        }
+      }, ms, ...args);
+    };
     let HLX_STATS = null; // Thống kê số liệu KCB (gộp từ Helix IPD Stats), mở từ menu chuột phải
 
 
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.28';
+  const HELIXFAST_VERSION = '2.29';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -388,7 +399,17 @@
     return { ok: true, exp: payload.exp, tier: payload.t === 'adv' ? 'adv' : 'basic' };
   }
 
+  var hlxLicCache = null;
   function hlxGetLicenseStatus() {
+    let tk = null;
+    try { tk = localStorage.getItem(HELIXFAST_LICENSE_TOKEN_KEY); } catch (err) {}
+    const now = Date.now();
+    if (hlxLicCache && hlxLicCache.tk === tk && now - hlxLicCache.t < 3000) return hlxLicCache.v;
+    const v = hlxGetLicenseStatusRaw();
+    hlxLicCache = { tk, t: now, v };
+    return v;
+  }
+  function hlxGetLicenseStatusRaw() {
     let token = null;
     try {
       token = localStorage.getItem(HELIXFAST_LICENSE_TOKEN_KEY);
@@ -410,6 +431,7 @@
     const res = hlxParseLicenseToken((token || '').trim());
     if (!res.ok) return { ok: false, reason: res.reason };
     hlxStoreSet(HELIXFAST_LICENSE_TOKEN_KEY, (token || '').trim());
+    hlxLicCache = null;
     return { ok: true, exp: res.exp, tier: res.tier };
   }
 
@@ -2745,7 +2767,16 @@
 
   if (!HLX_OFF) fixPharmacyDosageRow();
   if (!HLX_OFF) setInterval(fixPharmacyDosageRow, 300);
-  if (!HLX_OFF) new MutationObserver(() => fixPharmacyDosageRow()).observe(document.body, {
+  const hlxMoThrottle = (fn, gap) => {
+    let t = 0, last = 0;
+    return () => {
+      if (t) return;
+      const w = gap - (performance.now() - last);
+      const run = () => { t = 0; last = performance.now(); try { fn(); } catch (err) {} };
+      t = w > 0 ? setTimeout(run, w) : requestAnimationFrame(run);
+    };
+  };
+  if (!HLX_OFF) new MutationObserver(hlxMoThrottle(fixPharmacyDosageRow, 150)).observe(document.body, {
     childList: true,
     subtree: true,
   });
@@ -11725,7 +11756,13 @@
       } catch (err) {}
     }, 250);
     let mdT = null;
-    new MutationObserver(() => { if (mdT) return; mdT = requestAnimationFrame(() => { mdT = null; try { markDd(); } catch (err) {} }); })
+    let mdLast = 0;
+    new MutationObserver(() => {
+      if (mdT) return;
+      const w = 80 - (performance.now() - mdLast);
+      const run = () => { mdT = null; mdLast = performance.now(); try { markDd(); } catch (err) {} };
+      mdT = w > 0 ? setTimeout(run, w) : requestAnimationFrame(run);
+    })
       .observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
     window.addEventListener('resize', () => { try { resetDdH(); markDd(); } catch (err) {} });
     document.addEventListener('mousedown', (e) => { try { if (e.target && e.target.closest && e.target.closest(HOST_SEL)) { lastOpen = Date.now(); resetDdH(); setTimeout(markDd, 120); setTimeout(markDd, 400); } } catch (err) {} }, true);
@@ -14367,9 +14404,15 @@
       .forEach(tr => { processRow(tr); try { stripNameCode(tr); } catch (e) {} });
   }
 
-  const hlxRowObserver = new MutationObserver(() => {
-    processTable();
-  });
+  const hlxRowObserver = new MutationObserver((() => {
+    let t = 0, last = 0;
+    return () => {
+      if (t) return;
+      const w = 150 - (performance.now() - last);
+      const run = () => { t = 0; last = performance.now(); try { processTable(); } catch (err) {} };
+      t = w > 0 ? setTimeout(run, w) : requestAnimationFrame(run);
+    };
+  })());
   hlxRowObserver.observe(document.body, { childList: true, subtree: true });
 
   setInterval(processTable, 1000);
