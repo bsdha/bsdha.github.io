@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.27
+// @version      2.28
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -23,12 +23,13 @@
       if (document.hidden) return;
       return fn.apply(this, arguments);
     }, ms, ...args);
+    let HLX_STATS = null; // Thống kê số liệu KCB (gộp từ Helix IPD Stats), mở từ menu chuột phải
 
 
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.27';
+  const HELIXFAST_VERSION = '2.28';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -5946,9 +5947,12 @@
     head.innerHTML = '<span>⚡ Helixfast</span><small>v' + HELIXFAST_VERSION + '</small>';
     menu.appendChild(head);
     const items = [
+      { ico: '📊', label: 'Thống kê số liệu KCB', c: 'blue', fn: () => { try { if (HLX_STATS) HLX_STATS.open(); } catch (err) { try { console.error('[Helixfast] thống kê', err); } catch (e2) {} } } },
+      'sep',
       { ico: '📋', label: 'Liều dùng tự động', c: 'blue', fn: () => hlxOpenDoseDialog() },
       { ico: '💊', label: 'Cách dùng', c: 'green', fn: () => hlxOpenRouteDialog() },
       { ico: '🏷', label: 'Đổi tên ICD mặc định', c: 'amber', fn: () => hlxOpenIcdDialog() },
+      examIsPage() ? { ico: '📝', label: 'DS làm bệnh án ngoại trú', c: 'teal', fn: () => banOpenPanel() } : null,
       'sep',
       { ico: '⟳', label: 'Cập nhật', c: 'violet', fn: () => openUpdateDialog(), badge: hlxUpdState.hasNew ? 'v' + hlxUpdState.remote : '' },
       { ico: '🔑', label: 'Bản quyền', c: 'rose', fn: () => openLicenseDialog() },
@@ -5956,7 +5960,7 @@
       { ico: '⚙', label: 'Cài đặt', c: 'slate', fn: () => hlxOpenSettingsChooser() },
       { ico: '🧩', label: 'Chức năng của công cụ', c: 'teal', fn: () => hlxOpenFeatureList() },
     ];
-    items.forEach((it) => {
+    items.filter(Boolean).forEach((it) => {
       if (it === 'sep') {
         const sp = document.createElement('div');
         sp.className = 'hlx-cm-sep';
@@ -10425,6 +10429,360 @@
     } finally { banRxBusy = false; }
   }
 
+  // ===== Danh sách bệnh nhân cần làm bệnh án ngoại trú (menu chuột phải nút Helixfast) =====
+  // Dữ liệu: dùng chính API của HIS (gọi lại bằng thông tin đăng nhập mà trang đang dùng, chỉ ĐỌC, không ghi).
+  const BAN_ICD_KEY = 'hlx_ban_icd_v1';
+  const BAN_DONE_KEY = 'hlx_ban_done_v1';
+  const BAN_ICD_DEF = ['I10', 'I20.x', 'E78.x', 'J45.x', 'J44.x'];
+  const BAN_ZERO = /^0{8}-0{4}-0{4}-0{4}-0{12}$/;
+  const banHdr = {};
+  const banHdrByUrl = {};
+  const banLast = { visitId: '' };
+  const banLists = { cur: null };
+  const banListReq = { data: null };
+  const banCache = {};
+  const banMed = {};
+  const banMedReq = {};
+
+  const banPage = () => (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window);
+  function banJson(s) { try { return typeof s === 'string' ? JSON.parse(s) : s; } catch (e) { return null; } }
+
+  // Đọc lén các request của chính trang: lấy header đăng nhập, mã lượt khám đang mở, và danh sách bệnh nhân vừa tải
+  function banSniff(meta, body, text) {
+    const rq = banJson(body);
+    const d = rq && rq.Data;
+    const vid = d && d.patient_visit_id;
+    if (typeof vid === 'string' && !BAN_ZERO.test(vid)) banLast.visitId = vid;
+    const m = rq && typeof rq.Url === 'string' && /\/get-medical-data\/([0-9a-f-]{36})/i.exec(rq.Url);
+    if (m) banLast.visitId = m[1];
+    if (rq && rq.Url === '/api/processing-queue/search' && d && d.fr_created_date_time) { try { banListReq.data = JSON.parse(JSON.stringify(d)); } catch (e) {} }
+    const rs = banJson(text);
+    if (!rs) return;
+    const list = banJson(rs.Data !== undefined ? rs.Data : rs.data);
+    if (Array.isArray(list) && list.length && list[0] && typeof list[0] === 'object' &&
+        list[0].patient_visit_id && list[0].visit_code && !BAN_ZERO.test(String(list[0].patient_visit_id))) {
+      banLists.cur = { url: (rq && rq.Url) || meta.u, items: list, at: Date.now() };
+    }
+  }
+  function banHookNet() {
+    try {
+      const U = banPage();
+      const XP = U.XMLHttpRequest && U.XMLHttpRequest.prototype;
+      if (!XP || XP.__hlxBanHook) return;
+      const oOpen = XP.open, oSet = XP.setRequestHeader, oSend = XP.send;
+      XP.open = function (m, u) { try { this.__hb = { u: String(u || ''), h: {} }; } catch (e) {} return oOpen.apply(this, arguments); };
+      XP.setRequestHeader = function (k, v) { try { if (this.__hb) this.__hb.h[k] = v; } catch (e) {} return oSet.apply(this, arguments); };
+      XP.send = function (body) {
+        try {
+          const meta = this.__hb;
+          if (meta && !this.__hlxOwn && /\/api\/adapter\/execute/.test(meta.u)) {
+            Object.keys(meta.h).forEach((k) => { const v = meta.h[k]; if (v !== '' && v != null) banHdr[k] = v; else if (!(k in banHdr)) banHdr[k] = ''; if (/^privatekey$/i.test(k)) banHdr.__pkSeen = (banHdr.__pkSeen || 0) + (v ? 1 : 0); });
+            try { const rq0 = JSON.parse(body); if (rq0 && rq0.Url) banHdrByUrl[rq0.Url] = Object.assign({}, meta.h); } catch (e) {}
+            this.addEventListener('load', () => { try { banSniff(meta, body, this.responseText); } catch (e) {} });
+          }
+        } catch (e) {}
+        return oSend.apply(this, arguments);
+      };
+      XP.__hlxBanHook = 1;
+    } catch (e) {}
+  }
+  function banApi(url, method, data, module, hdrs) {
+    return new Promise((resolve, reject) => {
+      if (!banHdr.Authorization && !banHdr.authorization) { reject(new Error('Chưa lấy được phiên đăng nhập: hãy thao tác 1 lần trên HIS (đổi ngày, mở bệnh nhân) rồi thử lại')); return; }
+      const x = new (banPage().XMLHttpRequest)();
+      x.__hlxOwn = true;
+      x.open('POST', '/api/adapter/execute', true);
+      const HH = hdrs || banHdr;
+      Object.keys(HH).forEach((k) => { if (!/^content-length$/i.test(k) && k !== '__pkSeen') { try { x.setRequestHeader(k, HH[k]); } catch (e) {} } });
+      x.timeout = 30000;
+      x.onload = () => { const r = banJson(x.responseText); if (x.status === 200 && r) resolve(r); else reject(new Error('HTTP ' + x.status)); };
+      x.onerror = x.ontimeout = () => reject(new Error('Lỗi mạng'));
+      const body = { Method: { Method: method }, AcceptType: 'application/json', Url: url, Module: module || 'HC', TimeOut: 0, ContentType: 'application/json' };
+      if (data) body.Data = data;
+      x.send(JSON.stringify(body));
+    });
+  }
+  const banConf = (def, key) => { try { const v = JSON.parse(hlxStoreGet(key) || 'null'); return v == null ? def : v; } catch (e) { return def; } };
+  const banDoneMap = () => banConf({}, BAN_DONE_KEY);
+  function banMarkDone(vid) { const m = banDoneMap(); m[vid] = Date.now(); hlxStoreSet(BAN_DONE_KEY, JSON.stringify(m)); }
+
+  // Ghi nhận "đã làm" khi bấm Lưu trong popup Bệnh án ngoại trú (theo máy này; chưa có API đọc bệnh án đã lưu)
+  document.addEventListener('click', (ev) => {
+    try {
+      const b = ev.target && ev.target.closest && ev.target.closest('.modal-footer button');
+      if (!b || !/Lưu/.test(b.textContent || '')) return;
+      const ti = b.closest('.modal-content') && b.closest('.modal-content').querySelector('.modal-title');
+      if (!ti || !/Bệnh án ngoại trú/i.test(ti.textContent || '')) return;
+      const vid = banLast.visitId;
+      if (vid) setTimeout(() => banMarkDone(vid), 1500);
+    } catch (e) {}
+  }, true);
+
+  // Mã ICD khớp mẫu: "I10" = đúng mã; "E78.x" = E78. + số bất kỳ (E78.0, E78.2, ...)
+  function banIcdMatch(code, pats) {
+    const c = String(code || '').trim().toUpperCase();
+    return pats.some((p0) => {
+      const p = String(p0 || '').trim().toUpperCase();
+      if (!p) return false;
+      const m = /^(.+?)\.?X$/.exec(p);
+      if (m) return new RegExp('^' + m[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\.\\d+$').test(c);
+      return c === p;
+    });
+  }
+  function banDrugDays(d) {
+    // số ngày = tổng số viên cả đợt / số viên mỗi ngày (sáng+trưa+chiều+tối) — giống cột "Số ngày" của Helixfast trong bảng đơn
+    const num = (v) => parseFloat(String(v == null || v === '' ? '0' : v).replace(',', '.')) || 0;
+    let per = num(d.quantity_unit_s) + num(d.quantity_unit_tr) + num(d.quantity_unit_c) + num(d.quantity_unit_t);
+    const tot = num(d.immediate_dispense_qty);
+    try { const dd = typeof hlxDoseLookup === 'function' ? hlxDoseLookup(String(d.item_name || ''), true) : null; if (dd && dd.disc && per > 0) per = Math.ceil(per - 1e-9); } catch (e) {}
+    let n = per > 0 && tot > 0 ? Math.round(tot / per) : 0;
+    if (!n) n = Number(d.duration) || 0;
+    if (!n) { const m = /\*\s*(\d+)\s*ngày/i.exec(String(d.drug_usage_2 || d.drug_usage || '')) || /(\d+)\s*ngày/i.exec(String(d.additional_information_for_patient || '')); if (m) n = Number(m[1]); }
+    if (!n) n = Number(d.remaining_date_count) || 0;
+    return n;
+  }
+  const banStrat = { best: '' };
+  async function banGetDrugs(vid, it) {
+    const arr = (x) => { const v = banJson(x); return Array.isArray(v) ? v : []; };
+    const pay = (it && it.payment_date_time) || '';
+    const room = (banListReq.data && banListReq.data.area_id) || (it && it.area_id) || null;
+    const S = {
+      // 1: đúng như trang gọi khi mở lượt khám
+      S1: async () => {
+        const body = { page: 1, pageSize: 0, creation_visit_id: vid };
+        const noPk = Object.assign({}, banHdr); Object.keys(noPk).forEach((k) => { if (/^privatekey$/i.test(k)) delete noPk[k]; });
+        const V = [['g', banHdr]];
+        if (banHdrByUrl['/api/ph-prescription-order/search']) V.push(['u', banHdrByUrl['/api/ph-prescription-order/search']]);
+        V.push(['noPK', noPk]);
+        let first = '';
+        for (const [nm, h] of V) {
+          const r = await banApi('/api/ph-prescription-order/search', 'POST', body, 'HC', h);
+          const a = arr(r.Data);
+          if (!first) first = '[' + nm + ' tot=' + r.TotalItems + ' mc=' + r.MessageCode + ' br=' + JSON.stringify(r.BrokenRules) + ' ex=' + r.ExtraInfo + ' pk=' + (banHdr.PrivateKey ? banHdr.PrivateKey.length : 'rỗng') + ' pkSeen=' + (banHdr.__pkSeen || 0) + ']';
+          if (a.length) { banStrat.hdr = nm; return a; }
+        }
+        banStrat.first = first;
+        return [];
+      },
+      // 2: lấy từ thông tin khám (listjson_prescription), trang cũng gọi khi mở bệnh nhân
+      S2: async () => {
+        if (!it) return [];
+        const r = await banApi('/api/medical-examination/get-medical-examination-info', 'POST', { patient_visit_id: vid, patient_id: it.patient_id, area_id: room, processing_queue_id: it.processing_queue_id, cpoe_placer_order_id: it.cpoe_placer_order_id, caregiver_session_id: it.caregiver_session_id, payment_date_time: pay || null }, 'HC');
+        const d = banJson(r.Data) || {};
+        return arr(d.listjson_prescription);
+      },
+      // 3: qua mã đơn (tab Đơn thuốc)
+      S3: async () => {
+        const ph = await banApi('/api/ph-prescription/search', 'POST', { patient_visit_id: vid, patient_treatment_id: null, payment_date_time: pay, page: 1, pageSize: 0 }, 'HC');
+        let out = [];
+        for (const p of arr(ph.Data)) {
+          if (!p.ph_prescription_id) continue;
+          out = out.concat(arr((await banApi('/api/ph-prescription-order/search', 'POST', { page: 1, pageSize: 0, ph_prescription_id: p.ph_prescription_id, payment_date_time: pay }, 'HC')).Data));
+        }
+        return out;
+      },
+    };
+    const order = ['S1', 'S2', 'S3'];
+    if (banStrat.best) order.sort((a, b) => (a === banStrat.best ? -1 : b === banStrat.best ? 1 : 0));
+    const log = [];
+    for (const k of order) {
+      try {
+        const d = await S[k]();
+        log.push(k + ':' + d.length);
+        if (d.length) { banStrat.best = k; return { drugs: d, src: k, log: log.join(' ') }; }
+      } catch (e) { log.push(k + ':lỗi ' + e.message); }
+    }
+    return { drugs: [], src: '-', log: log.join(' ') + ' ' + (banStrat.first || '') + ' hdrKeys=' + Object.keys(banHdr).filter((k) => k !== '__pkSeen').join(',') };
+  }
+  async function banAnalyze(vid, it) {
+    if (banCache[vid] && !banCache[vid].err) return banCache[vid];
+    const [g, md] = await Promise.all([
+      banGetDrugs(vid, it),
+      banApi('/api/medical-record/get-medical-data/' + vid, 'GET', null, 'HC'),
+    ]);
+    const drugs = g.drugs;
+    const days = drugs.reduce((a, d) => Math.max(a, banDrugDays(d)), 0);
+    const med = banJson(md.Data) || {};
+    const icds = String(med.icd_codes || '').split(/[;,\s]+/).map((x) => x.trim()).filter(Boolean);
+    try { (window.__hlxBanDbg = window.__hlxBanDbg || {})[vid] = { log: g.log, nDrug: drugs.length, sample: drugs[0] || null }; } catch (e) {}
+    return (banCache[vid] = { days, icds, nDrug: drugs.length, src: g.src, msg: g.log });
+  }
+  async function banFetchList(dsel) {
+    const t = banListReq.data;
+    if (!t || !dsel) return null;
+    const base = JSON.parse(JSON.stringify(t));
+    base.fr_created_date_time = dsel + 'T00:00:00';
+    base.to_created_date_time = dsel + 'T23:59:59';
+    base.pageSize = 100;
+    let all = [], page = 1, pc = 1;
+    do {
+      base.page = page;
+      const r = await banApi('/api/processing-queue/search', 'POST', base, 'HC');
+      const arr = banJson(r.Data);
+      if (Array.isArray(arr)) all = all.concat(arr);
+      pc = Number(r.PageCount) || 1;
+      page++;
+    } while (page <= pc && page < 20);
+    return all;
+  }
+  async function banPool(ids, n, fn, onStep) {
+    let i = 0, done = 0;
+    await Promise.all(Array.from({ length: n }, async () => {
+      while (i < ids.length) { const k = ids[i++]; try { await fn(k); } catch (e) { banCache[k] = { err: e.message }; } onStep(++done); }
+    }));
+  }
+  const banFirst = (o, keys) => { for (const k of keys) { if (o[k] != null && o[k] !== '') return String(o[k]); } return ''; };
+
+  function banOpenPatient(row) {
+    const panel = document.getElementById('hlx-ban-panel');
+    const rows = Array.from(document.querySelectorAll('tr')).filter((tr) => !(panel && panel.contains(tr)) && hlxIsVisible(tr) && tr.querySelectorAll('td').length >= 3);
+    let tr = null;
+    for (const w of [row.code, row.pcode, row.name]) {
+      if (!w) continue;
+      tr = rows.find((r) => baNorm(r.textContent).indexOf(w) >= 0);
+      if (tr) break;
+    }
+    if (!tr) return false;
+    const td = tr.querySelector('td:nth-child(2)') || tr.querySelector('td');
+    try { tr.scrollIntoView({ block: 'center' }); } catch (e) {}
+    const fire = (t, type, extra) => t.dispatchEvent(new MouseEvent(type, Object.assign({ bubbles: true, cancelable: true, view: window }, extra || {})));
+    [tr, td].forEach((t) => {
+      ['mousedown', 'mouseup', 'click'].forEach((ty) => fire(t, ty, { detail: 1 }));
+      fire(t, 'dblclick', { detail: 2 });
+    });
+    return true;
+  }
+
+  function banOpenPanel() {
+    const old = document.getElementById('hlx-ban-panel');
+    if (old) old.remove();
+    const P = document.createElement('div');
+    P.id = 'hlx-ban-panel';
+    P.style.cssText = 'position:fixed;top:56px;left:50%;transform:translateX(-50%);width:min(1000px,96vw);max-height:84vh;overflow:auto;z-index:2147483000;background:#fff;color:#0f172a;border:1px solid #94a3b8;border-radius:10px;box-shadow:0 10px 40px rgba(0,0,0,.35);font:13px/1.4 Arial,sans-serif;padding:10px';
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    P.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">📝 Danh sách làm bệnh án ngoại trú</b><button type="button" id="hlx-ban-x" style="border:0;background:#e2e8f0;border-radius:6px;padding:2px 9px;cursor:pointer">✕</button></div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px">' +
+      '<label>Ngày <input type="date" id="hlx-ban-date" style="border:1px solid #94a3b8;border-radius:6px;padding:2px 4px"></label>' +
+      '<label>Trạng thái <select id="hlx-ban-st" style="border:1px solid #94a3b8;border-radius:6px;padding:2px 4px"><option value="all">Tất cả</option><option value="todo" selected>Chưa làm</option><option value="done">Đã làm</option></select></label>' +
+      '<label>Thuốc từ <input type="number" id="hlx-ban-days" value="28" min="1" style="width:56px;border:1px solid #94a3b8;border-radius:6px;padding:2px 4px"> ngày</label>' +
+      '<button type="button" id="hlx-ban-go" style="border:0;border-radius:6px;background:#2563eb;color:#fff;padding:5px 12px;cursor:pointer">▶ Phân tích</button></div>' +
+      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><span>Mã ICD (cách nhau dấu phẩy; <b>x</b> = số bất kỳ):</span>' +
+      '<input type="text" id="hlx-ban-icd" style="flex:1;min-width:0;border:1px solid #94a3b8;border-radius:6px;padding:3px 6px">' +
+      '<button type="button" id="hlx-ban-icds" style="border:0;border-radius:6px;background:#16a34a;color:#fff;padding:4px 10px;cursor:pointer">Lưu mã</button>' +
+      '<button type="button" id="hlx-ban-icdr" style="border:0;border-radius:6px;background:#64748b;color:#fff;padding:4px 10px;cursor:pointer">Mặc định</button></div>' +
+      '<div style="color:#475569;margin-bottom:6px">Điều kiện giữ lại: có ít nhất 1 thuốc đủ số ngày <b>HOẶC</b> có mã ICD khớp. Nguồn: danh sách bệnh nhân đang hiển thị trên trang (đổi ngày hoặc bấm Tìm để nạp lại).</div>' +
+      '<div id="hlx-ban-msg" style="margin-bottom:6px;font-weight:700"></div>' +
+      '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eef2f7;text-align:left"><th style="padding:4px;width:36px">STT</th><th style="padding:4px">Mã KB</th><th style="padding:4px">Bệnh nhân</th><th style="padding:4px">Ngày</th><th style="padding:4px">Thuốc (số ngày)</th><th style="padding:4px">ICD khớp</th><th style="padding:4px">Trạng thái</th><th style="padding:4px"></th></tr></thead><tbody id="hlx-ban-body"></tbody></table></div>';
+    document.body.appendChild(P);
+    const q = (s) => P.querySelector(s);
+    const icdIn = q('#hlx-ban-icd');
+    icdIn.value = banConf(BAN_ICD_DEF, BAN_ICD_KEY).join(', ');
+    const pats = () => icdIn.value.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    const msg = (s, c) => { const m = q('#hlx-ban-msg'); m.textContent = s; m.style.color = c || '#0f172a'; };
+    q('#hlx-ban-x').addEventListener('click', () => P.remove());
+    q('#hlx-ban-icds').addEventListener('click', () => { hlxStoreSet(BAN_ICD_KEY, JSON.stringify(pats())); msg('Đã lưu danh sách mã ICD (' + pats().length + ' mã)', '#166534'); });
+    q('#hlx-ban-icdr').addEventListener('click', () => { icdIn.value = BAN_ICD_DEF.join(', '); });
+
+    let running = false;
+    q('#hlx-ban-go').addEventListener('click', async () => {
+      if (running) return;
+      const cur = banLists.cur || { items: [] };
+      if (!banLists.cur && !banListReq.data) { msg('Chưa có danh sách bệnh nhân. Hãy đổi ngày hoặc bấm Tìm ở danh sách bệnh nhân khám rồi bấm Phân tích lại.', '#b91c1c'); return; }
+      running = true;
+      const days = Number(q('#hlx-ban-days').value) || 28;
+      const dsel = q('#hlx-ban-date').value; // yyyy-mm-dd
+      const st = q('#hlx-ban-st').value;
+      const P2 = pats();
+      let src = cur.items;
+      if (dsel) {
+        try { msg('Đang nạp danh sách ngày ' + dsel + '...'); const L = await banFetchList(dsel); if (L && L.length) src = L; }
+        catch (e) { msg('Không nạp được danh sách theo ngày, dùng danh sách đang hiện: ' + e.message, '#b45309'); }
+      }
+      let items = src.filter((it) => it.patient_visit_id && !BAN_ZERO.test(String(it.patient_visit_id)));
+      const dKeys = ['examination_date', 'actual_visit_date_time', 'visit_date_time', 'created_date_time', 'report_date_time'];
+      if (dsel) items = items.filter((it) => { const d = banFirst(it, dKeys); return !d || d.slice(0, 10) === dsel; });
+      const ids = Array.from(new Set(items.map((it) => String(it.patient_visit_id))));
+      msg('Đang phân tích 0/' + ids.length + '...');
+      try {
+        const itemBy = {}; items.forEach((x) => { itemBy[String(x.patient_visit_id)] = x; });
+        await banPool(ids, 4, (k) => banAnalyze(k, itemBy[k]), (n) => msg('Đang phân tích ' + n + '/' + ids.length + '...'));
+      } catch (e) { msg('Lỗi: ' + e.message, '#b91c1c'); running = false; return; }
+      const doneMap = banDoneMap();
+      const rows = [];
+      const seen = {};
+      items.forEach((it) => {
+        const vid = String(it.patient_visit_id);
+        if (seen[vid]) return; seen[vid] = 1;
+        const a = banCache[vid] || {};
+        if (a.err) { rows.push({ vid, code: it.visit_code, name: banFirst(it, ['full_name', 'patient_name', 'person_name']), date: banFirst(it, dKeys), err: a.err }); return; }
+        const hitDrug = a.days >= days;
+        const hit = (a.icds || []).filter((c) => banIcdMatch(c, P2));
+        if (!hitDrug && !hit.length) return;
+        const isDone = !!doneMap[vid];
+        if ((st === 'todo' && isDone) || (st === 'done' && !isDone)) return;
+        rows.push({ vid, code: it.visit_code, pcode: it.person_code, name: banFirst(it, ['full_name', 'patient_name', 'person_name']), date: banFirst(it, dKeys), days: a.days, nDrug: a.nDrug, src: a.src, amsg: a.msg, hitDrug, hit, isDone });
+      });
+      const body = q('#hlx-ban-body');
+      body.textContent = '';
+      rows.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.style.borderTop = '1px solid #e2e8f0';
+        tr.innerHTML = '<td style="padding:4px">' + (i + 1) + '</td><td style="padding:4px">' + esc(r.code) + '</td><td style="padding:4px;color:#1d4ed8;cursor:pointer;font-weight:700" data-open="1">' + esc(r.name || '(mở bệnh nhân)') + '</td><td style="padding:4px">' + esc((r.date || '').slice(0, 10).split('-').reverse().join('/')) + '</td>' +
+          (r.err ? '<td colspan="3" style="padding:4px;color:#b91c1c">Lỗi: ' + esc(r.err) + '</td>' :
+            '<td style="padding:4px">' + (r.hitDrug ? '✅ ' : '') + esc(r.days) + ' ngày <span style="color:#64748b" title="' + esc((r.src || '') + ' ' + (r.amsg || '')) + '">(' + esc(r.nDrug) + ' thuốc)</span><div style="font-size:11px;color:#b45309;max-width:420px;word-break:break-all">' + esc(r.amsg || '') + '</div></td><td style="padding:4px">' + esc(r.hit.join(', ')) + '</td><td style="padding:4px">' + (r.isDone ? '✔ Đã làm' : '⏳ Chưa làm') + '</td>') +
+          '<td style="padding:4px"><button type="button" data-open="1" style="border:1px solid #9fb6cd;border-radius:6px;background:#eef4fa;padding:2px 8px;cursor:pointer">Mở</button></td>';
+        tr.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
+          if (!banOpenPatient(r)) msg('Không thấy bệnh nhân ' + r.code + ' trong danh sách trên trang. Hãy nạp đúng ngày rồi thử lại.', '#b91c1c');
+        }));
+        body.appendChild(tr);
+      });
+      msg('Có ' + rows.length + ' bệnh nhân phù hợp / ' + ids.length + ' đã quét.', '#166534');
+      running = false;
+    });
+    const dv = banLists.cur ? banFirst(banLists.cur.items[0] || {}, ['examination_date', 'actual_visit_date_time', 'visit_date_time', 'created_date_time']) : '';
+    if (dv) q('#hlx-ban-date').value = dv.slice(0, 10);
+    msg(banLists.cur ? 'Đã có danh sách ' + banLists.cur.items.length + ' bệnh nhân. Bấm Phân tích.' : 'Chưa có danh sách: hãy đổi ngày hoặc bấm Tìm ở danh sách bệnh nhân khám trước.', banLists.cur ? '#0f172a' : '#b91c1c');
+  }
+  banHookNet();
+
+  // Nút chọn nhanh dưới 3 ô: Phương pháp điều trị / Tình trạng ra viện / Hướng điều trị tiếp theo
+  // mode 'one' = chọn 1 (thay thế), 'multi' = bấm để thêm/bỏ, các mục nối bằng "; "
+  const BAN_QUICK = [
+    ['Phương pháp điều trị', 'multi', ['Nội khoa', 'Điều trị ngoại trú theo phác đồ', 'Kiểm soát huyết áp', 'Kiểm soát đường huyết', 'Kiểm soát rối loạn lipid máu', 'Kiểm soát hen/COPD']],
+    ['Tình trạng người bệnh ra viện', 'one', ['Tạm ổn', 'Ổn định', 'Đỡ', 'Không thay đổi', 'Nặng hơn']],
+    ['Hướng điều trị và các chế độ tiếp theo', 'multi', ['Toa về, tái khám theo hẹn', 'Tiếp tục điều trị ngoại trú', 'Tái khám sau 1 tháng', 'Tái khám khi hết thuốc', 'Tái khám sớm khi có diễn tiến bất thường', 'Chế độ ăn, vận động, theo dõi huyết áp/đường huyết tại nhà']],
+  ];
+  function banQuickButtons(root) {
+    BAN_QUICK.forEach(([label, mode, opts]) => {
+      const box = banFieldBox(root, label);
+      const ta = box && box.querySelector('textarea');
+      if (!ta || box.querySelector('.hlx-ban-qb')) return;
+      const bar = document.createElement('div');
+      bar.className = 'hlx-ban-qb';
+      bar.style.cssText = 'display:flex;flex-wrap:wrap;gap:4px;margin-top:3px;';
+      const mk = (txt, fn, extra) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = txt;
+        b.style.cssText = 'padding:2px 8px;font-size:12px;border:1px solid #9fb6cd;border-radius:10px;background:#eef4fa;color:#1a4b7a;cursor:pointer;' + (extra || '');
+        b.addEventListener('mousedown', (e) => e.preventDefault());
+        b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); fn(); });
+        return b;
+      };
+      const parts = () => (ta.value || '').split(/\s*;\s*|\r?\n/).map((s) => s.trim()).filter(Boolean);
+      opts.forEach((o) => bar.appendChild(mk(o, () => {
+        if (mode === 'one') { setNativeValue(ta, o); return; }
+        const cur = parts();
+        const i = cur.indexOf(o);
+        if (i >= 0) cur.splice(i, 1); else cur.push(o);
+        setNativeValue(ta, cur.join('; '));
+      })));
+      bar.appendChild(mk('Xóa', () => setNativeValue(ta, ''), 'background:#fff;color:#a33;border-color:#d9a0a0;'));
+      ta.parentNode.insertBefore(bar, ta.nextSibling);
+    });
+  }
+
   function exBenhAnNgoaiTick() {
     const root = banRoot();
     const key = ipdVisitKey() || '_';
@@ -10481,12 +10839,25 @@
       return s ? s.value : '';
     });
     fill('cls', 'Tóm tắt kết quả xét nghiệm cận lâm sàng có giá trị chẩn đoán', () => val(baSourceByControl('subclinical_result_summary')));
-    fill('pp', 'Phương pháp điều trị', () => BAN_DEF_PP);
-    fill('tt2', 'Tình trạng người bệnh ra viện', () => BAN_DEF_TT);
-    fill('hd', 'Hướng điều trị và các chế độ tiếp theo', () => {
-      const r = val(baSourceByControl('recommendation'));
-      return String(r || '').trim() ? r : BAN_DEF_HD;
-    });
+    // Phương pháp / Tình trạng ra viện / Hướng điều trị: ưu tiên dữ liệu đã nhập ở lượt khám (API get-medical-data), không có thì dùng mặc định
+    const vid = banLast.visitId;
+    if (vid && !banMedReq[vid]) {
+      banMedReq[vid] = 1;
+      banApi('/api/medical-record/get-medical-data/' + vid, 'GET', null, 'HC')
+        .then((r) => { banMed[vid] = banJson(r.Data) || {}; })
+        .catch(() => { banMed[vid] = {}; });
+    }
+    const medReady = !!banMed[vid] || now - banSeen[key] > 4000;
+    if (medReady) {
+      const med = banMed[vid] || {};
+      const pick = (v, d) => (String(v || '').trim() ? String(v).trim() : d);
+      fill('pp', 'Phương pháp điều trị', () => pick(med.treatments, BAN_DEF_PP));
+      fill('tt2', 'Tình trạng người bệnh ra viện', () => pick(med.treatment_result_name, BAN_DEF_TT));
+      fill('hd', 'Hướng điều trị và các chế độ tiếp theo', () => {
+        const r = val(baSourceByControl('recommendation'));
+        return pick(r, pick(med.recommendation, BAN_DEF_HD));
+      });
+    }
 
     // Điều trị ngoại trú: từ ngày / đến ngày = ngày khám (tối đa 3 lần thử, tránh lặp vô hạn nếu ô từ chối giá trị)
     ['từ ngày', 'đến ngày'].forEach((label, i) => {
@@ -10506,6 +10877,7 @@
       setTimeout(() => { if ((el.value || '').trim()) done.add(id); }, 400);
     });
 
+    banQuickButtons(root);
     if (BAN_FILL_ICD && !banBusy) banFillIcd(root, done).catch(() => { banBusy = false; });
   }
 
@@ -14193,6 +14565,1409 @@
   })();
 
 })();
+
+
+  // ===== Thống kê số liệu KCB (gộp từ Helix IPD Stats v0.75) =====
+(function (window, XMLHttpRequest) {
+  'use strict';
+  if (window.__hlxIpdStats) return;
+  window.__hlxIpdStats = true;
+
+  const API = '/api/adapter/execute';
+  const WORKER = 'https://hlx-report.dhabolero.workers.dev';
+  const DEFAULT_KHOA = 'b7111066-1f2e-43c7-a0bd-2a984ec56d8f';
+
+  // ---- Học header đăng nhập từ chính các request /api/ của trang (chỉ giữ trong bộ nhớ) ----
+  const hdrs = {};
+  const XS = XMLHttpRequest.prototype.setRequestHeader;
+  const XO = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (m, u) { this.__hu = String(u || ''); return XO.apply(this, arguments); };
+  let hdrVer = 0;
+  const hdrsAny = {};
+  // Chỉ học header từ các request /api/adapter/execute (cùng loại với request của script); các request /api/ khác (hub/token, upload...) có header khác nên không dùng làm chuẩn
+  const learn = (k, v, u) => {
+    if (/^(content-type|accept)$/i.test(k)) return;
+    if (u && u.indexOf('/api/adapter/execute') < 0) { hdrsAny[k] = v; return; }
+    if (hdrs[k] !== v) { hdrs[k] = v; hdrVer++; }
+  };
+  XMLHttpRequest.prototype.setRequestHeader = function (k, v) {
+    try { if (this.__hu && this.__hu.indexOf('/api/') >= 0) learn(k, v, this.__hu); } catch (e) {}
+    return XS.apply(this, arguments);
+  };
+  try {
+    const OF = window.fetch;
+    if (OF) {
+      window.fetch = function (input, init) {
+        try {
+          const u = typeof input === 'string' ? input : (input && input.url) || '';
+          if (u.indexOf('/api/') >= 0) {
+            const h = (init && init.headers) || (input && input.headers);
+            if (h) { if (typeof h.forEach === 'function' && !Array.isArray(h)) h.forEach((v, k) => learn(k, v, u)); else if (Array.isArray(h)) h.forEach((p) => learn(p[0], p[1], u)); else Object.keys(h).forEach((k) => learn(k, h[k], u)); }
+          }
+        } catch (e) {}
+        return OF.apply(this, arguments);
+      };
+    }
+  } catch (e) {}
+
+  let asString = false;
+  let authChecked = false;
+  function findToken() {
+    let best = null, bestExp = 0;
+    const scan = (v, depth) => {
+      if (!v || depth > 3) return;
+      if (typeof v === 'string') {
+        if (/^eyJ[\w-]+\.[\w-]+\.[\w-]+$/.test(v)) {
+          let exp = 0;
+          try { exp = JSON.parse(atob(v.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).exp || 0; } catch (e) {}
+          if (!best || exp > bestExp) { best = v; bestExp = exp; }
+        } else if (v.charAt(0) === '{' || v.charAt(0) === '[') { try { scan(JSON.parse(v), depth + 1); } catch (e) {} }
+      } else if (typeof v === 'object') { Object.keys(v).forEach((k) => scan(v[k], depth + 1)); }
+    };
+    [window.localStorage, window.sessionStorage].forEach((st) => { try { for (let i = 0; i < st.length; i++) scan(st.getItem(st.key(i)), 0); } catch (e) {} });
+    return best;
+  }
+  async function ensureAuth() {
+    if (authChecked || Object.keys(hdrs).length) return;
+    authChecked = true;
+    for (let i = 0; i < 10 && !Object.keys(hdrs).length; i++) await new Promise((r) => setTimeout(r, 400));
+    if (!Object.keys(hdrs).length) { Object.keys(hdrsAny).forEach((k) => { hdrs[k] = hdrsAny[k]; }); }
+    if (!Object.keys(hdrs).length) { const t = findToken(); if (t) hdrs['Authorization'] = 'Bearer ' + t; }
+  }
+  async function call(body) {
+    await ensureAuth();
+    try { return await rawCall(body); } catch (e) {
+      if (!/HTTP (401|403|440)/.test(e.message)) throw e;
+      // phiên/mã đăng nhập đã đổi: thử mã đang lưu trong trình duyệt, hoặc chờ trang tự gọi API để học mã mới
+      const v0 = hdrVer, t = findToken();
+      let changed = false;
+      if (t && hdrs['Authorization'] !== 'Bearer ' + t) { hdrs['Authorization'] = 'Bearer ' + t; changed = true; }
+      else { for (let i = 0; i < 8 && hdrVer === v0; i++) await new Promise((r) => setTimeout(r, 400)); changed = hdrVer !== v0; }
+      if (!changed) throw new Error(e.message + ' [header đã học: ' + (Object.keys(hdrs).join(', ') || 'không có') + ']' + ' — phiên đăng nhập đã hết hạn hoặc chưa học được mã mới. Hãy bấm Tìm kiếm/Làm mới một lần trên trang HIS rồi bấm "Làm mới" ở đây');
+      return rawCall(body);
+    }
+  }
+  function rawCall(body) {
+    return new Promise((resolve, reject) => {
+      const x = new XMLHttpRequest();
+      x.open('POST', API, true);
+      XS.call(x, 'Content-Type', 'application/json');
+      XS.call(x, 'Accept', 'application/json');
+      Object.keys(hdrs).forEach((k) => { try { XS.call(x, k, hdrs[k]); } catch (e) {} });
+      x.onload = () => {
+        let j = null;
+        try { j = JSON.parse(x.responseText); } catch (e) {}
+        if (x.status >= 200 && x.status < 300 && j) resolve(j); else reject(new Error('HTTP ' + x.status));
+      };
+      x.onerror = () => reject(new Error('Lỗi mạng'));
+      x.send(JSON.stringify(body));
+    });
+  }
+  async function search(base, page) {
+    const data = Object.assign({
+      ipd_room_id: null, clinic_room_id: '', visit_code: '', person_code: '', full_name: '', gender: '',
+      date_of_birth: '', visit_type_rcd: ['HHIPD'], include_complete: true, include_transfer: true,
+      include_consultation: false, ed_flag: false, confirm_treatment_flag: false, inpatient_day_flag: null,
+      insurance_flag: '', dob_only_year_flag: false, area_free_text: '', diagnose: '', employee_id: '',
+      page: page, pageSize: 100,
+    }, base);
+    const mk = (str) => ({ Method: { Method: 'POST' }, Url: '/api/shared-his/search-ipd-visit', Module: 'HC', Data: str ? JSON.stringify(data) : data, ContentType: 'application/json', AcceptType: 'application/json' });
+    let j;
+    try { j = await call(mk(asString)); } catch (e) { if (asString) throw e; asString = true; j = await call(mk(true)); }
+    if (!j || !Array.isArray(j.Data)) { if (!asString) { asString = true; return search(base, page); } throw new Error('Phản hồi không hợp lệ'); }
+    return j;
+  }
+  async function searchAll(base, onPage) {
+    let page = 1, rows = [], total = 0, pc = 1;
+    do {
+      const j = await search(base, page);
+      total = j.TotalItems; pc = j.PageCount || 1; rows = rows.concat(j.Data);
+      if (onPage) onPage(rows.length, total);
+      page++;
+    } while (page <= pc);
+    rows = rows.filter((x) => !/test/i.test(String(x.full_name || ''))); // bỏ ca TEST do IT nhập
+    return { rows: rows, total: total };
+  }
+  async function loadKhoa() {
+    const j = await call({ Method: { Method: 'GET' }, Url: '/api/clinical-specialty-ref/get-dropdown', Module: 'HR', ContentType: 'application/json', AcceptType: 'application/json' });
+    return (j.Data || []).map((x) => ({ rid: x.value, name: x.label, ipd: !!x.allow_ipd_flag }));
+  }
+
+  // ---- Worker (số mốc + điều chỉnh) ----
+  async function wState() {
+    const r = await fetch(WORKER + '/ipd/state', { cache: 'no-store' });
+    if (!r.ok) throw new Error('Worker HTTP ' + r.status);
+    return r.json();
+  }
+  async function wSave(payload) {
+    const r = await fetch(WORKER + '/ipd/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(j.error || 'HTTP ' + r.status);
+    return j;
+  }
+
+  // ---- Tính toán ----
+  const pad = (n) => (n < 10 ? '0' : '') + n;
+  const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+  const addDays = (d, n) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); return ymd(x); };
+  const nowStr = () => { const n = new Date(); return ymd(n) + 'T' + pad(n.getHours()) + ':' + pad(n.getMinutes()); };
+  const COLS = [['cu', 'Bệnh cũ'], ['vao', 'Vào viện'], ['ra', 'Ra viện'], ['ck', 'Chuyển khoa'], ['cv', 'Chuyển viện'], ['tv', 'Tử vong'], ['nxv', 'Nặng - Xuất viện'], ['tron', 'Trốn viện'], ['con', 'Hiện còn']];
+  const OUTK = ['ra', 'ck', 'cv', 'tv', 'nxv', 'tron'];
+
+  function kindOf(r) {
+    const n = (String(r.treatment_plans_name || '') + ' ' + String(r.treatment_plans_rcd || '')).toLowerCase();
+    if (/chuyển viện|\bht\b/.test(n)) return 'cv';
+    if (/ra viện|\brv\b|xin ra viện|\bxrv\b|xin về/.test(n)) return 'ra';
+    return 'ra';
+  }
+
+  // Chuỗi các đợt nằm ở từng khoa của một bệnh nhân
+  function buildStays(r) {
+    const h = (r.list_json_patient_visit_specialty_history || []).filter((x) => x.active_flag !== 0 && x.from_date_time && (!x.transfer_status_rcd || x.transfer_status_rcd === 'ACCEPTED') && !x.cancel_transfer_reason && !x.cancel_receive_reason);
+    h.sort((a, b) => (a.from_date_time < b.from_date_time ? -1 : 1));
+    const st = [];
+    h.forEach((x) => {
+      if (st.length && st[st.length - 1].k === x.clinical_specialty_rid) return;
+      st.push({ k: x.clinical_specialty_rid, s: x.from_date_time.slice(0, 16), e: null, next: null, kind: null });
+    });
+    if (!st.length) {
+      st.push({ k: r.clinical_specialty_rid, s: String(r.actual_visit_date_time || '').slice(0, 16), e: null, next: null, kind: null });
+    }
+    // Bệnh nhân còn nằm viện: khoa hiện tại của hồ sơ là chuẩn; bỏ các dòng lịch sử phía sau (chuyển qua lại không thật)
+    if (r.clinical_specialty_rid) { // cả bệnh nhân đã xuất viện: khoa trên hồ sơ là khoa cuối cùng
+      let li = -1; st.forEach((x, i) => { if (x.k === r.clinical_specialty_rid) li = i; });
+      if (li >= 0 && li < st.length - 1) st.length = li + 1;
+    }
+    // Chuyển đi rồi quay lại cùng khoa trong dưới 24h (X → Y → X): ghi chuyển qua lại, không tính là chuyển khoa; gộp thành một đợt ở X
+    for (let i = 0; i + 2 < st.length; ) {
+      if (st[i].k === st[i + 2].k && (new Date(st[i + 2].s) - new Date(st[i + 1].s)) < 24 * 3600 * 1000) st.splice(i + 1, 2); else i++;
+    }
+    for (let i = 0; i < st.length - 1; i++) { st[i].e = st[i + 1].s; st[i].next = st[i + 1].k; st[i].kind = 'ck'; }
+    const last = st[st.length - 1];
+    const ex = r.treatment_date_time || (r.status === 2 ? r.closure_date_time : null);
+    if (ex) { last.e = String(ex).slice(0, 16); last.kind = kindOf(r); if (last.kind === 'ra' && /xin ra viện|\bxrv\b|xin về/i.test(String(r.treatment_plans_name || '') + ' ' + String(r.treatment_plans_rcd || ''))) last.sub = 'xrv'; }
+    return st;
+  }
+
+  async function compute(rid, khoaMap, fromD, toD, log) {
+    const today = ymd(new Date());
+    const hi = addDays(toD > today ? toD : today, 1);
+    log('Đang lấy ca vào...');
+    const a = await searchAll({ clinical_specialty_rid: rid, date_time_type: '0', visit_status: '', from_date_time: addDays(fromD, -60) + 'T00:00:00', to_date_time: hi + 'T23:59:59' }, (x, y) => log('Vào: ' + x + '/' + y));
+    log('Đang lấy ca ra...');
+    const b = await searchAll({ clinical_specialty_rid: rid, date_time_type: '2', visit_status: '2', from_date_time: addDays(fromD, -1) + 'T00:00:00', to_date_time: hi + 'T23:59:59' }, (x, y) => log('Ra: ' + x + '/' + y));
+    log('Đang lấy bệnh nhân đang nằm...');
+    const c = await searchAll({ clinical_specialty_rid: rid, date_time_type: '1', visit_status: '1', from_date_time: '2000-01-01T00:00:00', to_date_time: hi + 'T23:59:59' });
+
+    const m = new Map();
+    a.rows.concat(b.rows, c.rows).forEach((r) => {
+      const o = m.get(r.patient_visit_id);
+      const n = (r.list_json_patient_visit_specialty_history || []).length;
+      if (!o || r.status === 2 || n > (o.list_json_patient_visit_specialty_history || []).length) m.set(r.patient_visit_id, r);
+    });
+    const stays = [];
+    // Mỗi bệnh nhân chỉ tính một đợt nằm ở khoa này: vào lần đầu, ra lần cuối (chuyển đi rồi quay lại không tính thêm vào/chuyển khoa)
+    m.forEach((r) => {
+      const arr = buildStays(r), mine = [];
+      arr.forEach((x, i) => { if (x.k === rid) mine.push({ s: x.s, e: x.e, kind: x.kind, sub: x.sub, next: x.next, prev: i > 0 ? arr[i - 1].k : null, r: r }); });
+      if (!mine.length) return;
+      const f = mine[0], l = mine[mine.length - 1];
+      let kd = l.kind, ee = l.e;
+      if (kd === 'ck' && l.next) { // đã từng chuyển sang khoa đích trước đó rồi chuyển qua lại: lần này chỉ là quay lại, không tính chuyển khoa mới
+        let fy = null; arr.forEach((x) => { if (x.k === l.next && (fy === null || x.s < fy)) fy = x.s; });
+        if (fy !== null && fy < l.e && fy > f.s) ee = fy; // ra khỏi khoa này ở lần chuyển đầu tiên
+      }
+      stays.push({ s: f.s, e: ee, kind: kd, sub: l.sub, next: l.next, prev: f.prev, r: r });
+    });
+
+    const nowS0 = nowStr();
+    const pres = [];
+    m.forEach((r) => { const stl = buildStays(r), L = stl[stl.length - 1]; if (L.k === rid && L.e === null && L.s <= nowS0) pres.push({ id: r.patient_visit_id, code: r.visit_code, since: L.s, plan: r.treatment_plans_name || '', r: r, prev: stl.length > 1 ? stl[stl.length - 2].k : null }); });
+    pres.sort((x, y) => (x.since < y.since ? -1 : 1));
+    const presIds = new Set(pres.map((x) => x.id));
+    const hisRows = [];
+    c.rows.forEach((r) => { const stl = buildStays(r), L = stl[stl.length - 1]; if (L.k === rid) hisRows.push({ id: r.patient_visit_id, code: r.visit_code, since: L.s, plan: r.treatment_plans_name || '' }); });
+    const hisIds = new Set(hisRows.map((x) => x.id));
+    const presOnly = pres.filter((x) => !hisIds.has(x.id));
+    const hisOnly = hisRows.filter((x) => !presIds.has(x.id));
+
+    log('Đang đọc số mốc từ server...');
+    let wst = null;
+    try { wst = (await wState()).units[rid] || null; } catch (e) { log('Không đọc được Worker: ' + e.message); }
+
+    const n = nowStr();
+    const days = [], res = {};
+    for (let d = addDays(fromD, -0); d <= toD; d = addDays(d, 1)) {
+      const Ts = d + 'T07:00', Te = addDays(d, 1) + 'T07:00';
+      const o = { cu: 0, vao: 0, ra: 0, xrv: 0, ck: 0, cv: 0, tv: 0, nxv: 0, tron: 0, khac: 0, adj: 0, con: 0, src: {}, dst: {}, derived: 0, open: n < Te, ev: { vao: [], ra: [], xrv: [], ck: [], cv: [], khac: [] } };
+      stays.forEach((s) => {
+        if (s.s < Ts && (s.e === null || s.e >= Ts)) o.derived++;
+        if (s.s >= Ts && s.s < Te) { const nm = s.prev ? (khoaMap[s.prev] || 'Khoa khác') : 'Vào trực tiếp'; o.vao++; o.src[nm] = (o.src[nm] || 0) + 1; o.ev.vao.push(s); }
+        if (s.e !== null && s.e >= Ts && s.e < Te && s.kind) {
+          o[s.kind]++; if (s.kind === 'ra' && s.sub === 'xrv') { o.xrv++; o.ev.xrv.push(s); } else (o.ev[s.kind] || o.ev.khac).push(s);
+          if (s.kind === 'ck') { const nm = khoaMap[s.next] || 'Khoa khác'; o.dst[nm] = (o.dst[nm] || 0) + 1; }
+        }
+      });
+      const mn = (wst && wst.man && wst.man[d]) || {};
+      o.tv = mn.tv || 0; o.nxv = mn.nxv || 0; o.tron = mn.tron || 0;
+      const mt = o.tv + o.nxv + o.tron; o.raApi = o.ra; o.ra = Math.max(0, o.ra - mt); // 3 số nhập tay nằm trong số xuất viện của HIS nên trừ khỏi Ra viện
+      o.adj = 0; o.note = '';
+      days.push(d); res[d] = o;
+    }
+    // Chuỗi nối tiếp từ số mốc và các ngày đã chốt
+    const locks = {};
+    const lockDays = Object.keys(locks).sort();
+    const S = wst && wst.seed ? wst.seed.at.slice(0, 10) : null;
+    let seedInfo = null;
+    if (cuSource === 'his') {
+      // Bệnh cũ = số bệnh nhân thực sự đang ở khoa lúc 7h (đếm từ lịch sử từng bệnh nhân)
+      days.forEach((d) => {
+        const o = res[d], l = locks[d];
+        if (l) { ['cu', 'vao', 'ra', 'ck', 'cv', 'khac', 'adj', 'con'].forEach((k) => { o[k] = l[k]; }); o.tv = 0; o.nxv = 0; o.tron = 0; o.locked = true; o.lockAt = l.at || ''; }
+        else { o.cu = o.derived; o.con = o.cu + o.vao - OUTK.reduce((x, k) => x + o[k], 0); }
+      });
+      seedInfo = { at: '', count: null, derived: null };
+    } else if (S || lockDays.length) {
+      const flow = (o) => o.vao - OUTK.reduce((x, k) => x + o[k], 0) + o.adj;
+      const need = [fromD].concat(S ? [S] : [], lockDays).sort()[0];
+      const need2 = [toD].concat(S ? [S] : [], lockDays).sort().slice(-1)[0];
+      const all = {};
+      for (let d = need; d <= need2; d = addDays(d, 1)) {
+        if (res[d]) { all[d] = res[d]; continue; }
+        const Ts = d + 'T07:00', Te = addDays(d, 1) + 'T07:00';
+        const o = { vao: 0, ra: 0, ck: 0, cv: 0, tv: 0, nxv: 0, tron: 0, khac: 0, adj: 0 };
+        stays.forEach((st) => { if (st.s >= Ts && st.s < Te) o.vao++; if (st.e !== null && st.e >= Ts && st.e < Te && st.kind) o[st.kind]++; });
+        const adj = wst.adj && wst.adj[d]; o.adj = adj ? adj.delta : 0;
+        all[d] = o;
+      }
+      const flowOf = (d) => (locks[d] ? locks[d].con - locks[d].cu : flow(all[d]));
+      const cuMap = {};
+      if (S) cuMap[S] = wst.seed.count;
+      lockDays.forEach((d) => { cuMap[addDays(d, 1)] = locks[d].con; });
+      lockDays.forEach((d) => { cuMap[d] = locks[d].cu; });
+      for (let d = need; d <= need2; d = addDays(d, 1)) { const pv = addDays(d, -1); if (cuMap[d] === undefined && cuMap[pv] !== undefined && all[pv]) cuMap[d] = cuMap[pv] + flowOf(pv); }
+      for (let d = need2; d >= need; d = addDays(d, -1)) { const nx = addDays(d, 1); if (cuMap[d] === undefined && cuMap[nx] !== undefined) cuMap[d] = cuMap[nx] - flowOf(d); }
+      days.forEach((d) => {
+        const o = res[d], l = locks[d];
+        if (l) { ['cu', 'vao', 'ra', 'ck', 'cv', 'khac', 'adj', 'con'].forEach((k) => { o[k] = l[k]; }); o.tv = 0; o.nxv = 0; o.tron = 0; o.locked = true; o.lockAt = l.at || ''; }
+        else { o.cu = cuMap[d]; o.con = o.cu + flow(o); }
+      });
+      seedInfo = S ? { at: wst.seed.at, count: wst.seed.count, derived: stays.filter((x) => x.s < S + 'T07:00' && (x.e === null || x.e >= S + 'T07:00')).length } : { at: '', count: null, derived: null };
+    }
+    return { rid: rid, days: days, res: res, dangNam: pres.length, hisCount: hisRows.length, pres: pres, presOnly: presOnly, hisOnly: hisOnly, nowS: n, khoaMap: khoaMap, seed: seedInfo, nLocks: lockDays.length, totals: [a.total, b.total, c.total] };
+  }
+
+  // ---- Giao diện ----
+  const CSS = `
+  #hlx-st-ov{position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.55);display:none;align-items:center;justify-content:center;padding:16px;font:14px/1.45 "Segoe UI",Arial,sans-serif;color:#0f172a}
+  #hlx-st-ov.on{display:flex}
+  #hlx-st-ov *{box-sizing:border-box}
+  .hs-card{width:min(1100px,96vw);height:min(536px,92vh);display:flex;flex-direction:column;background:#fff;border-radius:16px;box-shadow:0 24px 70px rgba(2,6,23,.45);overflow:hidden}
+  .hs-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:linear-gradient(120deg,#0b3b66,#0e8fa5);color:#fff}
+  .hs-head h2{margin:0;font-size:17px;font-weight:700;letter-spacing:.2px}
+  .hs-pr{border:1px solid rgba(255,255,255,.55);background:rgba(255,255,255,.16);color:#fff;border-radius:8px;height:32px;padding:0 12px;font-weight:600;font-size:13px;font-family:inherit;cursor:pointer}
+  .hs-pr:hover{background:rgba(255,255,255,.28)}
+  #hlx-st-ov.full{padding:0}
+  #hlx-st-ov.full .hs-card{width:100vw;height:100vh;border-radius:0}
+  .hs-bar2{display:none;align-items:center;gap:10px;padding:8px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+  .hs-bar2.on{display:flex}
+  .hs-bar2 label{font-weight:600;color:#334155}
+  .hs-bar2 select{height:36px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font:inherit;color:inherit;min-width:260px}
+  .hs-fs{border:0;background:rgba(255,255,255,.18);color:#fff;width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer}
+  .hs-fs:hover{background:rgba(255,255,255,.32)}
+  .hs-x{border:0;background:rgba(255,255,255,.18);color:#fff;width:30px;height:30px;border-radius:50%;font-size:16px;cursor:pointer}
+  .hs-x:hover{background:rgba(255,255,255,.32)}
+  .hs-bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;padding:12px 18px;background:#f8fafc;border-bottom:1px solid #e2e8f0}
+  .hs-bar select,.hs-bar input,.hs-in{height:36px;line-height:20px;padding:6px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;font:inherit;color:inherit}
+  .hs-seg{display:inline-flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
+  .hs-seg button{border:0;background:#fff;padding:7px 14px;cursor:pointer;font:inherit;color:#475569}
+  .hs-seg button.on{background:#0e7490;color:#fff;font-weight:600}
+  .hs-b{border:0;border-radius:8px;height:36px;padding:0 14px;font:inherit;font-weight:600;cursor:pointer;color:#fff;background:#0e7490}
+  .hs-b:hover{filter:brightness(1.08)}
+  .hs-nav{display:inline-flex;gap:8px;align-items:center}
+  .hs-b.nv{width:46px;padding:0;font-size:18px;line-height:1}
+  .hs-b.g{background:#e2e8f0;color:#334155}
+  .hs-b.o{background:#ea580c}
+  .hs-b.v{background:#16a34a}
+  .hs-b.p{background:#2563eb}
+  .hs-b:disabled{opacity:.5;cursor:wait}
+  .hs-note{padding:10px 18px 0;font-weight:600;color:#0369a1}
+  .hs-st{padding:2px 18px 8px;color:#64748b;min-height:22px}
+  .hs-body{padding:0 18px 16px;overflow:auto;flex:1;min-height:0}
+  .hs-cards{display:flex;gap:10px;flex-wrap:wrap;margin:6px 0 12px}
+  .hs-chip{padding:9px 14px;border-radius:10px;background:#ecfeff;border:1px solid #a5f3fc;color:#155e75;font-weight:600}
+  .hs-chip.w{background:#fffbeb;border-color:#fde68a;color:#92400e}
+  .hs-chip.k{background:#f0fdf4;border-color:#bbf7d0;color:#166534}
+  .hs-t{margin:12px 0 6px;font-weight:700;font-size:15px;color:#0f172a}
+  table.hs{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+  table.hs th,table.hs td{border-right:1px solid #cbd5e1}
+  table.hs th:last-child,table.hs td:last-child{border-right:0}
+  .hs-chk{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:14px;padding:3px 11px;margin:2px 4px 2px 0;font:inherit;font-size:13px;cursor:pointer}
+  .hs-chk.on{background:#0e7490;border-color:#0e7490;color:#fff;font-weight:600}
+  @keyframes hsSpin{to{transform:rotate(360deg)}}@keyframes hsShine{from{background-position:200% 0}to{background-position:-100% 0}}@keyframes hsPulse{50%{opacity:.45}}
+  .hs-wait{display:flex;flex-direction:column;align-items:center;gap:14px;padding:30px 18px}.hs-wait i{width:42px;height:42px;border:5px solid #bae6fd;border-top-color:#0e7490;border-radius:50%;animation:hsSpin .9s linear infinite}.hs-wait b{animation:hsPulse 1.4s ease-in-out infinite;color:#0f172a}
+  .hs-ok{padding:26px 18px;text-align:center;font-size:15px;font-weight:700;color:#0f172a}.hs-ok.shine span{background:linear-gradient(100deg,#0f172a 0%,#0f172a 38%,#38bdf8 50%,#0f172a 62%,#0f172a 100%);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;animation:hsShine 1.25s linear infinite}.hs-ok a{color:#2563eb;text-decoration:underline;-webkit-text-fill-color:#2563eb}
+  .hs-qr{display:flex;align-items:flex-start;gap:8px;margin:4px 0}
+  .hs-qr>b{flex:0 0 118px;font-size:12px;color:#475569;padding-top:6px}
+  table.hs th{position:sticky;top:0;background:#e0f2fe;color:#0c4a6e;padding:8px 10px;text-align:right;white-space:nowrap;border-bottom:2px solid #7dd3fc;font-weight:700}
+  table.hs td{padding:7px 10px;text-align:right;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+  table.hs th:first-child,table.hs td:first-child{text-align:left}
+  table.hs tr:nth-child(even) td{background:#f8fafc}
+  table.hs tr.m td{background:#f1f5f9;font-weight:700}
+  table.hs tr.o td{background:#fffbeb}
+  table.hs tr.l td{background:#ecfdf5}
+  .hs-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 8px}
+  .hs-tabs button{border:1px solid #cbd5e1;background:#fff;border-radius:999px;padding:5px 12px;cursor:pointer;font:inherit;color:#334155}
+  .hs-tabs button.on{background:#0e7490;border-color:#0e7490;color:#fff;font-weight:600}
+  table.dt{border-collapse:separate;border-spacing:0;width:100%;font-size:12.5px}
+  table.dt th{position:sticky;top:0;background:#f1f5f9;color:#0f172a;padding:6px 8px;text-align:left;white-space:nowrap;border-bottom:2px solid #cbd5e1}
+  table.dt td{padding:5px 8px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+  td.ed{cursor:pointer;background:#fffbeb}
+  table.dt td.n{white-space:nowrap}
+  .hs-dt{margin-top:12px;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;background:#f8fafc}
+  .hs-dt summary{cursor:pointer;font-weight:700;color:#0c4a6e}
+  .hs-li{white-space:pre;font:12px/1.5 Consolas,monospace;color:#334155;max-height:160px;overflow:auto}
+  .hs-li.w{color:#b45309}
+  table.hs.nr td,table.hs.nr th{padding:7px 18px}
+  table.hs.nr td:first-child{padding-right:60px}
+  table.hs td.c{font-weight:700;color:#0e7490}
+  table.hs td.t{text-align:left;white-space:normal;color:#475569;min-width:130px}
+  .hs-foot{margin-top:10px;color:#64748b;font-size:12px}
+  #hlx-st-dl{position:fixed;inset:0;z-index:2147483647;background:rgba(15,23,42,.5);display:none;align-items:center;justify-content:center;padding:16px;font:14px/1.45 "Segoe UI",Arial,sans-serif;color:#0f172a}
+  #hlx-st-dl.on{display:flex}
+  #hlx-st-dl *{box-sizing:border-box}
+  .hs-dl.hs-rp{width:min(760px,96vw)}
+  .hs-dl{width:min(420px,94vw);background:#fff;border-radius:14px;box-shadow:0 20px 60px rgba(2,6,23,.5);overflow:hidden}
+  .hs-dl h3{margin:0;padding:14px 18px;font-size:16px;color:#fff;background:linear-gradient(120deg,#0b3b66,#0e8fa5)}
+  .hs-dl .f{padding:14px 18px 4px;display:grid;gap:10px}
+  .hs-dl label{display:grid;gap:4px;font-weight:600;color:#334155;font-size:13px}
+  .hs-dl label small{font-weight:400;color:#64748b}
+  .hs-dl .in{width:100%}
+  .hs-dl .er{padding:0 18px;color:#dc2626;min-height:20px;font-weight:600}
+  .hs-dl .ft{display:flex;gap:8px;justify-content:flex-end;padding:10px 18px 16px}
+  `;
+  const cuSource = 'his';
+  let ov, dl, bodyEl, last = null, khoaList = [], selEl, fEl, modeBtns = {}, mode = 'ngay', noteEl, stEl, goBtn;
+  function el(t, css, txt) { const e = document.createElement(t); if (css) e.style.cssText = css; if (txt != null) e.textContent = txt; return e; }
+  function cls(t, c, txt) { const e = document.createElement(t); if (c) e.className = c; if (txt != null) e.textContent = txt; return e; }
+  const txt = (o) => Object.keys(o).map((k) => k + ' ' + o[k]).join(', ');
+  const vn = (d) => d.slice(8) + '/' + d.slice(5, 7) + '/' + d.slice(0, 4);
+
+  function monthRows(R) {
+    const ms = {};
+    R.days.forEach((d) => {
+      const k = d.slice(0, 7), o = R.res[d];
+      const a = ms[k] = ms[k] || { label: k.slice(5) + '/' + k.slice(0, 4), cu: o.cu, vao: 0, ra: 0, xrv: 0, ck: 0, cv: 0, tv: 0, nxv: 0, tron: 0, khac: 0, adj: 0, con: 0, m: true };
+      ['vao', 'adj', 'xrv'].concat(OUTK).forEach((c) => { a[c] += o[c]; });
+      a.con = o.con;
+    });
+    return Object.keys(ms).sort().map((k) => ms[k]);
+  }
+  function toCSV(R) {
+    const L = [['Ngày'].concat(COLS.map((c) => c[1]), ['Nguồn vào', 'Chuyển khoa đến']).join(',')];
+    R.days.forEach((d) => { const o = R.res[d]; L.push([d].concat(COLS.map((c) => o[c[0]]), ['"' + txt(o.src) + '"', '"' + txt(o.dst) + '"']).join(',')); });
+    return '﻿' + L.join('\n');
+  }
+
+  const MAN = { tv: 'Tử vong', nxv: 'Nặng - Xuất viện', tron: 'Trốn viện' };
+  function ask(msg) {
+    return new Promise((res) => {
+      const cf = cls('div'); cf.style.cssText = 'position:fixed;inset:0;z-index:2;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center';
+      const bx = cls('div', 'hs-dl'); bx.appendChild(cls('h3', '', msg));
+      const ft = cls('div', 'ft'); const no = cls('button', 'hs-b g', 'Không'), ok = cls('button', 'hs-b v', 'OK'); no.type = ok.type = 'button';
+      no.onclick = () => { cf.remove(); res(false); }; ok.onclick = () => { cf.remove(); res(true); };
+      ft.append(no, ok); bx.appendChild(ft); cf.appendChild(bx); dl.appendChild(cf);
+    });
+  }
+  function editMan(date, key, row) {
+    dialog(MAN[key] + ' — ngày ' + vn(date), [
+      { key: 'n', label: 'Số ' + MAN[key].toLowerCase(), hint: 'nằm trong số xuất viện, sẽ tự trừ khỏi Ra viện', type: 'number', value: row[key] },
+      { key: 'pw', label: 'Mật khẩu', mask: true },
+    ], async (v) => {
+      const n = parseInt(v.n, 10);
+      if (isNaN(n) || n < 0) throw new Error('Số không hợp lệ');
+      if (!v.pw) throw new Error('Chưa nhập mật khẩu');
+      const cur = (last && last.res[date]) || row;
+      if (key === 'tv' || key === 'nxv' || key === 'tron') { const tot = (cur.tv + cur.nxv + cur.tron) - cur[key] + n; if (tot > (cur.raApi != null ? cur.raApi : cur.ra + cur.tv + cur.nxv + cur.tron)) throw new Error('Tổng 3 số lớn hơn số xuất viện của HIS (' + cur.raApi + ')'); }
+      const m = { tv: cur.tv, nxv: cur.nxv, tron: cur.tron }; m[key] = n;
+      await wSave({ password: v.pw, unit: selEl.value, name: khoaName(), man: Object.assign({ date: date }, m) });
+      stEl.textContent = 'Đã sửa.'; run();
+    });
+  }
+  function table(R, title, rows, extra) {
+    bodyEl.appendChild(cls('div', 'hs-t', title));
+    const t = cls('table', 'hs');
+    const hr = cls('tr');
+    hr.appendChild(cls('th', '', extra ? 'Ngày (7h–7h)' : 'Tháng'));
+    COLS.forEach((c) => hr.appendChild(cls('th', '', c[1])));
+    if (extra) { hr.appendChild(cls('th', '', 'Nguồn vào')); hr.appendChild(cls('th', '', 'Chuyển khoa đến')); }
+    t.appendChild(hr);
+    rows.forEach((r) => {
+      const tr = cls('tr', r.m ? 'm' : (r.locked ? 'l' : (r.open ? 'o' : '')));
+      tr.appendChild(cls('td', '', (r.locked ? '🔒 ' : '') + r.label));
+      COLS.forEach((c) => {
+        const v = r[c[0]];
+        let sv = (R.seed || R.empty) ? v : (c[0] === 'cu' || c[0] === 'con' ? '–' : v);
+        if (c[0] === 'ra' && r.xrv > 0 && !r.locked) sv = v + ' (xin RV ' + r.xrv + ')';
+        const td = cls('td', c[0] === 'con' ? 'c' : (MAN[c[0]] && extra ? 'ed' : ''), sv);
+        if (MAN[c[0]] && extra && r.date) { td.title = 'Nhấp đôi để sửa'; td.ondblclick = () => editMan(r.date, c[0], r); }
+        tr.appendChild(td);
+      });
+      if (extra) { tr.appendChild(cls('td', 't', txt(r.src || {}) || '0')); tr.appendChild(cls('td', 't', txt(r.dst || {}) || '0')); }
+      t.appendChild(tr);
+    });
+    bodyEl.appendChild(t);
+  }
+
+  let detTab = 'pres';
+  const TABS = [['pres', 'Đang điều trị'], ['vao', 'Vào viện'], ['ra', 'Ra viện'], ['xrv', 'Xin ra viện'], ['cv', 'Chuyển viện'], ['ck', 'Chuyển khoa']];
+  const fmtT = (t) => (t ? t.slice(8, 10) + '/' + t.slice(5, 7) + ' ' + t.slice(11, 16) : '');
+  const fmtD = (d) => (d ? String(d).slice(8, 10) + '/' + String(d).slice(5, 7) + '/' + String(d).slice(0, 4) : '');
+  const vsLine = (v) => { const h = (x) => x !== null && x !== undefined && x !== ''; return [h(v.heart_rate) && 'Mạch ' + v.heart_rate, h(v.blood_pressure_systolic) && 'HA ' + v.blood_pressure_systolic + '/' + v.blood_pressure_diastolic, h(v.temperature) && 'Nhiệt ' + v.temperature, h(v.spo2) && 'SpO2 ' + v.spo2 + '%', h(v.respiratory_rate) && 'Nhịp thở ' + v.respiratory_rate].filter(Boolean).join(', '); };
+  async function callS(b) { // HIS có lúc chỉ nhận Data dạng chuỗi JSON: nếu trả rỗng/không đúng khuôn thì gửi lại dạng chuỗi
+    let j = await call(b);
+    if (j && j.TotalItems === undefined && (j.Data === undefined || j.Data === null || (Array.isArray(j.Data) && !j.Data.length)) && b.Data && typeof b.Data === 'object') j = await call(Object.assign({}, b, { Data: JSON.stringify(b.Data) }));
+    return j;
+  }
+  async function buildReport(R, it, tab) {
+    const LBL = { ra: 'RA VIỆN', xrv: 'XIN RA VIỆN', cv: 'CHUYỂN VIỆN', tv: 'TỬ VONG' }[tab] || 'RA VIỆN';
+    const r = it.r, id = r.patient_visit_id, L = [];
+    const kn = (k) => (k ? (R.khoaMap[k] || 'Khoa khác') : '');
+    let det = {}, vs = [];
+    try { const j = await call({ Method: { Method: 'GET' }, Url: '/api/patient-registration/get-ipd-patient-visit/' + id, Module: 'HC', ContentType: 'application/json', AcceptType: 'application/json' }); det = j.Data || {}; } catch (e) { L.push('(Không lấy được chi tiết bệnh án: ' + e.message + ')'); }
+    let pay = ''; // lượt đã đóng (ra viện/chuyển viện) thì HIS chỉ trả dữ liệu khi gửi kèm thời điểm đóng hồ sơ
+    try {
+      pay = det.closure_date_time || r.closure_date_time || det.payment_date_time || '';
+      if (!pay && r.patient_id) { const lj = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-registration/look-up-visit-info', Module: 'HC', Data: { patient_id: r.patient_id }, ContentType: 'application/json', AcceptType: 'application/json' }); const mv = (lj.Data || []).find((v) => v.patient_visit_id === id); pay = (mv && mv.closure_date_time) || ''; }
+    } catch (e) {}
+    try { const j = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-vital-sign/search', Module: 'HC', Data: { patient_visit_id: id, fr_created_date_time: '', to_created_date_time: '', patient_id: r.patient_id || '', payment_date_time: pay, page: 1, pageSize: 0 }, ContentType: 'application/json', AcceptType: 'application/json' }); vs = (j.Data || []).slice().sort((a, b) => (a.check_time < b.check_time ? -1 : 1)); } catch (e) {}
+    const w0 = Date.parse(String(r.actual_visit_date_time || '')) - 3600e3, w1 = Date.parse(String(r.treatment_date_time || '')) + 2 * 3600e3;
+    const inWin = (v) => { const t = Date.parse(String(v || '')); return !isFinite(w0) || !isFinite(w1) || !isFinite(t) || (t >= w0 && t <= w1); };
+    let sheets = [], sheetErr = '', sheetAlt = false; const dbg = { vid: String(id || '').slice(0, 8), pid: String(r.patient_id || '').slice(0, 8), pay: String(pay || '').slice(0, 19), st: '-', gt: '-', rows: Object.keys(r).length };
+    try {
+      const j = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-treatment/search', Module: 'HC', Data: { patient_visit_id: id, patient_id: r.patient_id || '', fr_treatment_date_time: '', to_treatment_date_time: '', payment_date_time: pay, page: 1, pageSize: 0 }, ContentType: 'application/json', AcceptType: 'application/json' });
+      dbg.st = j.TotalItems + '/' + (j.Data || []).length + (j.MessageCode ? ' ' + j.MessageCode : '') + (j.TotalItems === undefined ? ' RAW=' + JSON.stringify(j).slice(0, 220) : '');
+      sheets = (j.Data || []).filter((x) => x.active_flag !== 0 || true).slice().sort((a, b) => (a.treatment_date_time < b.treatment_date_time ? -1 : 1));
+      await Promise.all(sheets.map(async (sh) => {
+        try {
+          const q = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-treatment/get-print-preview', Module: 'HC', Data: { patient_treatment_ids: sh.patient_treatment_id }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' });
+          const d0 = (q.Data || [])[0] || {};
+          sh.drugs = d0.list_json_prescription || [];
+        } catch (e) { sh.drugs = null; }
+      }));
+      if (!sheets.length && r.patient_id) { // thử lại theo bệnh nhân (tờ điều trị có thể gắn lượt khám khác, vd lượt cấp cứu)
+        const j2 = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-treatment/search', Module: 'HC', Data: { patient_visit_id: '', patient_id: r.patient_id, fr_treatment_date_time: '', to_treatment_date_time: '', payment_date_time: pay, page: 1, pageSize: 0 }, ContentType: 'application/json', AcceptType: 'application/json' });
+        sheets = (j2.Data || []).filter((x) => inWin(x.treatment_date_time)).sort((a, b) => (a.treatment_date_time < b.treatment_date_time ? -1 : 1)); sheetAlt = sheets.length > 0;
+        await Promise.all(sheets.map(async (sh) => { try { const q = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-treatment/get-print-preview', Module: 'HC', Data: { patient_treatment_ids: sh.patient_treatment_id }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' }); sh.drugs = ((q.Data || [])[0] || {}).list_json_prescription || []; } catch (e) { sh.drugs = null; } }));
+      }
+    } catch (e) { sheetErr = e.message; L.push('(Không lấy được tờ điều trị: ' + e.message + ')'); }
+    // Cận lâm sàng theo từng đợt chỉ định (bỏ dịch vụ giường/phòng)
+    const clsEv = []; let nGroups = 0; const vids = [id];
+    try {
+      const gj = await callS({ Method: { Method: 'POST' }, Url: '/api/cpoe-placer-order-group/search', Module: 'HC', Data: { page: 1, pageSize: 0, patient_visit_id: id, patient_id: r.patient_id || '', pharmacy_flag: false, payment_date_time: pay || null }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' });
+      dbg.gt = gj.TotalItems + '/' + (gj.Data || []).length + (gj.MessageCode ? ' ' + gj.MessageCode : '') + (gj.TotalItems === undefined ? ' RAW=' + JSON.stringify(gj).slice(0, 220) : '');
+      let groups = (gj.Data || []).filter((x) => !x.pharmacy_flag); nGroups = groups.length;
+      if (!groups.length && r.patient_id) {
+        const gj2 = await callS({ Method: { Method: 'POST' }, Url: '/api/cpoe-placer-order-group/search', Module: 'HC', Data: { page: 1, pageSize: 0, patient_visit_id: '', patient_id: r.patient_id, pharmacy_flag: false, payment_date_time: pay || null }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' });
+        groups = (gj2.Data || []).filter((x) => !x.pharmacy_flag && inWin(x.actual_ordering_date_time || x.created_date_time)); nGroups = groups.length;
+      }
+      if (!sheets.length) { // tờ điều trị chỉ tìm được qua phiếu chỉ định: lấy thuốc theo mã tờ
+        const tids = []; groups.forEach((gp) => { if (gp.patient_treatment_id && tids.indexOf(gp.patient_treatment_id) < 0) tids.push(gp.patient_treatment_id); });
+        for (const tid of tids) {
+          const gp0 = groups.find((x) => x.patient_treatment_id === tid) || {}; const sh = { patient_treatment_id: tid, patient_treatment_no: '', treatment_date_time: gp0.actual_ordering_date_time || gp0.created_date_time || '', progression: '' };
+          try { const q = await callS({ Method: { Method: 'POST' }, Url: '/api/patient-treatment/get-print-preview', Module: 'HC', Data: { patient_treatment_ids: tid }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' }); sh.drugs = ((q.Data || [])[0] || {}).list_json_prescription || []; } catch (e) { sh.drugs = null; }
+          sheets.push(sh); sheetAlt = true;
+        }
+      }
+      groups.forEach((gp) => { if (gp.patient_visit_id && gp.patient_visit_id !== id && vids.indexOf(gp.patient_visit_id) < 0) vids.push(gp.patient_visit_id); });
+      await Promise.all(groups.map(async (gp) => {
+        try {
+          const oj = await callS({ Method: { Method: 'POST' }, Url: '/api/cpoe-placer-order/search', Module: 'HC', Data: { cpoe_placer_order_group_id: gp.cpoe_placer_order_group_id, patient_visit_id: gp.patient_visit_id || id, to_date: null, payment_date_time: pay || null, page: 1, pageSize: 0 }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' });
+          const items = (oj.Data || []).filter((o) => o.legal_classification_rcd !== 'ROOM' && o.cpoe_placer_order_status_rcd !== 'CANCELLED' && o.cpoe_placer_order_status_rcd !== 'CANCEL' && o.item_name);
+          if (!items.length) return;
+          const t = String(gp.actual_ordering_date_time || items[0].status_date_time || gp.created_date_time || '').slice(0, 16);
+          const seen = {}; const names = [];
+          items.forEach((o) => { const nm = String(o.item_name).replace(/\s*\[\d{2}\/\d{2}\/\d{4}[^\]]*\]\s*$/, '').trim(); if (!seen[nm]) { seen[nm] = 1; if (!/^(Phí vận chuyển|Thu phí)/i.test(nm)) names.push(nm); } });
+          if (names.length) clsEv.push([t, 'Chỉ định: ' + names.join('; ')]);
+        } catch (e) {}
+      }));
+    } catch (e) { L.push('(Không lấy được cận lâm sàng: ' + e.message + ')'); }
+    // Kết quả cận lâm sàng: xét nghiệm (giá trị) + chẩn đoán hình ảnh/điện tim (kết luận)
+    try {
+      const nowIso = new Date(Date.now() + 7 * 3600e3).toISOString().slice(0, 19);
+      let sall = [];
+      for (const vid of vids) {
+        try {
+        const sj = await callS({ Method: { Method: 'POST' }, Url: '/api/subclinical-result/search', Module: 'HC', Data: { patient_id: r.patient_id || '', patient_visit_id: vid, frm_date: nowIso, to_date: nowIso, cpoe_placer_group_ids: '', cpoe_placer_group_codes: '', payment_date_time: pay || null, page: 1, pageSize: 0 }, ContentType: 'application/json', AcceptType: 'application/json' });
+          sall = sall.concat(sj.Data || []);
+        } catch (e) {}
+      }
+      const sres = sall.filter((x) => x.completed);
+      const labs = sres.filter((x) => x.item_type === 'LAB'), rads = sres.filter((x) => x.item_type !== 'LAB');
+      const isoT = (v) => String(v || '').slice(0, 16);
+      if (labs.length) {
+        const byId = {}; labs.forEach((x) => { byId[x.id] = x; });
+        for (let i = 0; i < labs.length; i += 25) {
+          const part = labs.slice(i, i + 25);
+          try {
+            const lj = await callS({ Method: { Method: 'POST' }, Url: '/api/lab-service-request/lab-work-order-join-2', Module: 'HC', Data: { lab_work_order_ids: part.map((x) => x.id).join(','), completed_flag: true, payment_date_time: pay || null, verify_flag: true }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' });
+            let arr = lj.Data; if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch (e) { arr = []; } }
+            const grp = {};
+            (arr || []).forEach((a) => {
+              const src = byId[a.lab_work_order_id] || {}; const t = isoT(a.status_date_time || src.execute_time);
+              const v = (a.value != null && a.value !== '' ? a.value : a.result_value) || '';
+              if (v === '') return;
+              const k = t + '|' + (src.accession_number || '');
+              (grp[k] = grp[k] || { t: t, l: [] }).l.push(String(a.item_name || src.item_name || '').replace(/\s*\[[^\]]*\]\s*$/, '').trim() + ': ' + v + (a.uom_ref_name ? ' ' + a.uom_ref_name : '') + (a.high_flag ? ' ↑' : a.low_flag ? ' ↓' : ''));
+            });
+            Object.keys(grp).forEach((k) => clsEv.push([grp[k].t, 'Kết quả xét nghiệm: ' + grp[k].l.join('; ')]));
+          } catch (e) {}
+        }
+      }
+      await Promise.all(rads.map(async (x) => {
+        try {
+          const rj = await callS({ Method: { Method: 'POST' }, Url: '/api/radiology-imaging-service-request/view-report', Module: 'HC', Data: { accession_number: x.accession_number, check_type: x.check_type || '', payment_date_time: pay || null }, TimeOut: 0, ContentType: 'application/json', AcceptType: 'application/json' });
+          const dd = rj.Data || {};
+          const txt = String(dd.diagnose_result || dd.description_01 || '').replace(/<br\s*\/?>|<\/p>/gi, '; ').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').replace(/(; )+$/, '').trim();
+          if (txt) clsEv.push([isoT(dd.completed_date || dd.start_report_date_time || x.execute_time), 'Kết quả ' + (x.item_name || dd.service_name || '') + ': ' + txt]);
+        } catch (e) {}
+      }));
+    } catch (e) { L.push('(Không lấy được kết quả cận lâm sàng: ' + e.message + ')'); }
+    const pp = det.patient_problem_json || {};
+    let dr = {}; try { dr = JSON.parse(pp.diagnose_result || '{}') || {}; } catch (e) {}
+    const g = r.gender === 1 ? 'Nam' : (r.gender === 0 ? 'Nữ' : '');
+    const out = ['BÁO CÁO BỆNH NHÂN ' + LBL, '',
+      'Họ tên: ' + (r.full_name || '') + ' · ' + g + ' · Năm sinh: ' + (r.date_of_birth ? String(r.date_of_birth).slice(0, 4) : ''),
+      'Địa chỉ: ' + (r.location || ''), 'Chẩn đoán: ' + (r.icd_text || ''), 'Mã lượt khám: ' + (r.visit_code || '') + (r.ipd_code ? ' · Mã nội trú: ' + r.ipd_code : ''), '',
+      '1. TÌNH TRẠNG LÚC NHẬP VIỆN (' + fmtT(String(r.actual_visit_date_time || '').slice(0, 16)) + ')'];
+    const add = (k, v) => { if (v) out.push('- ' + k + ': ' + v); };
+    add('Lý do vào viện', pp.symptom); add('Bệnh sử', pp.progression || dr.dbvv); add('Tiền sử bản thân', pp.self_anamnesis); add('Khám toàn thân', dr.x2); add('Khám bộ phận', dr.x3);
+    if (vs[0]) add('Sinh hiệu lúc nhập', vsLine(vs[0]));
+    out.push('', '2. DIỄN BIẾN VÀ XỬ TRÍ THEO THỜI GIAN');
+    const ev = [];
+    const st = buildStays(r);
+    st.forEach((x, i) => { ev.push([x.s, (i === 0 ? 'Nhập ' : 'Chuyển đến ') + kn(x.k)]); });
+    if (dr.chidinhcls || dr.ycxncls) ev.push([String(r.actual_visit_date_time || '').slice(0, 16), 'Cận lâm sàng chỉ định: ' + String(dr.chidinhcls || dr.ycxncls).replace(/\n/g, '; ')]);
+    if (dr.tb_hdt) ev.push([String(r.actual_visit_date_time || '').slice(0, 16), 'Hướng điều trị: ' + dr.tb_hdt]);
+    sheets.forEach((sh) => {
+      const t = String(sh.treatment_date_time || sh.created_date_time || '').slice(0, 16);
+      ev.push([t, 'Diễn biến: ' + String(sh.progression || '').replace(/\n/g, '; ')]);
+      if (sh.drugs && sh.drugs.length) ev.push([t, 'Thuốc: ' + sh.drugs.map((d) => (d.item_name || '') + (d.drug_content ? ' ' + d.drug_content : '') + (d.immediate_dispense_qty ? ' x' + parseInt(d.immediate_dispense_qty, 10) + (d.uom_ref_name ? ' ' + d.uom_ref_name : '') : '') + (d.usage ? ' [' + d.usage + ']' : '')).join('\n      ')]);
+      else if (sh.drugs) ev.push([t, 'Thuốc: không có y lệnh thuốc']);
+    });
+    clsEv.forEach((e) => ev.push(e));
+    const tEnd = String(r.treatment_date_time || '').slice(0, 16);
+    vs.forEach((v) => { const tv = String(v.check_time).slice(0, 16); if (tEnd && tv > tEnd) return; const l = vsLine(v); if (l) ev.push([tv, 'Sinh hiệu: ' + l]); }); // bỏ sinh hiệu sau giờ ra/chuyển viện
+    let dest = ''; if (tab === 'cv') {
+      dest = String((pp.objectjson_hospital_transfer || {}).hospital_transfer || '').trim();
+      if (!dest) { const m = clsEv.map((e) => /đến\s+(Bệnh viện[^;()]*)/i.exec(e[1])).filter(Boolean)[0]; if (m) dest = m[1].trim(); }
+    }
+    ev.push([tEnd, LBL + (dest ? ' đến ' + dest : '')]);
+    ev.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0));
+    ev.forEach((e) => out.push(fmtT(e[0]) + '  ' + e[1]));
+    if (!sheets.length && sheetErr) out.push('', sheetErr ? '(Lỗi khi đọc tờ điều trị: ' + sheetErr + ')' : '');
+    return L.concat(out).join('\n');
+  }
+  async function report(R, it, tab) {
+    dl.textContent = '';
+    const box = cls('div', 'hs-dl hs-rp');
+    box.appendChild(cls('h3', '', 'Chi tiết nằm viện'));
+    const pre = cls('div', 'hs-li', 'Đang lấy dữ liệu...'); pre.style.cssText = 'white-space:pre-wrap;max-height:60vh;padding:14px 18px;font:13px/1.55 system-ui,sans-serif;color:#0f172a';
+    box.appendChild(pre);
+    const ft = cls('div', 'ft'); const c = cls('button', 'hs-b g', 'Đóng'), pr = cls('button', 'hs-b v', 'In'); c.type = pr.type = 'button';
+    c.onclick = () => dl.classList.remove('on');
+    pr.onclick = () => { const w = window.open('', '_blank'); if (!w) return; w.document.write('<pre style="font:14px/1.6 system-ui,sans-serif;white-space:pre-wrap;margin:24px"></pre>'); w.document.querySelector('pre').textContent = pre.textContent; w.document.close(); w.print(); };
+    ft.append(c, pr); box.appendChild(ft); dl.appendChild(box); dl.classList.add('on');
+    try { pre.textContent = await buildReport(R, it, tab); } catch (e) { pre.textContent = 'Lỗi: ' + e.message; }
+  }
+  function histText(R, r) {
+    const kn = (k) => (k ? (R.khoaMap[k] || 'Khoa khác') : '?');
+    return (r.list_json_patient_visit_specialty_history || []).slice().sort((a, b) => ((a.from_date_time || '') < (b.from_date_time || '') ? -1 : 1))
+      .map((x) => kn(x.clinical_specialty_rid) + ' ' + fmtT(String(x.from_date_time || '').slice(0, 16)) + (x.transfer_status_rcd && x.transfer_status_rcd !== 'ACCEPTED' ? ' [' + x.transfer_status_rcd + ']' : '') + (x.active_flag === 0 ? ' [đã hủy]' : '') + (x.cancel_transfer_reason || x.cancel_receive_reason ? ' [hủy chuyển]' : '')).join(' → ');
+  }
+  function detItems(R, tab) {
+    if (tab === 'pres') return R.pres.map((x) => ({ r: x.r, t: x.since, prev: x.prev, next: null }));
+    const out = [];
+    R.days.forEach((d) => { const ev = R.res[d].ev; if (ev && ev[tab]) ev[tab].forEach((st) => out.push({ r: st.r, t: tab === 'vao' ? st.s : st.e, prev: st.prev, next: st.next })); });
+    out.sort((a, b) => (a.t < b.t ? -1 : 1));
+    return out;
+  }
+  function detPanel(R) {
+    const wrap = cls('div');
+    const tabs = cls('div', 'hs-tabs'), box = cls('div');
+    const kn = (k) => (k ? (R.khoaMap[k] || 'Khoa khác') : '');
+    function paint() {
+      tabs.textContent = ''; box.textContent = '';
+      TABS.forEach((t) => {
+        const n = detItems(R, t[0]).length;
+        const b = cls('button', t[0] === detTab ? 'on' : '', t[1] + ' (' + n + ')'); b.type = 'button';
+        b.onclick = () => { detTab = t[0]; paint(); };
+        tabs.appendChild(b);
+      });
+      const items = detItems(R, detTab);
+      const timeH = { pres: 'Vào khoa lúc', vao: 'Vào khoa lúc', ck: 'Chuyển lúc' }[detTab] || 'Ra lúc';
+      const extra = (detTab === 'pres' || detTab === 'vao') ? [['Nguồn', (it) => (it.prev ? kn(it.prev) : 'Vào trực tiếp')]]
+        : detTab === 'ck' ? [['Chuyển đến khoa', (it) => kn(it.next)]]
+        : [['Hướng xử trí', (it) => it.r.treatment_plans_name || ''], ['Kết quả', (it) => it.r.treatment_result_ref_name || '']];
+      if (detTab === 'vao' || detTab === 'ck') extra.push(['Lịch sử khoa (đối chiếu)', (it) => histText(R, it.r)]);
+      if (detTab === 'pres') extra.push(['Hướng xử trí', (it) => it.r.treatment_plans_name || '']);
+      const yob = (it) => (it.r.date_of_birth ? String(it.r.date_of_birth).slice(0, 4) : '');
+      const isX = detTab === 'ra' || detTab === 'xrv' || detTab === 'cv';
+      const cols = isX ? [['STT', null], ['Họ tên', (it) => it.r.full_name || ''], ['Năm sinh', yob], ['Địa chỉ', (it) => it.r.location || ''], ['Chẩn đoán', (it) => it.r.icd_text || ''],
+        [timeH, (it) => fmtT(it.t)], ['Kết quả', (it) => it.r.treatment_result_ref_name || '']].concat([['Chi tiết', null]]) :
+        [['STT', null], ['Họ tên', (it) => it.r.full_name || ''], ['Giới', (it) => (it.r.gender === 1 ? 'Nam' : (it.r.gender === 0 ? 'Nữ' : ''))],
+        ['Ngày sinh', (it) => fmtD(it.r.date_of_birth)], ['Mã lượt khám', (it) => it.r.visit_code || ''], ['Mã nội trú', (it) => it.r.ipd_code || ''],
+        [timeH, (it) => fmtT(it.t)]].concat(extra, [['Phòng · giường', (it) => (it.r.ipd_room_name || '') + (it.r.bed_code ? ' · ' + it.r.bed_code : '')], ['Chẩn đoán', (it) => it.r.icd_text || '']]);
+      const t = cls('table', 'dt'), hr = cls('tr');
+      cols.forEach((c) => hr.appendChild(cls('th', '', c[0]))); t.appendChild(hr);
+      if (!items.length) { const tr = cls('tr'); const td = cls('td', '', 'Không có'); td.colSpan = cols.length; tr.appendChild(td); t.appendChild(tr); }
+      items.forEach((it, i) => {
+        const tr = cls('tr');
+        cols.forEach((c, j) => {
+          if (c[0] === 'Chi tiết') { const td = cls('td'); const bt = cls('button', 'hs-b v', 'Xem'); bt.type = 'button'; bt.onclick = () => report(R, it, detTab); td.appendChild(bt); tr.appendChild(td); return; }
+          const v = c[1] ? c[1](it) : String(i + 1);
+          const td = cls('td', j === 0 || c[0] === 'Mã lượt khám' || c[0] === 'Ngày sinh' || c[0] === 'Năm sinh' || c[0] === timeH ? 'n' : '', v.length > 90 && !isX ? v.slice(0, 90) + '…' : v);
+          if (v.length > 90 && !isX) td.title = v;
+          tr.appendChild(td);
+        });
+        t.appendChild(tr);
+      });
+      box.appendChild(t);
+    }
+    paint(); wrap.append(cls('div', 'hs-t', 'Chi tiết bệnh nhân' + (R.days.length > 1 ? ' (cả khoảng đang xem)' : '')), tabs, box);
+    return wrap;
+  }
+
+  function render(R) {
+    last = R; bodyEl.textContent = '';
+    const chips = cls('div', 'hs-cards');
+    if (!R.empty && R.hisCount !== R.dangNam) chips.appendChild(cls('div', 'hs-chip w', 'Bộ lọc "đang điều trị" của HIS cho: ' + R.hisCount));
+    const lastDay = R.days[R.days.length - 1], lo = R.res[lastDay];
+    if (R.empty) { /* không so sánh */ } else if (R.seed && lo && lo.open && lo.con !== R.dangNam) chips.appendChild(cls('div', 'hs-chip w', 'Hiện còn trên bảng = ' + lo.con + ', HIS đang điều trị = ' + R.dangNam + ' → lệch ' + (lo.con - R.dangNam) + ' (kiểm tra hoặc Điều chỉnh)'));
+    if (!R.empty && R.nLocks) chips.appendChild(cls('div', 'hs-chip k', '🔒 ' + R.nLocks + ' ngày đã chốt (số cố định)'));
+    bodyEl.appendChild(chips);
+    if (mode !== 'ngay') table(R, 'Tổng hợp theo tháng', monthRows(R), false);
+    if (!R.empty && R.pres) {
+      const dt = document.createElement('details'); dt.className = 'hs-dt';
+      dt.appendChild(cls('summary', '', 'Ca lệch giữa lịch sử và bộ lọc HIS — để đối chiếu'));
+      const row = (x) => x.code + ' · vào khoa ' + x.since.replace('T', ' ') + (x.plan ? ' · ' + x.plan : '');
+      const mkList = (t, a, warn) => { if (!a.length) return; dt.appendChild(cls('div', 'hs-t', t)); const u = cls('div', 'hs-li' + (warn ? ' w' : '')); u.textContent = a.map(row).join('\n'); dt.appendChild(u); };
+      mkList('Chỉ có theo lịch sử, bộ lọc HIS không có (' + R.presOnly.length + ')', R.presOnly, true);
+      mkList('Chỉ có trong bộ lọc HIS, lịch sử không tính đang ở khoa này (' + R.hisOnly.length + ')', R.hisOnly, true);
+      if (R.presOnly.length || R.hisOnly.length) bodyEl.appendChild(dt);
+    }
+    if (mode !== 'nam') table(R, mode !== 'ngay' ? 'Chi tiết từng ngày' : 'Số liệu ngày ' + vn(R.days[0]), R.days.map((d) => Object.assign({ label: d.slice(8) + '/' + d.slice(5, 7), date: d }, R.res[d])), true);
+    if (!R.empty && R.pres) bodyEl.appendChild(detPanel(R));
+    bodyEl.appendChild(cls('div', 'hs-foot',
+      'Ngày D tính từ 7h ngày D đến 7h ngày D+1 (dòng vàng: ngày chưa kết thúc). Hiện còn = Bệnh cũ + Vào − (Ra + Chuyển khoa + Chuyển viện + Tử vong + Nặng XV + Trốn viện). Tử vong, Nặng - Xuất viện, Trốn viện: nhấp đôi để sửa; HIS xem các ca này là xuất viện nên số nhập tay tự trừ khỏi Ra viện. Ngày đang diễn ra chỉ tính đến thời điểm hiện tại. Cột Ra viện = Ra viện + Xin ra viện (ghi chú "xin RV n"); tab Ra viện chỉ gồm ca ra viện thường.'));
+    const b = cls('button', 'hs-b g', '💾 Tải CSV'); b.type = 'button'; b.style.marginTop = '10px';
+    b.onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCSV(last)], { type: 'text/csv;charset=utf-8' })); a.download = 'thong-ke-noi-tru.csv'; document.body.appendChild(a); a.click(); a.remove(); };
+    bodyEl.appendChild(b);
+  }
+
+  function lastValidDay() { const n = new Date(); return n.getHours() >= 7 ? ymd(n) : addDays(ymd(n), -1); }
+  function periodOf(d) {
+    const y = +d.slice(0, 4), m = +d.slice(5, 7);
+    let m1 = m, m2 = m;
+    if (mode === 'quy') { m1 = Math.floor((m - 1) / 3) * 3 + 1; m2 = m1 + 2; }
+    if (mode === 'nam') { m1 = 1; m2 = 12; }
+    return [y + '-' + pad(m1) + '-01', ymd(new Date(y, m2, 0))];
+  }
+  function range() {
+    const d = fEl.value || ymd(new Date());
+    if (mode === 'ngay') return [d, d];
+    const pr = periodOf(d), cap = lastValidDay();
+    return [pr[0], pr[1] > cap ? cap : pr[1]];
+  }
+  function shiftDate(d, n) {
+    if (mode === 'ngay') return addDays(d, n);
+    const k = mode === 'thang' ? 1 : (mode === 'quy' ? 3 : 12);
+    const t = new Date(+d.slice(0, 4), +d.slice(5, 7) - 1 + n * k, 1);
+    return ymd(t);
+  }
+  function emptyR(d) {
+    const o = { cu: 0, vao: 0, ra: 0, ck: 0, cv: 0, tv: 0, nxv: 0, tron: 0, khac: 0, adj: 0, con: 0, src: {}, dst: {}, derived: 0, open: false };
+    const res = {}; res[d] = o;
+    return { rid: selEl.value, days: [d], res: res, dangNam: 0, seed: { at: '', count: null, derived: null }, nLocks: 0, totals: [0, 0, 0], empty: true };
+  }
+  function PERIOD_NAME() {
+    const d = fEl.value || ymd(new Date());
+    if (mode === 'thang') return 'Tháng ' + d.slice(5, 7) + '/' + d.slice(0, 4);
+    if (mode === 'quy') return 'Quý ' + (Math.floor((+d.slice(5, 7) - 1) / 3) + 1) + '/' + d.slice(0, 4);
+    return 'Năm ' + d.slice(0, 4);
+  }
+  function upNote() {
+    if (kind === 'opd') { const r = opdRange(); noteEl.textContent = '🕖 Ngoại trú: ' + (mode === 'ngay' ? 'ngày ' + vn(r[0]) + ' (0h–24h)' : PERIOD_NAME().toLowerCase() + ' (0h–24h mỗi ngày)'); return; }
+    const r = range();
+    noteEl.textContent = '🕖 ' + (mode === 'ngay'
+      ? 'Từ 7h ngày ' + vn(r[0]) + ' đến 7h ngày ' + vn(addDays(r[0], 1))
+      : PERIOD_NAME() + ' — từ 7h ngày ' + vn(r[0]) + ' đến 7h ngày ' + vn(addDays(r[1], 1)));
+  }
+  function khoaMap() { const m = {}; khoaList.forEach((k) => { m[k.rid] = k.name; }); return m; }
+  // ---- Ngoại trú: đếm lượt khám theo phòng/khoa (API hàng đợi khám, không tải Excel) ----
+  let kind = 'opd', kindBtns = {}, headEl = null;
+  const OPD_AREA = '00000000-0000-0000-0000-000000000105';
+  let opdVar = 1; // 0: Data dạng object · 1: Data dạng chuỗi JSON · 2: object, ô tìm kiếm null
+  const OPD_VARS = 3;
+  async function opdPage(d, page, ed) {
+    const nul = opdVar === 2 ? null : '';
+    const data = { person_code: nul, visit_code: nul, full_name: nul, gender: nul, date_of_birth: nul, health_insurance_id: nul, area_id: OPD_AREA, work_queue_type_rcd: 'CLI', fr_created_date_time: d + 'T00:00:00', to_created_date_time: d + 'T23:59:59', search_query: '', active_flag: [], arr_active_flag: null, include_hour: true, insurance_flag: '', visit_type_rcd: '', ed_flag: ed ? true : null, has_medical_report_flag: null, clinical_specialty_rid: ed ? 'b7111066-1f2e-43c7-a0bd-2a984ec56d8f' : null, service_clinic_id: null, page: page, pageSize: 100 };
+    return call({ Method: { Method: 'POST' }, Url: '/api/processing-queue/search', Module: 'HC', ContentType: 'application/json', AcceptType: 'application/json', Data: opdVar === 1 ? JSON.stringify(data) : data });
+  }
+  const OPD_ORDER = ['PK CS2_Nội TH 1', 'PK CS2_Nội TH 2', 'PK CS2_Nội TH 3', 'PK CS2_Ngoại TH', 'PK CS2_Phụ Sản', 'PK CS2_Nhi', 'PK CS2_Mắt', 'PK CS2_RHM', 'PK CS2_TMH', 'PK CS2_YHCT', 'PK CS2_CC', 'PK CS2_Dịch vụ', 'Khám Sức khỏe', 'Tiêm ngừa'];
+  function opdLabel(x) {
+    const a = String(x.area_name || '').toLowerCase().replace(/\s+/g, ' ');
+    if (/sức kh(ỏe|oẻ)/.test(a)) return 'Khám Sức khỏe';
+    if (/tiêm/.test(a)) return 'Tiêm ngừa';
+    if (x._ed || /cấp cứu/.test(a)) return x.health_insurance_id ? 'PK CS2_CC' : 'PK CS2_Dịch vụ'; // cấp cứu: có BHYT → CC, không BHYT → Dịch vụ
+    if (!x.health_insurance_id) return 'PK CS2_Dịch vụ'; // không có số thẻ BHYT = khám dịch vụ (thu viện phí)
+    let m = a.match(/nội tổng hợp\s*(\d)/); if (m && /^[123]$/.test(m[1])) return 'PK CS2_Nội TH ' + m[1];
+    if (/ngoại/.test(a)) return 'PK CS2_Ngoại TH';
+    if (/phụ sản/.test(a)) return 'PK CS2_Phụ Sản';
+    if (/khám nhi/.test(a)) return 'PK CS2_Nhi';
+    if (/mắt/.test(a)) return 'PK CS2_Mắt';
+    if (/răng hàm mặt/.test(a)) return 'PK CS2_RHM';
+    if (/tai mũi họng/.test(a)) return 'PK CS2_TMH';
+    if (/y học cổ truyền/.test(a)) return 'PK CS2_YHCT';
+    return null; // phòng không có trong danh sách báo cáo: bỏ qua
+  }
+  async function opdDay(d) {
+    const rows = [], seen = {}; window.__hlxOpdDiag = '';
+    let tried = 0;
+    for (let page = 1; page <= 60; page++) {
+      let j;
+      try { j = await opdPage(d, page); } catch (e) { if (page === 1 && ++tried < OPD_VARS) { opdVar = (opdVar + 1) % OPD_VARS; page = 0; continue; } throw e; }
+      if (page === 1 && typeof j.TotalItems !== 'number' && ++tried < OPD_VARS) { opdVar = (opdVar + 1) % OPD_VARS; page = 0; continue; } // phản hồi không hợp lệ: thử cách gửi khác (0 ca vẫn là hợp lệ)
+      (j.Data || []).filter((x) => !/test/i.test(String(x.full_name || x.patient_name || ''))).forEach((x) => { const k = x.processing_queue_id || (x.patient_visit_id + '|' + x.area_id + '|' + x.created_date_time); if (!seen[k]) { seen[k] = 1; rows.push(x); } });
+      window.__hlxOpdDiag = 'danh sách khám: TotalItems=' + j.TotalItems + ', cách gửi ' + opdVar;
+      const tot = j.TotalItems || 0;
+      if (!(j.Data || []).length || rows.length >= tot || page >= (j.PageCount || 1)) break;
+    }
+    // Ca cấp cứu tiếp nhận ở trang Quản lý cấp cứu (thường không BHYT) → tính vào PK CS2_CC
+    try {
+      for (let page = 1; page <= 20; page++) {
+        const j = await opdPage(d, page, true);
+        (j.Data || []).filter((x) => !/test/i.test(String(x.full_name || x.patient_name || ''))).forEach((x) => { x._ed = true; const k = x.patient_visit_id + '|' + x.created_date_time; if (!seen[k] && !rows.some((y) => y.patient_visit_id === x.patient_visit_id)) { seen[k] = 1; rows.push(x); } });
+        if (!(j.Data || []).length || page >= (j.PageCount || 1)) break;
+      }
+    } catch (e) { window.__hlxOpdDiag += ' · lỗi DS cấp cứu: ' + e.message; }
+    const by = {}; let skip = 0, bhyt = 0; const cases = [];
+    rows.forEach((x) => {
+      const nm = opdLabel(x);
+      if (!nm) { skip++; return; }
+      const o = by[nm] = by[nm] || { tong: 0, bhyt: 0, dv: 0 }; o.tong++;
+      const isB = !!x.health_insurance_id || nm === 'PK CS2_CC'; if (isB) o.bhyt++; else o.dv++;
+      cases.push({ nm: nm, ten: x.full_name || x.patient_name || '', ns: x.date_of_birth ? String(x.date_of_birth).slice(0, 4) : '', gt: x.gender === 1 ? 'Nam' : (x.gender === 0 ? 'Nữ' : ''), ma: x.visit_code || x.person_code || '', gio: String(x.created_date_time || x.actual_visit_date_time || '').slice(0, 16), loai: isB ? 'BHYT' : 'Dịch vụ', phong: x.area_name || '' });
+    });
+    const tot = rows.length - skip; bhyt = tot - ((by['PK CS2_CC'] || {}).tong || 0) - ((by['PK CS2_Dịch vụ'] || {}).tong || 0); // BHYT = các phòng còn lại
+    return { day: d, total: tot, by: by, skip: skip, bhyt: bhyt, cases: cases };
+  }
+  function opdRange() {
+    const d = fEl.value || ymd(new Date()), today = ymd(new Date());
+    if (mode === 'ngay') return [d, d];
+    const pr = periodOf(d);
+    return [pr[0], pr[1] > today ? today : pr[1]];
+  }
+  function dlCSV(name, head, rows) {
+    const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+    const txt = '﻿' + [head].concat(rows).map((r) => r.map(q).join(',')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'text/csv;charset=utf-8' })); a.download = name + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+  const CASE_HEAD = ['STT', 'Họ tên', 'Năm sinh', 'Giới', 'Mã lượt khám', 'Giờ tiếp nhận', 'Phòng / khoa', 'Loại'];
+  const caseRows = (cs) => cs.slice().sort((a, b) => (a.gio < b.gio ? -1 : 1)).map((c, i) => [i + 1, c.ten, c.ns, c.gt, c.ma, c.gio ? fmtT(c.gio) : '', c.nm, c.loai]);
+  function showCases(title, cs, fname) {
+    dl.textContent = '';
+    const box = cls('div', 'hs-dl hs-rp'); box.style.cssText = 'width:min(900px,96vw);max-height:94vh;overflow:auto';
+    box.appendChild(cls('h3', '', title + ' (' + cs.length + ' ca)'));
+    const w = cls('div'); w.style.cssText = 'padding:0 18px;overflow:auto;max-height:64vh';
+    const t = cls('table', 'hs'); const hr = cls('tr'); CASE_HEAD.forEach((h) => hr.appendChild(cls('th', '', h))); t.appendChild(hr);
+    caseRows(cs).forEach((r) => { const tr = cls('tr'); r.forEach((v) => tr.appendChild(cls('td', '', String(v)))); t.appendChild(tr); });
+    w.appendChild(t); box.appendChild(w);
+    const ft = cls('div', 'ft'); const c = cls('button', 'hs-b g', 'Đóng'), d = cls('button', 'hs-b v', '⬇ Tải danh sách'); c.type = d.type = 'button';
+    c.onclick = () => dl.classList.remove('on'); d.onclick = () => dlCSV(fname, CASE_HEAD, caseRows(cs));
+    ft.append(c, d); box.appendChild(ft); dl.appendChild(box); dl.classList.add('on');
+  }
+  function opdRender(list, rg) {
+    bodyEl.textContent = '';
+    const agg = {}, T = { tong: 0, bhyt: 0, dv: 0 }; let skipN = 0; const allC = [];
+    OPD_ORDER.forEach((n) => { agg[n] = { tong: 0, bhyt: 0, dv: 0 }; });
+    list.forEach((r) => { skipN += r.skip || 0; (r.cases || []).forEach((c) => allC.push(c)); Object.keys(r.by).forEach((nm) => { agg[nm].tong += r.by[nm].tong; agg[nm].bhyt += r.by[nm].bhyt || 0; agg[nm].dv += r.by[nm].dv || 0; T.tong += r.by[nm].tong; T.bhyt += r.by[nm].bhyt || 0; T.dv += r.by[nm].dv || 0; }); });
+    const mkT = (head, rows, foot, topBold) => {
+      const t = cls('table', 'hs'), hr = cls('tr');
+      if (head.length <= 5) { t.style.cssText = 'width:auto;min-width:420px;margin:6px auto'; t.classList.add('nr'); }
+      head.forEach((h) => hr.appendChild(cls('th', '', h))); t.appendChild(hr);
+      rows.forEach((r, ri) => { const tr = cls('tr', topBold && ri === 0 ? 'm' : ''); r.forEach((v, i) => { const td = cls('td', ''); if (v && v.nodeType) td.appendChild(v); else td.textContent = String(v); tr.appendChild(td); }); t.appendChild(tr); });
+      if (foot) { const tr = cls('tr', 'm'); foot.forEach((v) => tr.appendChild(cls('td', '', String(v)))); t.appendChild(tr); }
+      bodyEl.appendChild(t);
+    };
+    bodyEl.appendChild(cls('div', 'hs-t', (mode === 'ngay' ? 'Khám ngoại trú ngày ' + vn(rg[0]) : 'Khám ngoại trú ' + PERIOD_NAME().toLowerCase()) + ' — theo phòng/khoa'));
+    const names = OPD_ORDER;
+    const rangeName = () => 'ngoai-tru-' + (mode === 'ngay' ? rg[0] : rg[0] + '_' + rg[1]);
+    const per = (nm) => rangeName() + (nm ? '-' + nm.replace(/\s+/g, '_') : '-tat-ca');
+    const act = (nm, label) => {
+      const cs = nm ? allC.filter((c) => c.nm === nm) : allC; const w = cls('div'); w.style.cssText = 'display:flex;gap:6px;justify-content:center';
+      const b1 = cls('button', 'hs-b', 'Xem'), b2 = cls('button', 'hs-b', '⬇'); b1.type = b2.type = 'button'; if (!nm) { b1.style.cssText = 'height:34px;padding:0 20px;font-size:14px;background:#f97316;color:#fff'; b2.style.cssText = 'height:34px;padding:0 16px;font-size:15px;background:#dc2626;color:#fff'; } else { b1.style.cssText = 'height:28px;padding:0 14px;font-size:12px;background:#2563eb;color:#fff'; b2.style.cssText = 'height:28px;padding:0 12px;font-size:12px;background:#16a34a;color:#fff'; } b2.title = 'Tải danh sách ' + label;
+      b1.onclick = () => showCases(label, cs, per(nm)); b2.onclick = () => dlCSV(per(nm), CASE_HEAD, caseRows(cs));
+      if (!cs.length) { b1.disabled = b2.disabled = true; b1.style.opacity = b2.style.opacity = '.35'; b1.style.cursor = b2.style.cursor = 'default'; b1.style.pointerEvents = b2.style.pointerEvents = 'none'; }
+      w.append(b1, b2); return w;
+    };
+    mkT(['Phòng / khoa', 'Tổng lượt khám', 'BHYT', 'Dịch vụ', 'Chi tiết'], [['Tổng khám ngoại trú', T.tong, T.bhyt, T.dv, act('', 'Toàn bộ ngoại trú')]].concat(names.map((n) => [n, agg[n].tong, agg[n].bhyt, agg[n].dv, act(n, n)])), null, 1);
+    if (mode !== 'ngay') {
+      const grp = {};
+      if (mode === 'thang') list.forEach((r) => { grp[r.day.slice(8) + '/' + r.day.slice(5, 7)] = [r]; });
+      else list.forEach((r) => { const k = r.day.slice(5, 7) + '/' + r.day.slice(0, 4); (grp[k] = grp[k] || []).push(r); });
+      bodyEl.appendChild(cls('div', 'hs-t', mode === 'thang' ? 'Từng ngày' : 'Từng tháng'));
+      mkT([mode === 'thang' ? 'Ngày' : 'Tháng'].concat(names, ['Tổng']), Object.keys(grp).map((k) => [k].concat(names.map((n) => grp[k].reduce((x, r) => x + (r.by[n] ? r.by[n].tong : 0), 0)), [grp[k].reduce((x, r) => x + r.total, 0)])), ['Cộng'].concat(names.map((n) => agg[n].tong), [T.tong]));
+    }
+    bodyEl.appendChild(cls('div', 'hs-foot', 'Ngoại trú tính theo ngày dương lịch (0h–24h); tổng lượt khám bằng số dòng trong danh sách khám của HIS. Lượt không có số thẻ BHYT tính vào PK CS2_Dịch vụ (PK CS2_CC chỉ gồm ca cấp cứu có BHYT); phòng không có trong danh sách báo cáo bị bỏ qua' + (skipN ? ' (đã bỏ qua ' + skipN + ' lượt)' : '') + '. Số liệu đọc trực tiếp từ HIS, không lưu thông tin bệnh nhân.'));
+  }
+  let opdSeq = 0;
+  async function runOpd() {
+    const my = ++opdSeq, rg = opdRange();
+    stEl.textContent = 'Đang tải số liệu ngoại trú...'; goBtn.disabled = true; bodyEl.textContent = '';
+    try {
+      const days = []; for (let d = rg[0]; d <= rg[1]; d = addDays(d, 1)) days.push(d);
+      const out = new Array(days.length); let done = 0, idx = 0;
+      const worker = async () => { while (idx < days.length) { const i = idx++; out[i] = await opdDay(days[i]); done++; if (my === opdSeq) stEl.textContent = 'Đã tải ' + done + '/' + days.length + ' ngày...'; } };
+      await Promise.all([worker(), worker(), worker()].slice(0, Math.min(3, days.length)));
+      if (my !== opdSeq) return;
+      opdRender(out, rg); stEl.textContent = 'Xong lúc ' + nowStr().replace('T', ' ') + (out.every((o) => !o.total) ? ' · [chẩn đoán: ' + (window.__hlxOpdDiag || 'không có phản hồi') + ']' : '');
+    } catch (e) { if (my !== opdSeq) return; stEl.textContent = 'Lỗi: ' + e.message + (/40[13]|440/.test(e.message) ? ' — tải lại trang rồi mở lại.' : ''); }
+    if (my === opdSeq) goBtn.disabled = false;
+  }
+  let runSeq = 0;
+  async function run() {
+    if (kind === 'opd') return runOpd();
+    const my = ++runSeq;
+    const rg = range();
+    if (mode === 'ngay' && rg[0] > lastValidDay()) {
+      stEl.textContent = 'Ngày ' + vn(rg[0]) + ' chưa tới — chưa có số liệu.';
+      render(emptyR(rg[0])); return;
+    }
+    stEl.textContent = 'Đang tải số liệu...'; goBtn.disabled = true;
+    render(emptyR(rg[0]));
+    try {
+      const R = await compute(selEl.value, khoaMap(), rg[0], rg[1], (m) => { if (my === runSeq) stEl.textContent = m; });
+      if (my !== runSeq) return;
+      stEl.textContent = 'Xong lúc ' + nowStr().replace('T', ' '); render(R);
+    } catch (e) { if (my !== runSeq) return; stEl.textContent = 'Lỗi: ' + e.message + (/40[13]/.test(e.message) ? ' — chưa lấy được thông tin đăng nhập, hãy tải lại trang rồi mở lại.' : ''); }
+    if (my === runSeq) goBtn.disabled = false;
+  }
+
+  // ---- Hộp thoại giữa màn hình (thay cho prompt) ----
+  function dialog(title, fields, onSave, infoFn, okText) {
+    dl.textContent = '';
+    const box = cls('div', 'hs-dl');
+    if (fields.some((x) => x.extra || x.custom)) box.style.cssText = 'width:min(760px,96vw);max-height:94vh;overflow:auto';
+    box.appendChild(cls('h3', '', title));
+    const f = cls('div', 'f');
+    const inputs = {};
+    fields.forEach((x) => {
+      const cap = (t) => String(t).charAt(0).toUpperCase() + String(t).slice(1);
+      const lb = cls('label', '', cap(x.label));
+      if (x.hint) lb.appendChild(cls('small', '', cap(x.hint)));
+      if (x.custom) { lb.appendChild(x.custom()); f.appendChild(lb); inputs[x.key] = { value: '', addEventListener() {} }; return; }
+      const i = cls('input', 'hs-in in'); i.type = x.type || 'text'; if (x.value != null) i.value = x.value; if (x.ph) i.placeholder = cap(x.ph);
+      if (x.type === 'password') i.autocomplete = 'new-password';
+      if (x.mask) { i.type = 'text'; i.autocomplete = 'off'; i.name = 'hlx' + Math.random().toString(36).slice(2); i.style.webkitTextSecurity = 'disc'; i.setAttribute('data-lpignore', 'true'); if (x.maxlen) { i.setAttribute('inputmode', 'numeric'); i.maxLength = x.maxlen; } }
+      if (x.mask) {
+        const wr = document.createElement('div'); wr.style.cssText = 'position:relative'; i.style.paddingRight = '40px'; i.style.boxSizing = 'border-box'; i.style.width = '100%';
+        const EYE = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>', EYE0 = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#334155" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg>';
+        const eye = cls('button', ''); eye.innerHTML = EYE0; eye.type = 'button'; eye.title = 'Hiện/ẩn mật khẩu'; eye.tabIndex = -1;
+        eye.style.cssText = 'position:absolute;right:4px;top:50%;transform:translateY(-50%);border:0;background:transparent;cursor:pointer;line-height:0;padding:4px 8px';
+        eye.onclick = () => { const show = i.style.webkitTextSecurity !== 'none'; i.style.webkitTextSecurity = show ? 'none' : 'disc'; eye.innerHTML = show ? EYE : EYE0; i.focus(); };
+        i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save.click(); } });
+        wr.append(i, eye); lb.appendChild(wr);
+      } else lb.appendChild(i);
+      f.appendChild(lb); inputs[x.key] = i; if (x.extra) f.appendChild(x.extra());
+    });
+    box.appendChild(f);
+    const info = cls('div', 'er'); info.style.color = '#0369a1'; info.style.padding = '8px 18px 0'; box.appendChild(info);
+    const upInfo = () => { if (!infoFn) return; const v = {}; Object.keys(inputs).forEach((k) => { v[k] = inputs[k].value.trim(); }); info.textContent = infoFn(v); };
+    Object.keys(inputs).forEach((k) => inputs[k].addEventListener('input', upInfo));
+    const er = cls('div', 'er'); box.appendChild(er);
+    const ft = cls('div', 'ft');
+    const cancel = cls('button', 'hs-b g', 'Hủy'); cancel.type = 'button';
+    const save = cls('button', 'hs-b v', okText || 'Lưu'); save.type = 'button';
+    cancel.onclick = () => dl.classList.remove('on');
+    save.onclick = async () => {
+      er.textContent = ''; save.disabled = true;
+      const v = {}; Object.keys(inputs).forEach((k) => { v[k] = inputs[k].value.trim(); });
+      try { const rs = await onSave(v); if (rs !== 'keep') dl.classList.remove('on'); } catch (e) { er.textContent = e.message; }
+      save.disabled = false;
+    };
+    ft.append(cancel, save); box.appendChild(ft);
+    dl.appendChild(box); dl.classList.add('on'); upInfo();
+    const first = Object.keys(inputs)[0]; if (first) setTimeout(() => inputs[first].focus(), 30);
+  }
+  const khoaName = () => selEl.options[selEl.selectedIndex] ? selEl.options[selEl.selectedIndex].text : '';
+  function openSeed() {
+    dialog('Đặt số mốc — ' + khoaName(), [
+      { key: 'd', label: 'Ngày', hint: 'số bệnh nhân đang nằm lúc 7h sáng ngày này', type: 'date', value: ymd(new Date()) },
+      { key: 'c', label: 'Số bệnh nhân đang nằm', type: 'number', ph: 'ví dụ 8' },
+      { key: 'pw', label: 'Mật khẩu', mask: true },
+    ], async (v) => {
+      if (!v.d) throw new Error('Chưa chọn ngày');
+      if (v.c === '' || isNaN(parseInt(v.c, 10))) throw new Error('Chưa nhập số bệnh nhân');
+      if (!v.pw) throw new Error('Chưa nhập mật khẩu');
+      await wSave({ password: v.pw, unit: selEl.value, name: khoaName(), seed: { at: v.d + 'T07:00', count: parseInt(v.c, 10) } });
+      stEl.textContent = 'Đã lưu mốc.'; run();
+    });
+  }
+  function openAdj() {
+    dialog('Điều chỉnh số — ' + khoaName(), [
+      { key: 'd', label: 'Ngày', hint: 'ngày bắt đầu lúc 7h', type: 'date', value: fEl.value || ymd(new Date()) },
+      { key: 'v', label: 'Số điều chỉnh', hint: '+ hoặc −, nhập 0 để xóa điều chỉnh', type: 'number', ph: 'ví dụ -1' },
+      { key: 'n', label: 'Ghi chú', hint: 'không bắt buộc', ph: 'lý do điều chỉnh' },
+      { key: 'pw', label: 'Mật khẩu', mask: true },
+    ], async (v) => {
+      if (!v.d) throw new Error('Chưa chọn ngày');
+      if (v.v === '' || isNaN(parseInt(v.v, 10))) throw new Error('Chưa nhập số điều chỉnh');
+      if (!v.pw) throw new Error('Chưa nhập mật khẩu');
+      await wSave({ password: v.pw, unit: selEl.value, name: khoaName(), adj: { date: v.d, delta: parseInt(v.v, 10), note: v.n } });
+      stEl.textContent = 'Đã lưu điều chỉnh.'; run();
+    });
+  }
+
+  function lastClosedDay() { const n = new Date(); const d = ymd(n); return n.getHours() >= 7 ? addDays(d, -1) : addDays(d, -2); }
+  function lockVals(d) {
+    if (!last || last.rid !== selEl.value || !last.res[d]) return null;
+    const o = last.res[d];
+    if (!last.seed && !o.locked) return null;
+    return { cu: o.cu, vao: o.vao, ra: o.ra, ck: o.ck, cv: o.cv, khac: o.khac + o.tv + o.nxv + o.tron, adj: o.adj, con: o.con, open: o.open };
+  }
+  function openLock() {
+    dialog('Chốt ngày — ' + khoaName(), [
+      { key: 'd', label: 'Ngày cần chốt', hint: 'ngày bắt đầu lúc 7h; chỉ chốt được khi đã qua 7h sáng hôm sau', type: 'date', value: lastClosedDay() },
+      { key: 'pw', label: 'Mật khẩu', mask: true },
+    ], async (v) => {
+      if (!v.d) throw new Error('Chưa chọn ngày');
+      const x = lockVals(v.d);
+      if (!x) throw new Error('Chưa có số của ngày này: hãy chọn ngày đó, bấm Đếm (và đã Đặt mốc) rồi chốt.');
+      if (x.open) throw new Error('Ngày này chưa kết thúc (chưa qua 7h sáng hôm sau).');
+      if (!v.pw) throw new Error('Chưa nhập mật khẩu');
+      const data = { cu: x.cu, vao: x.vao, ra: x.ra, ck: x.ck, cv: x.cv, khac: x.khac, adj: x.adj, con: x.con };
+      await wSave({ password: v.pw, unit: selEl.value, name: khoaName(), lock: { date: v.d, data: data } });
+      stEl.textContent = 'Đã chốt ngày ' + vn(v.d) + '.'; run();
+    }, (v) => {
+      if (!v.d) return '';
+      const x = lockVals(v.d);
+      if (!x) return 'Chưa có số của ngày ' + vn(v.d) + ' trong kết quả đang xem — chọn ngày đó rồi bấm Đếm.';
+      return 'Sẽ chốt ngày ' + vn(v.d) + ': Bệnh cũ ' + x.cu + ' · Vào ' + x.vao + ' · Ra ' + x.ra + ' · Chuyển khoa ' + x.ck + ' · Chuyển viện ' + x.cv + ' · Khác ' + x.khac + ' · Điều chỉnh ' + x.adj + ' → Hiện còn ' + x.con;
+    });
+  }
+  function openUnlock() {
+    dialog('Mở chốt ngày — ' + khoaName(), [
+      { key: 'd', label: 'Ngày cần mở chốt', type: 'date', value: fEl.value || ymd(new Date()) },
+      { key: 'pw', label: 'Mật khẩu', mask: true },
+    ], async (v) => {
+      if (!v.d) throw new Error('Chưa chọn ngày');
+      if (!v.pw) throw new Error('Chưa nhập mật khẩu');
+      await wSave({ password: v.pw, unit: selEl.value, name: khoaName(), unlock: v.d });
+      stEl.textContent = 'Đã mở chốt ngày ' + vn(v.d) + '.'; run();
+    });
+  }
+
+  // ---- In báo cáo giao ban ----
+  const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+  const isDeath = (r) => /tử vong/i.test(String(r.treatment_plans_name || '') + ' ' + String(r.treatment_result_ref_name || ''));
+  function printHtml(html) {
+    const f = document.createElement('iframe');
+    f.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0';
+    document.body.appendChild(f);
+    const w = f.contentWindow; w.document.open(); w.document.write(html); w.document.close();
+    setTimeout(() => { try { w.focus(); w.print(); } catch (e) {} setTimeout(() => f.remove(), 60000); }, 400);
+  }
+  async function buildHandover(d, tp) {
+    stEl.textContent = 'Đang lấy số liệu báo cáo giao ban...';
+    if (!(await ensureKhoa())) throw new Error('Chưa đọc được danh sách khoa');
+    const km = khoaMap(), find = (re) => khoaList.find((k) => k.ipd && re.test(k.name));
+    const defs = [['Khám bệnh – Cấp cứu', find(/cấp cứu/i)], ['Nội – Nhi – Nhiễm', find(/nội.*nhi.*nhiễm/i)]].filter((x) => x[1]);
+    const opd = await opdDay(d);
+    const units = [];
+    for (const df of defs) { stEl.textContent = 'Đang lấy nội trú: ' + df[0] + '...'; const R = await compute(df[1].rid, km, d, d, () => {}); units.push({ name: df[0], R: R, o: R.res[d] }); }
+    const xv = [], cv = [], tvl = [];
+    units.forEach((u) => {
+      const ev = u.o.ev || {};
+      (ev.ra || []).concat(ev.xrv || []).forEach((st) => { const it = { r: st.r, t: st.e, unit: u, xin: (ev.xrv || []).indexOf(st) >= 0 }; (isDeath(st.r) ? tvl : xv).push(it); });
+      (ev.cv || []).forEach((st) => cv.push({ r: st.r, t: st.e, unit: u }));
+    });
+    const sorted = (a) => a.sort((x, y) => (x.t < y.t ? -1 : 1));
+    const det = async (it, tab) => { const tx = await buildReport(it.unit.R, it, tab); return tx.split('\n').slice(2).join('\n'); };
+    stEl.textContent = 'Đang lấy tóm tắt bệnh án...';
+    const cvTxt = [], tvTxt = [];
+    for (const it of sorted(cv)) cvTxt.push({ u: it.unit, t: await det(it, 'cv') });
+    for (const it of sorted(tvl)) tvTxt.push({ u: it.unit, t: await det(it, 'tv') });
+    const o4 = (u, k) => (u.o[k] || 0);
+    const colsO = [['Tổng', opd.total], ['BHYT', opd.bhyt], ['Dịch vụ', (opd.by['PK CS2_Dịch vụ'] || {}).tong || 0], ['Cấp cứu', (opd.by['PK CS2_CC'] || {}).tong || 0], ['Nội 1', (opd.by['PK CS2_Nội TH 1'] || {}).tong || 0], ['Nội 2', (opd.by['PK CS2_Nội TH 2'] || {}).tong || 0], ['Nội 3', (opd.by['PK CS2_Nội TH 3'] || {}).tong || 0], ['Ngoại', (opd.by['PK CS2_Ngoại TH'] || {}).tong || 0], ['Sản', (opd.by['PK CS2_Phụ Sản'] || {}).tong || 0], ['Nhi', (opd.by['PK CS2_Nhi'] || {}).tong || 0], ['Mắt', (opd.by['PK CS2_Mắt'] || {}).tong || 0], ['RHM', (opd.by['PK CS2_RHM'] || {}).tong || 0], ['TMH', (opd.by['PK CS2_TMH'] || {}).tong || 0], ['YHCT', (opd.by['PK CS2_YHCT'] || {}).tong || 0]];
+    [['Khám Sức khỏe', 'Khám SK'], ['Tiêm ngừa', 'Tiêm ngừa']].forEach((x) => { const v = (opd.by[x[0]] || {}).tong || 0; if (v) colsO.push([x[1], v]); });
+    const tbl = (head, rows) => '<table><thead><tr>' + head.map((h) => '<th>' + esc(h) + '</th>').join('') + '</tr></thead><tbody>' + rows.map((r) => '<tr>' + r.map((v, i) => '<td' + (i === 0 ? ' class="l"' : '') + '>' + esc(v) + '</td>').join('') + '</tr>').join('') + '</tbody></table>';
+    const yob = (r) => (r.date_of_birth ? String(r.date_of_birth).slice(0, 4) : '');
+    const lstU = (u, arr) => !arr.length ? '' : '<h4>' + esc(u.name) + '</h4>' + (arr.length ? tbl(['STT', 'Họ tên', 'Năm sinh', 'Địa chỉ', 'Chẩn đoán', 'Giờ ra'], sorted(arr).map((it, i) => [i + 1, it.r.full_name || '', yob(it.r), it.r.location || '', it.r.icd_text || '', fmtT(it.t)])) : '');
+    const lst = (arr) => units.map((u) => lstU(u, arr.filter((it) => it.unit === u))).join('');
+    const blocks = (a) => units.map((u) => { const b = a.filter((x) => x.u === u); return !b.length ? '' : '<h4>' + esc(u.name) + '</h4>' + (b.length ? b.map((x, i) => '<div class="pt"><pre><b>' + (i + 1) + '.</b> ' + x.t.split('\n').map((ln) => (/^\d\. [^\p{Ll}]+$/u.test(ln) ? '<b>' + esc(ln) + '</b>' : esc(ln))).join('\n') + '</pre></div>').join('') : ''); }).join('');
+    return '<!doctype html><html><head><meta charset="utf-8"><title>Báo cáo trực ngày ' + vn(d) + '</title><style>'
+      + '@page{size:A4;margin:12mm}body{font:13px/1.45 "Times New Roman",serif;color:#000}h1{text-align:center;font-size:17px;margin:0 0 8px}h3{margin:14px 0 4px;font-size:14px}h4{margin:8px 0 3px;font-size:13px;text-decoration:underline}p{margin:3px 0}'
+      + 'table{border-collapse:collapse;width:100%;margin:4px 0}th,td{border:1px solid #000;padding:3px 5px;text-align:center;font-size:12px}td.l{text-align:left}th{background:#f0f0f0}'
+      + '.n{font-style:italic}.pt{margin:4px 0}.pt pre{white-space:pre-wrap;font:12px/1.35 "Times New Roman",serif;margin:1px 0 0 14px}h3,h4{break-after:avoid;page-break-after:avoid}thead{display:table-header-group}tr{break-inside:avoid;page-break-inside:avoid}'
+      + '.sig{margin-top:18px;text-align:right;padding-right:40px;page-break-inside:avoid}.sig div{display:inline-block;text-align:center;min-width:180px}.sig span{display:block;height:60px}</style></head><body>'
+      + '<h1>BÁO CÁO TRỰC NGÀY ' + vn(d) + '</h1>'
+      + '<p><b>I - Thành phần:</b> ' + esc(tp) + '</p>'
+      + '<h3>II - Tình hình tua trực</h3><h3>Ngoại trú:</h3>' + tbl(colsO.map((c) => c[0]), [colsO.map((c) => c[1])])
+      + '<h3>Nội trú (từ 7h ngày ' + vn(d) + ' đến 7h ngày ' + vn(addDays(d, 1)) + '):</h3>'
+      + tbl(['Khoa', 'Bệnh cũ', 'Nhập viện', 'Ra viện', 'Chuyển khoa', 'Chuyển viện', 'Trốn viện', 'Tử vong', 'Nặng XV', 'Hiện còn'], units.map((u) => [u.name, o4(u, 'cu'), o4(u, 'vao'), o4(u, 'ra'), o4(u, 'ck'), o4(u, 'cv'), o4(u, 'tron'), o4(u, 'tv'), o4(u, 'nxv'), o4(u, 'con')]))
+      + (xv.length ? '<h3>Danh sách xuất viện (gồm xin ra viện)</h3>' + lst(xv) : '')
+      + (blocks(cvTxt) ? '<h3>Danh sách chuyển viện</h3>' + blocks(cvTxt) : '')
+      + (blocks(tvTxt) ? '<h3>Danh sách tử vong</h3>' + blocks(tvTxt) : '')
+      + '<div class="sig"><div><b>Bên giao</b><span></span></div></div></body></html>';
+  }
+  const QUICK = [
+    ['Hỗ trợ Nội', ['BS Đạt', 'BS Sâm', 'BS Dương', 'BS Hiếu']],
+    ['Hỗ trợ Ngoại', ['BS Phước', 'BS Nhân', 'BS Vũ', 'BS H. Dương']],
+    ['BS 1', ['BS Hoàng Anh', 'BS Nguyễn Tuyết', 'BS Dung', 'BS Thanh', 'BS Trang', 'BS Tân']],
+    ['ĐD 1', ['YS Trung', 'YS Trinh', 'YS Thúy', 'YS Thảo', 'ĐD Thanh', 'ĐD Huyền', 'ĐD Linh']],
+    ['ĐD 2', ['CN Hiền', 'YS Đạo', 'CĐHS Ngân', 'ĐDPS Thu', 'YS Huệ']],
+    ['Trực Dược - viện phí', ['Quang Hưng', 'Hương', 'Tuấn', 'Quang']],
+    ['Trực Xét nghiệm', ['CN Phượng', 'CN Thơm', 'KTV Phú', 'CN Gấm']],
+    ['Trực CĐHA', ['BS Kỳ', 'BS Ngân', 'BS D.Hằng', 'YS Hải']],
+    ['Bảo vệ', ['Thành', 'Trong']],
+    ['Tài xế', ['Tiên', 'Nhi']],
+  ];
+  function showWait(title) {
+    const box = dl.firstChild; box.textContent = ''; box.appendChild(cls('h3', '', title));
+    const wt = cls('div', 'hs-wait'); wt.appendChild(cls('i')); wt.appendChild(cls('b', '', 'Vui lòng chờ trong giây lát!')); const sub = cls('small', '', 'Đang lấy số liệu...'); sub.style.color = '#64748b'; wt.appendChild(sub); box.appendChild(wt);
+    return { say: (t) => { sub.textContent = t; }, fail: (m) => { box.textContent = ''; box.appendChild(cls('h3', '', title)); const er = cls('div', 'er', 'Lỗi: ' + m); er.style.padding = '24px 18px'; box.appendChild(er); const ft = cls('div', 'ft'); const c = cls('button', 'hs-b g', 'Đóng'); c.type = 'button'; c.onclick = () => dl.classList.remove('on'); ft.appendChild(c); box.appendChild(ft); } };
+  }
+  // Danh sách tên lưu trên Cloudflare (hlx-report /roster); chưa có thì dùng mặc định QUICK
+  let QK = QUICK.map((g) => [g[0], g[1].slice()]);
+  async function rosterLoad() {
+    try {
+      const r = await fetch(WORKER + '/roster/state', { cache: 'no-store' }); const j = await r.json();
+      if (j && j.roster) QK = QUICK.map((g) => [g[0], Array.isArray(j.roster[g[0]]) ? j.roster[g[0]].slice() : g[1].slice()]);
+    } catch (e) {}
+  }
+  async function rosterSave(pw) {
+    const ro = {}; QK.forEach((g) => { ro[g[0]] = g[1]; });
+    const r = await fetch(WORKER + '/roster/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: pw, roster: ro }) });
+    const j = await r.json(); if (!r.ok || !j.ok) throw new Error(j.error || 'Không lưu được');
+  }
+  function openHandover() {
+    const d0 = fEl && fEl.value ? fEl.value : ymd(new Date());
+    const tokens = []; // { t: chữ hiển thị, gi: chỉ số nhóm (-1 = nhập tay) }
+    let renderQ = () => {}, renderSel = () => {};
+    const tokOf = (gi) => tokens.filter((x) => x.gi === gi).map((x) => x.t);
+    const labelTxt = (gi, nm) => (gi >= 5 ? QK[gi][0] + ': ' + nm : nm);
+    const toggleName = (gi, nm) => {
+      const cdha = QK[gi][0] === 'Trực CĐHA', txt = labelTxt(gi, nm), ix = tokens.findIndex((x) => x.gi === gi && x.t === txt);
+      if (ix >= 0) { tokens.splice(ix, 1); return; }
+      if (!cdha) { const o = tokens.findIndex((x) => x.gi === gi); if (o >= 0) { tokens[o] = { t: txt, gi: gi }; return; } }
+      tokens.push({ t: txt, gi: gi });
+    };
+    const sepStr = () => { let o = ''; tokens.forEach((x, i) => { if (i) o += (x.gi >= 5 || tokens[i - 1].gi >= 5) ? '; ' : ', '; o += x.t; }); return o; };
+    const custom = () => {
+      const wrap = cls('div');
+      // ô "Thành phần": các tên được chọn, kéo để đổi chỗ
+      const box = cls('div'); box.style.cssText = 'display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-height:42px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;background:#fff';
+      let dragIx = -1;
+      const man = cls('input', 'hs-in'); man.type = 'text'; man.placeholder = 'Gõ tên khác rồi Enter hoặc dấu phẩy'; man.autocomplete = 'off'; man.style.cssText = 'border:0;height:28px;min-width:200px;flex:1;outline:0';
+      const addMan = () => { man.value.split(',').map((x) => x.trim()).filter(Boolean).forEach((t) => tokens.push({ t: t, gi: -1 })); man.value = ''; renderSel(); renderQ(); };
+      man.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addMan(); } else if (e.key === 'Backspace' && !man.value && tokens.length) { tokens.pop(); renderSel(); renderQ(); } }, true);
+      man.addEventListener('blur', () => { if (man.value.trim()) addMan(); });
+      renderSel = () => {
+        box.querySelectorAll('.hs-tok').forEach((x) => x.remove());
+        tokens.forEach((tk, ix) => {
+          const c = cls('span', 'hs-tok'); c.draggable = true; c.title = 'Kéo để đổi vị trí';
+          c.style.cssText = 'display:inline-flex;align-items:center;gap:6px;padding:3px 6px 3px 10px;border-radius:14px;background:#0e7490;color:#fff;font-size:13px;cursor:grab;user-select:none';
+          c.appendChild(document.createTextNode(tk.t));
+          const x = cls('b', '', '×'); x.style.cssText = 'cursor:pointer;padding:0 4px;opacity:.85'; x.onclick = () => { tokens.splice(ix, 1); renderSel(); renderQ(); };
+          c.appendChild(x);
+          c.addEventListener('dragstart', (e) => { dragIx = ix; try { e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', tk.t); } catch (er) {} c.style.opacity = '.5'; });
+          c.addEventListener('dragend', () => { c.style.opacity = ''; });
+          c.addEventListener('dragover', (e) => { e.preventDefault(); c.style.outline = '2px dashed #f97316'; });
+          c.addEventListener('dragleave', () => { c.style.outline = ''; });
+          c.addEventListener('drop', (e) => { e.preventDefault(); c.style.outline = ''; if (dragIx < 0 || dragIx === ix) return; const m = tokens.splice(dragIx, 1)[0]; tokens.splice(ix, 0, m); dragIx = -1; renderSel(); });
+          box.insertBefore(c, man);
+        });
+      };
+      box.appendChild(man); renderSel();
+      wrap.appendChild(box);
+      // phần chọn nhanh
+      const w = cls('div'); w.style.cssText = 'padding:6px 0 0';
+      let edit = false, pwEl = null, msg = null;
+      const B2 = ['BS Ngân', 'BS D.Hằng'];
+      const render = () => {
+        w.textContent = '';
+        const tb = cls('div'); tb.style.cssText = 'display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:2px 0 8px';
+        if (edit) {
+          msg = cls('small', '', 'Nhập mật khẩu, bấm ✕ để xóa tên hoặc gõ tên mới rồi bấm ＋ Thêm. Lưu trên Cloudflare, mọi máy dùng chung.'); msg.style.cssText = 'color:#64748b;flex:1;text-align:left';
+          pwEl = cls('input', 'hs-in'); pwEl.type = 'text'; pwEl.placeholder = 'Mật khẩu'; pwEl.autocomplete = 'off'; pwEl.name = 'hlx' + Math.random().toString(36).slice(2); pwEl.style.cssText = 'height:34px;width:130px;border:2px solid #f97316;-webkit-text-security:disc;font-weight:700';
+          pwEl.setAttribute('data-lpignore', 'true');
+          const xb = cls('button', 'hs-b', '✔ Xong'); xb.type = 'button'; xb.style.cssText = 'height:34px;padding:0 18px;background:#16a34a;color:#fff;font-weight:800'; xb.onclick = () => { edit = false; render(); };
+          tb.append(msg, pwEl, xb);
+        } else {
+          const eb = cls('button', 'hs-b', '✎ Sửa danh sách tên'); eb.type = 'button'; eb.style.cssText = 'height:34px;padding:0 16px;background:#f97316;color:#fff;font-weight:800'; eb.onclick = () => { edit = true; render(); };
+          tb.appendChild(eb);
+        }
+        w.appendChild(tb);
+        QK.forEach((g, gi) => {
+          const r = cls('div', 'hs-qr'); r.appendChild(cls('b', '', g[0]));
+          const c = cls('div');
+          const btns = {};
+          const cdha = g[0] === 'Trực CĐHA';
+          const refresh = () => {
+            const st = new Set(tokOf(gi).map((t) => t.replace(/^[^:]+:\s*/, (gi >= 5 ? '' : 'ZZZ_NOPE'))));
+            g[1].forEach((nm) => {
+              let lock = false;
+              if (cdha && !edit) {
+                if (!st.has(nm)) {
+                  if (nm === 'BS Kỳ') lock = st.size > 0;
+                  else if (st.has('BS Kỳ')) lock = true;
+                  else if (B2.includes(nm)) lock = B2.some((o) => st.has(o));
+                }
+              }
+              btns[nm].disabled = lock; btns[nm].style.opacity = lock ? '.4' : ''; btns[nm].style.cursor = lock ? 'not-allowed' : '';
+              btns[nm].classList.toggle('on', st.has(nm));
+            });
+          };
+          const doSave = async (fn) => {
+            const pw = pwEl ? pwEl.value.trim() : ''; if (!pw) { msg.style.color = '#dc2626'; msg.style.fontWeight = '700'; msg.textContent = 'Chưa nhập mật khẩu — nhập mật khẩu ở ô bên phải rồi bấm lại.'; pwEl.focus(); return; }
+            const bak = QK.map((x) => [x[0], x[1].slice()]);
+            fn();
+            let err = '';
+            try { await rosterSave(pw); } catch (e) { QK = bak; err = e.message; }
+            const keep = pwEl.value; render(); pwEl.value = keep; renderSel();
+            if (msg) { msg.style.fontWeight = '700'; msg.style.color = err ? '#dc2626' : '#16a34a'; msg.textContent = err ? 'Lỗi: ' + err : 'Đã lưu lên Cloudflare.'; }
+          };
+          g[1].forEach((nm) => {
+            const b = cls('button', 'hs-chk', edit ? nm + '  ✕' : nm); b.type = 'button'; btns[nm] = b;
+            b.onclick = () => {
+              if (edit) { doSave(() => { QK[gi][1] = QK[gi][1].filter((x) => x !== nm); const ix = tokens.findIndex((x) => x.gi === gi && x.t === labelTxt(gi, nm)); if (ix >= 0) tokens.splice(ix, 1); }); return; }
+              toggleName(gi, nm); renderSel(); refresh();
+            };
+            c.appendChild(b);
+          });
+          if (edit) {
+            const ni = cls('input', 'hs-in'); ni.type = 'text'; ni.placeholder = '+ Thêm tên'; ni.autocomplete = 'off'; ni.style.cssText = 'height:30px;width:130px;font-size:12px;border:2px solid #16a34a';
+            const addIt = () => { const t = ni.value.trim(); if (!t) return; if (QK[gi][1].indexOf(t) >= 0) { msg.style.color = '#dc2626'; msg.textContent = 'Tên đã có trong nhóm.'; return; } doSave(() => { QK[gi][1].push(t); }); };
+            ni.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key !== 'Enter') return; e.preventDefault(); addIt(); }, true);
+            ni.addEventListener('keyup', (e) => e.stopPropagation(), true); ni.addEventListener('keypress', (e) => e.stopPropagation(), true);
+            const ab = cls('button', 'hs-b', '＋ Thêm'); ab.type = 'button'; ab.style.cssText = 'height:30px;font-size:12px;padding:0 10px;background:#16a34a;color:#fff'; ab.onclick = addIt;
+            c.appendChild(ni); c.appendChild(ab);
+          }
+          r.appendChild(c); w.appendChild(r);
+          refresh();
+        });
+      };
+      renderQ = () => { render(); };
+      render();
+      wrap.appendChild(w);
+      return wrap;
+    };
+    dialog('In báo cáo giao ban', [
+      { key: 'd', label: 'Ngày trực', hint: 'Nội trú tính từ 7h ngày này đến 7h hôm sau', type: 'date', value: d0 },
+      { key: 'tp', label: 'I - Thành phần', hint: 'Chọn nhanh bên dưới; tên khác nhập thêm vào đây, cách nhau bằng dấu phẩy', custom: custom },
+    ], async (v) => {
+      if (!v.d) throw new Error('Chưa chọn ngày');
+      const tpTxt = sepStr();
+      const w = showWait('In báo cáo giao ban');
+      (async () => {
+        try {
+          const t0 = setInterval(() => { w.say(stEl.textContent); }, 300);
+          let html; try { html = await buildHandover(v.d, tpTxt); } finally { clearInterval(t0); }
+          dl.classList.remove('on');
+          stEl.textContent = 'Đã tạo báo cáo giao ban — chọn máy in hoặc "Lưu dạng PDF" trong hộp thoại in.';
+          printHtml(html);
+        } catch (e) { w.fail(e.message); }
+      })();
+      return 'keep';
+    }, null, 'In');
+    rosterLoad().then(() => { for (let i = tokens.length - 1; i >= 0; i--) { const tk = tokens[i]; if (tk.gi >= 0 && QK[tk.gi][1].every((n) => labelTxt(tk.gi, n) !== tk.t)) tokens.splice(i, 1); } renderSel(); renderQ(); });
+  }
+  // ---- Điền số liệu vào Google Sheet (qua Apps Script Web App) ----
+  const lsGet = (k) => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const GS_URL = 'https://script.google.com/macros/s/AKfycbzeJjZOaylZ3hILNwHd9_oU4pkyhiyvnplrze7jziqACGqBm21t9UVBCxUtJVHh_fds/exec'; // dán địa chỉ Web App (…/exec) vào đây để khỏi nhập lại
+  const GS_KEY = 'Hx-2026-kcb-9f3a';
+  const WEB_KEY = 'Hx-2026-kcb-9f3a'; // trùng secret WEB_PUSH_KEY trên Cloudflare
+  const WEB_URL = WORKER + '/web';
+  async function collectSheet(d, say) {
+    if (!(await ensureKhoa())) throw new Error('Chưa đọc được danh sách khoa');
+    const km = khoaMap(), find = (re) => khoaList.find((k) => k.ipd && re.test(k.name));
+    const S = (t) => { stEl.textContent = t; if (say) say(t); };
+    S('Đang lấy số liệu ngoại trú...');
+    const opd = await opdDay(d);
+    const v = { 'TỔNG_KB': opd.total };
+    OPD_ORDER.forEach((n) => { v[n] = (opd.by[n] || {}).tong || 0; });
+    const defs = [['CC', /cấp cứu/i], ['Noi', /nội.*nhi.*nhiễm/i], ['Ng', /ngoại.*phụ\s*sản/i]];
+    const F = [['Hiện còn', 'con'], ['Bệnh cũ', 'cu'], ['Vào viện', 'vao'], ['Ra viện', 'ra'], ['Chuyển khoa', 'ck'], ['Chuyển viện', 'cv'], ['Tử vong', 'tv'], ['Nặng XV', 'nxv'], ['Trốn viện', 'tron']];
+    let tong = 0; const miss = [];
+    for (const df of defs) {
+      const k = find(df[1]); if (!k) { miss.push(df[0]); continue; }
+      S('Đang lấy nội trú: ' + k.name + '...');
+      const R = await compute(k.rid, km, d, d, () => {}); const o = R.res[d] || {};
+      F.forEach((x) => { let lb = df[0] + '_' + x[0]; if (df[0] === 'Ng' && x[1] === 'con') lb = 'NGOAI_Hiện còn'; if (df[0] !== 'CC' && x[1] === 'tron') lb = df[0] + '_Trốn'; v[lb] = o[x[1]] || 0; });
+      tong += o.con || 0;
+    }
+    v['Tổng_Hiện còn'] = tong;
+    const rooms = {}; OPD_ORDER.forEach((n) => { const o = opd.by[n] || {}; rooms[n] = { tong: o.tong || 0, bhyt: o.bhyt || 0, dv: o.dv || 0 }; });
+    return { v: v, miss: miss, rooms: rooms };
+  }
+  const GS_SHEET = 'https://docs.google.com/spreadsheets/d/1nsx9ew0fDMfyNDyzUq1h8jTRtafnxswo01F8Z8wLazc/edit';
+  function openSheet() {
+    const tdy = ymd(new Date());
+    const flds = [{ key: 'pw', label: 'Mật khẩu = ngày cần điền (ddmm)', hint: 'ví dụ 0711 = điền dữ liệu ngày 07/11. Ngoại trú theo ngày; nội trú tính 7h ngày đó → 7h hôm sau', mask: true, maxlen: 4 }];
+    if (!GS_URL) flds.push({ key: 'url', label: 'Địa chỉ Web App (Apps Script)', hint: 'dán 1 lần, máy sẽ nhớ', value: lsGet('hlx-gs-url'), ph: 'https://script.google.com/macros/s/.../exec' });
+    dialog('Điền dữ liệu vào Google Sheet', flds, async (v) => {
+      const mm = /^(\d{2})(\d{2})$/.exec(v.pw || ''); if (!mm) throw new Error('Mật khẩu gồm 4 số ddmm (ví dụ 0711)');
+      let yy = parseInt(tdy.slice(0, 4), 10); v.d = yy + '-' + mm[2] + '-' + mm[1];
+      if (v.d > tdy) { yy--; v.d = yy + '-' + mm[2] + '-' + mm[1]; }
+      const chk = new Date(v.d + 'T00:00:00Z'); if (isNaN(chk) || chk.toISOString().slice(0, 10) !== v.d) throw new Error('Ngày không hợp lệ: ' + mm[1] + '/' + mm[2]);
+      if (!window.confirm('Bạn có chắc chắn đẩy dữ liệu của ngày ' + vn(v.d) + ' lên Google Sheet không?')) throw new Error('Đã hủy, chưa gửi gì.');
+      v.url = GS_URL || v.url; v.key = GS_KEY;
+      if (!/^https:\/\/script\.google\.com\/macros\/s\/.+\/exec/.test(v.url)) throw new Error('Địa chỉ Web App chưa đúng (phải dạng https://script.google.com/macros/s/.../exec)');
+      if (!GS_URL) lsSet('hlx-gs-url', v.url);
+      // đổi hộp thoại sang trạng thái chờ
+      const box = dl.firstChild; const title = box.firstChild.textContent; box.textContent = '';
+      box.appendChild(cls('h3', '', title));
+      const wt = cls('div', 'hs-wait'); wt.appendChild(cls('i')); wt.appendChild(cls('b', '', 'Vui lòng chờ trong giây lát!')); const sub = cls('small', '', 'Đang lấy số liệu...'); sub.style.color = '#64748b'; wt.appendChild(sub); box.appendChild(wt);
+      const done = (node, withClose) => { box.textContent = ''; box.appendChild(cls('h3', '', title)); box.appendChild(node); const ft = cls('div', 'ft'); const c = cls('button', 'hs-b g', 'Đóng'); c.type = 'button'; c.onclick = () => dl.classList.remove('on'); ft.appendChild(c); box.appendChild(ft); };
+      (async () => {
+        try {
+          const c = await collectSheet(v.d, (t) => { sub.textContent = t; });
+          sub.textContent = 'Đang gửi lên Google Sheet...';
+          const body = JSON.stringify({ key: v.key, date: v.d, values: c.v });
+          let link = GS_SHEET;
+          try {
+            const resp = await fetch(v.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
+            const j = await resp.json();
+            if (!j.ok) throw new Error(j.error || 'Apps Script báo lỗi');
+            if (j.gid !== undefined) link = GS_SHEET + '?gid=' + j.gid + '#gid=' + j.gid;
+            try { console.log('[Helix] Google Sheet: đã điền ' + j.written + ' ô; bỏ qua:', j.skipped); } catch (e) {}
+          } catch (e) {
+            if (e instanceof TypeError) await fetch(v.url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
+            else throw e;
+          }
+          let webMsg = null;
+          try {
+            const rr = await fetch(WORKER + '/web/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: WEB_KEY, date: v.d, v: c.v, rooms: c.rooms }) });
+            const jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error(jj.error || 'HTTP ' + rr.status);
+          } catch (e) { webMsg = e.message; }
+          const ok = cls('div', 'hs-ok shine'); const sp = cls('span'); sp.append('Đã điền xong dữ liệu, mở '); const a = cls('a', '', 'tại đây'); a.href = link; a.target = '_blank'; a.rel = 'noopener'; sp.appendChild(a); sp.append(' để kiểm tra'); ok.appendChild(sp);
+          const wl = cls('div'); wl.style.cssText = 'margin-top:10px;font-size:13px;font-weight:600';
+          if (webMsg) { wl.style.color = '#dc2626'; wl.textContent = 'Chưa cập nhật được trang web xem số liệu: ' + webMsg; }
+          else { wl.append('Đã cập nhật cả trang web xem số liệu — '); const wa = cls('a', '', 'mở web'); wa.href = WEB_URL; wa.target = '_blank'; wa.rel = 'noopener'; wa.style.cssText = 'color:#2563eb;text-decoration:underline'; wl.appendChild(wa); }
+          ok.appendChild(wl);
+          done(ok); setTimeout(() => ok.classList.remove('shine'), 5000);
+          stEl.textContent = 'Đã điền xong dữ liệu ngày ' + vn(v.d) + ' lên Google Sheet.';
+        } catch (e) { const er = cls('div', 'er', 'Lỗi: ' + e.message); er.style.padding = '24px 18px'; done(er); }
+      })();
+      return 'keep';
+    }, null, 'Gửi');
+  }
+  async function ensureKhoa() {
+    if (khoaList.length) return true;
+    try {
+      khoaList = await loadKhoa();
+      const ordK = (k) => (/cấp cứu/i.test(k.name) ? 0 : (/nội.*nhi.*nhiễm/i.test(k.name) ? 1 : 2)); khoaList.filter((k) => k.ipd).map((k, i) => [k, i]).sort((a, b) => (ordK(a[0]) - ordK(b[0])) || (a[1] - b[1])).map((x) => x[0]).forEach((k) => { const o = document.createElement('option'); o.value = k.rid; o.textContent = k.name; selEl.appendChild(o); });
+      selEl.value = DEFAULT_KHOA;
+      return true;
+    } catch (e) { stEl.textContent = 'Không đọc được danh sách khoa: ' + e.message + ' — tải lại trang rồi mở lại.'; return false; }
+  }
+  async function openMain() {
+    ov.classList.add('on');
+    if (kind === 'ipd' && !(await ensureKhoa())) return;
+    upNote(); run();
+  }
+
+  let wasOpen = false, builds = 0;
+  function build() {
+    const root = document.body || document.documentElement;
+    if (!root || document.getElementById('hlx-ipd-stats-btn')) return;
+    const old = document.getElementById('hlx-st-css'); if (old) old.remove();
+    const st = document.createElement('style'); st.id = 'hlx-st-css'; st.textContent = CSS; (document.head || document.documentElement).appendChild(st);
+    const btn = el('button', 'position:fixed;right:14px;bottom:14px;z-index:2147483645;border:0;border-radius:22px;background:linear-gradient(120deg,#0b3b66,#0e8fa5);color:#fff;padding:9px 16px;font:700 13px "Segoe UI",Arial,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)', '📊 Thống kê KCB');
+    btn.id = 'hlx-ipd-stats-btn'; btn.type = 'button'; btn.onclick = openMain; btn.style.display = 'none'; // mở bằng menu chuột phải của Helixfast
+
+    builds++;
+    ov = document.createElement('div'); ov.id = 'hlx-st-ov';
+    try { // chẩn đoán: ghi lại ai đóng popup / gỡ popup khỏi trang
+      const rm = ov.classList.remove.bind(ov.classList);
+      ov.classList.remove = function () { if (Array.prototype.indexOf.call(arguments, 'on') >= 0) { try { console.warn('[Helix IPD Stats] popup bị đóng, nơi gọi:', new Error().stack); } catch (e) {} } return rm.apply(null, arguments); };
+      new MutationObserver(() => { if (!ov.isConnected) { try { console.warn('[Helix IPD Stats] popup bị gỡ khỏi trang lúc', new Date().toISOString(), 'readyState=' + document.readyState); } catch (e) {} } }).observe(document.documentElement, { childList: true, subtree: true });
+      window.addEventListener('beforeunload', () => { try { sessionStorage.setItem('hlx-st-unload', new Date().toISOString()); } catch (e) {} });
+      const ul = sessionStorage.getItem('hlx-st-unload'); if (ul) { console.warn('[Helix IPD Stats] trang vừa tải lại; lần tải lại trước lúc', ul); sessionStorage.removeItem('hlx-st-unload'); }
+    } catch (e) {}
+    try { new MutationObserver(() => { wasOpen = ov.classList.contains('on'); try { if (wasOpen) sessionStorage.setItem('hlx-st-open', String(Date.now())); else sessionStorage.removeItem('hlx-st-open'); } catch (e) {} }).observe(ov, { attributes: true, attributeFilter: ['class'] }); } catch (e) {}
+    ov.addEventListener('mousedown', (e) => { if (e.target === ov) ov.classList.remove('on'); });
+    dl = document.createElement('div'); dl.id = 'hlx-st-dl';
+    dl.addEventListener('mousedown', (e) => { if (e.target === dl) dl.classList.remove('on'); });
+
+    const card = cls('div', 'hs-card');
+    const head = cls('div', 'hs-head'); headEl = cls('h2', '', 'Thống kê ngoại trú'); head.appendChild(headEl); const verEl = cls('small', '', ' v0.75'); verEl.style.cssText = 'opacity:.7;font-weight:400;font-size:12px;margin-left:8px'; headEl.appendChild(verEl);
+    const x = cls('button', 'hs-x', '✕'); x.type = 'button'; x.onclick = () => ov.classList.remove('on'); const prBtn = cls('button', 'hs-b p', '🖨 In báo cáo giao ban'); prBtn.type = 'button'; prBtn.onclick = openHandover; const shBtn = cls('button', 'hs-b p', '📤 Điền Google Sheet & Web'); shBtn.type = 'button'; shBtn.onclick = openSheet;
+    const hgrp = cls('div'); hgrp.style.cssText = 'display:flex;align-items:center;gap:10px'; const fs = cls('button', 'hs-fs', '⛶'); fs.type = 'button'; fs.title = 'Toàn màn hình / thu nhỏ';
+    const setFull = (on) => { ov.classList.toggle('full', on); fs.textContent = on ? '🗗' : '⛶'; try { localStorage.setItem('hlx-st-full', on ? '1' : '0'); } catch (e) {} };
+    fs.onclick = () => setFull(!ov.classList.contains('full'));
+    let fv = '1'; try { fv = localStorage.getItem('hlx-st-full') || '1'; } catch (e) {}
+    setFull(fv !== '0');
+    hgrp.append(fs, x); head.appendChild(hgrp);
+
+    const bar = cls('div', 'hs-bar');
+    selEl = document.createElement('select'); selEl.onchange = () => run();
+    const bar2 = cls('div', 'hs-bar2'); const lb2 = cls('label', '', 'Khoa:'); bar2.append(lb2, selEl);
+    const kseg = cls('div', 'hs-seg');
+    [['opd', 'Ngoại trú'], ['ipd', 'Nội trú']].forEach((m) => {
+      const b = cls('button', m[0] === kind ? 'on' : '', m[1]); b.type = 'button'; kindBtns[m[0]] = b;
+      b.onclick = () => {
+        kind = m[0]; Object.keys(kindBtns).forEach((k) => kindBtns[k].classList.toggle('on', k === kind));
+        bar2.classList.toggle('on', kind === 'ipd');
+        headEl.textContent = kind === 'opd' ? 'Thống kê ngoại trú' : 'Thống kê nội trú'; headEl.appendChild(verEl);
+        upNote(); if (kind === 'ipd') { ensureKhoa().then(run); } else run();
+      };
+      kseg.appendChild(b);
+    });
+    const seg = cls('div', 'hs-seg');
+    [['ngay', 'Ngày'], ['thang', 'Tháng'], ['quy', 'Quý'], ['nam', 'Năm']].forEach((m) => {
+      const b = cls('button', m[0] === mode ? 'on' : '', m[1]); b.type = 'button'; modeBtns[m[0]] = b;
+      b.onclick = () => { mode = m[0]; Object.keys(modeBtns).forEach((k) => modeBtns[k].classList.toggle('on', k === mode)); upNote(); run(); };
+      seg.appendChild(b);
+    });
+    fEl = document.createElement('input'); fEl.type = 'date'; fEl.value = ymd(new Date()); fEl.onchange = () => { upNote(); run(); };
+    const mk = (t, c, fn) => { const b = cls('button', 'hs-b ' + c, t); b.type = 'button'; b.onclick = fn; return b; };
+    const step = (n) => { fEl.value = shiftDate(fEl.value || ymd(new Date()), n); upNote(); run(); };
+    goBtn = mk('⟳ Làm mới', 'g', run);
+    const nav = cls('div', 'hs-nav'); const pv = mk('◀', 'g nv', () => step(-1)), nx = mk('▶', 'g nv', () => step(1)); pv.title = 'Ngày/kỳ trước'; nx.title = 'Ngày/kỳ sau';
+    nav.append(pv, fEl, mk('Hôm nay', 'g', () => { fEl.value = ymd(new Date()); upNote(); run(); }), nx);
+    bar.append(kseg, seg, nav, goBtn, prBtn, shBtn);
+
+    noteEl = cls('div', 'hs-note'); stEl = cls('div', 'hs-st'); bodyEl = cls('div', 'hs-body');
+    bodyEl.addEventListener('wheel', (e) => { if (e.ctrlKey || e.shiftKey) return; const k = e.deltaMode === 1 ? 16 : 1; e.preventDefault(); bodyEl.scrollTop += e.deltaY * k * 0.4; }, { passive: false });
+    card.append(head, bar, bar2, noteEl, stEl, bodyEl);
+    ov.appendChild(card);
+    root.append(btn, ov, dl);
+    upNote();
+    if (builds === 1) { // trang HIS tự tải lại ngay sau khi bấm: mở lại popup nếu vừa mở trong 20 giây
+      try { const t = parseInt(sessionStorage.getItem('hlx-st-open') || '0', 10); if (t && Date.now() - t < 20000) { ov.classList.add('on'); openMain(); } } catch (e) {}
+    }
+    if (builds > 1 && wasOpen) { // HIS vẽ lại trang làm mất popup: dựng lại và mở lại ngay
+      try { console.warn('[Helix IPD Stats] popup bị HIS gỡ, dựng lại'); } catch (e) {}
+      ov.classList.add('on'); try { openMain(); } catch (e) {}
+    }
+  }
+  function init() {
+    build();
+    document.addEventListener('DOMContentLoaded', build);
+    window.addEventListener('load', build);
+    document.addEventListener('keydown', (e) => { if (!e.isTrusted) return; /* bỏ qua phím Escape giả do Helixfast gửi */ if (e.key === 'Escape') { if (dl && dl.classList.contains('on')) dl.classList.remove('on'); else if (ov) ov.classList.remove('on'); } });
+    const safe = () => { try { build(); if (ov && !ov.isConnected) { const rt = document.body || document.documentElement; rt.append(ov, dl); } } catch (e) { try { console.warn('[Helix IPD Stats]', e); } catch (e2) {} } };
+    try { new MutationObserver(safe).observe(document.documentElement, { childList: true, subtree: false }); } catch (e) {}
+    document.addEventListener('readystatechange', safe);
+    setInterval(safe, 700);
+  }
+  init();
+  HLX_STATS = { open: openMain };
+})(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window, (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).XMLHttpRequest);
 
   }
   // Khởi động bền: không phụ thuộc document.documentElement/body đã có hay chưa (trình duyệt vừa mở / khôi phục tab)
