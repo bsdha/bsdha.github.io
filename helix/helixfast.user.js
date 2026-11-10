@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.29
+// @version      2.30
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -40,7 +40,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.29';
+  const HELIXFAST_VERSION = '2.30';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -14754,7 +14754,7 @@
   const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
   const addDays = (d, n) => { const x = new Date(d + 'T00:00:00'); x.setDate(x.getDate() + n); return ymd(x); };
   const nowStr = () => { const n = new Date(); return ymd(n) + 'T' + pad(n.getHours()) + ':' + pad(n.getMinutes()); };
-  const COLS = [['cu', 'Bệnh cũ'], ['vao', 'Vào viện'], ['ra', 'Ra viện'], ['ck', 'Chuyển khoa'], ['cv', 'Chuyển viện'], ['tv', 'Tử vong'], ['nxv', 'Nặng - Xuất viện'], ['tron', 'Trốn viện'], ['con', 'Hiện còn']];
+  const COLS = [['cu', 'Bệnh cũ'], ['vao', 'Vào viện'], ['ra', 'Ra viện'], ['ck', 'Chuyển khoa'], ['cv', 'Chuyển viện'], ['tv', 'Tử vong'], ['tron', 'Trốn viện'], ['con', 'Hiện còn']];
   const OUTK = ['ra', 'ck', 'cv', 'tv', 'nxv', 'tron'];
 
   function kindOf(r) {
@@ -15302,7 +15302,7 @@
     if (mode !== 'nam') table(R, mode !== 'ngay' ? 'Chi tiết từng ngày' : 'Số liệu ngày ' + vn(R.days[0]), R.days.map((d) => Object.assign({ label: d.slice(8) + '/' + d.slice(5, 7), date: d }, R.res[d])), true);
     if (!R.empty && R.pres) bodyEl.appendChild(detPanel(R));
     bodyEl.appendChild(cls('div', 'hs-foot',
-      'Ngày D tính từ 7h ngày D đến 7h ngày D+1 (dòng vàng: ngày chưa kết thúc). Hiện còn = Bệnh cũ + Vào − (Ra + Chuyển khoa + Chuyển viện + Tử vong + Nặng XV + Trốn viện). Tử vong, Nặng - Xuất viện, Trốn viện: nhấp đôi để sửa; HIS xem các ca này là xuất viện nên số nhập tay tự trừ khỏi Ra viện. Ngày đang diễn ra chỉ tính đến thời điểm hiện tại. Cột Ra viện = Ra viện + Xin ra viện (ghi chú "xin RV n"); tab Ra viện chỉ gồm ca ra viện thường.'));
+      'Ngày D tính từ 7h ngày D đến 7h ngày D+1 (dòng vàng: ngày chưa kết thúc). Hiện còn = Bệnh cũ + Vào − (Ra + Chuyển khoa + Chuyển viện + Tử vong + Trốn viện). Tử vong, Trốn viện: nhấp đôi để sửa; HIS xem các ca này là xuất viện nên số nhập tay tự trừ khỏi Ra viện. Ngày đang diễn ra chỉ tính đến thời điểm hiện tại. Cột Ra viện = Ra viện + Xin ra viện (ghi chú "xin RV n"); tab Ra viện chỉ gồm ca ra viện thường.'));
     const b = cls('button', 'hs-b g', '💾 Tải CSV'); b.type = 'button'; b.style.marginTop = '10px';
     b.onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCSV(last)], { type: 'text/csv;charset=utf-8' })); a.download = 'thong-ke-noi-tru.csv'; document.body.appendChild(a); a.click(); a.remove(); };
     bodyEl.appendChild(b);
@@ -15444,7 +15444,24 @@
       if (foot) { const tr = cls('tr', 'm'); foot.forEach((v) => tr.appendChild(cls('td', '', String(v)))); t.appendChild(tr); }
       bodyEl.appendChild(t);
     };
-    bodyEl.appendChild(cls('div', 'hs-t', (mode === 'ngay' ? 'Khám ngoại trú ngày ' + vn(rg[0]) : 'Khám ngoại trú ' + PERIOD_NAME().toLowerCase()) + ' — theo phòng/khoa'));
+    {
+      // BÁO CÁO GIAO BAN DẠNG BẢNG NGANG (giống bảng Ngoại trú trong PDF báo cáo giao ban)
+      const sum = (k) => list.reduce((x, r) => x + (r[k] || 0), 0);
+      const g = (n) => (agg[n] || {}).tong || 0;
+      const hc = [['Tổng', sum('total')], ['BHYT', sum('bhyt')], ['Dịch vụ', g('PK CS2_Dịch vụ')], ['Cấp cứu', g('PK CS2_CC')], ['Nội 1', g('PK CS2_Nội TH 1')], ['Nội 2', g('PK CS2_Nội TH 2')], ['Nội 3', g('PK CS2_Nội TH 3')], ['Ngoại', g('PK CS2_Ngoại TH')], ['Sản', g('PK CS2_Phụ Sản')], ['Nhi', g('PK CS2_Nhi')], ['Mắt', g('PK CS2_Mắt')], ['RHM', g('PK CS2_RHM')], ['TMH', g('PK CS2_TMH')], ['YHCT', g('PK CS2_YHCT')]];
+      [['Khám Sức khỏe', 'Khám SK'], ['Tiêm ngừa', 'Tiêm ngừa']].forEach((x) => { if (g(x[0])) hc.push([x[1], g(x[0])]); });
+      bodyEl.appendChild(cls('div', 'hs-t', 'BÁO CÁO GIAO BAN DẠNG BẢNG NGANG'));
+      const hw = cls('div'); hw.style.cssText = 'overflow-x:auto;margin:6px 0';
+      const ht = cls('table', 'hs'); ht.style.cssText = 'width:auto;min-width:60%';
+      const hh = cls('tr'), hv = cls('tr');
+      hc.forEach((c) => {
+        const th = cls('th', '', c[0]), td = cls('td', '', String(c[1]));
+        th.style.cssText = 'text-align:center;position:static'; td.style.cssText = 'text-align:center;font-weight:700';
+        hh.appendChild(th); hv.appendChild(td);
+      });
+      ht.append(hh, hv); hw.appendChild(ht); bodyEl.appendChild(hw);
+    }
+    bodyEl.appendChild(cls('div', 'hs-t', 'BÁO CÁO GIAO BAN DẠNG BẢNG DỌC'));
     const names = OPD_ORDER;
     const rangeName = () => 'ngoai-tru-' + (mode === 'ngay' ? rg[0] : rg[0] + '_' + rg[1]);
     const per = (nm) => rangeName() + (nm ? '-' + nm.replace(/\s+/g, '_') : '-tat-ca');
@@ -15659,7 +15676,7 @@
       + '<p><b>I - Thành phần:</b> ' + esc(tp) + '</p>'
       + '<h3>II - Tình hình tua trực</h3><h3>Ngoại trú:</h3>' + tbl(colsO.map((c) => c[0]), [colsO.map((c) => c[1])])
       + '<h3>Nội trú (từ 7h ngày ' + vn(d) + ' đến 7h ngày ' + vn(addDays(d, 1)) + '):</h3>'
-      + tbl(['Khoa', 'Bệnh cũ', 'Nhập viện', 'Ra viện', 'Chuyển khoa', 'Chuyển viện', 'Trốn viện', 'Tử vong', 'Nặng XV', 'Hiện còn'], units.map((u) => [u.name, o4(u, 'cu'), o4(u, 'vao'), o4(u, 'ra'), o4(u, 'ck'), o4(u, 'cv'), o4(u, 'tron'), o4(u, 'tv'), o4(u, 'nxv'), o4(u, 'con')]))
+      + tbl(['Khoa', 'Bệnh cũ', 'Nhập viện', 'Ra viện', 'Chuyển khoa', 'Chuyển viện', 'Trốn viện', 'Tử vong', 'Hiện còn'], units.map((u) => [u.name, o4(u, 'cu'), o4(u, 'vao'), o4(u, 'ra'), o4(u, 'ck'), o4(u, 'cv'), o4(u, 'tron'), o4(u, 'tv'), o4(u, 'con')]))
       + (xv.length ? '<h3>Danh sách xuất viện (gồm xin ra viện)</h3>' + lst(xv) : '')
       + (blocks(cvTxt) ? '<h3>Danh sách chuyển viện</h3>' + blocks(cvTxt) : '')
       + (blocks(tvTxt) ? '<h3>Danh sách tử vong</h3>' + blocks(tvTxt) : '')
@@ -15853,8 +15870,9 @@
       tong += o.con || 0;
     }
     v['Tổng_Hiện còn'] = tong;
+    const vs = Object.assign({}, v); delete vs['CC_Nặng XV']; delete vs['Noi_Nặng XV']; // để người dùng tự điền trên Sheet
     const rooms = {}; OPD_ORDER.forEach((n) => { const o = opd.by[n] || {}; rooms[n] = { tong: o.tong || 0, bhyt: o.bhyt || 0, dv: o.dv || 0 }; });
-    return { v: v, miss: miss, rooms: rooms };
+    return { v: v, vs: vs, miss: miss, rooms: rooms };
   }
   const GS_SHEET = 'https://docs.google.com/spreadsheets/d/1nsx9ew0fDMfyNDyzUq1h8jTRtafnxswo01F8Z8wLazc/edit';
   function openSheet() {
@@ -15879,7 +15897,7 @@
         try {
           const c = await collectSheet(v.d, (t) => { sub.textContent = t; });
           sub.textContent = 'Đang gửi lên Google Sheet...';
-          const body = JSON.stringify({ key: v.key, date: v.d, values: c.v });
+          const body = JSON.stringify({ key: v.key, date: v.d, values: c.vs });
           let link = GS_SHEET;
           try {
             const resp = await fetch(v.url, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
@@ -15947,7 +15965,7 @@
     dl.addEventListener('mousedown', (e) => { if (e.target === dl) dl.classList.remove('on'); });
 
     const card = cls('div', 'hs-card');
-    const head = cls('div', 'hs-head'); headEl = cls('h2', '', 'Thống kê ngoại trú'); head.appendChild(headEl); const verEl = cls('small', '', ' v0.75'); verEl.style.cssText = 'opacity:.7;font-weight:400;font-size:12px;margin-left:8px'; headEl.appendChild(verEl);
+    const head = cls('div', 'hs-head'); headEl = cls('h2', '', 'Thống kê ngoại trú'); head.appendChild(headEl); const verEl = cls('small', '', ' v0.76'); verEl.style.cssText = 'opacity:.7;font-weight:400;font-size:12px;margin-left:8px'; headEl.appendChild(verEl);
     const x = cls('button', 'hs-x', '✕'); x.type = 'button'; x.onclick = () => ov.classList.remove('on'); const prBtn = cls('button', 'hs-b p', '🖨 In báo cáo giao ban'); prBtn.type = 'button'; prBtn.onclick = openHandover; const shBtn = cls('button', 'hs-b p', '📤 Điền Google Sheet & Web'); shBtn.type = 'button'; shBtn.onclick = openSheet;
     const hgrp = cls('div'); hgrp.style.cssText = 'display:flex;align-items:center;gap:10px'; const fs = cls('button', 'hs-fs', '⛶'); fs.type = 'button'; fs.title = 'Toàn màn hình / thu nhỏ';
     const setFull = (on) => { ov.classList.toggle('full', on); fs.textContent = on ? '🗗' : '⛶'; try { localStorage.setItem('hlx-st-full', on ? '1' : '0'); } catch (e) {} };
