@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.30
+// @version      2.31
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -12,6 +12,7 @@
 // @connect      rxnav.nlm.nih.gov
 // @connect      api.fda.gov
 // @connect      workers.dev
+// @require      https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js
 // @updateURL    https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js
 // @downloadURL  https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js
 // ==/UserScript==
@@ -40,7 +41,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.30';
+  const HELIXFAST_VERSION = '2.31';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -1321,10 +1322,24 @@
       /* Bỏ giới hạn chiều cao (hiện hết dòng) nhưng GIỮ thanh trượt ngang.
          Trước đây overflow:visible làm bảng width:max-content tràn ra ngoài
          và mất scrollbar ngang + sticky cột Tác vụ. */
+      /* Bỏ giới hạn chiều cao cho MỌI bảng: hiện đủ tất cả dòng (vd. chọn 100 người/trang thì
+         hiện đủ 100 dòng, cả trang cuộn xuống), không còn khung dọc hẹp có thanh trượt riêng. */
       .p-datatable-wrapper {
+        height: auto !important;
         max-height: none !important;
         overflow-x: auto !important;
         overflow-y: hidden !important;
+      }
+      .p-datatable:has(.p-paginator),
+      .p-datatable:has(.p-paginator) .p-datatable-wrapper,
+      .p-datatable:has(.p-paginator) .p-datatable-scrollable-body,
+      .p-datatable:has(.p-paginator) .p-datatable-scrollable-view {
+        height: auto !important;
+        max-height: none !important;
+      }
+      .p-datatable:has(.p-paginator) .p-datatable-wrapper,
+      .p-datatable:has(.p-paginator) .p-datatable-scrollable-body {
+        overflow-y: visible !important;
       }
       /* Bảng có ô chứa dropdown (ng-select ICD...) thì giữ visible để
          panel không bị cắt như hành vi cũ. */
@@ -2814,20 +2829,85 @@
     completedCheckboxHandled = true;
   }
 
+  // Vừa vào trang Khám bệnh (mở mới / F5): tự bấm "Tìm kiếm" (sau khi tick "Đã hoàn thành") để danh sách
+  // hiện đủ ngay. Chỉ bấm khi trang ĐÃ SẴN SÀNG (nút hiện, DOM yên ổn, không còn vòng xoay tải);
+  // bấm xong kiểm tra danh sách đã có dòng chưa, chưa có thì bấm lại (tối đa 3 lần).
+  let autoSearchDone = false;
+  let autoSearchBusy = false;
+  let autoSearchSince = 0;
+  let autoSearchTries = 0;
+  let autoSearchMutAt = Date.now();
+  let autoSearchObs = null;
+  function findExamSearchButton() {
+    return Array.from(document.querySelectorAll('button[type="submit"]')).find((b) =>
+      b.querySelector('.fa-search') && /Tìm kiếm/i.test(b.textContent || '') && b.closest('.ui-g-12.ui-md-2') && b.offsetParent !== null
+    ) || null;
+  }
+  function examListHasRows() {
+    return Array.from(document.querySelectorAll('.p-datatable-tbody > tr')).some((tr) =>
+      !tr.classList.contains('p-datatable-emptymessage') && !tr.querySelector('.p-datatable-emptymessage') && tr.querySelectorAll('td').length > 2
+    );
+  }
+  function examPageLoading() {
+    return Array.from(document.querySelectorAll('.p-datatable-loading-overlay, .p-datatable-loading-icon, .p-blockui, .p-progress-spinner, .spinner, .loading, .ngx-spinner-overlay, .fa-spinner'))
+      .some((el) => el.offsetParent !== null || getComputedStyle(el).position === 'fixed');
+  }
+  function tryAutoSearchOnEnter() {
+    if (!hlxFeatOn('exam_auto')) return;
+    if (!examIsPage()) { autoSearchDone = false; autoSearchBusy = false; autoSearchSince = 0; autoSearchTries = 0; return; }
+    if (autoSearchDone || autoSearchBusy) return;
+    if (!autoSearchObs) {
+      autoSearchObs = new MutationObserver(() => { autoSearchMutAt = Date.now(); });
+      autoSearchObs.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    const btn = findExamSearchButton();
+    if (!btn || btn.disabled) return;
+    const now = Date.now();
+    if (!autoSearchSince) autoSearchSince = now;
+    const waited = now - autoSearchSince;
+    if (waited < 1500) return; // cho Angular/PrimeNG dựng xong form, nạp khu vực mặc định
+    // ô "Đã hoàn thành" phải được tick xong (tối đa chờ 6 giây nếu trang không có ô này)
+    if (!completedCheckboxHandled && waited < 6000) return;
+    // DOM phải yên ổn >= 0,7 giây và không còn vòng xoay tải (tối đa chờ 10 giây)
+    if (waited < 10000 && (now - autoSearchMutAt < 700 || examPageLoading())) return;
+    autoSearchBusy = true;
+    autoSearchTries++;
+    setTimeout(() => {
+      try { (findExamSearchButton() || btn).click(); } catch (err) {}
+      // sau 3,5 giây: danh sách có dòng thì xong, chưa có thì lượt sau bấm lại
+      setTimeout(() => {
+        paginatorAutoSet = false; // kiểm tra lại số dòng/trang = 100
+        if (examListHasRows() || autoSearchTries >= 3) autoSearchDone = true;
+        else autoSearchSince = Date.now() - 1000;
+        autoSearchBusy = false;
+      }, 3500);
+    }, 300);
+  }
+
   let paginatorAutoSet = false;
   let paginatorAttemptInProgress = false;
   let paginatorPanelObserver = null;
 
+  let paginatorFail = 0;
+  let paginatorFailPath = '';
   function trySetPaginatorTo100(attemptsLeft) {
     if (!hlxFeatOn('exam_auto')) return;
     if (attemptsLeft === undefined) attemptsLeft = 0;
     if (paginatorAttemptInProgress) return;
+    // đổi trang thì đếm lại số lần thất bại
+    const pathKey = location.pathname;
+    if (paginatorFailPath !== pathKey) { paginatorFailPath = pathKey; paginatorFail = 0; }
+    if (paginatorFail >= 3) return; // thử 3 lần không được thì thôi, không bấm/ESC liên tục nữa
 
     const dropdown = document.querySelector('.p-paginator-rpp-options');
     if (!dropdown) {
       if (attemptsLeft < 50) setTimeout(() => trySetPaginatorTo100(attemptsLeft + 1), 300);
       return;
     }
+    // Không đụng vào ô phân trang đang bị khóa/ẩn (vd. bảng trống ở Bàn làm việc)
+    if (dropdown.offsetParent === null || dropdown.classList.contains('p-disabled') || dropdown.querySelector('.p-disabled, [aria-disabled="true"]')) return;
+    // Đang mở menu người dùng / menu thả xuống của HIS thì không bấm/ESC làm đóng nó
+    if (document.querySelector('.dropdown.open, li.open > .dropdown-menu, .dropdown-menu.show, .p-menu, .p-overlaypanel') || isAnyDropdownMenuOpen()) return;
 
     const label = dropdown.querySelector('.p-dropdown-label');
     if (label && label.textContent.trim() === '100') {
@@ -2880,9 +2960,13 @@
         paginatorPanelObserver.disconnect();
         paginatorPanelObserver = null;
       }
-      document.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
-      );
+      // chỉ gửi ESC khi thật sự có bảng chọn số dòng đang mở do script bật
+      if (document.querySelector('.p-dropdown-panel')) {
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+        );
+      }
+      paginatorFail++;
       paginatorAttemptInProgress = false;
     }, 2000);
 
@@ -5081,8 +5165,11 @@
   const HLX_SYNC_META_KEY = 'hlx_sync_meta_v1';
   // Địa chỉ Worker mặc định: sửa thành địa chỉ Worker của bạn sau khi deploy (hoặc nhập trong Cài đặt)
   const HLX_SYNC_DEFAULT_URL = 'https://helixfast-sync.dhabolero.workers.dev';
-  // Các mục được đồng bộ: liều dùng tự động, cách dùng, đổi tên ICD (+ công tắc "dùng mặc định máy")
-  const HLX_SYNC_KEYS = ['hlx_dose_rules_v1', 'hlx_route_rules_v1', 'hlx_icd_names_v1', 'hlx_route_native_v1', 'hlx_dose_native_v1'];
+  // Các mục được đồng bộ cloud: liều dùng tự động, cách dùng, đổi tên ICD
+  // (công tắc "dùng mặc định máy" là cài đặt riêng từng máy -> KHÔNG đồng bộ)
+  const HLX_SYNC_KEYS = ['hlx_dose_rules_v1', 'hlx_route_rules_v1', 'hlx_icd_names_v1', 'hlx_ban_icd_v1'];
+  const HLX_SYNC_LABELS = { hlx_dose_rules_v1: 'Liều dùng tự động', hlx_route_rules_v1: 'Cách dùng', hlx_icd_names_v1: 'Đổi tên ICD', hlx_ban_icd_v1: 'Mã ICD làm bệnh án ngoại trú' };
+  function hlxSyncSelKeys() { const c = hlxSyncCfg(); return Array.isArray(c.sel) ? HLX_SYNC_KEYS.filter((k) => c.sel.indexOf(k) >= 0) : HLX_SYNC_KEYS.slice(); }
   const hlxSyncRt = { timer: null, busy: false, again: false, id: null, idFor: '', msg: '', msgErr: false };
 
   function hlxSyncJson(key, def) {
@@ -5142,7 +5229,7 @@
     hlxSyncRt.idFor = code;
     return hex;
   }
-  function hlxSyncReq(base, id, payload) {
+  function hlxSyncReqRaw(base, id, payload) {
     return new Promise((resolve, reject) => {
       const body = JSON.stringify(payload);
       const done = (status, text) => {
@@ -5165,6 +5252,37 @@
           .catch(() => reject(new Error('Không kết nối được máy chủ đồng bộ')));
       }
     });
+  }
+  // Mật khẩu tải lên đám mây: chỉ cần khi GHI (đẩy dữ liệu); tải xuống/đọc không cần. Mật khẩu chỉ giữ trong bộ nhớ của trang, kiểm tra ở phía máy chủ.
+  function hlxSyncAskPw() {
+    const rt = hlxSyncRt;
+    if (rt.pw) return Promise.resolve(rt.pw);
+    if (rt.auto && rt.pwDeclined) return Promise.resolve(null);
+    if (rt.pwAsking) return rt.pwAsking;
+    rt.pwAsking = new Promise((resolve) => {
+      let fin = false;
+      const end = (v) => { if (fin) return; fin = true; rt.pwAsking = null; if (v) { rt.pw = v; rt.pwDeclined = false; } else { rt.pwDeclined = true; } resolve(v); };
+      hlxAdmPrompt('Mật khẩu tải lên đám mây', 'Nhập mật khẩu để ghi lên đám mây (tải xuống không cần mật khẩu)', async (val) => {
+        val = String(val || '');
+        if (!val) return 'Chưa nhập mật khẩu.';
+        try {
+          const res = await hlxSyncReqRaw(hlxFeatBaseUrl(), await hlxFeatCloudId(), { items: {}, pw: val });
+          if (res.pwok === undefined) return 'Máy chủ đồng bộ chưa được cập nhật (cần deploy Worker mới).';
+          if (res.pwok !== true) return 'Sai mật khẩu.';
+        } catch (err) { return (err && err.message) || 'Không kiểm tra được mật khẩu.'; }
+        end(val);
+        return true;
+      }, 'password', () => end(null));
+    });
+    return rt.pwAsking;
+  }
+  async function hlxSyncReq(base, id, payload) {
+    const write = !!(payload && payload.items && Object.keys(payload.items).length > 0);
+    if (!write) return hlxSyncReqRaw(base, id, payload);
+    const pw = await hlxSyncAskPw();
+    if (!pw) throw new Error('Chưa nhập mật khẩu tải lên đám mây, chỉ tải xuống, chưa ghi lên đám mây.');
+    try { return await hlxSyncReqRaw(base, id, Object.assign({}, payload, { pw })); }
+    catch (err) { if (/Sai mật khẩu/.test((err && err.message) || '')) hlxSyncRt.pw = ''; throw err; }
   }
   // Gộp dữ liệu khi cả hai máy cùng sửa một mục (tránh mất dữ liệu của nhau)
   function hlxSyncMerge(key, localStr, remoteStr) {
@@ -5222,6 +5340,7 @@
     const base = String(HLX_SYNC_DEFAULT_URL).trim().replace(/\/+$/, '');
     if (!/^https:\/\//i.test(base) || /TEN-CUA-BAN/.test(base)) return fail('Chưa cấu hình địa chỉ máy chủ đồng bộ.');
     rt.busy = true;
+    rt.auto = (mode === 'auto');
     rt.msg = 'Đang đồng bộ…';
     rt.msgErr = false;
     try {
@@ -5232,35 +5351,39 @@
       if (!meta.base) meta.base = {};
       const clearDirty = (k) => { if (meta.dirty[k] != null && meta.dirty[k] <= t0) delete meta.dirty[k]; };
       let applied = 0, merged = 0;
+      const sel = hlxSyncSelKeys();
+      if (!sel.length) return fail('Chưa chọn mục nào để đồng bộ.');
+      const st = {};
 
       if (mode === 'push') {
         const items = {};
-        HLX_SYNC_KEYS.forEach((k) => { const v = hlxStoreGet(k); if (v != null) items[k] = { ts: Date.now(), v, base: 0 }; });
+        sel.forEach((k) => { const v = hlxStoreGet(k); if (v != null) items[k] = { ts: Date.now(), v, base: 0 }; else st[k] = 'none'; });
         await hlxSyncReq(base, id, { items, force: true });
-        Object.keys(items).forEach((k) => { meta.base[k] = items[k].ts; clearDirty(k); });
+        Object.keys(items).forEach((k) => { meta.base[k] = items[k].ts; clearDirty(k); st[k] = 'up'; });
       } else {
         for (let attempt = 0; attempt < 4; attempt++) {
           const res = await hlxSyncReq(base, id, { items: {} });
           const remote = res.items || {};
           if (mode === 'probe') { rt.msg = ''; return { ok: true, remoteCount: Object.keys(remote).length }; }
           const push = {};
-          HLX_SYNC_KEYS.forEach((k) => {
+          sel.forEach((k) => {
             const r = remote[k];
             const lv = hlxStoreGet(k);
             const dirty = meta.dirty[k] != null;
-            const take = () => { hlxStoreSetRaw(k, r.v); meta.base[k] = r.ts; if (!dirty || mode === 'pull') delete meta.dirty[k]; applied++; };
-            if (r && typeof r.v !== 'string') return;
-            if (mode === 'pull') { if (r) take(); return; }
-            if (!r) { if (lv != null) push[k] = { v: lv, base: 0, floor: 0 }; return; }
+            const take = () => { hlxStoreSetRaw(k, r.v); meta.base[k] = r.ts; if (!dirty || mode === 'pull') delete meta.dirty[k]; applied++; st[k] = 'down'; };
+            if (r && typeof r.v !== 'string') { st[k] = 'none'; return; }
+            if (mode === 'pull') { if (r) { if (lv === r.v) { meta.base[k] = r.ts; delete meta.dirty[k]; st[k] = 'same'; } else take(); } else st[k] = 'none'; return; }
+            if (!r) { if (lv != null) { push[k] = { v: lv, base: 0, floor: 0 }; st[k] = 'up'; } else st[k] = 'none'; return; }
             if (lv == null) { take(); return; }
-            if (lv === r.v) { meta.base[k] = r.ts; clearDirty(k); return; }
+            if (lv === r.v) { meta.base[k] = r.ts; clearDirty(k); st[k] = 'same'; return; }
             const remoteChanged = meta.base[k] !== r.ts;
+            st[k] = 'diff';
             if (!dirty && remoteChanged) { take(); return; }
-            if (dirty && !remoteChanged) { push[k] = { v: lv, base: r.ts, floor: r.ts }; return; }
+            if (dirty && !remoteChanged) { push[k] = { v: lv, base: r.ts, floor: r.ts }; st[k] = 'up'; return; }
             if (dirty && remoteChanged) {
               const m = hlxSyncMerge(k, lv, r.v);
               if (m !== lv) { hlxStoreSetRaw(k, m); applied++; }
-              merged++;
+              merged++; st[k] = 'merge';
               if (m !== r.v) push[k] = { v: m, base: r.ts, floor: r.ts };
               else { meta.base[k] = r.ts; clearDirty(k); }
             }
@@ -5280,13 +5403,23 @@
       const c2 = hlxSyncCfg();
       c2.last = Date.now();
       hlxSyncCfgSave(c2);
-      rt.msg = merged ? 'Đã đồng bộ và gộp thay đổi từ máy khác.' : (applied ? ('Đã cập nhật ' + applied + ' mục từ đám mây.') : 'Đã đồng bộ.');
+      const by = { down: [], up: [], merge: [], same: [], none: [], diff: [] };
+      sel.forEach((k) => { (by[st[k] || 'same'] || by.same).push(HLX_SYNC_LABELS[k] || k); });
+      const lines = ['Đã kiểm tra ' + sel.length + '/' + HLX_SYNC_KEYS.length + ' mục đã chọn:'];
+      if (by.down.length) lines.push('⬇ Đã cập nhật từ đám mây (' + by.down.length + '): ' + by.down.join(', '));
+      if (by.up.length) lines.push('⬆ Đã đẩy lên đám mây (' + by.up.length + '): ' + by.up.join(', '));
+      if (by.merge.length) lines.push('⇄ Đã gộp hai bên (' + by.merge.length + '): ' + by.merge.join(', '));
+      if (by.same.length) lines.push('= Giống nhau, không cần đổi (' + by.same.length + '): ' + by.same.join(', '));
+      if (by.none.length) lines.push('∅ Chưa có dữ liệu để đồng bộ (' + by.none.length + '): ' + by.none.join(', '));
+      if (by.diff.length) lines.push('⚠ Khác nhau nhưng không rõ bên nào mới hơn (' + by.diff.length + '): ' + by.diff.join(', ') + ' — hãy dùng "Tải từ cloud" hoặc "Đẩy máy này".');
+      rt.msg = lines.join('\n');
       rt.msgErr = false;
       return { ok: true, applied };
     } catch (err) {
       return fail(err && err.message ? err.message : 'Đồng bộ thất bại.');
     } finally {
       rt.busy = false;
+      rt.auto = false;
       if (rt.again) { rt.again = false; hlxSyncSchedule(1500); }
     }
   }
@@ -5317,7 +5450,9 @@
       .hlx-st-btn.out:hover { background: #eff6ff; }
       .hlx-st-btn.out.o { color: #c2410c; border-color: #ea580c; }
       .hlx-st-btn.out.o:hover { background: #fff7ed; }
-      .hlx-st-stat { margin-top: 12px; font-size: 13px; color: #334155; min-height: 18px; }
+      .hlx-st-sel { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin: 4px 0 2px; }
+      .hlx-st-chk { display: flex; gap: 6px; align-items: center; font-size: 13px; cursor: pointer; }
+      .hlx-st-stat { white-space: pre-line; margin-top: 12px; font-size: 13px; color: #334155; min-height: 18px; }
       .hlx-st-stat.err { color: #dc2626; font-weight: 700; }
     `;
     document.head.appendChild(st);
@@ -5472,7 +5607,7 @@
     if (e.isTrusted && e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); hlxAdmClose(); }
   }
   // Hộp nhập mật khẩu (dùng chung cho vào Admin và đổi mật khẩu)
-  function hlxAdmPrompt(title, text, onOk, type) {
+  function hlxAdmPrompt(title, text, onOk, type, onCancel) {
     hlxAdmEnsureCss();
     const ov = document.createElement('div');
     ov.className = 'hlx-icd-cf-ov';
@@ -5519,17 +5654,18 @@
     });
     const msg = dlg.querySelector('.hlx-adm-msg');
     const done = () => { hlxKeepDrop(ov); hlxKeepDrop(dlg); ov.remove(); dlg.remove(); };
+    const cancel = () => { done(); try { if (onCancel) onCancel(); } catch (err) {} };
     const submit = async () => {
       const r = await onOk(inp.value);
       if (r === true) done(); else { msg.textContent = r || 'Không hợp lệ.'; inp.select(); }
     };
     dlg.querySelector('[data-k="ok"]').addEventListener('click', submit);
-    dlg.querySelector('[data-k="no"]').addEventListener('click', done);
-    ov.addEventListener('mousedown', done);
+    dlg.querySelector('[data-k="no"]').addEventListener('click', cancel);
+    ov.addEventListener('mousedown', cancel);
     inp.addEventListener('keydown', (e) => {
       e.stopPropagation();
       if (e.key === 'Enter') { e.preventDefault(); submit(); }
-      else if (e.key === 'Escape') { e.preventDefault(); done(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
     });
     setTimeout(() => inp.focus(), 30);
   }
@@ -5825,6 +5961,7 @@
       '<div class="hlx-st-h">☁ Đồng bộ đám mây</div>' +
       '<div class="hlx-icd-tip" style="padding:0 0 6px">Tự động đồng bộ <b>Liều dùng tự động</b>, <b>Cách dùng</b> và <b>Đổi tên ICD</b> giữa các máy. Chỉ gồm cài đặt của bạn, không có dữ liệu bệnh nhân. Đồng bộ theo tài khoản HIS đang đăng nhập: trên máy mới, đăng nhập cùng tài khoản rồi bật.</div>' +
       '<label class="hlx-icd-on" style="padding:6px 0 4px"><input type="checkbox" id="hlx-st-on"><span class="hlx-icd-sw"></span><span id="hlx-st-onl"></span></label>' +
+      '<div class="hlx-st-lb">Mục đồng bộ (chọn mục cần đồng bộ)</div><div class="hlx-st-sel" id="hlx-st-sel"></div>' +
       '<div class="hlx-st-lb">Tài khoản đồng bộ</div><div class="hlx-st-acct" id="hlx-st-acct" style="font-weight:700;color:#1d4ed8"></div>' +
       '<div class="hlx-st-stat" id="hlx-st-stat"></div>' +
       '<div class="hlx-st-btns">' +
@@ -5853,13 +5990,22 @@
     const acctEl = q('#hlx-st-acct');
     const showAcct = () => { const a = hlxSyncAccount(); acctEl.textContent = a ? a.name : 'Chưa đọc được tên tài khoản HIS'; acctEl.style.color = a ? '#1d4ed8' : '#dc2626'; };
     showAcct();
+    const selBox = q('#hlx-st-sel');
+    const drawSel = () => {
+      const cur = hlxSyncSelKeys();
+      selBox.textContent = '';
+      const mk = (label, checked, onChange, bold) => { const l = document.createElement('label'); l.className = 'hlx-st-chk'; const i = document.createElement('input'); i.type = 'checkbox'; i.checked = checked; i.addEventListener('change', () => onChange(i.checked)); const sp = document.createElement('span'); sp.textContent = label; if (bold) sp.style.fontWeight = '700'; l.append(i, sp); selBox.appendChild(l); };
+      mk('Tất cả (' + HLX_SYNC_KEYS.length + ' mục)', cur.length === HLX_SYNC_KEYS.length, (on) => { const c = hlxSyncCfg(); c.sel = on ? HLX_SYNC_KEYS.slice() : []; hlxSyncCfgSave(c); drawSel(); }, true);
+      HLX_SYNC_KEYS.forEach((k) => mk(HLX_SYNC_LABELS[k] || k, cur.indexOf(k) >= 0, (on) => { const c = hlxSyncCfg(); const set = new Set(hlxSyncSelKeys()); if (on) set.add(k); else set.delete(k); c.sel = HLX_SYNC_KEYS.filter((x) => set.has(x)); hlxSyncCfgSave(c); drawSel(); }));
+    };
+    drawSel();
     const fmt = (t) => new Date(t).toLocaleString('vi-VN');
     function paint() {
       const c = hlxSyncCfg();
       q('#hlx-st-onl').textContent = onCb.checked ? 'Đồng bộ tự động: BẬT' : 'Đồng bộ tự động: TẮT';
       const rt = hlxSyncRt;
       let t = rt.msg || (c.last ? 'Lần đồng bộ cuối: ' + fmt(c.last) : 'Chưa đồng bộ lần nào.');
-      if (!rt.msgErr && rt.msg && c.last) t += ' (' + fmt(c.last) + ')';
+      if (!rt.msgErr && rt.msg && c.last) t = fmt(c.last) + '\n' + t;
       stat.textContent = t;
       stat.classList.toggle('err', !!rt.msgErr);
     }
@@ -5911,7 +6057,7 @@
     });
     q('#hlx-st-push').addEventListener('click', () => {
       saveFields();
-      hlxStAsk('Đẩy lên đám mây?', 'Dữ liệu trên đám mây sẽ bị ghi đè bằng cài đặt của máy này.', [{ label: 'Đẩy lên', color: '#ea580c', fn: () => { hlxSyncRun('push').then(paint); paint(); } }, { label: 'Hủy' }]);
+      hlxStAsk('Đẩy lên đám mây?', 'Dữ liệu trên đám mây sẽ bị ghi đè bằng cài đặt của máy này. Cần nhập mật khẩu tải lên.', [{ label: 'Đẩy lên', color: '#ea580c', fn: () => { hlxSyncRun('push').then(paint); paint(); } }, { label: 'Hủy' }]);
     });
     q('#hlx-st-backup').addEventListener('click', () => {
       try {
@@ -10464,14 +10610,17 @@
   // Dữ liệu: dùng chính API của HIS (gọi lại bằng thông tin đăng nhập mà trang đang dùng, chỉ ĐỌC, không ghi).
   const BAN_ICD_KEY = 'hlx_ban_icd_v1';
   const BAN_DONE_KEY = 'hlx_ban_done_v1';
-  const BAN_ICD_DEF = ['I10', 'I20.x', 'E78.x', 'J45.x', 'J44.x'];
+  const BAN_ICD_DEF = ['I10', 'I20.x', 'I25.x', 'E11.x', 'E78.x', 'J44.x', 'J45.x'];
   const BAN_ZERO = /^0{8}-0{4}-0{4}-0{4}-0{12}$/;
   const banHdr = {};
   const banHdrByUrl = {};
   const banLast = { visitId: '' };
   const banLists = { cur: null };
-  const banListReq = { data: null };
+  const banListReq = { data: null, str: false };
+  const banSearchRes = { at: 0, n: -1 }; // lần tìm kiếm gần nhất của trang: thời điểm + số bệnh nhân trả về
   const banCache = {};
+  const banEmpty = {};
+  const banItemBy = {};
   const banMed = {};
   const banMedReq = {};
 
@@ -10481,15 +10630,18 @@
   // Đọc lén các request của chính trang: lấy header đăng nhập, mã lượt khám đang mở, và danh sách bệnh nhân vừa tải
   function banSniff(meta, body, text) {
     const rq = banJson(body);
-    const d = rq && rq.Data;
+    let d = rq && rq.Data;
+    const dWasStr = typeof d === 'string';
+    if (dWasStr) d = banJson(d); // trang có lúc gửi Data dạng chuỗi JSON
     const vid = d && d.patient_visit_id;
     if (typeof vid === 'string' && !BAN_ZERO.test(vid)) banLast.visitId = vid;
     const m = rq && typeof rq.Url === 'string' && /\/get-medical-data\/([0-9a-f-]{36})/i.exec(rq.Url);
     if (m) banLast.visitId = m[1];
-    if (rq && rq.Url === '/api/processing-queue/search' && d && d.fr_created_date_time) { try { banListReq.data = JSON.parse(JSON.stringify(d)); } catch (e) {} }
+    if (rq && rq.Url === '/api/processing-queue/search' && d && typeof d === 'object' && d.fr_created_date_time) { try { banListReq.data = JSON.parse(JSON.stringify(d)); banListReq.str = dWasStr; } catch (e) {} }
     const rs = banJson(text);
     if (!rs) return;
     const list = banJson(rs.Data !== undefined ? rs.Data : rs.data);
+    if (rq && rq.Url === '/api/processing-queue/search') { banSearchRes.at = Date.now(); banSearchRes.n = Array.isArray(list) ? list.length : 0; }
     if (Array.isArray(list) && list.length && list[0] && typeof list[0] === 'object' &&
         list[0].patient_visit_id && list[0].visit_code && !BAN_ZERO.test(String(list[0].patient_visit_id))) {
       banLists.cur = { url: (rq && rq.Url) || meta.u, items: list, at: Date.now() };
@@ -10517,7 +10669,18 @@
       XP.__hlxBanHook = 1;
     } catch (e) {}
   }
-  function banApi(url, method, data, module, hdrs) {
+  const banDiag = [];
+  async function banApi(url, method, data, module, hdrs) {
+    const r = await banApi0(url, method, data, module, hdrs);
+    const emp = (x) => !x || x.Data == null || (Array.isArray(x.Data) && !x.Data.length);
+    if (!hdrs && emp(r) && banHdrByUrl[url] && /search|look-up/.test(url)) {
+      // Thử lại với đúng bộ header mà trang đã dùng cho URL này
+      try { const r2 = await banApi0(url, method, data, module, Object.assign({}, banHdr, banHdrByUrl[url])); if (!emp(r2)) { banDiag.push(url.split('/').slice(-2).join('/') + ': header riêng có dữ liệu'); return r2; } } catch (e) {}
+    }
+    try { banDiag.push(url.split('/').slice(-2).join('/') + '=' + (r && r.TotalItems) + '/' + (Array.isArray(r && r.Data) ? r.Data.length : typeof (r && r.Data)) + (r && r.MessageCode ? ' ' + JSON.stringify(r.MessageCode).slice(0, 80) : '')); if (banDiag.length > 40) banDiag.shift(); } catch (e) {}
+    return r;
+  }
+  function banApi0(url, method, data, module, hdrs) {
     return new Promise((resolve, reject) => {
       if (!banHdr.Authorization && !banHdr.authorization) { reject(new Error('Chưa lấy được phiên đăng nhập: hãy thao tác 1 lần trên HIS (đổi ngày, mở bệnh nhân) rồi thử lại')); return; }
       const x = new (banPage().XMLHttpRequest)();
@@ -10560,101 +10723,87 @@
       return c === p;
     });
   }
-  function banDrugDays(d) {
-    // số ngày = tổng số viên cả đợt / số viên mỗi ngày (sáng+trưa+chiều+tối) — giống cột "Số ngày" của Helixfast trong bảng đơn
-    const num = (v) => parseFloat(String(v == null || v === '' ? '0' : v).replace(',', '.')) || 0;
-    let per = num(d.quantity_unit_s) + num(d.quantity_unit_tr) + num(d.quantity_unit_c) + num(d.quantity_unit_t);
-    const tot = num(d.immediate_dispense_qty);
-    try { const dd = typeof hlxDoseLookup === 'function' ? hlxDoseLookup(String(d.item_name || ''), true) : null; if (dd && dd.disc && per > 0) per = Math.ceil(per - 1e-9); } catch (e) {}
-    let n = per > 0 && tot > 0 ? Math.round(tot / per) : 0;
-    if (!n) n = Number(d.duration) || 0;
-    if (!n) { const m = /\*\s*(\d+)\s*ngày/i.exec(String(d.drug_usage_2 || d.drug_usage || '')) || /(\d+)\s*ngày/i.exec(String(d.additional_information_for_patient || '')); if (m) n = Number(m[1]); }
-    if (!n) n = Number(d.remaining_date_count) || 0;
-    return n;
-  }
-  const banStrat = { best: '' };
-  async function banGetDrugs(vid, it) {
-    const arr = (x) => { const v = banJson(x); return Array.isArray(v) ? v : []; };
-    const pay = (it && it.payment_date_time) || '';
-    const room = (banListReq.data && banListReq.data.area_id) || (it && it.area_id) || null;
-    const S = {
-      // 1: đúng như trang gọi khi mở lượt khám
-      S1: async () => {
-        const body = { page: 1, pageSize: 0, creation_visit_id: vid };
-        const noPk = Object.assign({}, banHdr); Object.keys(noPk).forEach((k) => { if (/^privatekey$/i.test(k)) delete noPk[k]; });
-        const V = [['g', banHdr]];
-        if (banHdrByUrl['/api/ph-prescription-order/search']) V.push(['u', banHdrByUrl['/api/ph-prescription-order/search']]);
-        V.push(['noPK', noPk]);
-        let first = '';
-        for (const [nm, h] of V) {
-          const r = await banApi('/api/ph-prescription-order/search', 'POST', body, 'HC', h);
-          const a = arr(r.Data);
-          if (!first) first = '[' + nm + ' tot=' + r.TotalItems + ' mc=' + r.MessageCode + ' br=' + JSON.stringify(r.BrokenRules) + ' ex=' + r.ExtraInfo + ' pk=' + (banHdr.PrivateKey ? banHdr.PrivateKey.length : 'rỗng') + ' pkSeen=' + (banHdr.__pkSeen || 0) + ']';
-          if (a.length) { banStrat.hdr = nm; return a; }
-        }
-        banStrat.first = first;
-        return [];
-      },
-      // 2: lấy từ thông tin khám (listjson_prescription), trang cũng gọi khi mở bệnh nhân
-      S2: async () => {
-        if (!it) return [];
-        const r = await banApi('/api/medical-examination/get-medical-examination-info', 'POST', { patient_visit_id: vid, patient_id: it.patient_id, area_id: room, processing_queue_id: it.processing_queue_id, cpoe_placer_order_id: it.cpoe_placer_order_id, caregiver_session_id: it.caregiver_session_id, payment_date_time: pay || null }, 'HC');
-        const d = banJson(r.Data) || {};
-        return arr(d.listjson_prescription);
-      },
-      // 3: qua mã đơn (tab Đơn thuốc)
-      S3: async () => {
-        const ph = await banApi('/api/ph-prescription/search', 'POST', { patient_visit_id: vid, patient_treatment_id: null, payment_date_time: pay, page: 1, pageSize: 0 }, 'HC');
-        let out = [];
-        for (const p of arr(ph.Data)) {
-          if (!p.ph_prescription_id) continue;
-          out = out.concat(arr((await banApi('/api/ph-prescription-order/search', 'POST', { page: 1, pageSize: 0, ph_prescription_id: p.ph_prescription_id, payment_date_time: pay }, 'HC')).Data));
-        }
-        return out;
-      },
-    };
-    const order = ['S1', 'S2', 'S3'];
-    if (banStrat.best) order.sort((a, b) => (a === banStrat.best ? -1 : b === banStrat.best ? 1 : 0));
-    const log = [];
-    for (const k of order) {
-      try {
-        const d = await S[k]();
-        log.push(k + ':' + d.length);
-        if (d.length) { banStrat.best = k; return { drugs: d, src: k, log: log.join(' ') }; }
-      } catch (e) { log.push(k + ':lỗi ' + e.message); }
-    }
-    return { drugs: [], src: '-', log: log.join(' ') + ' ' + (banStrat.first || '') + ' hdrKeys=' + Object.keys(banHdr).filter((k) => k !== '__pkSeen').join(',') };
-  }
-  async function banAnalyze(vid, it) {
+  async function banAnalyze(vid) {
     if (banCache[vid] && !banCache[vid].err) return banCache[vid];
-    const [g, md] = await Promise.all([
-      banGetDrugs(vid, it),
-      banApi('/api/medical-record/get-medical-data/' + vid, 'GET', null, 'HC'),
-    ]);
-    const drugs = g.drugs;
-    const days = drugs.reduce((a, d) => Math.max(a, banDrugDays(d)), 0);
+    const md = await banApi('/api/medical-record/get-medical-data/' + vid, 'GET', null, 'HC');
     const med = banJson(md.Data) || {};
-    const icds = String(med.icd_codes || '').split(/[;,\s]+/).map((x) => x.trim()).filter(Boolean);
-    try { (window.__hlxBanDbg = window.__hlxBanDbg || {})[vid] = { log: g.log, nDrug: drugs.length, sample: drugs[0] || null }; } catch (e) {}
-    return (banCache[vid] = { days, icds, nDrug: drugs.length, src: g.src, msg: g.log });
+    let icds = String(med.icd_codes || '').split(/[;,\s]+/).map((x) => x.trim()).filter(Boolean);
+    if (!icds.length) {
+      // Dự phòng: lấy mã ICD từ chẩn đoán của lượt khám
+      try {
+        const it0 = banItemBy[vid] || {};
+        // Lượt khám đã đóng hồ sơ thì HIS chỉ trả dữ liệu khi có đúng giờ đóng (payment_date_time)
+        let pay0 = null, exam0 = it0.actual_visit_date_time || null;
+        try {
+          const lk0 = await banApi('/api/patient-registration/look-up-visit-info', 'POST', { patient_id: it0.patient_id || '' }, 'HC');
+          const v0 = (lk0.Data || []).find((x) => String(x.patient_visit_id) === vid);
+          if (v0) { pay0 = v0.closure_date_time || null; exam0 = v0.actual_visit_date_time || exam0; }
+        } catch (e) {}
+        const pj = await banApi('/api/medical-examination/get-patient-problem', 'POST', { patient_id: it0.patient_id || '', patient_visit_id: vid, examination_date: exam0, payment_date_time: pay0, get_previous_visit_flag: false }, 'HC');
+        const pr = banJson(pj.Data) || {};
+        const txt = String(pr.icd_checkout || pr.icd_free_text || '');
+        const m = txt.match(/\(([A-Za-z]\d{2}(?:\.\d+)?)\)/g) || [];
+        icds = m.map((x) => x.replace(/[()]/g, ''));
+        if (!icds.length && Array.isArray(pr.list_json_icd)) icds = pr.list_json_icd.map((x) => x.icd_code).filter(Boolean);
+      } catch (e) {}
+    }
+    if (!icds.length) return { icds, empty: true, dbg: 'chẩn đoán: ' + (typeof pr0 !== 'undefined' ? '' : '') + 'hồ sơ: ' + (md.MessageCode || '-') + '/' + String(md.Data == null ? 'null' : md.Data).slice(0, 50) };
+    return (banCache[vid] = { icds });
   }
+  // Tạo chuỗi ngày giờ đúng định dạng mà chính trang đã gửi (lấy mẫu từ request tìm kiếm), kèm vài định dạng dự phòng
+  function banDateCandidates(dsel, sample) {
+    const [y, m, d] = dsel.split('-').map(Number);
+    const p2 = (n) => String(n).padStart(2, '0');
+    const mk = (end) => ({ h: end ? 23 : 0, mi: end ? 59 : 0, s: end ? 59 : 0, ms: end ? 999 : 0 });
+    const local = (end, withMs) => { const t = mk(end); return y + '-' + p2(m) + '-' + p2(d) + 'T' + p2(t.h) + ':' + p2(t.mi) + ':' + p2(t.s) + (withMs ? '.' + String(t.ms).padStart(3, '0') : ''); };
+    const utc = (end) => { const t = mk(end); return new Date(y, m - 1, d, t.h, t.mi, t.s, t.ms).toISOString(); };
+    const off = (end) => { const o = -new Date(y, m - 1, d).getTimezoneOffset(); const sg = o >= 0 ? '+' : '-'; return local(end, false) + sg + p2(Math.floor(Math.abs(o) / 60)) + ':' + p2(Math.abs(o) % 60); };
+    const vn = (end) => { const t = mk(end); return p2(d) + '/' + p2(m) + '/' + y + ' ' + p2(t.h) + ':' + p2(t.mi) + ':' + p2(t.s); };
+    const fromSample = (end) => {
+      const sm = String(sample || '');
+      if (/Z$/.test(sm)) return utc(end);
+      if (/[+-]\d\d:\d\d$/.test(sm)) return off(end);
+      if (/^\d{2}\/\d{2}\/\d{4}/.test(sm)) return vn(end);
+      if (/^\d{4}-\d\d-\d\dT/.test(sm)) return local(end, /\./.test(sm));
+      if (/^\d{4}-\d\d-\d\d$/.test(sm)) return y + '-' + p2(m) + '-' + p2(d);
+      return '';
+    };
+    const out = [], seen = {};
+    [fromSample, (e) => local(e, false), utc, off, vn].forEach((f) => {
+      const fr = f(false), to = f(true);
+      if (!fr || !to || seen[fr + '|' + to]) return;
+      seen[fr + '|' + to] = 1;
+      out.push({ fr, to });
+    });
+    return out;
+  }
+  // Nạp danh sách bệnh nhân của ngày bất kỳ (thử lần lượt các định dạng ngày cho tới khi có dữ liệu)
   async function banFetchList(dsel) {
     const t = banListReq.data;
-    if (!t || !dsel) return null;
-    const base = JSON.parse(JSON.stringify(t));
-    base.fr_created_date_time = dsel + 'T00:00:00';
-    base.to_created_date_time = dsel + 'T23:59:59';
-    base.pageSize = 100;
-    let all = [], page = 1, pc = 1;
-    do {
-      base.page = page;
-      const r = await banApi('/api/processing-queue/search', 'POST', base, 'HC');
-      const arr = banJson(r.Data);
-      if (Array.isArray(arr)) all = all.concat(arr);
-      pc = Number(r.PageCount) || 1;
-      page++;
-    } while (page <= pc && page < 20);
-    return all;
+    if (!t || !dsel) return { items: [], tried: 0 };
+    const cands = banDateCandidates(dsel, t.fr_created_date_time);
+    let lastErr = null, okOnce = false;
+    for (const c of cands) {
+      try {
+        const base = JSON.parse(JSON.stringify(t));
+        base.fr_created_date_time = c.fr;
+        base.to_created_date_time = c.to;
+        base.pageSize = 100;
+        let all = [], page = 1, pc = 1;
+        do {
+          base.page = page;
+          const r = await banApi('/api/processing-queue/search', 'POST', banListReq.str ? JSON.stringify(base) : base, 'HC');
+          const arr = banJson(r.Data !== undefined ? r.Data : r.data);
+          if (Array.isArray(arr)) all = all.concat(arr);
+          pc = Number(r.PageCount) || 1;
+          page++;
+        } while (page <= pc && page < 20);
+        okOnce = true;
+        if (all.length) return { items: all, tried: cands.length };
+      } catch (e) { lastErr = e; }
+    }
+    if (!okOnce && lastErr) throw lastErr;
+    return { items: [], tried: cands.length };
   }
   async function banPool(ids, n, fn, onStep) {
     let i = 0, done = 0;
@@ -10684,6 +10833,647 @@
     return true;
   }
 
+  // Đồng bộ ngày của popup sang trang: đặt "Ngày tạo từ" = dd/mm/yyyy 00:00 và "Ngày tạo đến" = dd/mm/yyyy 23:59,
+  // bấm Tìm kiếm rồi chờ danh sách mới về (banLists.cur cập nhật). Trả về true nếu danh sách trên trang đã đúng ngày.
+  function banPageDateInputs() {
+    const f = document.querySelector('p-calendar[formcontrolname="fr_created_date_time"] input');
+    const t = document.querySelector('p-calendar[formcontrolname="to_created_date_time"] input');
+    return f && t ? { f, t } : null;
+  }
+  // Nhập giá trị vào ô lịch giống người gõ (insertText = sự kiện input thật), dự phòng bằng setter gốc
+  function banSetInput(el, val) {
+    try { el.focus(); el.select(); document.execCommand('insertText', false, val); } catch (e) {}
+    if (el.value !== val) {
+      try { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, val); } catch (e) { el.value = val; }
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+    try { el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, which: 27, bubbles: true })); } catch (e) {} // đóng lịch xổ ra
+    try { el.blur(); } catch (e) {}
+    el.dispatchEvent(new Event('blur', { bubbles: true }));
+  }
+  const banSyncWhy = { s: '', empty: false };
+  const banDKeys = ['examination_date', 'actual_visit_date_time', 'visit_date_time', 'created_date_time', 'report_date_time'];
+  function banCurListDate() {
+    const c = banLists.cur;
+    return c && c.items && c.items.length ? banFirst(c.items[0], banDKeys).slice(0, 10) : '';
+  }
+  async function banSyncPageDate(dsel) {
+    banSyncWhy.s = '';
+    banSyncWhy.empty = false;
+    if (!dsel) return false;
+    const inp = banPageDateInputs();
+    if (!inp) { banSyncWhy.s = 'không thấy ô "Ngày tạo từ/đến" trên trang'; return false; }
+    const [y, m, d] = dsel.split('-');
+    const fr = d + '/' + m + '/' + y + ' 00:00';
+    const to = d + '/' + m + '/' + y + ' 23:59';
+    if (inp.f.value === fr && inp.t.value === to && banCurListDate() === dsel) return true;
+    const t0 = Date.now();
+    const prevFr = /(\d{2})\/(\d{2})\/(\d{4})/.exec(inp.f.value || '');
+    const later = prevFr ? (prevFr[3] + prevFr[2] + prevFr[1]) < (y + m + d) : false;
+    // chọn sang ngày muộn hơn thì đặt "đến" trước, tránh "từ" > "đến" bị trang từ chối
+    if (later) { banSetInput(inp.t, to); await new Promise((r) => setTimeout(r, 150)); banSetInput(inp.f, fr); }
+    else { banSetInput(inp.f, fr); await new Promise((r) => setTimeout(r, 150)); banSetInput(inp.t, to); }
+    await new Promise((r) => setTimeout(r, 450));
+    const cur = banPageDateInputs() || inp;
+    if (cur.f.value !== fr || cur.t.value !== to) { banSyncWhy.s = 'trang không nhận ngày (ô đang là ' + cur.f.value + ' → ' + cur.t.value + ')'; return false; }
+    const btn = findExamSearchButton();
+    if (!btn) { banSyncWhy.s = 'không thấy nút Tìm kiếm'; return false; }
+    btn.click();
+    for (let i = 0; i < 40; i++) {
+      await new Promise((r) => setTimeout(r, 250));
+      if (banLists.cur && banLists.cur.at >= t0 && banCurListDate() === dsel) return true;
+      // trang đã tìm xong nhưng không có ai -> báo ngay, khỏi chờ
+      if (banSearchRes.at >= t0 && banSearchRes.n === 0) { banSyncWhy.empty = true; banSyncWhy.s = 'không có bệnh nhân'; return false; }
+    }
+    banSyncWhy.s = 'đã chọn ngày và bấm Tìm kiếm nhưng chưa thấy danh sách về (có thể ngày này không có bệnh nhân)';
+    return false;
+  }
+
+  // ===== In bộ bệnh án ngoại trú: gọi lại đúng các lệnh in của HIS (mỗi lệnh 1 lần), tải PDF và gộp thành 1 file =====
+  function banMd5(str) {
+    const b = unescape(encodeURIComponent(str));
+    const rl = (x, c) => (x << c) | (x >>> (32 - c));
+    const K = [], S = [7, 12, 17, 22, 5, 9, 14, 20, 4, 11, 16, 23, 6, 10, 15, 21];
+    for (let i = 0; i < 64; i++) K[i] = Math.floor(Math.abs(Math.sin(i + 1)) * 4294967296) >>> 0;
+    const n = b.length, w = [];
+    for (let i = 0; i < n; i++) w[i >> 2] = (w[i >> 2] || 0) | (b.charCodeAt(i) << ((i % 4) * 8));
+    w[n >> 2] = (w[n >> 2] || 0) | (0x80 << ((n % 4) * 8));
+    const len = (((n + 8) >> 6) + 1) * 16;
+    for (let i = 0; i < len; i++) if (w[i] === undefined) w[i] = 0;
+    w[len - 2] = (n * 8) >>> 0; w[len - 1] = Math.floor((n * 8) / 4294967296);
+    let a0 = 0x67452301, b0 = 0xefcdab89 | 0, c0 = 0x98badcfe | 0, d0 = 0x10325476;
+    for (let o = 0; o < len; o += 16) {
+      let A = a0, B = b0, C = c0, D = d0;
+      for (let i = 0; i < 64; i++) {
+        let F, g;
+        if (i < 16) { F = (B & C) | (~B & D); g = i; }
+        else if (i < 32) { F = (D & B) | (~D & C); g = (5 * i + 1) % 16; }
+        else if (i < 48) { F = B ^ C ^ D; g = (3 * i + 5) % 16; }
+        else { F = C ^ (B | ~D); g = (7 * i) % 16; }
+        const t = D; D = C; C = B;
+        B = (B + rl((A + F + K[i] + w[o + g]) | 0, S[(i >> 4) * 4 + (i % 4)])) | 0;
+        A = t;
+      }
+      a0 = (a0 + A) | 0; b0 = (b0 + B) | 0; c0 = (c0 + C) | 0; d0 = (d0 + D) | 0;
+    }
+    return [a0, b0, c0, d0].map((x) => { let s = ''; for (let i = 0; i < 4; i++) s += ('0' + ((x >>> (i * 8)) & 255).toString(16)).slice(-2); return s; }).join('');
+  }
+  function banXhr(method, url, body, bin) {
+    return new Promise((resolve, reject) => {
+      if (!banHdr.Authorization && !banHdr.authorization) { reject(new Error('Chưa lấy được phiên đăng nhập: hãy thao tác 1 lần trên HIS rồi thử lại')); return; }
+      const x = new (banPage().XMLHttpRequest)();
+      x.__hlxOwn = true;
+      x.open(method, url, true);
+      Object.keys(banHdr).forEach((k) => { if (!/^content-length$/i.test(k) && k !== '__pkSeen' && !(bin && /^content-type$/i.test(k))) { try { x.setRequestHeader(k, banHdr[k]); } catch (e) {} } });
+      if (!bin && !Object.keys(banHdr).some((k) => /^content-type$/i.test(k))) x.setRequestHeader('Content-Type', 'application/json');
+      if (bin) x.responseType = 'arraybuffer';
+      x.timeout = 120000;
+      x.onload = () => { if (x.status !== 200) { reject(new Error('HTTP ' + x.status)); return; } if (bin) resolve(x.response); else { const r = banJson(x.responseText); r ? resolve(r) : reject(new Error('Phản hồi không hợp lệ')); } };
+      x.onerror = x.ontimeout = () => reject(new Error('Lỗi mạng'));
+      x.send(body == null ? null : JSON.stringify(body));
+    });
+  }
+  const banPrintApi = (url, body) => banXhr('POST', url, body, false);
+  async function banPdfBytes(path) {
+    const p = String(path || '').replace(/\\/g, '/').replace(/^\/+/, '');
+    const bases = [];
+    // Học nơi HIS đặt file PDF từ các lần trang tự mở PDF (in tay 1 tờ trước nếu các đường dẫn đoán đều 404)
+    const seenNames = banPdfSeen.slice();
+    try { performance.getEntriesByType('resource').forEach((e) => { if (/\.pdf|\/upload\//i.test(e.name) && seenNames.indexOf(e.name) < 0) seenNames.push(e.name); }); } catch (e) {}
+    seenNames.forEach((n) => { const m = /^(.*?)upload\/(?:docx|specifies|laboratory|opd|ipd)\//i.exec(n); if (m && bases.indexOf(m[1]) < 0) bases.unshift(m[1]); });
+    ['/', '/api/', '/file/', '/files/', '/api/file/', '/api/files/', '/api/download/'].forEach((b) => { if (bases.indexOf(b) < 0) bases.push(b); });
+    let err; const tried = [];
+    for (const b of bases) {
+      const u = b + p; tried.push(u);
+      try {
+        // Tải như trình duyệt mở file (không gắn header API); nếu lỗi thì thử lại có header đăng nhập
+        const res = await fetch(u, { credentials: 'include', cache: 'no-store' });
+        if (res.ok) { const buf = await res.arrayBuffer(); if (buf.byteLength > 100) return buf; }
+        err = new Error('HTTP ' + res.status);
+      } catch (e) { err = e; }
+      try { const buf = await banXhr('GET', u, null, true); if (buf && buf.byteLength > 100) { return buf; } } catch (e) { err = e; }
+    }
+    throw new Error('Không tải được PDF (' + (err ? err.message : '?') + '). Hãy in tay 1 tờ bất kỳ (xem bản in trên web) rồi bấm lại để script học đường dẫn file. Địa chỉ PDF trang đã mở: ' + (seenNames.slice(-3).join(' | ') || 'chưa thấy') + '. Đã thử ' + tried.length + ' đường dẫn.');
+  }
+  const banIsoLocal = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0') + 'T' + String(dt.getHours()).padStart(2, '0') + ':' + String(dt.getMinutes()).padStart(2, '0') + ':' + String(dt.getSeconds()).padStart(2, '0');
+  const BAN_PAPER_KEY = 'hlx_ban_paper_v1';
+  const banPdfSeen = [];
+  try {
+    performance.setResourceTimingBufferSize(1000);
+    new PerformanceObserver((l) => l.getEntries().forEach((e) => { if (/\.pdf|\/upload\//i.test(e.name) && banPdfSeen.indexOf(e.name) < 0) { banPdfSeen.push(e.name); if (banPdfSeen.length > 30) banPdfSeen.shift(); } })).observe({ type: 'resource', buffered: true });
+  } catch (e) {}
+  const banSignerCache = { s: null };
+
+  // HIS có lúc chỉ nhận Data dạng chuỗi JSON (trả Data rỗng nếu gửi dạng đối tượng): nếu trả rỗng thì gửi lại dạng chuỗi
+  async function banApiS(url, method, data, module) {
+    let r = await banApi(url, method, data, module);
+    if (r && (r.Data === null || r.Data === undefined) && !r.MessageCode && data && typeof data === 'object') r = await banApi(url, method, JSON.stringify(data), module);
+    return r;
+  }
+  // ===== Bệnh án ngoại trú: điền "Đã xử lý (thuốc, chăm sóc)" và "Tóm tắt kết quả xét nghiệm CLS" rồi lưu (cùng API HIS gọi khi bấm Lưu) =====
+  const BAN_REC_SKELETON = [{"content":null,"content_detail":null,"type":"lb","control_id":"","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"icd-selector-multi","control_id":"icd_1","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"radio","control_id":"rd_22","count_options":2,"col_name":"","options":["1.Y tế","2.Tự đến"],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"lb","control_id":"","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_5","count_options":0,"col_name":"","options":[],"rows":3,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"tb_6","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_9","count_options":0,"col_name":"","options":[],"rows":3,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"icd-selector-multi","control_id":"icd_2","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"lb","control_id":"","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"start_dt","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":true,"not_time":true,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"end_dt","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":true,"not_time":true,"extra_data":""},{"content":null,"content_detail":null,"type":"lb","control_id":"","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_10_2","count_options":0,"col_name":"","options":[],"rows":5,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_10_3","count_options":0,"col_name":"","options":[],"rows":3,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"lb","control_id":"","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"icd-selector-multi","control_id":"icd_3","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"icd-selector-multi","control_id":"icd_9","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_10_5","count_options":0,"col_name":"","options":[],"rows":4,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_10_6","count_options":0,"col_name":"","options":[],"rows":3,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textarea","control_id":"ta_10_7","count_options":0,"col_name":"","options":[],"rows":3,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"slxq","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"slct","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"slsa","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"slxn","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"tb106","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"slk","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""},{"content":null,"content_detail":null,"type":"textbox","control_id":"tb108","count_options":0,"col_name":"","options":[],"rows":-1,"is_datetime":false,"not_time":false,"extra_data":""}];
+  const banGuid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+  async function banLabSummary(sub, pay) {
+    const labs = sub.filter((x) => x.item_type === 'LAB' && x.id);
+    if (!labs.length) return '';
+    const rs = await banApi('/api/lab-service-request/lab-work-order-join-2', 'POST', { lab_work_order_ids: labs.map((x) => x.id).join(','), completed_flag: true, payment_date_time: pay ? pay.slice(0, 19) : null, verify_flag: true }, 'HC');
+    const arr = banJson(rs.Data) || [];
+    const seen = {}; const out = [];
+    (Array.isArray(arr) ? arr : []).forEach((x) => {
+      const nm = String(x.item_name || '').replace(/\s*\[[^\]]*\]\s*/g, ' ').replace(/^\d+\.\s*/, '').trim();
+      const val = x.value != null && x.value !== '' ? x.value : x.result_value;
+      if (!nm || val == null || val === '' || seen[nm]) return; seen[nm] = 1;
+      const flag = x.high_flag ? ' (tăng)' : (x.low_flag ? ' (giảm)' : '');
+      out.push(nm + ': ' + val + (x.uom_ref_name ? ' ' + x.uom_ref_name : '') + flag);
+    });
+    return out.join('; ');
+  }
+  // Bệnh sử đang hiện trong form Khám bệnh (đúng bệnh nhân đang mở)
+  function banDomProg() {
+    try { const t = Array.from(document.querySelectorAll('textarea[formcontrolname=progression]')).map((e) => (e.value || '').trim()).find(Boolean); return t || ''; } catch (e) { return ''; }
+  }
+  async function banSaveRecord(ctx, labText) {
+    const { vid, prob, med, drugs } = ctx;
+    if (!med || !med.icd_codes) throw new Error('chưa có bệnh án ngoại trú để cập nhật (hãy lưu bệnh án trước)');
+    const codes = String(med.icd_codes).split(';').map((x) => x.trim()).filter(Boolean);
+    const names = String(med.icd_names || '').split(';').map((x) => x.trim());
+    const cg = (prob.list_json_icd && prob.list_json_icd[0] && prob.list_json_icd[0].caregiver_id) || ctx.signer.person_id || '';
+    const cs = (prob.list_json_icd && prob.list_json_icd[0] && prob.list_json_icd[0].clinical_specialty_rid) || '';
+    const mk = (i) => ({ class_name: 'icd_' + banGuid(), icd_code: codes[i], icd_name: names[i] || '', origin_icd_name: names[i] || '', caregiver_id: cg, clinical_specialty_rid: cs, icd_name_l: names[i] || '', icd_gender: null, icd_from_age: null, icd_to_age: null });
+    const blank = () => ({ class_name: 'icd_' + banGuid(), icd_code: null, icd_name: '', origin_icd_name: '', caregiver_id: cg, clinical_specialty_rid: cs });
+    const pad = (list) => { const o = list.slice(); while (o.length < 5) o.push(blank()); return o; };
+    const all = codes.map((c, i) => mk(i));
+    const val = {
+      rd_22: parseInt(med.visit_source, 10) || 1,
+      start_dt: ctx.visitDate || null, end_dt: ctx.visitDate || null,
+      ta_5: med.all_body || 'Bệnh tỉnh, tiếp xúc tốt, da niêm hồng\nHạch ngoại vi không sờ chạm',
+      tb_6: 'Tim đều; Phổi không rale; Bụng mềm',
+      ta_9: drugs.join('\n') || null,
+      ta_10_2: prob.progression || prob.symptom || med.pathological_process || med.symptom || banDomProg() || null,
+      ta_10_3: labText || null,
+      ta_10_5: med.treatments || 'Nội khoa',
+      ta_10_6: med.treatment_result_name || 'Đỡ giảm',
+      ta_10_7: med.recommendation || 'Toa về, tái khám theo hẹn',
+      icd_2: pad(all), icd_3: pad(all.slice(0, 1)), icd_9: pad(all.slice(1))
+    };
+    const ctl = BAN_REC_SKELETON.map((c) => { const o = Object.assign({}, c); if (c.control_id && Object.prototype.hasOwnProperty.call(val, c.control_id)) o.content = val[c.control_id]; return o; });
+    const r = await banApiS('/api/medical-record/update', 'POST', { patient_visit_id: vid, cpoe_placer_order_id: null, objectjson_medical_record: ctl }, 'HC');
+    if (!r || r.Data !== true) throw new Error('HIS không lưu được bệnh án (' + JSON.stringify(r).slice(0, 160) + ')');
+  }
+
+  // Bước 1: tờ điều trị. Chỉ lưu khi đã có ĐỦ nội dung chẩn đoán, diễn biến, y lệnh (không lưu chữ mẫu "Copy từ...")
+  async function banSaveTreatment(ctx, say) {
+    const { vid, pid, pay, v, prob, signer, orders, drugs } = ctx;
+    const med = ctx.med || {};
+    const mc = String(med.icd_codes || '').split(';').map((x) => x.trim()).filter(Boolean), mn = String(med.icd_names || '').split(';').map((x) => x.trim());
+    const medDx = mc.map((c, i) => '(' + c + ')' + (mn[i] ? ' ' + mn[i] : '')).join('; ');
+    const dx = String(prob.icd_checkout || medDx || prob.icd_free_text || v.icd_free_text || '').trim();
+    const prog = String(prob.progression || med.pathological_process || prob.symptom || med.symptom || v.symptom || banDomProg() || '').trim();
+    const lines = [];
+    const ords = orders.length ? orders : String(med.lab || '').split(';').map((x) => x.trim()).filter(Boolean);
+    if (ords.length) lines.push('Cận lâm sàng: ' + ords.join('; '));
+    drugs.forEach((d) => lines.push('- ' + d));
+    const tx = lines.join('\n').trim();
+    const miss = [];
+    if (!dx) miss.push('chẩn đoán'); if (!prog) miss.push('diễn biến'); if (!tx) miss.push('y lệnh (chỉ định CLS/thuốc)');
+    if (miss.length) throw new Error('Thiếu ' + miss.join(', ') + ' nên không lưu tờ điều trị [chẩn đoán/diễn biến: ' + (Object.keys(prob).length ? 'có dữ liệu khám' : 'không đọc được dữ liệu khám') + ', hồ sơ: ' + (Object.keys(med).length ? 'có' : 'rỗng') + ', mã BN: ' + String(pid || '').slice(0, 8) + ', giờ đóng hồ sơ: ' + (pay || 'chưa có') + ', lượt khám: ' + (v.visit_code ? 'thấy' : 'không thấy') + ', CLS: ' + orders.length + ', thuốc: ' + drugs.length + ']');
+    const t0 = ctx.nowIso;
+    const base = {
+      treatment_date_time: t0, xml_treatment_date_time: t0,
+      created_by: signer.employee_name || prob.print_name_l || '', creator_id: signer.person_id || '',
+      signature_path: signer.signature_file_path || '',
+      icd_free_text: dx, progression: prog, treatment: '|' + tx,
+      objectjson_clinic_and_specify_phcn: [], patient_visit_id: vid, patient_id: pid
+    };
+    say('Đang lưu tờ điều trị...');
+    const sr = await banApi('/api/patient-treatment/search', 'POST', { patient_visit_id: vid, patient_id: pid, fr_treatment_date_time: '', to_treatment_date_time: '', chronic_flag: true, payment_date_time: pay || null, page: 1, pageSize: 0 }, 'HC');
+    const exs = (sr.Data || []).filter((x) => x.patient_treatment_id).sort((p, q) => String(p.treatment_date_time).localeCompare(String(q.treatment_date_time)));
+    const guid = () => (window.crypto && crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); }));
+    const saveOne = async (bs, ex) => {
+      let tid;
+      if (ex) {
+        tid = ex.patient_treatment_id;
+        await banApiS('/api/patient-treatment/update', 'POST', Object.assign({ patient_treatment_id: tid, copy_yhct_sur_report_flag: false }, bs, { treatment_date_time: ex.treatment_date_time || bs.treatment_date_time, xml_treatment_date_time: ex.treatment_date_time || bs.treatment_date_time }), 'HC');
+      } else {
+        const cr = await banApiS('/api/patient-treatment/create', 'POST', Object.assign({ patient_treatment_id: '00000000-0000-0000-0000-000000000000' }, bs, { emr_storage_sign_id: guid() }), 'HC');
+        tid = cr.Data && cr.Data.patient_treatment_id;
+        if (!tid) { const s2 = await banApi('/api/patient-treatment/search', 'POST', { patient_visit_id: vid, patient_id: pid, fr_treatment_date_time: '', to_treatment_date_time: '', chronic_flag: true, payment_date_time: pay || null, page: 1, pageSize: 0 }, 'HC'); const l2 = (s2.Data || []).filter((x) => x.patient_treatment_id && !exs.some((e) => e.patient_treatment_id === x.patient_treatment_id)); tid = (l2[0] || {}).patient_treatment_id; }
+        if (!tid) throw new Error('Không tạo được tờ điều trị (HIS trả: ' + JSON.stringify(cr).slice(0, 220) + '; người lập: ' + (bs.creator_id ? 'có' : 'THIẾU') + ', chữ ký: ' + (bs.signature_path ? 'có' : 'THIẾU') + ')');
+        await banApiS('/api/patient-treatment/update', 'POST', Object.assign({ patient_treatment_id: tid, copy_yhct_sur_report_flag: false }, bs), 'HC');
+      }
+      return tid;
+    };
+    const tid1 = await saveOne(base, exs[0]);
+    const t1 = new Date(Date.now() + 60000);
+    const t2 = banIsoLocal(t1);
+    const base2 = Object.assign({}, base, { treatment_date_time: t2, xml_treatment_date_time: t2, progression: 'Bệnh tỉnh, sinh hiệu ổn', treatment: '|Toa về' });
+    let tid2 = null;
+    try { tid2 = await saveOne(base2, exs[1]); } catch (e) { ctx.fail2 = e.message; }
+    const outs = [];
+    for (const t of [tid1, tid2]) {
+      if (!t) continue;
+      const pr = await banPrintApi('/api/report-print/treatment-ipd-print', { patient_visit_id: vid, only_print_first_consumable: false, patient_treatment_ids: t, merge_flag: false, payment_date_time: pay || null, dose_4_times_a_day_flag: true });
+      if (pr.Data) outs.push(pr.Data);
+    }
+    return outs;
+  }
+
+  // ===== Dán chữ "BANT" vào bảng kê do chính HIS in (chỉ với bệnh nhân có mã ICD thuộc danh sách) =====
+  function banDrawBant(PL, fnt, pg) {
+    const t = 'BANT', sz = 13, w = fnt.widthOfTextAtSize(t, sz);
+    pg.drawRectangle({ x: 24, y: 18, width: w + 12, height: sz + 8, borderColor: PL.rgb(0, 0, 0), borderWidth: 1 });
+    pg.drawText(t, { x: 30, y: 23, size: sz, font: fnt, color: PL.rgb(0, 0, 0) });
+  }
+  const banStampMap = {}, banStampDone = {};
+  function banToast(msg) {
+    return; // đã tắt thông báo
+    try {
+      let t = document.getElementById('hlx-bant-toast');
+      if (!t) { t = document.createElement('div'); t.id = 'hlx-bant-toast'; t.style.cssText = 'position:fixed;left:12px;bottom:12px;z-index:2147483647;background:#111;color:#fff;font:12px sans-serif;padding:6px 10px;border-radius:6px;max-width:420px;opacity:.92'; (document.body || document.documentElement).appendChild(t); }
+      t.textContent = msg; clearTimeout(t.__t); t.__t = setTimeout(() => { try { t.remove(); } catch (e) {} }, 9000);
+    } catch (e) {}
+  }
+  try {
+    new PerformanceObserver((l) => l.getEntries().forEach((e) => {
+      const k = String(e.name || '').split('#')[0].split('?')[0].split('/').pop();
+      if (banStampMap[k] && !banStampDone[k]) setTimeout(() => { if (!banStampDone[k]) banToast('BANT: trang tải PDF bằng "' + e.initiatorType + '" ' + String(e.name).slice(-60) + ' – chưa dán được (' + (banStampDone[k + '#why'] || 'chưa chặn') + ')'); }, 1500);
+    })).observe({ type: 'resource', buffered: false });
+  } catch (e) {}
+  async function banStampBytes(buf) {
+    const PL = typeof PDFLib !== 'undefined' ? PDFLib : null;
+    if (!PL) throw new Error('no pdf-lib');
+    const doc = await PL.PDFDocument.load(buf, { ignoreEncryption: true });
+    const fnt = await doc.embedFont(PL.StandardFonts.TimesRomanBold);
+    doc.getPages().forEach((pg) => banDrawBant(PL, fnt, pg));
+    return await doc.save();
+  }
+  async function banVisitEligible(vid) {
+    let extra = banConf([], BAN_ICD_KEY);
+    const pats = BAN_ICD_DEF.concat(Array.isArray(extra) ? extra : []);
+    let a = banCache[vid];
+    if (!a || !a.icds) { try { a = await banAnalyze(vid); } catch (e) { a = null; } }
+    return !!(a && (a.icds || []).some((c) => banIcdMatch(c, pats)));
+  }
+  (function () {
+    try {
+      const P = banPage();
+      const XP = P.XMLHttpRequest.prototype;
+      const oOpen = XP.open, oSend = XP.send;
+      const keyOf = (u) => { let k = String(u || '').split('#')[0].split('?')[0].split(/[\\/]/).pop(); try { k = decodeURIComponent(k); } catch (e) {} return k; };
+      XP.open = function (m, u) { try { this.__su = { m: String(m || '').toUpperCase(), u: String(u || '') }; } catch (e) {} return oOpen.apply(this, arguments); };
+      XP.send = function (body) {
+        const self = this, args = arguments;
+        try {
+          const su = this.__su;
+          if (su && !this.__hlxOwn) {
+            if (/report-print\/expense-account-print/.test(su.u)) {
+              let vid = ''; try { vid = String(JSON.parse(body).patient_visit_id || ''); } catch (e) {}
+              this.addEventListener('load', () => { try { const r = JSON.parse(this.responseText); if (r && typeof r.Data === 'string' && /\.pdf/i.test(r.Data) && vid) { banStampMap[keyOf(r.Data)] = vid; banToast('BANT: đã thấy lệnh in bảng kê, chờ trang tải PDF...'); } } catch (e) {} });
+            } else if (su.m === 'GET' && banStampMap[keyOf(su.u)]) {
+              const vid = banStampMap[keyOf(su.u)];
+              (async () => {
+                try {
+                  if (!(await banVisitEligible(vid))) { banStampDone[keyOf(su.u) + '#why'] = 'không khớp mã ICD'; throw new Error('skip'); }
+                  const rs = await fetch(su.u, { credentials: 'include' });
+                  if (!rs.ok) throw new Error('http');
+                  const out = await banStampBytes(await rs.arrayBuffer());
+                  const rt = self.responseType;
+                  const val = rt === 'arraybuffer' ? out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength) : rt === 'blob' ? new Blob([out], { type: 'application/pdf' }) : null;
+                  if (val === null) throw new Error('type');
+                  const def = (k, v) => Object.defineProperty(self, k, { configurable: true, get: () => v });
+                  def('readyState', 4); def('status', 200); def('statusText', 'OK'); def('response', val); def('responseURL', su.u);
+                  banStampDone[keyOf(su.u)] = 1; banToast('BANT: đã dán vào bảng kê');
+                  self.dispatchEvent(new Event('readystatechange')); self.dispatchEvent(new Event('load')); self.dispatchEvent(new Event('loadend'));
+                } catch (e) { banStampDone[keyOf(su.u) + '#why'] = String(e && e.message || e); try { oSend.apply(self, args); } catch (e2) {} }
+              })();
+              return;
+            }
+          }
+        } catch (e) {}
+        return oSend.apply(this, arguments);
+      };
+      // Trang hiển thị PDF bằng iframe/embed/object: đổi src sang bản đã dán chữ
+      const stampUrl = async (u) => {
+        const k = keyOf(u), vid = banStampMap[k];
+        if (!vid) return null;
+        try {
+          if (!(await banVisitEligible(vid))) { banStampDone[k + '#why'] = 'không khớp mã ICD'; delete banStampMap[k]; return null; }
+          const rs = await fetch(u, { credentials: 'include' });
+          if (!rs.ok) { delete banStampMap[k]; return null; }
+          const nb = await banStampBytes(await rs.arrayBuffer()); banStampDone[k] = 1; banToast('BANT: đã dán vào bảng kê');
+          delete banStampMap[k];
+          return URL.createObjectURL(new Blob([nb], { type: 'application/pdf' }));
+        } catch (e) { delete banStampMap[k]; return null; }
+      };
+      [['HTMLIFrameElement', 'src'], ['HTMLEmbedElement', 'src'], ['HTMLObjectElement', 'data']].forEach(([cn, prop]) => {
+        try {
+          const proto = P[cn].prototype, d = Object.getOwnPropertyDescriptor(proto, prop);
+          if (!d || !d.set) return;
+          Object.defineProperty(proto, prop, { configurable: true, get: d.get, set: function (v) {
+            const el = this;
+            if (typeof v === 'string' && banStampMap[keyOf(v)]) { stampUrl(v).then((nu) => d.set.call(el, nu || v)).catch(() => d.set.call(el, v)); return; }
+            d.set.call(el, v);
+          } });
+          const oSet = proto.setAttribute;
+        } catch (e) {}
+      });
+      try {
+        const EP = P.Element.prototype, oSA = EP.setAttribute;
+        EP.setAttribute = function (k, v) {
+          const el = this;
+          if (/^(src|data)$/i.test(k) && /^(IFRAME|EMBED|OBJECT)$/.test(el.tagName) && typeof v === 'string' && banStampMap[keyOf(v)]) {
+            stampUrl(v).then((nu) => oSA.call(el, k, nu || v)).catch(() => oSA.call(el, k, v)); return;
+          }
+          return oSA.apply(this, arguments);
+        };
+        const oWO = P.open;
+        P.open = function (u) { const a = arguments; try { if (typeof u === 'string' && banStampMap[keyOf(u)]) { const w = oWO.call(P, 'about:blank', a[1], a[2]); stampUrl(u).then((nu) => { w.location.href = nu || u; }).catch(() => { w.location.href = u; }); return w; } } catch (e) {} return oWO.apply(P, a); };
+      } catch (e) {}
+      // Chặn iframe bảng kê ngay lúc được chèn vào trang (mọi cách tạo iframe)
+      try {
+        const pend = new WeakSet();
+        P.document.addEventListener('load', (ev) => { if (pend.has(ev.target)) { ev.stopImmediatePropagation(); } }, true);
+        const prep = (n) => {
+          try {
+            if (!n || n.tagName !== 'IFRAME') return;
+            const src = n.getAttribute('src');
+            if (!src || !banStampMap[keyOf(src)]) return;
+            pend.add(n); n.removeAttribute('src');
+            stampUrl(src).then((nu) => { pend.delete(n); n.setAttribute('src', nu || src); }).catch(() => { pend.delete(n); n.setAttribute('src', src); });
+          } catch (e) {}
+        };
+        const watch = (n) => {
+          try {
+            if (!n || n.nodeType !== 1) return;
+            const list = n.tagName === 'IFRAME' ? [n] : Array.from(n.querySelectorAll ? n.querySelectorAll('iframe') : []);
+            list.forEach((f) => {
+              const src = f.getAttribute('src');
+              if (!src || pend.has(f) || !banStampMap[keyOf(src)]) return;
+              pend.add(f); f.setAttribute('src', 'about:blank');
+              stampUrl(src).then((nu) => { pend.delete(f); f.setAttribute('src', nu || src); }).catch(() => { pend.delete(f); f.setAttribute('src', src); });
+            });
+          } catch (e) {}
+        };
+        const startMO = () => {
+          const root = P.document.documentElement;
+          if (!root) { setTimeout(startMO, 20); return; }
+          new P.MutationObserver((ms) => ms.forEach((m) => { if (m.type === 'attributes') watch(m.target); else m.addedNodes.forEach(watch); })).observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ['src'] });
+        };
+        startMO();
+        const NP = P.Node.prototype, oAC = NP.appendChild, oIB = NP.insertBefore;
+        NP.appendChild = function (n) { prep(n); return oAC.apply(this, arguments); };
+        NP.insertBefore = function (n) { prep(n); return oIB.apply(this, arguments); };
+        const EPp = P.Element.prototype, oAp = EPp.append;
+        EPp.append = function () { Array.prototype.forEach.call(arguments, prep); return oAp.apply(this, arguments); };
+      } catch (e) {}
+      const oFetch = P.fetch && P.fetch.bind(P);
+      if (oFetch) P.fetch = async function (input, init) {
+        try {
+          const u = typeof input === 'string' ? input : (input && input.url) || '';
+          const vid = banStampMap[keyOf(u)];
+          if (vid && (!init || !init.method || /GET/i.test(init.method)) && await banVisitEligible(vid)) {
+            const rs = await oFetch(input, init);
+            if (rs.ok) { const out = await banStampBytes(await rs.arrayBuffer()); banStampDone[keyOf(u)] = 1; banToast('BANT: đã dán vào bảng kê'); return new Response(out, { status: 200, headers: { 'Content-Type': 'application/pdf' } }); }
+            return rs;
+          }
+        } catch (e) {}
+        return oFetch(input, init);
+      };
+    } catch (e) {}
+  })();
+
+  // Gọi tìm kiếm có payment_date_time; nếu rỗng thì gọi lại không có trường này (như chính trang HIS khi lượt khám chưa đóng)
+  // Đọc đơn thuốc trực tiếp từ tab "Đơn thuốc" đang mở trên trang (khi API không trả dữ liệu)
+  // Tự chuyển sang tab "Đơn thuốc", đọc bảng, rồi quay lại tab cũ
+  async function banScrapeRxTab() {
+    let d = banScrapeRx();
+    if (d.length) return d;
+    const cand = Array.from(document.querySelectorAll('[role=tab],.nav-tabs a,.nav-tabs li,.p-tabview-nav li,.p-tabview-nav a,li>a,a,button,span'));
+    const isTab = (e) => /^\s*Đơn thuốc\s*$/i.test(e.textContent || '') && !e.closest('#hlx-ban-panel,.hlx-ban');
+    const tab = cand.find(isTab);
+    if (!tab) return [];
+    const act = document.querySelector('.nav-tabs li.active a,.nav-tabs .active,[role=tab][aria-selected=true],.p-tabview-selected a');
+    try { tab.click(); } catch (e) {}
+    for (let i = 0; i < 20 && !(d = banScrapeRx()).length; i++) await new Promise((r) => setTimeout(r, 250));
+    try { if (act && act !== tab) act.click(); } catch (e) {}
+    return d;
+  }
+  function banScrapeRx() {
+    const out = [];
+    try {
+      document.querySelectorAll('p-table table tbody tr').forEach((tr) => {
+        const td = tr.children;
+        if (td.length < 8 || !/padding-left:\s*25px/.test(td[0].getAttribute('style') || '')) return;
+        const name = (td[0].textContent || '').replace(/\s+/g, ' ').trim();
+        const note = (td[6].textContent || '').replace(/\s+/g, ' ').trim();
+        if (name) out.push(name + (note ? ': ' + note : ''));
+      });
+    } catch (e) {}
+    return out;
+  }
+  async function banSearchPay(url, body, pay) {
+    let r = await banApi(url, 'POST', pay ? Object.assign({}, body, { payment_date_time: pay }) : body, 'HC');
+    const empty = (x) => !x || x.Data == null || (Array.isArray(x.Data) && !x.Data.length);
+    if (empty(r) && pay) r = await banApi(url, 'POST', body, 'HC');
+    return r;
+  }
+  async function banPrintBundle(r, say, opt) {
+    const vid = r.vid;
+    const A = (u, d, m) => banApi(u, m || 'POST', d, 'HC');
+    const fails = [];
+    const pdfs = []; // {name, path}
+    const ctx = { vid, pid: r.pid || '', nowIso: banIsoLocal(new Date()), orders: [], drugs: [] };
+    say('Đang đọc thông tin lượt khám...');
+    if (!ctx.pid) { const it = banLists.cur && banLists.cur.items.find((x) => String(x.patient_visit_id) === vid); ctx.pid = (it && it.patient_id) || ''; }
+    if (!ctx.pid) throw new Error('Không xác định được bệnh nhân');
+    const lk = await A('/api/patient-registration/look-up-visit-info', { patient_id: ctx.pid });
+    const v = (lk.Data || []).find((x) => String(x.patient_visit_id) === vid) || {};
+    const li = (banLists.cur && banLists.cur.items.find((x) => String(x.patient_visit_id) === vid)) || {};
+    const pay = v.closure_date_time || li.report_date_time || li.closure_date_time || '';
+    ctx.v = v; ctx.pay = pay;
+    try { const md = await A('/api/medical-record/get-medical-data/' + vid, null, 'GET'); ctx.med = banJson(md.Data) || {}; } catch (e) { ctx.med = {}; }
+    const payShort = pay ? pay.slice(0, 19) : null;
+    const pj = await A('/api/medical-examination/get-patient-problem', { patient_id: ctx.pid, patient_visit_id: vid, examination_date: v.actual_visit_date_time || li.examination_date || li.actual_visit_date_time || null, payment_date_time: pay || null, get_previous_visit_flag: false });
+    ctx.prob = banJson(pj.Data) || {};
+    const sg = await banPrintApi('/api/report-print/emr-signature-template', { template_name: 'expense_health_insurance_v2', emr_job_type_rcds: 'BN,NLBK,KTVP', exclude_type_selected: 'KTVP', patient_visit_id: vid }).catch(() => ({}));
+    const signers = Array.isArray(sg.Data) ? sg.Data : [];
+    ctx.signer = signers.find((x) => x.emr_job_type_rcd === 'NLBK') || {};
+    // Lượt khám chưa đóng có thể không trả người lập/chữ ký: dùng thông tin đã lấy được ở lượt khám khác của cùng bác sĩ
+    if (ctx.signer.person_id && ctx.signer.signature_file_path) banSignerCache.s = ctx.signer;
+    else if (banSignerCache.s) ctx.signer = Object.assign({}, banSignerCache.s);
+    else {
+      for (const o of banLists.cur ? banLists.cur.items.slice(0, 40) : []) {
+        const ov = String(o.patient_visit_id || '');
+        if (!ov || ov === vid) continue;
+        const g = await banPrintApi('/api/report-print/emr-signature-template', { template_name: 'expense_health_insurance_v2', emr_job_type_rcds: 'BN,NLBK,KTVP', exclude_type_selected: 'KTVP', patient_visit_id: ov }).catch(() => ({}));
+        const sg2 = (Array.isArray(g.Data) ? g.Data : []).find((x) => x.emr_job_type_rcd === 'NLBK');
+        if (sg2 && sg2.person_id && sg2.signature_file_path) { banSignerCache.s = sg2; ctx.signer = Object.assign({}, sg2); break; }
+      }
+    }
+    if (!ctx.signer.person_id) ctx.signer.person_id = li.caregiver_id || '';
+    if (!ctx.signer.employee_name) ctx.signer.employee_name = v.caregiver_name || li.caregiver_name || '';
+    const doctor = v.caregiver_name || ctx.prob.print_name_l || ctx.signer.employee_name || '';
+
+    say('Đang đọc chỉ định và đơn thuốc...');
+    let sub = [];
+    try {
+      const n = new Date();
+      const sr = await banSearchPay('/api/subclinical-result/search', { patient_id: ctx.pid, patient_visit_id: vid, frm_date: banIsoLocal(n), to_date: banIsoLocal(n), cpoe_placer_group_ids: '', cpoe_placer_group_codes: '', page: 1, pageSize: 0 }, pay);
+      sub = Array.isArray(sr.Data) ? sr.Data : [];
+    } catch (e) {}
+    const cliIds = new Set(sub.filter((x) => x.item_type === 'CLI').map((x) => x.cpoe_placer_order_id));
+    const grp = await banSearchPay('/api/cpoe-placer-order-group/search', { page: 1, pageSize: 0, patient_visit_id: vid, patient_id: ctx.pid, pharmacy_flag: false }, pay);
+    const specGroups = [];
+    for (const g of (grp.Data || [])) {
+      const o = await banSearchPay('/api/cpoe-placer-order/search', { cpoe_placer_order_group_id: g.cpoe_placer_order_group_id, patient_visit_id: vid, to_date: null, page: 1, pageSize: 0 }, pay);
+      const cls = (o.Data || []).filter((x) => !cliIds.has(x.cpoe_placer_order_id));
+      if (cls.length) { specGroups.push(g); cls.forEach((x) => { if (x.item_name && ctx.orders.indexOf(x.item_name) < 0) ctx.orders.push(x.item_name); }); }
+    }
+    const po = await A('/api/ph-prescription-order/search', { page: 1, pageSize: 0, creation_visit_id: vid });
+    (po.Data || []).forEach((d) => { if (!d.item_name) return; const how = [d.additional_information_for_patient, d.ph_admin_route_name].filter(Boolean).join(' - '); ctx.drugs.push(d.item_name + (how ? ': ' + how : '')); });
+    if (!ctx.drugs.length) { const dd = await banScrapeRxTab(); if (dd.length) { dd.forEach((x) => ctx.drugs.push(x)); ctx.rxDom = dd.length; } }
+    { const vd = String(v.actual_visit_date_time || li.examination_date || li.actual_visit_date_time || '').slice(0, 10).split('-'); ctx.visitDate = vd.length === 3 ? vd[2] + '/' + vd[1] + '/' + vd[0] : null; }
+    const rxs = await banSearchPay('/api/ph-prescription/search', { patient_visit_id: vid, patient_treatment_id: null, page: 1, pageSize: 0 }, pay);
+
+    // 1) Bệnh án ngoại trú (in trước, đúng thứ tự hồ sơ) (dùng bản đã lưu trong popup Bệnh án ngoại trú)
+    try {
+      say('Đang cập nhật bệnh án ngoại trú (thuốc, tóm tắt CLS)...');
+      if (opt.fillRec !== false) {
+        try { await banSaveRecord(ctx, await banLabSummary(sub, pay).catch(() => '')); ctx.recSaved = true; } catch (e) { fails.push('Cập nhật bệnh án: ' + e.message); }
+      }
+      say('Đang in bệnh án ngoại trú...');
+      const pk = banMd5(vid + '-BANT-MT');
+      let body = null;
+      const st = await A('/api/emr-storage-sign/search', { private_key: pk, patient_visit_id: vid }).catch(() => ({}));
+      const sp = banJson(((st.Data || [])[0] || {}).print_params_obj);
+      let spc = 'NOI_OPD';
+      try { const mi = await A('/api/medical-examination/get-medical-examination-info', { patient_visit_id: vid, patient_id: ctx.pid, payment_date_time: pay || null }); const sv = ((mi.Data || {}).list_objectjson_service || [])[0]; if (sv && sv.service_code) spc = sv.service_code + '_OPD'; } catch (e) {}
+      const nm = ctx.prob.print_name_e || String(doctor).replace(/^BS\.\s*/i, '');
+      const params = { clinical_specialty_code: (sp && sp.clinical_specialty_code) || spc, patient_visit_id: vid, cpoe_placer_order_id: null, created_by_user_name: nm, document_key: 'BANT-MT', private_key: pk, list_person_sign: '[]', status_date_time: ctx.nowIso, api_print: '/api/report-print/medical-record-print', emr_print_preview_flag: true };
+      body = Object.assign({}, params, { emr_document_created_flag: true, print_params_obj: JSON.stringify(params) });
+      delete body.api_print; delete body.emr_print_preview_flag;
+      const pr = await banPrintApi('/api/report-print/medical-record-print', body);
+      if (pr.Data) pdfs.push({ name: 'Bệnh án ngoại trú', path: pr.Data }); else fails.push('Bệnh án ngoại trú: HIS không trả file (đã lưu bệnh án chưa?)');
+    } catch (e) { fails.push('Bệnh án ngoại trú: ' + e.message); }
+
+    // 2) Tờ điều trị
+    try { const ps = await banSaveTreatment(ctx, say); (ps || []).forEach((p, n) => pdfs.push({ name: 'Tờ điều trị', path: p })); if (ctx.fail2) fails.push('Tờ điều trị 2: ' + ctx.fail2); } catch (e) { fails.push('Tờ điều trị: ' + e.message); }
+
+    // 3) Phiếu chỉ định (mỗi nhóm chỉ định 1 lần)
+    for (const g of specGroups) {
+      try {
+        say('Đang in phiếu chỉ định...');
+        const pr = await banPrintApi('/api/report-print/specify-print', { patient_visit_id: vid, cpoe_placer_order_group_id: g.cpoe_placer_order_group_id, working_location: v.area_name || '', created_by_user_name: doctor, split_print_paper: true, split_print_paper_sub: true, suffix: '', no_price_print_flag: false, payment_date_time: pay || null, cpoe_placer_order_ids: '', area_config_id: g.originating_area_id });
+        if (pr.Data) pdfs.push({ name: 'Phiếu chỉ định', path: pr.Data });
+      } catch (e) { fails.push('Phiếu chỉ định: ' + e.message); }
+    }
+
+    // 4) Kết quả xét nghiệm
+    const labs = sub.filter((x) => x.item_type === 'LAB' && x.id);
+    if (labs.length) {
+      try {
+        say('Đang in kết quả xét nghiệm...');
+        const pr = await banPrintApi('/api/report-print/laboratory-report-print', { legal_title: '', patient_visit_id: vid, lab_work_order_ids: labs.map((x) => x.id).join(','), accession_number: String(labs[0].accession_number || ''), emr_print_preview_flag: true, payment_date_time: payShort });
+        if (pr.Data) pdfs.push({ name: 'Kết quả xét nghiệm', path: pr.Data });
+      } catch (e) { fails.push('Xét nghiệm: ' + e.message); }
+    }
+
+    // 5) Bảng kê (chỉ 1 lần; dùng đúng thông số bảng kê đã lưu của HIS, không có thì dựng lại)
+    try {
+      say('Đang in bảng kê...');
+      const st = await A('/api/emr-storage-sign/search', { private_key: banMd5(vid + '-BKBH'), patient_visit_id: vid }).catch(() => ({}));
+      let body = banJson(((st.Data || [])[0] || {}).print_params_obj);
+      if (body) body.cli_room_print_flag = true;
+      else {
+        const pol = await A('/api/policy/get-patient-visit-policy', { patient_visit_id: vid, policy_name: '', get_all_flag: false, payment_date_time: pay || null });
+        const lp = (Array.isArray(pol.Data) ? pol.Data : []).filter((x) => x.listjsonb_charge_detail && x.listjsonb_charge_detail.length);
+        if (!lp.length) throw new Error('không có chính sách/chi phí để lập bảng kê');
+        body = { suffix: '', api_print: '/api/report-print/expense-account-print', policy_id: null, print_mode: 1, document_key: 'BKBH', listjson_policy: lp, list_person_sign: JSON.stringify(signers), patient_visit_id: vid, payment_date_time: pay || null, patient_print_flag: false, payment_status_rcd: [], created_by_user_name: doctor, get_free_charge_flag: false, emr_print_preview_flag: true, cashier_print_check_flag: false, with_selling_medicine_flag: false, cli_room_print_flag: true, private_key: banMd5(vid + '-BKBH') };
+      }
+      const pr = await banPrintApi('/api/report-print/expense-account-print', body);
+      if (pr.Data) pdfs.push({ name: 'Bảng kê', path: pr.Data });
+    } catch (e) { fails.push('Bảng kê: ' + e.message); }
+
+    // 6) Đơn thuốc
+    for (const rx of (rxs.Data || [])) {
+      if (!rx.ph_prescription_id) continue;
+      try {
+        say('Đang in đơn thuốc...');
+        const params = { patient_visit_id: vid, ph_prescription_id: rx.ph_prescription_id, prescription_split_flag: true, created_by_user_name: doctor, signature: null, print_uses_medicines_flag: false, from_date: null, to_date: null, counter: 0, all_flag: false, suffix: '', payment_date_time: pay || null, api_print: '/api/report-print/prescription-opd-print' };
+        const pr = await banPrintApi('/api/report-print/prescription-opd-print', Object.assign({}, params, { print_params_obj: JSON.stringify(params), emr_print_preview_flag: false }));
+        if (pr.Data) pdfs.push({ name: 'Đơn thuốc', path: pr.Data });
+      } catch (e) { fails.push('Đơn thuốc: ' + e.message); }
+    }
+
+    const notes = [];
+    if (!ctx.drugs.length) notes.push('không có thuốc đã kê');
+    if (!specGroups.length) notes.push('không có phiếu chỉ định CLS');
+    if (!labs.length) notes.push('chưa có kết quả xét nghiệm');
+    if (!(rxs.Data || []).length) notes.push('không có đơn thuốc');
+    notes.push('[đọc được: nhóm chỉ định ' + (grp.Data || []).length + ', thuốc ' + ctx.drugs.length + ', đơn ' + (rxs.Data || []).length + ', KQ ' + sub.length + ', lượt khám ' + (v.visit_code ? 'thấy' : 'không thấy') + ', giờ đóng ' + (pay || 'chưa có') + ', pid ' + String(ctx.pid).slice(0, 8) + ', auth ' + (banHdr.Authorization ? 'có' : 'không') + '; API: ' + banDiag.slice(-12).join(' | ') + ']');
+    if (!pdfs.length) throw new Error('Không in được tờ nào. ' + fails.join(' | '));
+    return { pdfs, fails, notes };
+  }
+
+  // Gộp các PDF: A4 trước, A5 sau (tùy chọn), hoặc ghép 2 trang A5 lên 1 tờ A4
+  async function banMergePdfs(pdfs, say, opt) {
+    const PL = typeof PDFLib !== 'undefined' ? PDFLib : null;
+    if (!PL) throw new Error('Chưa nạp được thư viện gộp PDF (pdf-lib). Kiểm tra mạng/Tampermonkey rồi tải lại trang');
+    const out = await PL.PDFDocument.create();
+    const items = []; // {doc, idx, w, h, ord}
+    for (let i = 0; i < pdfs.length; i++) {
+      say('Đang tải PDF ' + (i + 1) + '/' + pdfs.length + ' (' + pdfs[i].name + ')...');
+      const buf = await banPdfBytes(pdfs[i].path);
+      const src = await PL.PDFDocument.load(buf, { ignoreEncryption: true });
+      if (/^Bảng kê/.test(pdfs[i].name) && opt.stamp !== false) {
+        try { const fnt = await src.embedFont(PL.StandardFonts.TimesRomanBold); src.getPages().forEach((pg) => banDrawBant(PL, fnt, pg)); } catch (e) {}
+      }
+      src.getPages().forEach((pg, k) => { const s = pg.getSize(); items.push({ src, k, w: s.width, h: s.height, ord: items.length, name: pdfs[i].name }); });
+    }
+    const isA5 = (it) => Math.max(it.w, it.h) < 700;
+    const a4 = items.filter((x) => !isA5(x)), a5 = items.filter(isA5);
+    let seq = opt.group ? a4.concat(a5) : items;
+    const copyOne = async (it) => { const [pg] = await out.copyPages(it.src, [it.k]); out.addPage(pg); };
+    if (!opt.twoUp) { for (const it of seq) await copyOne(it); }
+    else {
+      for (const it of a4) await copyOne(it);
+      const por = a5.filter((x) => x.h >= x.w), lan = a5.filter((x) => x.h < x.w);
+      const place = async (list, landscapeSheet) => {
+        for (let i = 0; i < list.length; i += 2) {
+          const W = landscapeSheet ? 841.89 : 595.28, H = landscapeSheet ? 595.28 : 841.89;
+          const sheet = out.addPage([W, H]);
+          for (let j = 0; j < 2 && i + j < list.length; j++) {
+            const it = list[i + j];
+            const emb = await out.embedPage(it.src.getPage(it.k));
+            const cw = landscapeSheet ? W / 2 : W, ch = landscapeSheet ? H : H / 2;
+            const sc = Math.min(cw / it.w, ch / it.h);
+            const x0 = landscapeSheet ? j * cw : 0, y0 = landscapeSheet ? 0 : (j === 0 ? ch : 0);
+            sheet.drawPage(emb, { x: x0 + (cw - it.w * sc) / 2, y: y0 + (ch - it.h * sc) / 2, xScale: sc, yScale: sc });
+          }
+        }
+      };
+      await place(por, true);
+      await place(lan, false);
+    }
+    const bytes = await out.save();
+    return { blob: new Blob([bytes], { type: 'application/pdf' }), pages: out.getPageCount(), nA4: a4.length, nA5: a5.length };
+  }
+
+  // In PDF ngay trong trang (iframe ẩn + hộp thoại in của trình duyệt), không mở tab, không tải file
+  function banPrintBlob(blob) {
+    return new Promise((resolve) => {
+      const url = URL.createObjectURL(blob);
+      const f = document.createElement('iframe');
+      f.style.cssText = 'position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+      let done = false;
+      const fin = (ok) => { if (done) return; done = true; setTimeout(() => { try { f.remove(); } catch (e) {} }, 60000); resolve({ ok, url }); };
+      f.onload = () => setTimeout(() => { try { f.contentWindow.focus(); f.contentWindow.print(); fin(true); } catch (e) { fin(false); } }, 700);
+      f.src = url;
+      document.body.appendChild(f);
+      setTimeout(() => fin(false), 20000);
+    });
+  }
   function banOpenPanel() {
     const old = document.getElementById('hlx-ban-panel');
     if (old) old.remove();
@@ -10694,85 +11484,237 @@
     P.innerHTML =
       '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><b style="font-size:15px">📝 Danh sách làm bệnh án ngoại trú</b><button type="button" id="hlx-ban-x" style="border:0;background:#e2e8f0;border-radius:6px;padding:2px 9px;cursor:pointer">✕</button></div>' +
       '<div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:6px">' +
-      '<label>Ngày <input type="date" id="hlx-ban-date" style="border:1px solid #94a3b8;border-radius:6px;padding:2px 4px"></label>' +
+      '<span style="display:inline-flex;align-items:center;gap:4px">Ngày ' +
+        '<button type="button" id="hlx-ban-prev" title="Ngày trước" style="border:1px solid #94a3b8;border-radius:6px;background:#f1f5f9;padding:2px 9px;cursor:pointer;font-weight:700">‹</button>' +
+        '<input type="date" id="hlx-ban-date" style="border:1px solid #94a3b8;border-radius:6px;padding:2px 4px">' +
+        '<button type="button" id="hlx-ban-next" title="Ngày sau" style="border:1px solid #94a3b8;border-radius:6px;background:#f1f5f9;padding:2px 9px;cursor:pointer;font-weight:700">›</button>' +
+        '<button type="button" id="hlx-ban-today" title="Về hôm nay" style="border:1px solid #94a3b8;border-radius:6px;background:#f1f5f9;padding:2px 8px;cursor:pointer">Hôm nay</button></span>' +
       '<label>Trạng thái <select id="hlx-ban-st" style="border:1px solid #94a3b8;border-radius:6px;padding:2px 4px"><option value="all">Tất cả</option><option value="todo" selected>Chưa làm</option><option value="done">Đã làm</option></select></label>' +
-      '<label>Thuốc từ <input type="number" id="hlx-ban-days" value="28" min="1" style="width:56px;border:1px solid #94a3b8;border-radius:6px;padding:2px 4px"> ngày</label>' +
       '<button type="button" id="hlx-ban-go" style="border:0;border-radius:6px;background:#2563eb;color:#fff;padding:5px 12px;cursor:pointer">▶ Phân tích</button></div>' +
-      '<div style="display:flex;gap:6px;align-items:center;margin-bottom:6px"><span>Mã ICD (cách nhau dấu phẩy; <b>x</b> = số bất kỳ):</span>' +
-      '<input type="text" id="hlx-ban-icd" style="flex:1;min-width:0;border:1px solid #94a3b8;border-radius:6px;padding:3px 6px">' +
-      '<button type="button" id="hlx-ban-icds" style="border:0;border-radius:6px;background:#16a34a;color:#fff;padding:4px 10px;cursor:pointer">Lưu mã</button>' +
-      '<button type="button" id="hlx-ban-icdr" style="border:0;border-radius:6px;background:#64748b;color:#fff;padding:4px 10px;cursor:pointer">Mặc định</button></div>' +
-      '<div style="color:#475569;margin-bottom:6px">Điều kiện giữ lại: có ít nhất 1 thuốc đủ số ngày <b>HOẶC</b> có mã ICD khớp. Nguồn: danh sách bệnh nhân đang hiển thị trên trang (đổi ngày hoặc bấm Tìm để nạp lại).</div>' +
-      '<div id="hlx-ban-msg" style="margin-bottom:6px;font-weight:700"></div>' +
-      '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eef2f7;text-align:left"><th style="padding:4px;width:36px">STT</th><th style="padding:4px">Mã KB</th><th style="padding:4px">Bệnh nhân</th><th style="padding:4px">Ngày</th><th style="padding:4px">Thuốc (số ngày)</th><th style="padding:4px">ICD khớp</th><th style="padding:4px">Trạng thái</th><th style="padding:4px"></th></tr></thead><tbody id="hlx-ban-body"></tbody></table></div>';
+      '<div style="margin-bottom:6px"><div style="margin-bottom:4px"><b>Mã ICD cần tìm</b> <span style="color:#64748b">(<b>x</b> = số bất kỳ, vd. I20.x khớp I20.0, I20.9...; tự lưu, đồng bộ cloud trong Cài đặt)</span></div>' +
+      '<div id="hlx-ban-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px"></div>' +
+      '<div style="display:flex;gap:6px;align-items:center"><input type="text" id="hlx-ban-icd" placeholder="Nhập mã, vd. I25.x rồi bấm Thêm mã (có thể nhập nhiều mã cách nhau dấu phẩy)" style="flex:1;min-width:0;border:1px solid #94a3b8;border-radius:6px;padding:3px 6px">' +
+      '<button type="button" id="hlx-ban-icda" style="border:0;border-radius:6px;background:#16a34a;color:#fff;padding:4px 10px;cursor:pointer">＋ Thêm mã</button>' +
+      '<button type="button" id="hlx-ban-icdr" title="Xóa các mã riêng, chỉ giữ mã mặc định" style="border:0;border-radius:6px;background:#64748b;color:#fff;padding:4px 10px;cursor:pointer">Mặc định</button></div></div>' +
+      '<div style="color:#475569;margin-bottom:6px">Điều kiện giữ lại: có mã ICD khớp. Chọn ngày rồi bấm Phân tích. Nút "In bệnh án" tự lưu tờ điều trị (đủ chẩn đoán, diễn biến, y lệnh), in các tờ 1 lần và gộp thành 1 file PDF.</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-bottom:6px;color:#334155"><b>In bộ bệnh án:</b>' +
+        '<label><input type="checkbox" id="hlx-ban-pgrp"> Xếp A4 trước, A5 sau</label>' +
+        '<label><input type="checkbox" id="hlx-ban-p2up"> Ghép 2 trang A5 lên 1 tờ A4</label>' +
+        '<label title="Ghi thuốc đã dùng và tóm tắt kết quả xét nghiệm vào bệnh án ngoại trú trước khi in"><input type="checkbox" id="hlx-ban-pfill"> Điền thuốc + tóm tắt CLS vào bệnh án</label>' +
+        '<button type="button" id="hlx-ban-batch" title="Làm cho tất cả bệnh nhân trong danh sách bên dưới, in theo từng loại giấy tờ" style="border:0;border-radius:6px;background:#7c3aed;color:#fff;padding:4px 10px;cursor:pointer">🖨 In hàng loạt theo bộ</button></div>' +
+      '<div id="hlx-ban-msg" style="margin-bottom:4px;font-weight:700"></div><div id="hlx-ban-pdf" style="margin-bottom:6px"></div>' +
+      '<div style="overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="background:#eef2f7;text-align:left"><th style="padding:4px;width:36px">STT</th><th style="padding:4px">Mã KB</th><th style="padding:4px">Bệnh nhân</th><th style="padding:4px">Ngày</th><th style="padding:4px">ICD khớp</th><th style="padding:4px">Trạng thái</th><th style="padding:4px"></th></tr></thead><tbody id="hlx-ban-body"></tbody></table></div>';
     document.body.appendChild(P);
     const q = (s) => P.querySelector(s);
     const icdIn = q('#hlx-ban-icd');
-    icdIn.value = banConf(BAN_ICD_DEF, BAN_ICD_KEY).join(', ');
-    const pats = () => icdIn.value.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean);
+    // Mã mặc định luôn có và không xóa được; danh sách lưu/đồng bộ cloud chỉ chứa mã riêng thêm vào
+    const isDef = (c) => BAN_ICD_DEF.some((d) => d.toUpperCase() === String(c).toUpperCase());
+    let extra = banConf([], BAN_ICD_KEY);
+    extra = (Array.isArray(extra) ? extra : []).map((c) => String(c).trim()).filter((c) => c && !isDef(c));
+    let codes = BAN_ICD_DEF.concat(extra);
+    const pats = () => codes.slice();
+    const saveCodes = () => hlxStoreSet(BAN_ICD_KEY, JSON.stringify(codes.filter((c) => !isDef(c))));
+    const renderChips = () => {
+      const box = q('#hlx-ban-chips');
+      box.textContent = '';
+      codes.forEach((c, i) => {
+        const chip = document.createElement('span');
+        chip.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#e0f2fe;border:1px solid #7dd3fc;border-radius:12px;padding:1px 4px 1px 9px;font-weight:700;color:#075985';
+        chip.appendChild(document.createTextNode(c));
+        const x = document.createElement('button');
+        if (isDef(c)) { chip.style.paddingRight = '9px'; chip.title = 'Mã mặc định (không xóa được)'; }
+        else {
+        x.type = 'button'; x.textContent = '×'; x.title = 'Xóa mã ' + c;
+        x.style.cssText = 'border:0;background:transparent;color:#075985;cursor:pointer;font-size:15px;line-height:1;padding:0 4px';
+        x.addEventListener('click', () => { codes.splice(i, 1); saveCodes(); renderChips(); });
+        chip.appendChild(x); }
+        box.appendChild(chip);
+      });
+      if (!codes.length) { const e = document.createElement('span'); e.style.color = '#b91c1c'; e.textContent = 'Chưa có mã nào - hãy thêm mã ICD.'; box.appendChild(e); }
+    };
+    const addCodes = () => {
+      const add = icdIn.value.split(/[,;\s]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
+      let n = 0;
+      add.forEach((c) => { if (codes.map((k) => k.toUpperCase()).indexOf(c) === -1) { codes.push(c); n++; } });
+      icdIn.value = '';
+      if (n) { saveCodes(); renderChips(); msg('Đã thêm ' + n + ' mã ICD (tổng ' + codes.length + ' mã)', '#166534'); }
+      else if (add.length) msg('Mã đã có trong danh sách', '#b45309');
+    };
+    renderChips();
+    try { const po = JSON.parse(localStorage.getItem(BAN_PAPER_KEY) || '{}'); q('#hlx-ban-pgrp').checked = po.group !== false; q('#hlx-ban-p2up').checked = !!po.twoUp; q('#hlx-ban-pfill').checked = po.fill !== false; } catch (e) { q('#hlx-ban-pgrp').checked = true; }
+    ['#hlx-ban-pgrp', '#hlx-ban-p2up', '#hlx-ban-pfill'].forEach((id) => q(id).addEventListener('change', () => { try { localStorage.setItem(BAN_PAPER_KEY, JSON.stringify({ group: q('#hlx-ban-pgrp').checked, twoUp: q('#hlx-ban-p2up').checked, fill: q('#hlx-ban-pfill').checked })); } catch (e) {} }));
     const msg = (s, c) => { const m = q('#hlx-ban-msg'); m.textContent = s; m.style.color = c || '#0f172a'; };
+    q('#hlx-ban-batch').addEventListener('click', async () => {
+      if (printing) return;
+      const list = curRows.slice();
+      if (!list.length) { msg('Chưa có danh sách: hãy bấm Phân tích trước.', '#b91c1c'); return; }
+      if (!confirm('In hàng loạt cho ' + list.length + ' bệnh nhân trong danh sách?\nMỗi người sẽ được lưu tờ điều trị (đủ chẩn đoán, diễn biến, y lệnh) rồi in; kết quả gộp theo từng loại giấy tờ (tờ điều trị, bệnh án, phiếu chỉ định, xét nghiệm, bảng kê, đơn thuốc).')) return;
+      printing = true;
+      const opt = { group: q('#hlx-ban-pgrp').checked, twoUp: q('#hlx-ban-p2up').checked, fillRec: q('#hlx-ban-pfill').checked };
+      const lnk = q('#hlx-ban-pdf'); lnk.textContent = '';
+      const kinds = ['Bệnh án ngoại trú', 'Tờ điều trị', 'Phiếu chỉ định', 'Kết quả xét nghiệm', 'Bảng kê', 'Đơn thuốc'];
+      const byKind = {}; kinds.forEach((k) => { byKind[k] = []; });
+      const errs = []; let n = 0;
+      try {
+        for (const r of list) {
+          n++;
+          try {
+            const res = await banPrintBundle(r, (t) => msg('(' + n + '/' + list.length + ') ' + r.name + ': ' + t), opt);
+            res.pdfs.forEach((x) => { (byKind[x.name] = byKind[x.name] || []).push(x); });
+            res.fails.forEach((f) => errs.push(r.name + ' - ' + f));
+          } catch (e) { errs.push(r.name + ': ' + e.message); }
+        }
+        let printed = 0;
+        for (const k of Object.keys(byKind)) {
+          if (!byKind[k].length) continue;
+          msg('Đang gộp "' + k + '" (' + byKind[k].length + ' tài liệu)...');
+          const m = await banMergePdfs(byKind[k], (t) => msg(k + ': ' + t), { group: true, twoUp: opt.twoUp });
+          addLink(lnk, k + ' (' + m.pages + ' trang)', URL.createObjectURL(m.blob));
+          msg('In "' + k + '": ' + m.pages + ' trang (A4: ' + m.nA4 + ', A5: ' + m.nA5 + '). Hãy in xong rồi đóng hộp thoại để sang loại tiếp theo.', '#1d4ed8');
+          const pr = await banPrintBlob(m.blob);
+          if (!pr.ok) errs.push('Không tự mở được hộp thoại in "' + k + '" (bấm link bên dưới)');
+          printed++;
+        }
+        msg('Xong ' + list.length + ' bệnh nhân, ' + printed + ' loại giấy tờ.' + (errs.length ? ' Lỗi: ' + errs.join(' | ') : ''), errs.length ? '#b45309' : '#166534');
+      } catch (e) { msg('Lỗi in hàng loạt: ' + e.message, '#b91c1c'); }
+      printing = false;
+    });
     q('#hlx-ban-x').addEventListener('click', () => P.remove());
-    q('#hlx-ban-icds').addEventListener('click', () => { hlxStoreSet(BAN_ICD_KEY, JSON.stringify(pats())); msg('Đã lưu danh sách mã ICD (' + pats().length + ' mã)', '#166534'); });
-    q('#hlx-ban-icdr').addEventListener('click', () => { icdIn.value = BAN_ICD_DEF.join(', '); });
+    q('#hlx-ban-icda').addEventListener('click', addCodes);
+    icdIn.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); addCodes(); } });
+    q('#hlx-ban-icdr').addEventListener('click', () => { codes = BAN_ICD_DEF.slice(); saveCodes(); renderChips(); msg('Đã xóa các mã riêng, còn ' + codes.length + ' mã mặc định', '#166534'); });
 
     let running = false;
+    let printing = false;
+    let curRows = [];
+    const addLink = (box, label, url) => {
+      const a = document.createElement('a');
+      a.href = url; a.target = '_blank'; a.textContent = '📄 ' + label; a.title = 'Xem lại PDF (không bắt buộc)';
+      a.style.cssText = 'margin-right:12px;color:#1d4ed8';
+      box.appendChild(a);
+    };
+    let syncP = Promise.resolve();
     q('#hlx-ban-go').addEventListener('click', async () => {
       if (running) return;
-      const cur = banLists.cur || { items: [] };
-      if (!banLists.cur && !banListReq.data) { msg('Chưa có danh sách bệnh nhân. Hãy đổi ngày hoặc bấm Tìm ở danh sách bệnh nhân khám rồi bấm Phân tích lại.', '#b91c1c'); return; }
       running = true;
-      const days = Number(q('#hlx-ban-days').value) || 28;
+      try { await syncP; } catch (e) {}
       const dsel = q('#hlx-ban-date').value; // yyyy-mm-dd
       const st = q('#hlx-ban-st').value;
       const P2 = pats();
-      let src = cur.items;
+      const dKeys = banDKeys;
+      const dshow = dsel ? dsel.split('-').reverse().join('/') : '';
+      // 1) chọn ngày 00:00-23:59 trên trang + bấm Tìm kiếm để danh sách trên trang khớp với popup
+      let synced = false;
       if (dsel) {
-        try { msg('Đang nạp danh sách ngày ' + dsel + '...'); const L = await banFetchList(dsel); if (L && L.length) src = L; }
-        catch (e) { msg('Không nạp được danh sách theo ngày, dùng danh sách đang hiện: ' + e.message, '#b45309'); }
+        msg('Đang chọn ngày ' + dshow + ' (00:00 - 23:59) trên trang và tìm kiếm...');
+        try { synced = await banSyncPageDate(dsel); } catch (e) { synced = false; banSyncWhy.s = 'lỗi ' + e.message; }
       }
+      if (dsel && !synced && banSyncWhy.empty) {
+        q('#hlx-ban-body').textContent = '';
+        msg('Ngày ' + dshow + ' không có bệnh nhân nào (theo phòng và bộ lọc đang chọn trên trang).', '#b45309');
+        running = false; return;
+      }
+      const cur = banLists.cur || { items: [] };
+      let src = cur.items;
+      let fetched = synced; // danh sách trên trang đã đúng ngày -> không lọc lại theo ngày
+      if (dsel && !synced) {
+        // 2) dự phòng: nạp thẳng qua API theo ngày
+        const curDate = banCurListDate();
+        if (!banListReq.data) { msg('Không chọn được ngày trên trang: ' + (banSyncWhy.s || 'không rõ lý do') + '. Hãy chọn ngày và bấm Tìm kiếm ở trang rồi bấm Phân tích lại.', '#b91c1c'); running = false; return; }
+        try {
+          msg('Đang nạp danh sách ngày ' + dshow + '...');
+          const L = await banFetchList(dsel);
+          if (L.items.length) { src = L.items; fetched = true; }
+          else if (curDate !== dsel) { msg('Không có bệnh nhân nào của ngày ' + dshow + '. Nếu chắc chắn có, hãy đổi ngày ở trang rồi bấm Tìm kiếm, sau đó bấm Phân tích lại.', '#b91c1c'); running = false; return; }
+        } catch (e) {
+          if (curDate !== dsel) { msg('Không nạp được danh sách ngày ' + dshow + ': ' + e.message, '#b91c1c'); running = false; return; }
+        }
+      }
+      if (!dsel && !banLists.cur) { msg('Chưa có danh sách bệnh nhân. Hãy bấm Tìm kiếm ở trang rồi bấm Phân tích lại.', '#b91c1c'); running = false; return; }
       let items = src.filter((it) => it.patient_visit_id && !BAN_ZERO.test(String(it.patient_visit_id)));
-      const dKeys = ['examination_date', 'actual_visit_date_time', 'visit_date_time', 'created_date_time', 'report_date_time'];
-      if (dsel) items = items.filter((it) => { const d = banFirst(it, dKeys); return !d || d.slice(0, 10) === dsel; });
+      if (dsel && !fetched) items = items.filter((it) => { const d = banFirst(it, dKeys); return !d || d.slice(0, 10) === dsel; });
       const ids = Array.from(new Set(items.map((it) => String(it.patient_visit_id))));
       msg('Đang phân tích 0/' + ids.length + '...');
       try {
-        const itemBy = {}; items.forEach((x) => { itemBy[String(x.patient_visit_id)] = x; });
-        await banPool(ids, 4, (k) => banAnalyze(k, itemBy[k]), (n) => msg('Đang phân tích ' + n + '/' + ids.length + '...'));
+        const itemBy = {}; items.forEach((x) => { itemBy[String(x.patient_visit_id)] = x; banItemBy[String(x.patient_visit_id)] = x; });
+        await banPool(ids, 4, async (k) => { const a0 = await banAnalyze(k); if (a0 && a0.empty) banEmpty[k] = a0.dbg || 1; else delete banEmpty[k]; }, (n) => msg('Đang phân tích ' + n + '/' + ids.length + '...'));
       } catch (e) { msg('Lỗi: ' + e.message, '#b91c1c'); running = false; return; }
       const doneMap = banDoneMap();
+      let nEmpty = 0, nDone = 0;
       const rows = [];
       const seen = {};
       items.forEach((it) => {
         const vid = String(it.patient_visit_id);
         if (seen[vid]) return; seen[vid] = 1;
         const a = banCache[vid] || {};
+        if (banEmpty[vid]) nEmpty++;
         if (a.err) { rows.push({ vid, code: it.visit_code, name: banFirst(it, ['full_name', 'patient_name', 'person_name']), date: banFirst(it, dKeys), err: a.err }); return; }
-        const hitDrug = a.days >= days;
         const hit = (a.icds || []).filter((c) => banIcdMatch(c, P2));
-        if (!hitDrug && !hit.length) return;
+        if (!hit.length) return;
         const isDone = !!doneMap[vid];
+        if (isDone) nDone++;
         if ((st === 'todo' && isDone) || (st === 'done' && !isDone)) return;
-        rows.push({ vid, code: it.visit_code, pcode: it.person_code, name: banFirst(it, ['full_name', 'patient_name', 'person_name']), date: banFirst(it, dKeys), days: a.days, nDrug: a.nDrug, src: a.src, amsg: a.msg, hitDrug, hit, isDone });
+        rows.push({ vid, pid: it.patient_id, code: it.visit_code, pcode: it.person_code, name: banFirst(it, ['full_name', 'patient_name', 'person_name']), date: banFirst(it, dKeys), hit, isDone });
       });
       const body = q('#hlx-ban-body');
       body.textContent = '';
       rows.forEach((r, i) => {
         const tr = document.createElement('tr');
         tr.style.borderTop = '1px solid #e2e8f0';
-        tr.innerHTML = '<td style="padding:4px">' + (i + 1) + '</td><td style="padding:4px">' + esc(r.code) + '</td><td style="padding:4px;color:#1d4ed8;cursor:pointer;font-weight:700" data-open="1">' + esc(r.name || '(mở bệnh nhân)') + '</td><td style="padding:4px">' + esc((r.date || '').slice(0, 10).split('-').reverse().join('/')) + '</td>' +
-          (r.err ? '<td colspan="3" style="padding:4px;color:#b91c1c">Lỗi: ' + esc(r.err) + '</td>' :
-            '<td style="padding:4px">' + (r.hitDrug ? '✅ ' : '') + esc(r.days) + ' ngày <span style="color:#64748b" title="' + esc((r.src || '') + ' ' + (r.amsg || '')) + '">(' + esc(r.nDrug) + ' thuốc)</span><div style="font-size:11px;color:#b45309;max-width:420px;word-break:break-all">' + esc(r.amsg || '') + '</div></td><td style="padding:4px">' + esc(r.hit.join(', ')) + '</td><td style="padding:4px">' + (r.isDone ? '✔ Đã làm' : '⏳ Chưa làm') + '</td>') +
-          '<td style="padding:4px"><button type="button" data-open="1" style="border:1px solid #9fb6cd;border-radius:6px;background:#eef4fa;padding:2px 8px;cursor:pointer">Mở</button></td>';
-        tr.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', () => {
-          if (!banOpenPatient(r)) msg('Không thấy bệnh nhân ' + r.code + ' trong danh sách trên trang. Hãy nạp đúng ngày rồi thử lại.', '#b91c1c');
+        tr.innerHTML = '<td style="padding:4px">' + (i + 1) + '</td><td style="padding:4px">' + esc(r.code) + '</td><td style="padding:4px;font-weight:700">' + esc(r.name || '') + '</td><td style="padding:4px">' + esc((r.date || '').slice(0, 10).split('-').reverse().join('/')) + '</td>' +
+          (r.err ? '<td colspan="2" style="padding:4px;color:#b91c1c">Lỗi: ' + esc(r.err) + '</td>' :
+            '<td style="padding:4px">' + esc(r.hit.join(', ')) + '</td><td style="padding:4px">' + (r.isDone ? '✔ Đã làm' : '⏳ Chưa làm') + '</td>') +
+          '<td style="padding:4px"><button type="button" data-open="1" style="border:1px solid #9fb6cd;border-radius:6px;background:#eef4fa;padding:2px 8px;cursor:pointer">In bệnh án</button></td>';
+        tr.querySelectorAll('[data-open]').forEach((b) => b.addEventListener('click', async () => {
+          if (printing) return;
+          printing = true; b.disabled = true;
+          const opt = { group: q('#hlx-ban-pgrp').checked, twoUp: q('#hlx-ban-p2up').checked, fillRec: q('#hlx-ban-pfill').checked };
+          const lnk = q('#hlx-ban-pdf'); lnk.textContent = '';
+          try {
+            const res = await banPrintBundle(r, (t) => msg(r.name + ': ' + t), opt);
+            const m = await banMergePdfs(res.pdfs, (t) => msg(r.name + ': ' + t), opt);
+            const pr = await banPrintBlob(m.blob);
+            addLink(lnk, 'Bộ bệnh án ' + (r.name || r.code), pr.url);
+            msg(r.name + ': ' + (pr.ok ? 'đã mở hộp thoại in' : 'không tự mở được hộp thoại in, bấm link để mở PDF') + ' - ' + res.pdfs.length + ' tài liệu, ' + m.pages + ' trang (A4: ' + m.nA4 + ', A5: ' + m.nA5 + ').' + (res.notes && res.notes.length ? ' Ghi chú: ' + res.notes.join(', ') + '.' : '') + (res.fails.length ? ' Lỗi: ' + res.fails.join(' | ') : ''), res.fails.length || !pr.ok ? '#b45309' : '#166534');
+          } catch (e) { msg(r.name + ': ' + e.message, '#b91c1c'); }
+          printing = false; b.disabled = false;
         }));
         body.appendChild(tr);
       });
-      msg('Có ' + rows.length + ' bệnh nhân phù hợp / ' + ids.length + ' đã quét.', '#166534');
+      curRows = rows.filter((x) => !x.err);
+      msg('Có ' + rows.length + ' bệnh nhân phù hợp / ' + ids.length + ' đã quét.' + (rows.length ? '' : ' (không đọc được ICD: ' + nEmpty + '; đã làm: ' + nDone + '; còn lại không khớp mã ICD. Mã đang tìm: ' + P2.join(', ') + '. Ví dụ đọc rỗng: ' + (Object.keys(banEmpty).slice(0, 2).map((k) => banEmpty[k]).join(' | ') || '-') + '. Ví dụ ICD đọc được: ' + (Object.keys(banCache).filter((k) => ids.indexOf(k) >= 0 && banCache[k].icds).slice(0, 3).map((k) => banCache[k].icds.join('/')).join(' ; ') || '-') + ')'), rows.length ? '#166534' : '#b45309');
       running = false;
     });
     const dv = banLists.cur ? banFirst(banLists.cur.items[0] || {}, ['examination_date', 'actual_visit_date_time', 'visit_date_time', 'created_date_time']) : '';
     if (dv) q('#hlx-ban-date').value = dv.slice(0, 10);
+
+    // Nút ‹ › / Hôm nay: đổi ngày nhanh (kích hoạt cùng cơ chế chọn ngày trên trang)
+    const banYmd = (dt) => dt.getFullYear() + '-' + String(dt.getMonth() + 1).padStart(2, '0') + '-' + String(dt.getDate()).padStart(2, '0');
+    const banShift = (n) => {
+      const el = q('#hlx-ban-date');
+      const base = el.value ? new Date(el.value + 'T00:00:00') : new Date();
+      base.setDate(base.getDate() + n);
+      const v = banYmd(base);
+      if (v > banYmd(new Date())) return; // không đi quá hôm nay
+      el.value = v;
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    q('#hlx-ban-prev').addEventListener('click', () => banShift(-1));
+    q('#hlx-ban-next').addEventListener('click', () => banShift(1));
+    q('#hlx-ban-today').addEventListener('click', () => { q('#hlx-ban-date').value = banYmd(new Date()); q('#hlx-ban-date').dispatchEvent(new Event('change', { bubbles: true })); });
+    // Chọn ngày trong popup -> tự chọn 00:00-23:59 cùng ngày trên trang và bấm Tìm kiếm, khỏi tắt/mở lại popup
+    q('#hlx-ban-date').addEventListener('change', () => {
+      const v = q('#hlx-ban-date').value;
+      if (!v || running) return;
+      const dshow = v.split('-').reverse().join('/');
+      msg('Đang chọn ngày ' + dshow + ' trên trang...');
+      syncP = banSyncPageDate(v).then((ok) => {
+        if (running) return;
+        const n = banLists.cur && banCurListDate() === v ? banLists.cur.items.length : 0;
+        if (!ok && banSyncWhy.empty) { q('#hlx-ban-body').textContent = ''; msg('Ngày ' + dshow + ' không có bệnh nhân nào (theo phòng và bộ lọc đang chọn trên trang).', '#b45309'); return; }
+        msg(ok ? 'Đã chọn ngày ' + dshow + ' trên trang (' + n + ' bệnh nhân). Bấm Phân tích.' : 'Chưa chọn được ngày ' + dshow + ' trên trang: ' + (banSyncWhy.s || 'không rõ lý do') + '. Vẫn có thể bấm Phân tích (sẽ nạp qua API).', ok ? '#166534' : '#b45309');
+      }).catch(() => {});
+    });
     msg(banLists.cur ? 'Đã có danh sách ' + banLists.cur.items.length + ' bệnh nhân. Bấm Phân tích.' : 'Chưa có danh sách: hãy đổi ngày hoặc bấm Tìm ở danh sách bệnh nhân khám trước.', banLists.cur ? '#0f172a' : '#b91c1c');
   }
   banHookNet();
@@ -11209,6 +12151,7 @@
       if (!paginatorAutoSet) trySetPaginatorTo100();
     });
     hlxSafe(tryCheckCompletedCheckbox);
+    hlxSafe(tryAutoSearchOnEnter);
     hlxSafe(ensureCustomPrintButtonsPlacement);
     hlxSafe(autoFocusSymptomFieldIfNew);
     hlxSafe(setupRxReorder);
@@ -14618,6 +15561,8 @@
 
   const API = '/api/adapter/execute';
   const WORKER = 'https://hlx-report.dhabolero.workers.dev';
+  // Ghi nhận lượt dùng (xem ở trang /web > Quản lý của Admin)
+  const hlxLog = (ev) => { try { fetch(WORKER + '/stats/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ev: ev, who: '' }), keepalive: true }).catch(() => {}); } catch (e) {} };
   const DEFAULT_KHOA = 'b7111066-1f2e-43c7-a0bd-2a984ec56d8f';
 
   // ---- Học header đăng nhập từ chính các request /api/ của trang (chỉ giữ trong bộ nhớ) ----
@@ -15909,6 +16854,7 @@
             if (e instanceof TypeError) await fetch(v.url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
             else throw e;
           }
+          hlxLog('push'); // chỉ tính khi đã xác nhận và gửi dữ liệu thành công
           let webMsg = null;
           try {
             const rr = await fetch(WORKER + '/web/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: WEB_KEY, date: v.d, v: c.v, rooms: c.rooms }) });
@@ -15936,6 +16882,7 @@
     } catch (e) { stEl.textContent = 'Không đọc được danh sách khoa: ' + e.message + ' — tải lại trang rồi mở lại.'; return false; }
   }
   async function openMain() {
+    hlxLog('open');
     ov.classList.add('on');
     if (kind === 'ipd' && !(await ensureKhoa())) return;
     upNote(); run();
@@ -15945,8 +16892,8 @@
   function build() {
     const root = document.body || document.documentElement;
     if (!root || document.getElementById('hlx-ipd-stats-btn')) return;
-    const old = document.getElementById('hlx-st-css'); if (old) old.remove();
-    const st = document.createElement('style'); st.id = 'hlx-st-css'; st.textContent = CSS; (document.head || document.documentElement).appendChild(st);
+    const old = document.getElementById('hlx-stats-css'); if (old) old.remove();
+    const st = document.createElement('style'); st.id = 'hlx-stats-css'; st.textContent = CSS; (document.head || document.documentElement).appendChild(st);
     const btn = el('button', 'position:fixed;right:14px;bottom:14px;z-index:2147483645;border:0;border-radius:22px;background:linear-gradient(120deg,#0b3b66,#0e8fa5);color:#fff;padding:9px 16px;font:700 13px "Segoe UI",Arial,sans-serif;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)', '📊 Thống kê KCB');
     btn.id = 'hlx-ipd-stats-btn'; btn.type = 'button'; btn.onclick = openMain; btn.style.display = 'none'; // mở bằng menu chuột phải của Helixfast
 
