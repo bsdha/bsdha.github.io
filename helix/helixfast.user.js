@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.35
+// @version      2.36
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -41,7 +41,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.35';
+  const HELIXFAST_VERSION = '2.36';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -16812,16 +16812,19 @@ async function banPdfLines(PL, page) {
         if (!(j.Data || []).length || page >= (j.PageCount || 1)) break;
       }
     } catch (e) { window.__hlxOpdDiag += ' · lỗi DS cấp cứu: ' + e.message; }
-    const by = {}; let skip = 0, bhyt = 0; const cases = [];
+    const by = {}; let skip = 0, bhyt = 0, dup = 0; const cases = [], seenP = {};
     rows.forEach((x) => {
       const nm = opdLabel(x);
       if (!nm) { skip++; return; }
+      // 1 người khám có thể đăng ký nhiều dịch vụ (nhiều dòng): chỉ tính 1 người. Dịch vụ: theo bệnh nhân; phòng khác: theo lượt khám trong cùng phòng
+      const pk = nm + '|' + (nm === 'PK CS2_Dịch vụ' ? (x.patient_id || x.person_code || x.visit_code || x.patient_visit_id) : (x.patient_visit_id || x.visit_code || x.patient_id));
+      if (x.patient_id || x.person_code || x.visit_code || x.patient_visit_id) { if (seenP[pk]) { dup++; return; } seenP[pk] = 1; }
       const o = by[nm] = by[nm] || { tong: 0, bhyt: 0, dv: 0 }; o.tong++;
       const isB = !!x.health_insurance_id || nm === 'PK CS2_CC'; if (isB) o.bhyt++; else o.dv++;
       cases.push({ nm: nm, ten: x.full_name || x.patient_name || '', ns: x.date_of_birth ? String(x.date_of_birth).slice(0, 4) : '', gt: x.gender === 1 ? 'Nam' : (x.gender === 0 ? 'Nữ' : ''), ma: x.visit_code || x.person_code || '', gio: String(x.created_date_time || x.actual_visit_date_time || '').slice(0, 16), loai: isB ? 'BHYT' : 'Dịch vụ', phong: x.area_name || '' });
     });
-    const tot = rows.length - skip; bhyt = tot - ((by['PK CS2_CC'] || {}).tong || 0) - ((by['PK CS2_Dịch vụ'] || {}).tong || 0); // BHYT = các phòng còn lại
-    return { day: d, total: tot, by: by, skip: skip, bhyt: bhyt, cases: cases };
+    const tot = rows.length - skip - dup; bhyt = tot - ((by['PK CS2_CC'] || {}).tong || 0) - ((by['PK CS2_Dịch vụ'] || {}).tong || 0); // BHYT = các phòng còn lại
+    return { day: d, total: tot, by: by, skip: skip, bhyt: bhyt, cases: cases, dup: dup };
   }
   function opdRange() {
     const d = fEl.value || ymd(new Date()), today = ymd(new Date());
