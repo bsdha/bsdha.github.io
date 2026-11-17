@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.32
+// @version      2.35
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -41,7 +41,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.32';
+  const HELIXFAST_VERSION = '2.35';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -11344,6 +11344,7 @@
             P.go('merge', '');
             const mg = await banMergePdfs(res.pdfs, (t) => { say(t); }, opt);
             P.set('merge', 'ok', mg.pages + ' trang (A4 ' + mg.nA4 + ', A5 ' + mg.nA5 + ')');
+            (mg.warn || []).forEach((w) => res.fails.push(w));
             P.go('print', '');
             await banPrintBlob(mg.blob);
             P.set('print', 'ok', 'đã mở hộp thoại in');
@@ -11384,7 +11385,7 @@
     const ID = 'hlx-bant-btn'; let busy = false, elig = { vid: '', ok: false, pend: false };
     try {
       const st = document.createElement('style');
-      st.textContent = '@keyframes hlxBantBlink{0%,49%{background:#fff;color:#1d4ed8;border-color:#1d4ed8}50%,100%{background:#1d4ed8;color:#fff;border-color:#1d4ed8}}#' + ID + '.hlx-blink{animation:hlxBantBlink 1s steps(1,end) infinite}';
+      st.textContent = '@keyframes hlxBantBlink{0%,49%{background:#fff;color:#1d4ed8;border-color:#1d4ed8;box-shadow:0 0 0 2px #93c5fd}50%,100%{background:#1d4ed8;color:#fff;border-color:#1e3a8a;box-shadow:0 0 8px 2px #60a5fa}}#' + ID + '{background:linear-gradient(#2563eb,#1d4ed8);color:#fff;border:1px solid #1e3a8a;border-radius:4px;font-weight:700;font-size:13px;line-height:1.2;padding:5px 12px;margin-right:6px;opacity:1;cursor:pointer;box-shadow:0 2px 6px rgba(29,78,216,.55);text-shadow:none}#' + ID + ':hover{background:linear-gradient(#3b82f6,#2563eb)}#' + ID + '.hlx-blink{animation:hlxBantBlink 1s steps(1,end) infinite}';
       (document.head || document.documentElement).appendChild(st);
     } catch (e) {}
     const printedBant = (vid) => { try { const m = JSON.parse(localStorage.getItem('hlx_ban_printed_v1') || '{}'); return !!(m[vid] && m[vid]['Bệnh án ngoại trú']); } catch (e) { return false; } };
@@ -11417,15 +11418,22 @@
       document.querySelectorAll('.icd-selector-custom .ng-value').forEach((e) => { const t = (e.textContent || '').replace(/\s+/g, ' ').trim(); if (/^[A-Za-z]\d{2}(\.\w+)?$/.test(t)) out.push(t); });
       return out;
     };
-    const asked = {};
+    const asked = {}, icdMem = {}; let armed = 0;
+    try {
+      document.addEventListener('click', (e) => {
+        const bt = e.target && e.target.closest && e.target.closest('button,a'); if (!bt) return;
+        const tx = (bt.textContent || '').replace(/\s+/g, ' ');
+        if (/In nhanh BK toa về|Hoàn thành khám/.test(tx)) { armed = Date.now() + 180000; const v = String(banLast.visitId || ''); if (v) asked[v] = 0; }
+      }, true);
+    } catch (e) {}
     function promptBant(b, vid) {
-      if (asked[vid] || printedBant(vid) || document.getElementById('hlx-bant-pop')) return;
+      if (!vid || asked[vid] || (printedBant(vid) && Date.now() > armed) || document.getElementById('hlx-bant-pop')) return;
       asked[vid] = 1;
       const it = (banLists.cur && banLists.cur.items.find((x) => String(x.patient_visit_id) === vid)) || Object.values(banQueueMap || {}).find((x) => x && String(x.patient_visit_id) === vid) || {};
       let name = it.full_name || '', dob = it.date_of_birth ? String(it.date_of_birth).slice(0, 10).split('-').reverse().join('/') : '';
       if (!dob) { const m = /NS:\s*(\d{2}\/\d{2}\/\d{4})/.exec(document.body.innerText || ''); if (m) dob = m[1]; }
       if (!name) { const h = Array.from(document.querySelectorAll('div,span,b,strong,h1,h2,h3')).find((e) => e.children.length < 3 && /NS:\s*\d{2}\/\d{2}\/\d{4}/.test(e.textContent || '') && (e.textContent || '').length < 120); if (h) name = (h.textContent.replace(/\s+/g, ' ').match(/([A-ZÀ-Ỹ][A-ZÀ-Ỹ ]{4,})/) || [])[1] || ''; }
-      const icds = (domIcds().length ? domIcds() : ((banCache[vid] || {}).icds || [])).join(', ');
+      const icds = (domIcds().length ? domIcds() : (icdMem[vid] || (banCache[vid] || {}).icds || [])).join(', ');
       const ov = document.createElement('div'); ov.id = 'hlx-bant-pop';
       ov.style.cssText = 'position:fixed;inset:0;z-index:2147483646;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;font:14px Arial';
       const bx = document.createElement('div');
@@ -11454,7 +11462,8 @@
           if (!hasRx) return false;
           const vid = String(banLast.visitId || ''); if (!vid) return false;
           if (elig.vid !== vid || (!elig.ok && !elig.pend && Date.now() - (elig.t || 0) > 4000)) { elig = { vid, ok: false, pend: true, t: Date.now() }; banVisitEligible(vid).then((ok) => { if (elig.vid === vid) { elig.ok = !!ok; elig.pend = false; elig.t = Date.now(); } }).catch((e) => { elig.pend = false; elig.err = String(e && e.message || e); elig.t = Date.now(); }); }
-          const dc = domIcds();
+          const dc0 = domIcds(); if (dc0.length) icdMem[vid] = dc0;
+          const dc = dc0.length ? dc0 : (icdMem[vid] || []);
           if (dc.length) { let ex = banConf([], BAN_ICD_KEY); const pats = BAN_ICD_DEF.concat(Array.isArray(ex) ? ex : []); return dc.some((c) => banIcdMatch(c, pats)); }
           if (false) {
             try { let ex = banConf([], BAN_ICD_KEY); const pats = BAN_ICD_DEF.concat(Array.isArray(ex) ? ex : []); const tx = (document.body.innerText || '').slice(0, 20000); const cs = (tx.match(/\(([A-Za-z]\d{2}(?:\.\d+)?)\)/g) || []).map((x) => x.slice(1, -1)); if (cs.some((c) => banIcdMatch(c, pats))) return true; } catch (e) {}
@@ -11463,9 +11472,8 @@
         })();
         if (!show) { if (b && !busy) b.remove(); return; }
         if (!b) {
-          b = document.createElement('button'); b.type = 'button'; b.id = ID; b.className = 'btn btn-xs';
+          b = document.createElement('button'); b.type = 'button'; b.id = ID; b.className = '';
           b.innerHTML = '<i class="fa fa-print"></i> In BANT';
-          b.style.cssText = 'margin-right:6px;border:1px solid #1d4ed8;color:#1d4ed8;background:#fff';
           b.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); run(b); });
           out.parentNode.insertBefore(b, out);
         } else if (b.nextElementSibling !== out && out.parentNode) out.parentNode.insertBefore(b, out);
@@ -11626,7 +11634,7 @@
         body.status_date_time = banIsoLocal(new Date()); body.print_params_obj = JSON.stringify(Object.assign(JSON.parse(body.print_params_obj), { status_date_time: body.status_date_time }));
         pr = await banPrintApi('/api/report-print/medical-record-print', body);
       }
-      if (pr && pr.Data) pdfs.push({ name: 'Bệnh án ngoại trú', path: pr.Data, prog: ctx.recText || String((banLast.visitId === vid ? banDomProg() : '') || (ctx.prob || {}).progression || (ctx.med || {}).pathological_process || (ctx.prob || {}).symptom || '').trim() }); else fails.push('Bệnh án ngoại trú: HIS không trả file. Phản hồi: ' + JSON.stringify(pr || {}).slice(0, 300));
+      if (pr && pr.Data) pdfs.push({ name: 'Bệnh án ngoại trú', path: pr.Data, prog: ctx.recText || String((banLast.visitId === vid ? banDomProg() : '') || (ctx.prob || {}).progression || (ctx.med || {}).pathological_process || (() => { try { return JSON.parse((ctx.prob || {}).diagnose_result || '{}').dbvv; } catch (e) { return ''; } })() || (ctx.prob || {}).symptom || (ctx.med || {}).symptom || (ctx.v || {}).symptom || '').trim() }); else fails.push('Bệnh án ngoại trú: HIS không trả file. Phản hồi: ' + JSON.stringify(pr || {}).slice(0, 300));
     } catch (e) { fails.push('Bệnh án ngoại trú: ' + e.message); }
 
     // 2) Tờ điều trị
@@ -12037,6 +12045,7 @@ async function banPdfLines(PL, page) {
           kst[k] = '▶'; say('Đang gộp "' + k + '" (' + byKind[k].length + ' tài liệu)...');
           const sz = cfg[k];
           const m = await banMergePdfs(byKind[k], (t) => say(k + ': ' + t), { group: sz === 'keep', size: sz === 'keep' ? null : sz, twoUp: false, pairCls: sz === 'keep' });
+          (m.warn || []).forEach((w) => errs.push(k + ': ' + w));
           addLink(lnk, k + ' (' + m.pages + ' trang)', URL.createObjectURL(m.blob));
           say('In "' + k + '": ' + m.pages + ' trang. In xong/đóng hộp thoại in để sang loại tiếp theo.');
           const pj = await banPrintBlob(m.blob);
