@@ -56,6 +56,8 @@ list.forEach(function(h){var sx=sk[h.n]?"skip":stOf(h),li=document.createElement
 li.innerHTML="<b>"+pad(h.n)+"</b><span class=\"meta\">Quầy "+h.q+" · "+h.t.slice(0,5)+(!show&&cnt[h.n]>1?" · gọi "+cnt[h.n]+" lần":"")+"</span><em class=\"bd\">"+(sx==="skip"?"Bỏ qua":sx==="now"?"Đang gọi":sx==="wait"?"Chờ gọi":"Đã gọi")+"</em>";
 if(sx==="done"||sx==="skip"){var bt=document.createElement("button");bt.type="button";bt.className="mini"+(sx==="skip"?" pri":"");bt.textContent="Gọi lại";bt.disabled=closed;bt.onclick=function(){act({type:"call",n:h.n,q:+q.value})};li.appendChild(bt)}
 H.appendChild(li)});
+function ctr(){var w=H.querySelector("li.now");if(!w)return;var k=H.offsetHeight?H.getBoundingClientRect().height/H.offsetHeight:1;if(!k)k=1;var d=(w.getBoundingClientRect().top-H.getBoundingClientRect().top+w.getBoundingClientRect().height/2-H.getBoundingClientRect().height/2)/k;H.scrollTop+=d}
+ctr();requestAnimationFrame(ctr);
 var la=BASE;S.hist.forEach(function(h){if(h.n>la&&stOf(h)!=="wait")la=h.n});
 var pw=(S.issued|0)>la?(S.issued|0)-la:0,pi=$("pinfo");
 pi.innerHTML=show&&pw?'<div class="pc"><span>Số tiếp theo</span><b>'+pad(la+1)+'</b></div><div class="pc"><span>Đang chờ khám</span><b>'+pw+'</b><span>bệnh nhân</span></div>':"";
