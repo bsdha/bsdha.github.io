@@ -15884,19 +15884,26 @@ async function banPdfLines(PL, page) {
   setInterval(processTable, 1000);
   setTimeout(processTable, 500);
 
-  // ===== Kéo chỉnh độ rộng cột bảng (danh sách bệnh nhân...) + nhấp đúp ranh giới để tự vừa nội dung =====
+  // ===== Kéo chỉnh độ rộng cột bảng (danh sách bệnh nhân...) kiểu Excel + nhấp đúp ranh giới để tự vừa nội dung =====
+  // v2: bảng chuyển sang table-layout:fixed, độ rộng bảng = tổng độ rộng các cột
+  //  - kéo cột nào chỉ cột đó đổi, vách ngăn bám sát con trỏ (không còn bị tuột/chậm, cả 2 chiều)
+  //  - thêm cột thì các cột cũ giữ nguyên, bảng tràn ra và dùng thanh trượt ngang; dòng luôn 1 hàng (cắt bằng "…"), không giãn cao
   (function hlxColumnResize() {
     let hlxOffLocal = false;
     try { hlxOffLocal = localStorage.getItem('helixfast_enabled') === '0'; } catch (err) {}
     if (hlxOffLocal) return;
     const rsOn = () => { try { return window.__hlxIsEnabled ? !!window.__hlxIsEnabled() : true; } catch (err) { return true; } };
-    const LS_KEY = 'hlx_colw_v1';
+    const LS_KEY = 'hlx_colw_v2';
     const MIN_W = 30;
     const MAX_AUTO_W = 700;
-    let store = {};
-    try { store = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; } catch (err) { store = {}; }
-    const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify(store)); } catch (err) {} };
+    const MAX_DEF_W = 300;
+    let store = {}; // {tableKey:{col:w}} do người dùng chỉnh
+    let mem = {};   // {col:w} nhớ theo tên cột, để thêm/bớt cột vẫn giữ độ rộng cũ
+    try { const o = JSON.parse(localStorage.getItem(LS_KEY) || '{}') || {}; store = o.s || {}; mem = o.m || {}; } catch (err) { store = {}; mem = {}; }
+    const save = () => { try { localStorage.setItem(LS_KEY, JSON.stringify({ s: store, m: mem })); } catch (err) {} };
     const esc = (v) => String(v).replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const defaults = {}; // {tableKey:{col:w}} độ rộng mặc định đo được (không lưu)
+    const frozen = {};   // {tableKey:{cols:[...]}} các cột đang hiển thị
 
     const styleEl = document.createElement('style');
     styleEl.id = 'hlx-rs-style';
@@ -15908,23 +15915,25 @@ async function banPdfLines(PL, page) {
     const baseCss = `
       body.hlx-rs-hot, body.hlx-rs-hot *, body.hlx-rs-dragging, body.hlx-rs-dragging * { cursor: col-resize !important; user-select: none !important; }
     `;
+    function shown(el) { return el.getClientRects().length > 0; }
+    function ew(key, col) {
+      return (store[key] && store[key][col]) || mem[col] || (defaults[key] && defaults[key][col]) || 120;
+    }
     function rebuildCss() {
       let css = baseCss;
-      document.querySelectorAll('table[data-hlx-rs]').forEach((t) => {
-        const key = t.getAttribute('data-hlx-rs');
-        const cols = store[key];
-        if (!cols || t.__hlxRsDone) return;
-      });
-      const seen = new Set();
-      document.querySelectorAll('table[data-hlx-rs]').forEach((t) => {
-        const key = t.getAttribute('data-hlx-rs');
-        if (seen.has(key)) return;
-        seen.add(key);
-        const cols = store[key] || {};
-        Object.keys(cols).forEach((c) => {
-          const w = cols[c];
-          css += 'table[data-hlx-rs="' + esc(key) + '"] [pltablecolumncell="' + esc(c) + '"]{width:' + w + 'px !important;min-width:' + w + 'px !important;max-width:' + w + 'px !important;}\n';
+      Object.keys(frozen).forEach((key) => {
+        const f = frozen[key];
+        if (!f || !f.cols.length) return;
+        const tsel = 'table[data-hlx-rs="' + esc(key) + '"][data-hlx-fx]';
+        let sum = 0;
+        f.cols.forEach((c) => {
+          const w = ew(key, c);
+          sum += w;
+          css += tsel + ' [pltablecolumncell="' + esc(c) + '"]{box-sizing:border-box !important;width:' + w + 'px !important;min-width:' + w + 'px !important;max-width:' + w + 'px !important;}\n';
         });
+        css += tsel + '{table-layout:fixed !important;width:' + sum + 'px !important;min-width:' + sum + 'px !important;max-width:none !important;}\n';
+        // Dòng dữ liệu luôn 1 hàng, nội dung dài bị cắt bằng "…" (không giãn cao dòng)
+        css += tsel + ' tbody td{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;}\n';
       });
       if (styleEl.textContent !== css) styleEl.textContent = css;
     }
@@ -15934,12 +15943,77 @@ async function banPdfLines(PL, page) {
       if (!names.length) return '';
       return names.join('|');
     }
-    function shown(el) { return el.getClientRects().length > 0; }
+    function visibleCols(table) {
+      return Array.from(table.querySelectorAll('thead th[pltablecolumncell]')).filter(shown).map((th) => th.getAttribute('pltablecolumncell'));
+    }
+
+    // Khung cuộn của bảng: cho phép cuộn ngang khi bảng rộng hơn khung
+    function scrollerOf(table) {
+      let p = table.parentElement;
+      while (p && p !== document.body && p !== document.documentElement) {
+        const cs = getComputedStyle(p);
+        if (/(auto|scroll|hidden)/.test(cs.overflowX + ' ' + cs.overflowY)) return p;
+        p = p.parentElement;
+      }
+      return table.parentElement;
+    }
+    function fixScroller(table) {
+      const sc = scrollerOf(table);
+      if (sc && sc.getAttribute('data-hlx-scx') !== '1') {
+        sc.style.setProperty('overflow-x', 'auto', 'important');
+        sc.setAttribute('data-hlx-scx', '1');
+      }
+      return sc;
+    }
+
+    // "Đóng băng" độ rộng: đo giao diện hiện tại làm mặc định, rồi chuyển sang layout cố định
+    function freeze(table) {
+      const key = table.getAttribute('data-hlx-rs');
+      if (!key) return false;
+      if (!shown(table) || !table.querySelector('tbody td')) return false;
+      const ths = Array.from(table.querySelectorAll('thead th[pltablecolumncell]')).filter(shown);
+      if (!ths.length) return false;
+      const sc = fixScroller(table);
+      table.removeAttribute('data-hlx-fx');
+      measureEl.textContent = 'table[data-hlx-rs="' + esc(key) + '"] tbody td{white-space:nowrap !important;overflow:hidden !important;text-overflow:ellipsis !important;max-width:' + MAX_DEF_W + 'px !important;}';
+      const d = (defaults[key] = defaults[key] || {});
+      const cols = [];
+      ths.forEach((th) => {
+        const c = th.getAttribute('pltablecolumncell');
+        cols.push(c);
+        const w = th.getBoundingClientRect().width;
+        if (w > 0 && d[c] == null) d[c] = Math.max(MIN_W, Math.min(MAX_DEF_W, Math.round(w)));
+      });
+      measureEl.textContent = '';
+      // Nếu tổng nhỏ hơn khung thì dồn phần dư vào cột cuối chưa chỉnh tay, để giao diện mặc định vẫn kín khung như cũ
+      const cw = sc ? sc.clientWidth : 0;
+      let sum = 0;
+      cols.forEach((c) => { sum += (store[key] && store[key][c]) || mem[c] || d[c] || 120; });
+      if (cw > 0 && sum < cw - 2) {
+        for (let i = cols.length - 1; i >= 0; i--) {
+          const c = cols[i];
+          if (!((store[key] && store[key][c]) || mem[c])) { d[c] = (d[c] || 120) + (cw - 2 - sum); break; }
+        }
+      }
+      frozen[key] = { cols: cols };
+      table.setAttribute('data-hlx-fx', '1');
+      rebuildCss();
+      return true;
+    }
+    function ensureFrozen(table) {
+      const key = table.getAttribute('data-hlx-rs');
+      if (!key) return false;
+      const f = frozen[key];
+      const sig = visibleCols(table).join('|');
+      if (f && table.hasAttribute('data-hlx-fx') && f.cols.join('|') === sig) return true;
+      return freeze(table);
+    }
 
     function setWidth(table, col, w) {
       const key = table.getAttribute('data-hlx-rs');
       w = Math.max(MIN_W, Math.round(w));
       (store[key] = store[key] || {})[col] = w;
+      mem[col] = w;
       rebuildCss();
     }
 
@@ -15947,14 +16021,13 @@ async function banPdfLines(PL, page) {
       const col = th.getAttribute('pltablecolumncell');
       const key = table.getAttribute('data-hlx-rs');
       const sel = 'table[data-hlx-rs="' + esc(key) + '"] [pltablecolumncell="' + esc(col) + '"]';
-      // Bỏ khóa độ rộng cột này, cho nội dung tự giãn một dòng rồi đo
-      const saved = store[key] && store[key][col];
-      if (store[key]) delete store[key][col];
-      rebuildCss();
+      // Tạm về layout tự động, cho cột này giãn 1 dòng rồi đo
+      table.removeAttribute('data-hlx-fx');
       measureEl.textContent = sel + '{width:auto !important;min-width:0 !important;max-width:none !important;white-space:nowrap !important;}';
       const w = th.getBoundingClientRect().width;
       measureEl.textContent = '';
-      if (!(w > 0)) { if (saved) { store[key][col] = saved; rebuildCss(); } return; }
+      table.setAttribute('data-hlx-fx', '1');
+      if (!(w > 0)) { rebuildCss(); return; }
       setWidth(table, col, Math.min(MAX_AUTO_W, Math.ceil(w) + 2));
       save();
     }
@@ -15963,12 +16036,13 @@ async function banPdfLines(PL, page) {
       const key = tableKey(table);
       if (!key) return;
       if (table.getAttribute('data-hlx-rs') !== key) {
+        table.removeAttribute('data-hlx-fx');
         table.setAttribute('data-hlx-rs', key);
-        rebuildCss();
       }
+      ensureFrozen(table);
     }
 
-    // Nhận diện ranh giới cột theo vị trí chuột (không phụ thuộc phần tử chèn vào <th>, tránh bị che/cắt/render lại)
+    // Nhận diện ranh giới cột theo vị trí chuột
     const EDGE = 6;
     function edgeTh(e) {
       const t = e.target;
@@ -16008,7 +16082,11 @@ async function banPdfLines(PL, page) {
       if (drag) {
         const dx = e.clientX - drag.x;
         if (Math.abs(dx) > 2) drag.moved = true;
-        setWidth(drag.table, drag.col, drag.w + dx);
+        const target = Math.max(MIN_W, Math.round(drag.w + dx));
+        setWidth(drag.table, drag.col, target);
+        // Hiệu chỉnh nếu độ rộng thực tế lệch (viền...) để vách ngăn bám sát con trỏ như Excel
+        const a = drag.th.getBoundingClientRect().width;
+        if (Math.abs(a - target) > 0.6) setWidth(drag.table, drag.col, target + (target - a));
         showLine(drag.th);
         e.preventDefault();
         return;
@@ -16030,9 +16108,11 @@ async function banPdfLines(PL, page) {
       const hit = edgeTh(e);
       if (!hit) return;
       attach(hit.table);
+      if (!hit.table.hasAttribute('data-hlx-fx')) return;
       e.preventDefault();
       e.stopPropagation();
-      drag = { table: hit.table, th: hit.th, col: hit.th.getAttribute('pltablecolumncell'), x: e.clientX, w: hit.th.getBoundingClientRect().width, moved: false };
+      const col = hit.th.getAttribute('pltablecolumncell');
+      drag = { table: hit.table, th: hit.th, col: col, x: e.clientX, w: hit.th.getBoundingClientRect().width, moved: false };
       document.body.classList.add('hlx-rs-dragging');
     }, true);
     document.addEventListener('mouseup', () => {
@@ -16052,13 +16132,14 @@ async function banPdfLines(PL, page) {
       e.preventDefault();
       e.stopPropagation();
       attach(hit.table);
+      if (!hit.table.hasAttribute('data-hlx-fx')) return;
       autoFit(hit.table, hit.th);
       showLine(hit.th);
     }, true);
 
     function scan() {
       try {
-        if (!rsOn()) return;
+        if (!rsOn() || drag) return;
         document.querySelectorAll('table').forEach((t) => {
           if (t.querySelector('thead th[pltablecolumncell]')) attach(t);
         });
