@@ -8,10 +8,10 @@ var HTML="<div class=\"wrap\">\n<header id=\"hdr\">\n<div><div class=\"brand\"><
 function init(shadow,r,page){
 function on(){return page.classList.contains("active")}
 
-var BASE=3000,KP="goiso_pin",KC="goiso_cfg",KL="goiso_local",QN=5,$=function(i){return shadow.getElementById(i)};
+var QBASE=3000,KP="goiso_pin",KC="goiso_cfg",KL="goiso_local",QN=5,$=function(i){return shadow.getElementById(i)};
 function p2(n){return(n<10?"0":"")+n}
 function vn(){var d=new Date(Date.now()+25200000);return{date:p2(d.getUTCDate())+"/"+p2(d.getUTCMonth()+1)+"/"+d.getUTCFullYear(),t:p2(d.getUTCHours())+":"+p2(d.getUTCMinutes())+":"+p2(d.getUTCSeconds())}}
-function fresh(d){return{date:d,last:BASE,cur:null,lanes:{},hist:[],skipped:[],issued:0,seq:0,ver:0}}
+function fresh(d){return{date:d,last:QBASE,cur:null,lanes:{},hist:[],skipped:[],issued:0,seq:0,ver:0}}
 function fr(S,d){var f=fresh(d);f.ver=S.ver;f.seq=S.seq;f.aid=S.aid||0;return f}
 function aq(S,n,q){S.ann=S.ann||[];S.ann.push({id:S.aid=(S.aid|0)+1,n:n,q:q});if(S.ann.length>40)S.ann.shift()}
 function R(S,a,v){if(S.date!==v.date)S=fr(S,v.date);var n;
@@ -58,7 +58,7 @@ if(sx==="done"||sx==="skip"){var bt=document.createElement("button");bt.type="bu
 H.appendChild(li)});
 function ctr(){var w=H.querySelector("li.now");if(!w)return;var k=H.offsetHeight?H.getBoundingClientRect().height/H.offsetHeight:1;if(!k)k=1;var d=(w.getBoundingClientRect().top-H.getBoundingClientRect().top+w.getBoundingClientRect().height/2-H.getBoundingClientRect().height/2)/k;H.scrollTop+=d}
 ctr();requestAnimationFrame(ctr);
-var la=BASE;S.hist.forEach(function(h){if(h.n>la&&stOf(h)!=="wait")la=h.n});
+var la=QBASE;S.hist.forEach(function(h){if(h.n>la&&stOf(h)!=="wait")la=h.n});
 var pw=(S.issued|0)>la?(S.issued|0)-la:0,pi=$("pinfo");
 pi.innerHTML=show&&pw?'<div class="pc"><span>Số tiếp theo</span><b>'+pad(la+1)+'</b></div><div class="pc"><span>Đang chờ khám</span><b>'+pw+'</b><span>bệnh nhân</span></div>':"";
 var sb=$("skipbox");
