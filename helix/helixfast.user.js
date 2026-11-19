@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.36
+// @version      2.38
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -19,6 +19,30 @@
 (function hlxBoot() {
   if (window.__hlxBooted) return;
   window.__hlxBooted = true;
+  // Hook mạng sớm (document-start, trước khi body có): ghi lại các lệnh gọi API HIS đầu tiên (phiên đăng nhập, lượt khám đang mở)
+  // để khi script chính khởi động muộn (mở trình duyệt/khôi phục tab) vẫn nhận đủ dữ liệu, không cần tải lại trang
+  const HLX_EARLY = []; let hlxEarlyOn = true;
+  try {
+    const UW = typeof unsafeWindow !== 'undefined' ? unsafeWindow : window;
+    const XP = UW.XMLHttpRequest && UW.XMLHttpRequest.prototype;
+    if (XP && !XP.__hlxEarly) {
+      const oOpen = XP.open, oSet = XP.setRequestHeader, oSend = XP.send;
+      XP.open = function (m, u) { try { this.__he = { u: String(u || ''), h: {} }; } catch (e) {} return oOpen.apply(this, arguments); };
+      XP.setRequestHeader = function (k, v) { try { if (this.__he) this.__he.h[k] = v; } catch (e) {} return oSet.apply(this, arguments); };
+      XP.send = function (body) {
+        try {
+          const meta = this.__he;
+          if (hlxEarlyOn && meta && /\/api\/adapter\/execute/.test(meta.u) && typeof body === 'string' && HLX_EARLY.length < 60) {
+            const rec = { meta: meta, body: body, text: '' };
+            HLX_EARLY.push(rec);
+            this.addEventListener('load', () => { try { rec.text = this.responseText; } catch (e) {} });
+          }
+        } catch (e) {}
+        return oSend.apply(this, arguments);
+      };
+      XP.__hlxEarly = 1;
+    }
+  } catch (e) {}
   function run() {
     const setInterval = (fn, ms, ...args) => {
       let skip = 0;
@@ -41,7 +65,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.36';
+  const HELIXFAST_VERSION = '2.38';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -6644,7 +6668,15 @@
     return activeLink ? activeLink.getAttribute('href') : null;
   }
 
+  // Chặn tự nhảy về tab Khám bệnh khi người dùng đang bấm/gõ vào ô nhập (vd ô Thuốc ở tab Đơn thuốc)
+  let hlxCtrlDownAt = 0;
+  try { document.addEventListener('mousedown', (e) => { try { if (e.isTrusted && e.target && e.target.closest && e.target.closest('input,textarea,select,ng-select,.ng-select,p-calendar,p-autocomplete')) hlxCtrlDownAt = Date.now(); } catch (e2) {} }, true); } catch (e) {}
+  const hlxTabBlocked = (href) => {
+    if (href === '#examination' && Date.now() - hlxCtrlDownAt < 4000) { try { console.warn('[Helixfast] đã chặn tự chuyển về tab Khám bệnh\n' + new Error().stack); } catch (e) {} return true; }
+    return false;
+  };
   function clickExamSubTab(href) {
+    if (hlxTabBlocked(href)) return false;
     const link = findExamSubTabLink(href);
     if (!link) return false;
     link.click();
@@ -11385,11 +11417,11 @@
     const ID = 'hlx-bant-btn'; let busy = false, elig = { vid: '', ok: false, pend: false };
     try {
       const st = document.createElement('style');
-      st.textContent = '@keyframes hlxBantBlink{0%,49%{background:#fff;color:#1d4ed8;border-color:#1d4ed8;box-shadow:0 0 0 2px #93c5fd}50%,100%{background:#1d4ed8;color:#fff;border-color:#1e3a8a;box-shadow:0 0 8px 2px #60a5fa}}#' + ID + '{background:linear-gradient(#2563eb,#1d4ed8);color:#fff;border:1px solid #1e3a8a;border-radius:4px;font-weight:700;font-size:13px;line-height:1.2;padding:5px 12px;margin-right:6px;opacity:1;cursor:pointer;box-shadow:0 2px 6px rgba(29,78,216,.55);text-shadow:none}#' + ID + ':hover{background:linear-gradient(#3b82f6,#2563eb)}#' + ID + '.hlx-blink{animation:hlxBantBlink 1s steps(1,end) infinite}';
+      st.textContent = '@keyframes hlxBantBlink{0%,49%{background:#fff;color:#1d4ed8;border-color:#38bdf8;box-shadow:0 0 6px #38bdf8,0 0 14px #0ea5e9}50%,100%{background:#1d4ed8;color:#fff;border-color:#7dd3fc;box-shadow:0 0 8px #7dd3fc,0 0 18px #38bdf8,0 0 30px #0284c7}}#' + ID + '{background:linear-gradient(#2563eb,#1d4ed8);color:#fff;border:1px solid #1e3a8a;border-radius:4px;font-weight:700;font-size:13px;line-height:1.2;padding:5px 12px;margin-right:6px;opacity:1;cursor:pointer;box-shadow:0 2px 6px rgba(29,78,216,.55);text-shadow:none}#' + ID + ':hover{background:linear-gradient(#3b82f6,#2563eb);border-color:#7dd3fc;box-shadow:0 0 4px #fff,0 0 10px #38bdf8,0 0 20px #0ea5e9,0 0 32px #0284c7;transition:box-shadow .15s}#' + ID + '.hlx-blink{animation:hlxBantBlink 1s steps(1,end) infinite}';
       (document.head || document.documentElement).appendChild(st);
     } catch (e) {}
     const printedBant = (vid) => { try { const m = JSON.parse(localStorage.getItem('hlx_ban_printed_v1') || '{}'); return !!(m[vid] && m[vid]['Bệnh án ngoại trú']); } catch (e) { return false; } };
-    async function run(b) {
+    async function run(b, withTdt) {
       if (busy) return;
       const vid = String(banLast.visitId || '');
       if (!vid) return;
@@ -11400,7 +11432,7 @@
         const it = (banLists.cur && banLists.cur.items.find((x) => String(x.patient_visit_id) === vid)) || Object.values(banQueueMap || {}).find((x) => x && String(x.patient_visit_id) === vid) || {};
         const r = { vid, pid: banPidByVid[vid] || it.patient_id || '', name: it.full_name || '', code: it.visit_code || '' };
         let po = {}; try { po = JSON.parse(localStorage.getItem(BAN_PAPER_KEY) || '{}'); } catch (e) {}
-        const res = await banPrintBundle(r, say, { fillRec: po.fill !== false, kinds: ['Bệnh án ngoại trú'] });
+        const res = await banPrintBundle(r, say, { fillRec: po.fill !== false, kinds: withTdt ? ['Bệnh án ngoại trú', 'Tờ điều trị'] : ['Bệnh án ngoại trú'] });
         if (!res.pdfs.length) throw new Error(res.fails.join(' | ') || 'không có bệnh án');
         const mg = await banMergePdfs(res.pdfs, say, { group: true, twoUp: false });
         const pjr = banPrintBlob(mg.blob);
@@ -11418,12 +11450,12 @@
       document.querySelectorAll('.icd-selector-custom .ng-value').forEach((e) => { const t = (e.textContent || '').replace(/\s+/g, ' ').trim(); if (/^[A-Za-z]\d{2}(\.\w+)?$/.test(t)) out.push(t); });
       return out;
     };
-    const asked = {}, icdMem = {}; let armed = 0;
+    const asked = {}, icdMem = {}, blinkT = {}; let armed = 0;
     try {
       document.addEventListener('click', (e) => {
         const bt = e.target && e.target.closest && e.target.closest('button,a'); if (!bt) return;
         const tx = (bt.textContent || '').replace(/\s+/g, ' ');
-        if (/In nhanh BK toa về|Hoàn thành khám/.test(tx)) { armed = Date.now() + 180000; const v = String(banLast.visitId || ''); if (v) asked[v] = 0; }
+        if (/In nhanh BK toa về|Hoàn thành khám/.test(tx)) { armed = Date.now() + 180000; const v = String(banLast.visitId || ''); if (v) { asked[v] = 0; blinkT[v] = Date.now() + 20000; } }
       }, true);
     } catch (e) {}
     function promptBant(b, vid) {
@@ -11445,14 +11477,14 @@
         '<div style="margin-top:14px;text-align:right"><button type="button" id="hlx-bant-no" style="border:1px solid #94a3b8;border-radius:6px;background:#f1f5f9;padding:6px 18px;cursor:pointer;margin-right:8px">THOÁT</button><button type="button" id="hlx-bant-ok" style="border:0;border-radius:6px;background:#1d4ed8;color:#fff;padding:6px 22px;cursor:pointer;font-weight:700">OK</button></div>';
       ov.appendChild(bx); document.body.appendChild(ov);
       bx.querySelector('#hlx-bant-no').onclick = () => ov.remove();
-      bx.querySelector('#hlx-bant-ok').onclick = () => { ov.remove(); run(b); };
+      bx.querySelector('#hlx-bant-ok').onclick = () => { ov.remove(); run(b, false); };
     }
     setInterval(() => {
       try {
         let out = null;
         for (const x of document.querySelectorAll('button,a')) {
           if (x.id === ID || x.offsetParent === null || x.closest('.modal,.p-dialog,#hlx-ban-panel')) continue;
-          if (/^\s*In bảng kê lại\s*$/.test(x.textContent.replace(/\s+/g, ' '))) { out = x; break; }
+          if (/^\s*(In bảng kê lại|In nhanh BK toa về)\s*$/.test(x.textContent.replace(/\s+/g, ' '))) { out = x; break; }
         }
         try { document.documentElement.dataset.hlxBant = JSON.stringify({ anchor: !!out, vid: banLast.visitId || '', elig: elig.ok, pend: elig.pend, err: elig.err || '' }); } catch (e) {}
         let b = document.getElementById(ID);
@@ -11474,11 +11506,17 @@
         if (!b) {
           b = document.createElement('button'); b.type = 'button'; b.id = ID; b.className = '';
           b.innerHTML = '<i class="fa fa-print"></i> In BANT';
-          b.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); run(b); });
+          b.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); run(b, false); });
           out.parentNode.insertBefore(b, out);
         } else if (b.nextElementSibling !== out && out.parentNode) out.parentNode.insertBefore(b, out);
-        if (!busy) b.classList.toggle('hlx-blink', !printedBant(String(banLast.visitId || '')));
-        if (!busy) promptBant(b, String(banLast.visitId || ''));
+        if (!busy) {
+          const vv = String(banLast.visitId || '');
+          if (vv && !blinkT[vv] && !printedBant(vv)) blinkT[vv] = Date.now() + 20000; // chớp nhắc 20 giây khi nút xuất hiện
+          const left = vv && !printedBant(vv) ? Math.ceil(((blinkT[vv] || 0) - Date.now()) / 1000) : 0;
+          b.classList.toggle('hlx-blink', left > 0);
+          const lb = '<i class="fa fa-print"></i> In BANT' + (left > 0 ? ' · ' + left + 's' : '');
+          if (b.dataset.lb !== lb) { b.dataset.lb = lb; b.innerHTML = lb; }
+        }
       } catch (e) {}
     }, 1000);
   })();
@@ -11493,7 +11531,7 @@
     if (ph) {
       try { ph.click(); } catch (e) {}
       for (let i = 0; i < 24 && !(d = banScrapeRx()).length; i++) await new Promise((r) => setTimeout(r, 250));
-      try { const ex = document.querySelector('a[href="#examination"]'); if (ex) ex.click(); } catch (e) {}
+      try { const ex = document.querySelector('a[href="#examination"]'); if (ex && !hlxTabBlocked('#examination')) ex.click(); } catch (e) {}
       return d;
     }
     const cand = Array.from(document.querySelectorAll('[role=tab],.nav-tabs a,.nav-tabs li,.p-tabview-nav li,.p-tabview-nav a,li>a,a,button,span'));
@@ -12189,6 +12227,18 @@ async function banPdfLines(PL, page) {
     msg(banLists.cur ? 'Đã có danh sách ' + banLists.cur.items.length + ' bệnh nhân. Bấm Phân tích.' : 'Chưa có danh sách: hãy đổi ngày hoặc bấm Tìm ở danh sách bệnh nhân khám trước.', banLists.cur ? '#0f172a' : '#b91c1c');
   }
   banHookNet();
+  // Phát lại các lệnh gọi API đã xảy ra trước khi script khởi động xong
+  try {
+    hlxEarlyOn = false;
+    HLX_EARLY.forEach((e) => {
+      try {
+        const meta = e.meta;
+        Object.keys(meta.h).forEach((k) => { const v = meta.h[k]; if (v !== '' && v != null) banHdr[k] = v; else if (!(k in banHdr)) banHdr[k] = ''; if (/^privatekey$/i.test(k)) banHdr.__pkSeen = (banHdr.__pkSeen || 0) + (v ? 1 : 0); });
+        try { const rq0 = JSON.parse(e.body); if (rq0 && rq0.Url) banHdrByUrl[rq0.Url] = Object.assign({}, meta.h); } catch (e2) {}
+        if (e.text) banSniff(meta, e.body, e.text); else { let n = 0; const tm = window.setInterval(() => { if (e.text) { window.clearInterval(tm); try { banSniff(meta, e.body, e.text); } catch (e4) {} } else if (++n > 40) window.clearInterval(tm); }, 250); }
+      } catch (e3) {}
+    });
+  } catch (e) {}
 
   // Nút chọn nhanh dưới 3 ô: Phương pháp điều trị / Tình trạng ra viện / Hướng điều trị tiếp theo
   // mode 'one' = chọn 1 (thay thế), 'multi' = bấm để thêm/bỏ, các mục nối bằng "; "
@@ -16259,7 +16309,7 @@ async function banPdfLines(PL, page) {
     const n = nowStr();
     const days = [], res = {};
     for (let d = addDays(fromD, -0); d <= toD; d = addDays(d, 1)) {
-      const Ts = d + 'T07:00', Te = addDays(d, 1) + 'T07:00';
+      const Ts = d + 'T07:30', Te = addDays(d, 1) + 'T07:30';
       const o = { cu: 0, vao: 0, ra: 0, xrv: 0, ck: 0, cv: 0, tv: 0, nxv: 0, tron: 0, khac: 0, adj: 0, con: 0, src: {}, dst: {}, derived: 0, open: n < Te, ev: { vao: [], ra: [], xrv: [], ck: [], cv: [], khac: [] } };
       stays.forEach((s) => {
         if (s.s < Ts && (s.e === null || s.e >= Ts)) o.derived++;
@@ -16281,7 +16331,7 @@ async function banPdfLines(PL, page) {
     const S = wst && wst.seed ? wst.seed.at.slice(0, 10) : null;
     let seedInfo = null;
     if (cuSource === 'his') {
-      // Bệnh cũ = số bệnh nhân thực sự đang ở khoa lúc 7h (đếm từ lịch sử từng bệnh nhân)
+      // Bệnh cũ = số bệnh nhân thực sự đang ở khoa lúc 7h30 (đếm từ lịch sử từng bệnh nhân)
       days.forEach((d) => {
         const o = res[d], l = locks[d];
         if (l) { ['cu', 'vao', 'ra', 'ck', 'cv', 'khac', 'adj', 'con'].forEach((k) => { o[k] = l[k]; }); o.tv = 0; o.nxv = 0; o.tron = 0; o.locked = true; o.lockAt = l.at || ''; }
@@ -16290,12 +16340,13 @@ async function banPdfLines(PL, page) {
       seedInfo = { at: '', count: null, derived: null };
     } else if (S || lockDays.length) {
       const flow = (o) => o.vao - OUTK.reduce((x, k) => x + o[k], 0) + o.adj;
-      const need = [fromD].concat(S ? [S] : [], lockDays).sort()[0];
-      const need2 = [toD].concat(S ? [S] : [], lockDays).sort().slice(-1)[0];
+      const S1 = S;
+      const need = [fromD].concat(S1 ? [S1] : [], lockDays).sort()[0];
+      const need2 = [toD].concat(S1 ? [S1] : [], lockDays).sort().slice(-1)[0];
       const all = {};
       for (let d = need; d <= need2; d = addDays(d, 1)) {
         if (res[d]) { all[d] = res[d]; continue; }
-        const Ts = d + 'T07:00', Te = addDays(d, 1) + 'T07:00';
+        const Ts = d + 'T07:30', Te = addDays(d, 1) + 'T07:30';
         const o = { vao: 0, ra: 0, ck: 0, cv: 0, tv: 0, nxv: 0, tron: 0, khac: 0, adj: 0 };
         stays.forEach((st) => { if (st.s >= Ts && st.s < Te) o.vao++; if (st.e !== null && st.e >= Ts && st.e < Te && st.kind) o[st.kind]++; });
         const adj = wst.adj && wst.adj[d]; o.adj = adj ? adj.delta : 0;
@@ -16313,7 +16364,7 @@ async function banPdfLines(PL, page) {
         if (l) { ['cu', 'vao', 'ra', 'ck', 'cv', 'khac', 'adj', 'con'].forEach((k) => { o[k] = l[k]; }); o.tv = 0; o.nxv = 0; o.tron = 0; o.locked = true; o.lockAt = l.at || ''; }
         else { o.cu = cuMap[d]; o.con = o.cu + flow(o); }
       });
-      seedInfo = S ? { at: wst.seed.at, count: wst.seed.count, derived: stays.filter((x) => x.s < S + 'T07:00' && (x.e === null || x.e >= S + 'T07:00')).length } : { at: '', count: null, derived: null };
+      seedInfo = S ? { at: wst.seed.at, count: wst.seed.count, derived: stays.filter((x) => x.s < S + 'T07:30' && (x.e === null || x.e >= S + 'T07:30')).length } : { at: '', count: null, derived: null };
     }
     return { rid: rid, days: days, res: res, dangNam: pres.length, hisCount: hisRows.length, pres: pres, presOnly: presOnly, hisOnly: hisOnly, nowS: n, khoaMap: khoaMap, seed: seedInfo, nLocks: lockDays.length, totals: [a.total, b.total, c.total] };
   }
@@ -16459,7 +16510,7 @@ async function banPdfLines(PL, page) {
     bodyEl.appendChild(cls('div', 'hs-t', title));
     const t = cls('table', 'hs');
     const hr = cls('tr');
-    hr.appendChild(cls('th', '', extra ? 'Ngày (7h–7h)' : 'Tháng'));
+    hr.appendChild(cls('th', '', extra ? 'Ngày (7h30–7h29)' : 'Tháng'));
     COLS.forEach((c) => hr.appendChild(cls('th', '', c[1])));
     if (extra) { hr.appendChild(cls('th', '', 'Nguồn vào')); hr.appendChild(cls('th', '', 'Chuyển khoa đến')); }
     t.appendChild(hr);
@@ -16720,13 +16771,13 @@ async function banPdfLines(PL, page) {
     if (mode !== 'nam') table(R, mode !== 'ngay' ? 'Chi tiết từng ngày' : 'Số liệu ngày ' + vn(R.days[0]), R.days.map((d) => Object.assign({ label: d.slice(8) + '/' + d.slice(5, 7), date: d }, R.res[d])), true);
     if (!R.empty && R.pres) bodyEl.appendChild(detPanel(R));
     bodyEl.appendChild(cls('div', 'hs-foot',
-      'Ngày D tính từ 7h ngày D đến 7h ngày D+1 (dòng vàng: ngày chưa kết thúc). Hiện còn = Bệnh cũ + Vào − (Ra + Chuyển khoa + Chuyển viện + Tử vong + Trốn viện). Tử vong, Trốn viện: nhấp đôi để sửa; HIS xem các ca này là xuất viện nên số nhập tay tự trừ khỏi Ra viện. Ngày đang diễn ra chỉ tính đến thời điểm hiện tại. Cột Ra viện = Ra viện + Xin ra viện (ghi chú "xin RV n"); tab Ra viện chỉ gồm ca ra viện thường.'));
+      'Ngày D tính từ 7h30 ngày D đến 7h29 ngày D+1 (7h30 là bắt đầu ngày D+1; dòng vàng: ngày chưa kết thúc). Hiện còn = Bệnh cũ + Vào − (Ra + Chuyển khoa + Chuyển viện + Tử vong + Trốn viện). Tử vong, Trốn viện: nhấp đôi để sửa; HIS xem các ca này là xuất viện nên số nhập tay tự trừ khỏi Ra viện. Ngày đang diễn ra chỉ tính đến thời điểm hiện tại. Cột Ra viện = Ra viện + Xin ra viện (ghi chú "xin RV n"); tab Ra viện chỉ gồm ca ra viện thường.'));
     const b = cls('button', 'hs-b g', '💾 Tải CSV'); b.type = 'button'; b.style.marginTop = '10px';
     b.onclick = () => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([toCSV(last)], { type: 'text/csv;charset=utf-8' })); a.download = 'thong-ke-noi-tru.csv'; document.body.appendChild(a); a.click(); a.remove(); };
     bodyEl.appendChild(b);
   }
 
-  function lastValidDay() { const n = new Date(); return n.getHours() >= 7 ? ymd(n) : addDays(ymd(n), -1); }
+  function lastValidDay() { const n = new Date(); return n.getHours() * 60 + n.getMinutes() >= 450 ? ymd(n) : addDays(ymd(n), -1); }
   function periodOf(d) {
     const y = +d.slice(0, 4), m = +d.slice(5, 7);
     let m1 = m, m2 = m;
@@ -16761,8 +16812,8 @@ async function banPdfLines(PL, page) {
     if (kind === 'opd') { const r = opdRange(); noteEl.textContent = '🕖 Ngoại trú: ' + (mode === 'ngay' ? 'ngày ' + vn(r[0]) + ' (0h–24h)' : PERIOD_NAME().toLowerCase() + ' (0h–24h mỗi ngày)'); return; }
     const r = range();
     noteEl.textContent = '🕖 ' + (mode === 'ngay'
-      ? 'Từ 7h ngày ' + vn(r[0]) + ' đến 7h ngày ' + vn(addDays(r[0], 1))
-      : PERIOD_NAME() + ' — từ 7h ngày ' + vn(r[0]) + ' đến 7h ngày ' + vn(addDays(r[1], 1)));
+      ? 'Từ 7h30 ngày ' + vn(r[0]) + ' đến 7h29 ngày ' + vn(addDays(r[0], 1))
+      : PERIOD_NAME() + ' — từ 7h30 ngày ' + vn(r[0]) + ' đến 7h29 ngày ' + vn(addDays(r[1], 1)));
   }
   function khoaMap() { const m = {}; khoaList.forEach((k) => { m[k.rid] = k.name; }); return m; }
   // ---- Ngoại trú: đếm lượt khám theo phòng/khoa (API hàng đợi khám, không tải Excel) ----
@@ -16985,7 +17036,7 @@ async function banPdfLines(PL, page) {
   const khoaName = () => selEl.options[selEl.selectedIndex] ? selEl.options[selEl.selectedIndex].text : '';
   function openSeed() {
     dialog('Đặt số mốc — ' + khoaName(), [
-      { key: 'd', label: 'Ngày', hint: 'số bệnh nhân đang nằm lúc 7h sáng ngày này', type: 'date', value: ymd(new Date()) },
+      { key: 'd', label: 'Ngày', hint: 'số bệnh nhân đang nằm lúc 7h30 sáng ngày này', type: 'date', value: ymd(new Date()) },
       { key: 'c', label: 'Số bệnh nhân đang nằm', type: 'number', ph: 'ví dụ 8' },
       { key: 'pw', label: 'Mật khẩu', mask: true },
     ], async (v) => {
@@ -16998,7 +17049,7 @@ async function banPdfLines(PL, page) {
   }
   function openAdj() {
     dialog('Điều chỉnh số — ' + khoaName(), [
-      { key: 'd', label: 'Ngày', hint: 'ngày bắt đầu lúc 7h', type: 'date', value: fEl.value || ymd(new Date()) },
+      { key: 'd', label: 'Ngày', hint: 'ngày bắt đầu lúc 7h30', type: 'date', value: fEl.value || ymd(new Date()) },
       { key: 'v', label: 'Số điều chỉnh', hint: '+ hoặc −, nhập 0 để xóa điều chỉnh', type: 'number', ph: 'ví dụ -1' },
       { key: 'n', label: 'Ghi chú', hint: 'không bắt buộc', ph: 'lý do điều chỉnh' },
       { key: 'pw', label: 'Mật khẩu', mask: true },
@@ -17011,7 +17062,7 @@ async function banPdfLines(PL, page) {
     });
   }
 
-  function lastClosedDay() { const n = new Date(); const d = ymd(n); return n.getHours() >= 7 ? addDays(d, -1) : addDays(d, -2); }
+  function lastClosedDay() { const n = new Date(); const d = ymd(n); return n.getHours() * 60 + n.getMinutes() >= 450 ? addDays(d, -1) : addDays(d, -2); }
   function lockVals(d) {
     if (!last || last.rid !== selEl.value || !last.res[d]) return null;
     const o = last.res[d];
@@ -17020,13 +17071,13 @@ async function banPdfLines(PL, page) {
   }
   function openLock() {
     dialog('Chốt ngày — ' + khoaName(), [
-      { key: 'd', label: 'Ngày cần chốt', hint: 'ngày bắt đầu lúc 7h; chỉ chốt được khi đã qua 7h sáng hôm sau', type: 'date', value: lastClosedDay() },
+      { key: 'd', label: 'Ngày cần chốt', hint: 'ngày bắt đầu lúc 7h30; chỉ chốt được khi đã qua 7h30 sáng hôm sau', type: 'date', value: lastClosedDay() },
       { key: 'pw', label: 'Mật khẩu', mask: true },
     ], async (v) => {
       if (!v.d) throw new Error('Chưa chọn ngày');
       const x = lockVals(v.d);
       if (!x) throw new Error('Chưa có số của ngày này: hãy chọn ngày đó, bấm Đếm (và đã Đặt mốc) rồi chốt.');
-      if (x.open) throw new Error('Ngày này chưa kết thúc (chưa qua 7h sáng hôm sau).');
+      if (x.open) throw new Error('Ngày này chưa kết thúc (chưa qua 7h30 sáng hôm sau).');
       if (!v.pw) throw new Error('Chưa nhập mật khẩu');
       const data = { cu: x.cu, vao: x.vao, ra: x.ra, ck: x.ck, cv: x.cv, khac: x.khac, adj: x.adj, con: x.con };
       await wSave({ password: v.pw, unit: selEl.value, name: khoaName(), lock: { date: v.d, data: data } });
@@ -17096,7 +17147,7 @@ async function banPdfLines(PL, page) {
       + '<h1>BÁO CÁO TRỰC NGÀY ' + vn(d) + '</h1>'
       + '<p><b>I - Thành phần:</b> ' + esc(tp) + '</p>'
       + '<h3>II - Tình hình tua trực</h3><h3>Ngoại trú:</h3>' + tbl(colsO.map((c) => c[0]), [colsO.map((c) => c[1])])
-      + '<h3>Nội trú (từ 7h ngày ' + vn(d) + ' đến 7h ngày ' + vn(addDays(d, 1)) + '):</h3>'
+      + '<h3>Nội trú (từ 7h30 ngày ' + vn(d) + ' đến 7h29 ngày ' + vn(addDays(d, 1)) + '):</h3>'
       + tbl(['Khoa', 'Bệnh cũ', 'Nhập viện', 'Ra viện', 'Chuyển khoa', 'Chuyển viện', 'Trốn viện', 'Tử vong', 'Hiện còn'], units.map((u) => [u.name, o4(u, 'cu'), o4(u, 'vao'), o4(u, 'ra'), o4(u, 'ck'), o4(u, 'cv'), o4(u, 'tron'), o4(u, 'tv'), o4(u, 'con')]))
       + (xv.length ? '<h3>Danh sách xuất viện (gồm xin ra viện)</h3>' + lst(xv) : '')
       + (blocks(cvTxt) ? '<h3>Danh sách chuyển viện</h3>' + blocks(cvTxt) : '')
@@ -17246,7 +17297,7 @@ async function banPdfLines(PL, page) {
       return wrap;
     };
     dialog('In báo cáo giao ban', [
-      { key: 'd', label: 'Ngày trực', hint: 'Nội trú tính từ 7h ngày này đến 7h hôm sau', type: 'date', value: d0 },
+      { key: 'd', label: 'Ngày trực', hint: 'Nội trú tính từ 7h30 ngày này đến 7h29 hôm sau', type: 'date', value: d0 },
       { key: 'tp', label: 'I - Thành phần', hint: 'Chọn nhanh bên dưới; tên khác nhập thêm vào đây, cách nhau bằng dấu phẩy', custom: custom },
     ], async (v) => {
       if (!v.d) throw new Error('Chưa chọn ngày');
@@ -17291,14 +17342,16 @@ async function banPdfLines(PL, page) {
       tong += o.con || 0;
     }
     v['Tổng_Hiện còn'] = tong;
-    const vs = Object.assign({}, v); delete vs['CC_Nặng XV']; delete vs['Noi_Nặng XV']; // để người dùng tự điền trên Sheet
+    const vs = Object.assign({}, v); // Nặng XV: mặc định 0 (hoặc số đã nhập trong công cụ) — điền cả vào Sheet
     const rooms = {}; OPD_ORDER.forEach((n) => { const o = opd.by[n] || {}; rooms[n] = { tong: o.tong || 0, bhyt: o.bhyt || 0, dv: o.dv || 0 }; });
     return { v: v, vs: vs, miss: miss, rooms: rooms };
   }
+  const nowLocalIso = () => { const n = new Date(), p = (x) => String(x).padStart(2, '0'); return n.getFullYear() + '-' + p(n.getMonth() + 1) + '-' + p(n.getDate()) + 'T' + p(n.getHours()) + ':' + p(n.getMinutes()); };
+  const setLastPush = (d, how) => { const n = new Date(), p = (x) => String(x).padStart(2, '0'); lsSet('hlx-last-push', JSON.stringify({ t: n.getFullYear() + '-' + p(n.getMonth() + 1) + '-' + p(n.getDate()) + 'T' + p(n.getHours()) + ':' + p(n.getMinutes()), d: d, how: how })); try { if (window.__hlxShowLast) window.__hlxShowLast(); } catch (e) {} };
   const GS_SHEET = 'https://docs.google.com/spreadsheets/d/1nsx9ew0fDMfyNDyzUq1h8jTRtafnxswo01F8Z8wLazc/edit';
   function openSheet() {
     const tdy = ymd(new Date());
-    const flds = [{ key: 'pw', label: 'Mật khẩu = ngày cần điền (ddmm)', hint: 'ví dụ 0711 = điền dữ liệu ngày 07/11. Ngoại trú theo ngày; nội trú tính 7h ngày đó → 7h hôm sau', mask: true, maxlen: 4 }];
+    const flds = [{ key: 'pw', label: 'Mật khẩu = ngày cần điền (ddmm)', hint: 'ví dụ 0711 = điền dữ liệu ngày 07/11. Ngoại trú theo ngày; nội trú tính 7h30 ngày đó → 7h29 hôm sau', mask: true, maxlen: 4 }];
     if (!GS_URL) flds.push({ key: 'url', label: 'Địa chỉ Web App (Apps Script)', hint: 'dán 1 lần, máy sẽ nhớ', value: lsGet('hlx-gs-url'), ph: 'https://script.google.com/macros/s/.../exec' });
     dialog('Điền dữ liệu vào Google Sheet', flds, async (v) => {
       const mm = /^(\d{2})(\d{2})$/.exec(v.pw || ''); if (!mm) throw new Error('Mật khẩu gồm 4 số ddmm (ví dụ 0711)');
@@ -17330,6 +17383,7 @@ async function banPdfLines(PL, page) {
             if (e instanceof TypeError) await fetch(v.url, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
             else throw e;
           }
+          setLastPush(v.d, 'thủ công'); try { apRecord(v.d, 'thủ công', ''); } catch (e) {}
           hlxLog('push'); // chỉ tính khi đã xác nhận và gửi dữ liệu thành công
           let webMsg = null;
           try {
@@ -17423,7 +17477,16 @@ async function banPdfLines(PL, page) {
     goBtn = mk('⟳ Làm mới', 'g', run);
     const nav = cls('div', 'hs-nav'); const pv = mk('◀', 'g nv', () => step(-1)), nx = mk('▶', 'g nv', () => step(1)); pv.title = 'Ngày/kỳ trước'; nx.title = 'Ngày/kỳ sau';
     nav.append(pv, fEl, mk('Hôm nay', 'g', () => { fEl.value = ymd(new Date()); upNote(); run(); }), nx);
-    bar.append(kseg, seg, nav, goBtn, prBtn, shBtn);
+    const shWrap = cls('div'); shWrap.style.cssText = 'display:flex;flex-direction:column;align-items:center;gap:3px';
+    const lastEl = cls('div'); lastEl.style.cssText = 'font-size:11px;line-height:1.2;color:#475569;text-align:center;white-space:nowrap';
+    const showLast = () => {
+      let r = null; try { r = JSON.parse(lsGet('hlx-last-push') || 'null'); } catch (e) {}
+      const sv = window.__hlxApSrv && window.__hlxApSrv.last; if (sv && sv.t && (!r || sv.t >= r.t)) r = sv;
+      lastEl.textContent = r && r.t ? 'Cập nhật cuối: ' + String(r.t).slice(11, 16) + ' ' + vn(String(r.t).slice(0, 10)).slice(0, 5) + ' · số liệu ngày ' + vn(r.d).slice(0, 5) + (r.how ? ' (' + r.how + (r.client ? ' · máy ' + r.client : '') + ')' : '') : 'Chưa có lần cập nhật nào';
+    };
+    showLast(); setInterval(showLast, 5000); window.__hlxShowLast = showLast;
+    shWrap.append(shBtn, lastEl);
+    bar.append(kseg, seg, nav, goBtn, prBtn, shWrap);
 
     noteEl = cls('div', 'hs-note'); stEl = cls('div', 'hs-st'); bodyEl = cls('div', 'hs-body');
     bodyEl.addEventListener('wheel', (e) => { if (e.ctrlKey || e.shiftKey) return; const k = e.deltaMode === 1 ? 16 : 1; e.preventDefault(); bodyEl.scrollTop += e.deltaY * k * 0.4; }, { passive: false });
@@ -17451,6 +17514,71 @@ async function banPdfLines(PL, page) {
   }
   init();
   HLX_STATS = { open: openMain };
+
+  // ---- Tự động đẩy số liệu lên Google Sheet + web theo khung giờ (cần có tab HIS đang mở) ----
+  // Ngày D: 11h30 và 16h30 ngày D; 7h00 và 7h30 sáng hôm sau (D+1). Trễ tối đa 30 phút (mở trình duyệt muộn) vẫn bù.
+  const AP_KEY = 'hlx-autopush-done', AP_LOG = 'hlx-autopush-log';
+  const apDone = () => { try { return JSON.parse(lsGet(AP_KEY) || '{}'); } catch (e) { return {}; } };
+  async function autoPushDay(d) {
+    const c = await collectSheet(d, () => {});
+    const body = JSON.stringify({ key: GS_KEY, date: d, values: c.vs });
+    try {
+      const resp = await fetch(GS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
+      const j = await resp.json(); if (!j.ok) throw new Error(j.error || 'Apps Script báo lỗi');
+    } catch (e) {
+      if (e instanceof TypeError) await fetch(GS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
+      else throw e;
+    }
+    const rr = await fetch(WORKER + '/web/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: WEB_KEY, date: d, v: c.v, rooms: c.rooms }) });
+    const jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error('Web: ' + (jj.error || 'HTTP ' + rr.status));
+  }
+  let apBusy = false, apSrv = null;
+  const apId = (() => { let v = lsGet('hlx-client-id'); if (!v) { v = Math.random().toString(36).slice(2, 6).toUpperCase(); lsSet('hlx-client-id', v); } return v; })();
+  async function apFetch(path, body) { // dùng chung 1 máy chủ để mọi máy thấy cùng trạng thái; lỗi/không có thì trả null
+    try {
+      const r = await fetch(WORKER + path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ key: WEB_KEY, client: apId }, body)) } : { cache: 'no-store' });
+      if (!r.ok) return null; return await r.json();
+    } catch (e) { return null; }
+  }
+  async function apRefresh() { const j = await apFetch('/autopush/state'); if (j && j.ok) { apSrv = j; window.__hlxApSrv = j; try { if (window.__hlxShowLast) window.__hlxShowLast(); } catch (e) {} } return apSrv; }
+  async function apRecord(d, how, key) { const rec = { t: nowLocalIso(), d: d, how: how, client: apId, key: key || '' }; lsSet('hlx-last-push', JSON.stringify(rec)); await apFetch('/autopush/done', { t: rec.t, d: d, how: how, slot: key || '' }); await apRefresh(); try { if (window.__hlxShowLast) window.__hlxShowLast(); } catch (e) {} }
+  async function autoPushTick() {
+    if (apBusy || lsGet('hlx-autopush') === '0' || !GS_URL || !selEl) return;
+    const n = new Date(), today = ymd(n), yest = addDays(today, -1), mins = n.getHours() * 60 + n.getMinutes();
+    const slots = [[today, 690], [today, 990], [yest, 420], [yest, 450]]; // [ngày dữ liệu, phút trong ngày của khung giờ]
+    const keyOf = (d, m) => d + '@' + (m === 690 ? '1130' : m === 990 ? '1630' : m === 420 ? '0700+1' : '0730+1');
+    const due = slots.filter(([d, m]) => mins >= m && mins <= m + 30);
+    if (!due.length) return;
+    const st = await apRefresh();
+    const dn = Object.assign({}, apDone(), (st && st.done) || {});
+    for (const [d, m] of due) {
+      const key = keyOf(d, m);
+      if (dn[key]) continue;
+      apBusy = true;
+      try {
+        await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 3000))); // lệch nhịp giữa các máy
+        const g = await apFetch('/autopush/claim', { slot: key });
+        if (g && g.ok === false) { apBusy = false; return; } // máy khác đã nhận việc
+        if (!g && Date.now() - parseInt(lsGet('hlx-autopush-lock') || '0', 10) < 120000) { apBusy = false; return; } // không có máy chủ: khóa tạm theo trình duyệt
+        lsSet('hlx-autopush-lock', String(Date.now()));
+        await autoPushDay(d);
+        const x = apDone(); x[key] = new Date().toISOString(); Object.keys(x).sort().slice(0, -40).forEach((k) => { delete x[k]; }); lsSet(AP_KEY, JSON.stringify(x));
+        await apRecord(d, 'tự động', key);
+        lsSet(AP_LOG, new Date().toLocaleString('vi-VN') + ' — đã tự đẩy số liệu ngày ' + vn(d) + ' (' + key + ')');
+        try { console.log('[Helix] ' + lsGet(AP_LOG)); } catch (e) {}
+        lsSet('hlx-autopush-lock', '0');
+      } catch (e) {
+        lsSet(AP_LOG, new Date().toLocaleString('vi-VN') + ' — LỖI tự đẩy ngày ' + vn(d) + ': ' + e.message);
+        try { console.warn('[Helix] ' + lsGet(AP_LOG)); } catch (e2) {}
+        await apFetch('/autopush/release', { slot: key });
+      }
+      apBusy = false;
+      return;
+    }
+  }
+  setInterval(() => { apRefresh(); }, 20000); setTimeout(apRefresh, 3000);
+  setInterval(() => { autoPushTick().catch(() => { apBusy = false; }); }, 30000);
+  setTimeout(() => { autoPushTick().catch(() => { apBusy = false; }); }, 8000);
 })(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window, (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).XMLHttpRequest);
 
   }
