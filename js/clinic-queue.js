@@ -83,11 +83,21 @@ if(first){first=false;S=s;floor=maxId(s);render(false);return}
 if(s.ver!==S.ver||s.date!==S.date){var ch=s.seq!==lastSeq;S=s;render(ch);hearAll(s,false)}}).catch(function(e){if(e!==401)conn(false)})}
 setInterval(poll,2000);
 window.addEventListener("storage",function(e){if(e.key===KL&&!cfg.url){try{S=JSON.parse(e.newValue);render(true)}catch(x){}}});
-var VO={},ctx=null,bufs={},srcs=[];
+var VO={},ctx=null,bufs={},srcs=[],TRN=5,KT="goiso_trial";
+function tUsed(){try{return JSON.parse(ls(KT)||"{}")||{}}catch(e){return{}}}
+function tLeft(id){return Math.max(0,TRN-((tUsed()[id])|0))}
+function tSync(){return fetch(NETURL+"?trial=1",{headers:{"x-dev":devId()}}).then(function(r){return r.ok?r.json():null}).then(function(j){if(j&&j.used){ls(KT,JSON.stringify(j.used));fillVoices()}}).catch(function(){})}
+function tUse(id){return fetch(NETURL+"?trial=1",{method:"POST",headers:{"content-type":"application/json","x-dev":devId()},body:JSON.stringify({v:id})}).then(function(r){return r.json().then(function(j){if(j&&j.used)ls(KT,JSON.stringify(j.used));if(!r.ok||!j.k)return false;var go=VO[id]?Promise.resolve():unlockVoices(j.k);return go.then(function(){if(tLeft(id)<=0){var e=window.GOISO_VOENC&&window.GOISO_VOENC[id];$("status").textContent="Đã hết "+TRN+" lần nghe thử giọng "+(e?e.l:id)+", chuyển về giọng mặc định của máy. Kích hoạt PRO để dùng tiếp."}return true})})}).catch(function(){return false})}
+function shortL(l){return String(l).replace(/\s*\(.*$/,"")}
+function vnoteSet(){var n=$("vnote");if(!n)return;var VE=window.GOISO_VOENC||{};if(st==="ok"){n.textContent="Máy tính của bạn Đã kích hoạt chức năng PRO, hãy chọn giọng PRO trong mục Cài đặt.";n.style.color="var(--ok,#0a7a5a)";return}n.style.color="";var a=Object.keys(VE).map(function(k){return shortL(VE[k].l)+": còn "+tLeft(k)+"/"+TRN+" lần"});n.textContent="Bạn chưa kích hoạt chức năng PRO. Nghe thử giọng PRO"+(a.length?" ("+a.join(" · ")+")":"")+"; hết lượt sẽ về giọng mặc định của máy."}
 function ac(){if(!ctx){var C=window.AudioContext||window.webkitAudioContext;ctx=new C()}if(ctx.state==="suspended")ctx.resume();return ctx}
 function b2ab(b){var s=atob(b),a=new Uint8Array(s.length);for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i);return a.buffer}
 function loadClips(id){if(bufs[id])return bufs[id];var c=ac(),ks=Object.keys(VO[id].c);bufs[id]=Promise.all(ks.map(function(k){return new Promise(function(r,j){c.decodeAudioData(b2ab(VO[id].c[k]),r,j)})})).then(function(a){var o={};ks.forEach(function(k,i){o[k]=a[i]});return o});return bufs[id]}
-function fillVoices(){var s=$("vsel"),cur=ls("goiso_voice2")||"";s.innerHTML="";Object.keys(VO).forEach(function(k){var o=document.createElement("option");o.value=k;o.textContent=VO[k].l;s.appendChild(o)});var o=document.createElement("option");o.value="machine";o.textContent="Giọng máy (mặc định)";s.appendChild(o);if(!Object.keys(VO).length){var l=document.createElement("option");l.disabled=true;l.textContent="Giọng ghi sẵn: kích hoạt máy (chữ i góc trên) để mở";s.appendChild(l)}s.value=(cur&&(cur==="machine"||VO[cur]))?cur:(Object.keys(VO)[0]||"machine")}
+function fillVoices(){var s=$("vsel"),cur=ls("goiso_voice2")||"",pro=st==="ok",VE=window.GOISO_VOENC||{},ids=pro?Object.keys(VO):Object.keys(VE),first=null;s.innerHTML="";
+ids.forEach(function(k){var o=document.createElement("option"),lb=pro?VO[k].l:VE[k].l;o.value=k;if(pro){o.textContent="★ PRO · "+lb;if(!first)first=k}else{var L=tLeft(k);o.textContent="★ PRO · "+lb+(L>0?" · nghe thử, còn "+L+"/"+TRN+" lần":" · đã hết lượt nghe thử");if(L<=0)o.disabled=true}s.appendChild(o)});
+var m=document.createElement("option");m.value="machine";m.textContent="Giọng máy (mặc định)";s.appendChild(m);
+var okc=cur==="machine"||(cur&&(pro?VO[cur]:(VE[cur]&&tLeft(cur)>0)));var v=okc?cur:(pro?(first||"machine"):"machine");s.value=v;if(!okc&&cur&&cur!==v)ls("goiso_voice2",v);
+var nt=$("vnote");if(!nt){nt=document.createElement("div");nt.id="vnote";nt.style.cssText="font-size:13px;line-height:1.4;color:var(--mut);margin:-6px 0 10px";var rw=s.closest(".srow")||s.parentNode;rw.parentNode.insertBefore(nt,rw.nextSibling)}vnoteSet()}
 fillVoices();var ss=ls("goiso_spd");if(ss)$("vspd").value=ss;
 $("vsel").onchange=function(){ls("goiso_voice2",this.value);say(123,1)};
 $("vspd").onchange=function(){ls("goiso_spd",this.value);say(123,1)};
@@ -98,6 +108,7 @@ function unlockVoices(k){if(!(window.crypto&&crypto.subtle))return Promise.rejec
 return loadVoiceFile().then(function(VE){return crypto.subtle.importKey("raw",hex2u8(k),"AES-GCM",false,["decrypt"]).then(function(key){return Promise.all(Object.keys(VE).map(function(id){var e=VE[id];return crypto.subtle.decrypt({name:"AES-GCM",iv:new Uint8Array(b2ab(e.iv))},key,b2ab(e.d)).then(function(buf){VO[id]={l:e.l,c:JSON.parse(new TextDecoder().decode(buf))}})}))})}).then(function(){bufs={};fillVoices()})}
 function tok(){var t=ls("goiso_tok");if(!t&&cfg&&cfg.token){t=cfg.token;ls("goiso_tok",t)}return t||""}
 var st=tok()?"ok":"none";
+if(st!=="ok")setTimeout(function(){loadVoiceFile().then(function(){fillVoices();return tSync()}).catch(function(){})},0);
 var vk=ls("goiso_vk"),vkP=Promise.resolve();if(vk&&tok())vkP=unlockVoices(vk).catch(function(e){window.__err=String(e)});
 function chime(c,t){[[988,0],[740,.42]].forEach(function(x){var o=c.createOscillator(),g=c.createGain(),s=t+x[1];o.type="sine";o.frequency.value=x[0];o.connect(g);g.connect(c.destination);g.gain.setValueAtTime(0,s);g.gain.linearRampToValueAtTime(.35,s+.03);g.gain.exponentialRampToValueAtTime(.001,s+.8);o.start(s);o.stop(s+.85)})}
 var mT=0,qT=0,endT=0,vq=[],playing=false,seen={},floor=0,gen=0,off=0,lastBase=0,playingId=0,lastSig="",wasLive=false,heroKey=null;
@@ -122,7 +133,9 @@ var fin=false,ft=0,end=function(){if(fin)return;fin=true;clearTimeout(ft);res()}
 u.onend=end;u.onerror=end;ft=setTimeout(end,20000);
 if(chimeOn){chime(ac(),ac().currentTime+.05);mT=setTimeout(function(){speechSynthesis.speak(u)},1000)}else speechSynthesis.speak(u)})}
 function speak(n,qq){if(!voiceOn)return Promise.resolve();var id=$("vsel").value;
-if(id==="machine"||!VO[id])return speakMachine(n,qq);
+if(id!=="machine"&&st!=="ok")return tUse(id).then(function(ok){if(!ok){$("vsel").value="machine";ls("goiso_voice2","machine");fillVoices();return speakMachine(n,qq)}fillVoices();$("vsel").value=ls("goiso_voice2")||id;return speak2(n,qq,id)});
+return speak2(n,qq,id)}
+function speak2(n,qq,id){if(id==="machine"||!VO[id])return speakMachine(n,qq);
 return loadClips(id).then(function(B){
 var c=ctx,sp=+$("vspd").value||1,t=c.currentTime+.08,t00=t,d=pad(n).split(""),qs=[["moi",.14]];
 if(chimeOn){chime(c,t);t+=1}
@@ -171,10 +184,10 @@ $("unlock").onclick=function(){pm="unlock";$("pt").textContent="Mở khóa ngoà
 var NETURL="https://clinic-queue.dhabolero.workers.dev/";
 function netBtn(){$("net").textContent="Nhiều máy: "+(cfg.url?"Bật":"Tắt");$("net").style.opacity=(st==="ok"||cfg.url)?"":".5";$("net").title=st==="ok"||cfg.url?"":"Cần kích hoạt máy trước"}
 function goLocal(){cfg={};ls(KC,"{}");first=true;try{S=JSON.parse(ls(KL))}catch(x){}if(!S||S.date!==vn().date)S=fresh(vn().date);floor=maxId(S);render(false);conn(true);netBtn()}
-function setSt(x){st=x;var p=$("actst");p.textContent="Trạng thái: "+(x==="ok"?"Đã kích hoạt":x==="bad"?"Mã bị khóa/không hợp lệ":"Chưa kích hoạt");p.className="pill"+(x==="ok"?" ok":x==="bad"?" bad":"");netBtn();if($("dlg2").open)renderInfo()}
+function setSt(x){st=x;var p=$("actst");p.textContent="Trạng thái: "+(x==="ok"?"Đã kích hoạt chức năng PRO":x==="bad"?"Mã bị khóa/không hợp lệ":"Chưa kích hoạt chức năng PRO");p.className="pill"+(x==="ok"?" ok":x==="bad"?" bad":"");netBtn();vnoteSet();if($("dlg2").open)renderInfo()}
 function renderInfo(){var ok=st==="ok",L="margin:4px 0 10px;padding-left:20px;color:var(--mut);font-size:14px";
-$("ibody").innerHTML=ok?"<p><b>Đã kích hoạt.</b> Máy này được dùng:</p><ul style='"+L+"'><li>Giọng đọc ghi sẵn (chọn ở mục Giọng)</li><li>Chạy nhiều máy, đồng bộ số giữa các máy (bật trong Cài đặt)</li></ul>"
-:"<p><b>"+(st==="bad"?"Mã kích hoạt đã bị khóa hoặc không còn hiệu lực.":"Máy chưa kích hoạt.")+"</b> Hiện đang giới hạn:</p><ul style='"+L+"'><li>Chỉ dùng giọng đọc mặc định của máy (trình duyệt/Google)</li><li>Chỉ chạy 1 máy đơn, không đồng bộ với máy khác</li></ul><p>Kích hoạt để dùng giọng ghi sẵn và chạy nhiều máy.</p>";
+$("ibody").innerHTML=ok?"<p><b>Máy tính của bạn Đã kích hoạt chức năng PRO.</b> Hãy chọn giọng PRO trong mục Cài đặt. Máy này được dùng:</p><ul style='"+L+"'><li>Giọng đọc ghi sẵn (chọn ở mục Giọng)</li><li>Chạy nhiều máy, đồng bộ số giữa các máy (bật trong Cài đặt)</li></ul>"
+:"<p><b>"+(st==="bad"?"Mã kích hoạt đã bị khóa hoặc không còn hiệu lực.":"Bạn chưa kích hoạt chức năng PRO.")+"</b> Hiện đang giới hạn:</p><ul style='"+L+"'><li>Giọng PRO chỉ được nghe thử 5 lần mỗi giọng, hết lượt sẽ về giọng mặc định của máy (trình duyệt/Google)</li><li>Chỉ chạy 1 máy đơn, không đồng bộ với máy khác</li></ul><p>Kích hoạt chức năng PRO để dùng giọng PRO không giới hạn và chạy nhiều máy.</p>";
 $("midb").textContent="Mã máy: "+devId();$("actform").style.display=ok?"none":"";$("okb2").style.display=ok?"none":""}
 function openInfo(m){renderInfo();$("ct").value="";$("err2").textContent=m||"";$("dlg2").showModal();if(st!=="ok")$("ct").focus()}
 $("info").onclick=function(){openInfo("")};
