@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Helixfast
 // @namespace    https://his.benhvienbinhduong.org.vn/
-// @version      2.38
+// @version      2.39
 // @description  Tiện ích Helix
 // @match        https://his.benhvienbinhduong.org.vn/*
 // @run-at       document-start
@@ -65,7 +65,7 @@
 (function () {
   'use strict';
 
-  const HELIXFAST_VERSION = '2.38';
+  const HELIXFAST_VERSION = '2.39';
   const HLX_UPDATE_META_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.meta.js';
   const HLX_UPDATE_USER_URL = 'https://raw.githubusercontent.com/bsdha/bsdha.github.io/refs/heads/main/helix/helixfast.user.js';
   const hlxUpdState = { remote: null, hasNew: false, error: false, checked: false };
@@ -17596,24 +17596,9 @@ async function banPdfLines(PL, page) {
   init();
   HLX_STATS = { open: openMain };
 
-  // ---- Tự động đẩy số liệu lên Google Sheet + web theo khung giờ (cần có tab HIS đang mở) ----
-  // Ngày D: 11h30 và 16h30 ngày D; 7h00 và 7h30 sáng hôm sau (D+1). Trễ tối đa 30 phút (mở trình duyệt muộn) vẫn bù.
-  const AP_KEY = 'hlx-autopush-done', AP_LOG = 'hlx-autopush-log';
-  const apDone = () => { try { return JSON.parse(lsGet(AP_KEY) || '{}'); } catch (e) { return {}; } };
-  async function autoPushDay(d) {
-    const c = await collectSheet(d, () => {});
-    const body = JSON.stringify({ key: GS_KEY, date: d, values: c.vs });
-    try {
-      const resp = await fetch(GS_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
-      const j = await resp.json(); if (!j.ok) throw new Error(j.error || 'Apps Script báo lỗi');
-    } catch (e) {
-      if (e instanceof TypeError) await fetch(GS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
-      else throw e;
-    }
-    const rr = await fetch(WORKER + '/web/push', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ key: WEB_KEY, date: d, v: c.v, rooms: c.rooms }) });
-    const jj = await rr.json(); if (!rr.ok || !jj.ok) throw new Error('Web: ' + (jj.error || 'HTTP ' + rr.status));
-  }
-  let apBusy = false, apSrv = null;
+  // ---- Ghi nhận lần đẩy gần nhất (dùng chung giữa các máy) để hiển thị "Cập nhật cuối" ----
+  // Đã bỏ chế độ tự động đẩy: chỉ đẩy thủ công bằng nút "Điền Google Sheet & Web".
+  let apSrv = null;
   const apId = (() => { let v = lsGet('hlx-client-id'); if (!v) { v = Math.random().toString(36).slice(2, 6).toUpperCase(); lsSet('hlx-client-id', v); } return v; })();
   async function apFetch(path, body) { // dùng chung 1 máy chủ để mọi máy thấy cùng trạng thái; lỗi/không có thì trả null
     try {
@@ -17623,43 +17608,7 @@ async function banPdfLines(PL, page) {
   }
   async function apRefresh() { const j = await apFetch('/autopush/state'); if (j && j.ok) { apSrv = j; window.__hlxApSrv = j; try { if (window.__hlxShowLast) window.__hlxShowLast(); } catch (e) {} } return apSrv; }
   async function apRecord(d, how, key) { const rec = { t: nowLocalIso(), d: d, how: how, client: apId, key: key || '' }; lsSet('hlx-last-push', JSON.stringify(rec)); await apFetch('/autopush/done', { t: rec.t, d: d, how: how, slot: key || '' }); await apRefresh(); try { if (window.__hlxShowLast) window.__hlxShowLast(); } catch (e) {} }
-  async function autoPushTick() {
-    if (apBusy || lsGet('hlx-autopush') === '0' || !GS_URL || !selEl) return;
-    const n = new Date(), today = ymd(n), yest = addDays(today, -1), mins = n.getHours() * 60 + n.getMinutes();
-    const slots = [[today, 690], [today, 990], [yest, 420], [yest, 450]]; // [ngày dữ liệu, phút trong ngày của khung giờ]
-    const keyOf = (d, m) => d + '@' + (m === 690 ? '1130' : m === 990 ? '1630' : m === 420 ? '0700+1' : '0730+1');
-    const due = slots.filter(([d, m]) => mins >= m && mins <= m + 30);
-    if (!due.length) return;
-    const st = await apRefresh();
-    const dn = Object.assign({}, apDone(), (st && st.done) || {});
-    for (const [d, m] of due) {
-      const key = keyOf(d, m);
-      if (dn[key]) continue;
-      apBusy = true;
-      try {
-        await new Promise((r) => setTimeout(r, Math.floor(Math.random() * 3000))); // lệch nhịp giữa các máy
-        const g = await apFetch('/autopush/claim', { slot: key });
-        if (g && g.ok === false) { apBusy = false; return; } // máy khác đã nhận việc
-        if (!g && Date.now() - parseInt(lsGet('hlx-autopush-lock') || '0', 10) < 120000) { apBusy = false; return; } // không có máy chủ: khóa tạm theo trình duyệt
-        lsSet('hlx-autopush-lock', String(Date.now()));
-        await autoPushDay(d);
-        const x = apDone(); x[key] = new Date().toISOString(); Object.keys(x).sort().slice(0, -40).forEach((k) => { delete x[k]; }); lsSet(AP_KEY, JSON.stringify(x));
-        await apRecord(d, 'tự động', key);
-        lsSet(AP_LOG, new Date().toLocaleString('vi-VN') + ' — đã tự đẩy số liệu ngày ' + vn(d) + ' (' + key + ')');
-        try { console.log('[Helix] ' + lsGet(AP_LOG)); } catch (e) {}
-        lsSet('hlx-autopush-lock', '0');
-      } catch (e) {
-        lsSet(AP_LOG, new Date().toLocaleString('vi-VN') + ' — LỖI tự đẩy ngày ' + vn(d) + ': ' + e.message);
-        try { console.warn('[Helix] ' + lsGet(AP_LOG)); } catch (e2) {}
-        await apFetch('/autopush/release', { slot: key });
-      }
-      apBusy = false;
-      return;
-    }
-  }
-  setInterval(() => { apRefresh(); }, 20000); setTimeout(apRefresh, 3000);
-  setInterval(() => { autoPushTick().catch(() => { apBusy = false; }); }, 30000);
-  setTimeout(() => { autoPushTick().catch(() => { apBusy = false; }); }, 8000);
+  setInterval(() => { apRefresh(); }, 20000); setTimeout(apRefresh, 3000); // chỉ để hiển thị "Cập nhật cuối"
 })(typeof unsafeWindow !== 'undefined' ? unsafeWindow : window, (typeof unsafeWindow !== 'undefined' ? unsafeWindow : window).XMLHttpRequest);
 
   }
