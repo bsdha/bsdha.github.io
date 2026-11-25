@@ -4,33 +4,12 @@
   const SOON_META = {
     'vitals-chart': { icon: '📈', label: 'Biểu đồ theo dõi sinh hiệu theo giờ' },
     'ped-dose': { icon: '🧒', label: 'Liều thuốc trẻ em theo cân nặng' },
-    'io-balance': { icon: '🧮', label: 'Cân bằng dịch vào - ra (24h)' },
     'wound-care': { icon: '🩹', label: 'Chăm sóc vết thương/loét' },
-    'cam-icu': { icon: '🧠', label: 'CAM-ICU' },
-    'apgar': { icon: '👶', label: 'APGAR sơ sinh' },
-    'shock-index': { icon: '🚨', label: 'Chỉ số sốc (Shock Index)' },
-    'padua-score': { icon: '🩺', label: 'Padua Score' },
     'transfusion-monitor': { icon: '🩸', label: 'Theo dõi truyền máu' },
-    'nursing-care-plan': { icon: '📔', label: 'Kế hoạch chăm sóc điều dưỡng' },
-    'vasopressor-calc': { icon: '💉', label: 'Bơm tiêm điện & thuốc vận mạch' },
-    'drain-tracking': { icon: '📉', label: 'Theo dõi dẫn lưu' },
-    'fluid-nutrition-peds': { icon: '🍼', label: 'Dịch truyền/nuôi ăn theo cân nặng (Nhi)' },
     'handoff-checklist': { icon: '✅', label: 'Checklist bàn giao ca' },
-    'gcs-score': { icon: '🧠', label: 'Thang điểm Glasgow (GCS)' },
-    'ped-pain-scale': { icon: '😣', label: 'Thang đau trẻ em (FLACC/Wong-Baker)' },
-    'ped-fall-risk': { icon: '🧸', label: 'Nguy cơ té ngã trẻ em (Humpty Dumpty)' },
     'antibiotic-renal-dose': { icon: '💊', label: 'Chỉnh liều kháng sinh theo chức năng thận' },
     'insulin-sliding-scale': { icon: '🩸', label: 'Thang trượt Insulin' },
-    'postop-pain-tracking': { icon: '🤕', label: 'Theo dõi đau sau phẫu thuật' },
-    'cvc-care-checklist': { icon: '🧷', label: 'Checklist chăm sóc catheter tĩnh mạch trung tâm' },
-    'tube-feeding-tracker': { icon: '🍽️', label: 'Theo dõi nuôi ăn qua sonde' },
-    'fever-dose-calc': { icon: '🌡️', label: 'Liều hạ sốt theo cân nặng' },
-    'ventilator-monitor': { icon: '🫁', label: 'Theo dõi bệnh nhân thở máy' },
-    'pressure-ulcer-prevention': { icon: '🛏️', label: 'Phòng ngừa loét tỳ đè' },
-    'immunization-tracker': { icon: '💉', label: 'Sổ theo dõi tiêm chủng' },
-    'seizure-log': { icon: '🌀', label: 'Nhật ký theo dõi co giật' },
-    'sofa-score': { icon: '📉', label: 'Điểm SOFA / qSOFA' },
-    'bp-trend-chart': { icon: '📶', label: 'Biểu đồ theo dõi huyết áp liên tục' }
+    'cvc-care-checklist': { icon: '🧷', label: 'Checklist chăm sóc catheter tĩnh mạch trung tâm' }
   };
 
   const iconEl = document.getElementById('soonPageIcon');
