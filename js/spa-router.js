@@ -19,14 +19,7 @@
   // --- Các tính năng "Sắp ra mắt": mỗi mục có đường dẫn riêng, nhưng cùng dùng chung
   // 1 trang nội dung "page-comingsoon" (xem actuallyShowPage bên dưới). ---
   const SOON_KEYS = [
-    'vitals-chart', 'ped-dose', 'io-balance', 'wound-care', 'cam-icu', 'apgar',
-    'shock-index', 'padua-score', 'transfusion-monitor', 'nursing-care-plan',
-    'vasopressor-calc', 'drain-tracking', 'fluid-nutrition-peds',
-    'handoff-checklist', 'gcs-score', 'ped-pain-scale', 'ped-fall-risk',
-    'antibiotic-renal-dose', 'insulin-sliding-scale', 'postop-pain-tracking',
-    'cvc-care-checklist', 'tube-feeding-tracker', 'fever-dose-calc',
-    'ventilator-monitor', 'pressure-ulcer-prevention', 'immunization-tracker',
-    'seizure-log', 'sofa-score', 'bp-trend-chart'
+    'vitals-chart', 'ped-dose', 'wound-care', 'transfusion-monitor', 'handoff-checklist', 'antibiotic-renal-dose', 'insulin-sliding-scale', 'cvc-care-checklist'
   ];
   SOON_KEYS.forEach(k => {
     const path = '/' + k;
@@ -37,6 +30,12 @@
   });
 
   // Danh sách bệnh nhân nội trú (bảng sinh hiệu đi buồng) — tính năng đã hoạt động thật.
+  PATH_MAP['/diem-cap-cuu-nhi'] = 'emscores';
+  PATH_MAP['/diem-cap-cuu-nhi/'] = 'emscores';
+  KEY_PATH['emscores'] = '/diem-cap-cuu-nhi';
+  PATH_MAP['/tinh-lieu'] = 'dosecalc';
+  PATH_MAP['/tinh-lieu/'] = 'dosecalc';
+  KEY_PATH['dosecalc'] = '/tinh-lieu';
   PATH_MAP['/ward-vitals-sheet'] = 'wardvitals';
   PATH_MAP['/ward-vitals-sheet/'] = 'wardvitals';
   KEY_PATH['wardvitals'] = '/ward-vitals-sheet';
