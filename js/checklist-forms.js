@@ -6,6 +6,7 @@
   var root = document.getElementById('ckRoot');
   if (!root) return;
   var P = '#page-ckforms';
+  var PP = 'body.ck-printing ' + P;
 
   /* ---------- CSS ---------- */
   var css = [
@@ -63,15 +64,16 @@
     if (r.indexOf('@media') === 0) { var i = r.indexOf('{'); return r.slice(0, i + 1) + scopeRules(r.slice(i + 1, -1)) + '}'; }
     return scopeRules(r);
   }).join('\n') +
-    // In phiếu: chỉ in vùng đang mở (nền trắng, chữ đen)
-    '\n@media print{body *{visibility:hidden!important}' +
-    P + ' .ck-panel.active,' + P + ' .ck-panel.active *{visibility:visible!important}' +
-    P + ' .ck-panel.active{position:absolute;left:0;top:0;width:100%;margin:0;padding:0;border:none;background:#fff!important}' +
-    P + ' .ck-panel.active *{color:#000!important;background:transparent!important;border-color:#888!important;box-shadow:none!important}' +
-    P + ' .ck-panel.active .ck-pr{display:block!important;margin-bottom:10px;font-size:13px}' +
-    P + ' .ck-noprint{display:none!important}' +
-    P + ' .ck-panel.active .ck-alert.show{border:2px solid #000!important}' +
-    P + ' .ck-panel.active td.abn{font-weight:700}}';
+    // In phiếu: chỉ in vùng đang mở (nền trắng, chữ đen). CHỈ có hiệu lực khi body có class 'ck-printing'
+    // (được bật lúc in phiếu ở trang này) — nếu không sẽ làm trắng bản in của các trang khác.
+    '\n@media print{body.ck-printing *{visibility:hidden!important}' +
+    PP + ' .ck-panel.active,' + PP + ' .ck-panel.active *{visibility:visible!important}' +
+    PP + ' .ck-panel.active{position:absolute;left:0;top:0;width:100%;margin:0;padding:0;border:none;background:#fff!important}' +
+    PP + ' .ck-panel.active *{color:#000!important;background:transparent!important;border-color:#888!important;box-shadow:none!important}' +
+    PP + ' .ck-panel.active .ck-pr{display:block!important;margin-bottom:10px;font-size:13px}' +
+    PP + ' .ck-noprint{display:none!important}' +
+    PP + ' .ck-panel.active .ck-alert.show{border:2px solid #000!important}' +
+    PP + ' .ck-panel.active td.abn{font-weight:700}}';
   document.head.appendChild(st);
 
   /* ---------- tiện ích ---------- */
@@ -206,13 +208,19 @@
     TOOLS.map(function (t) { return '<div class="ck-panel" id="ck_p_' + t.id + '"><h2 class="ck-h">' + TITLES[t.id] + '</h2><p class="ck-d ck-noprint">' + DESC[t.id] + '</p>' + t.h + '</div>'; }).join('');
 
   /* ---------- hành vi ---------- */
+  // Bật class ck-printing chỉ trong lúc in (bấm nút hoặc Ctrl+P khi đang mở trang này)
+  function pageActive() { var pg = document.getElementById('page-ckforms'); return !!pg && pg.classList.contains('active'); }
+  function doPrint() { document.body.classList.add('ck-printing'); try { window.print(); } finally { setTimeout(function () { document.body.classList.remove('ck-printing'); }, 300); } }
+  window.addEventListener('beforeprint', function () { if (pageActive()) document.body.classList.add('ck-printing'); });
+  window.addEventListener('afterprint', function () { document.body.classList.remove('ck-printing'); });
+
   function show(id) {
     qa('.ck-tab').forEach(function (b) { b.classList.toggle('active', b.dataset.tab === id); });
     qa('.ck-panel').forEach(function (p) { p.classList.toggle('active', p.id === 'ck_p_' + id); });
   }
   root.addEventListener('click', function (e) {
     var tb = e.target.closest('.ck-tab'); if (tb) return show(tb.dataset.tab);
-    var pr = e.target.closest('[data-print]'); if (pr) { log('ckform_' + pr.dataset.print); window.print(); return; }
+    var pr = e.target.closest('[data-print]'); if (pr) { log('ckform_' + pr.dataset.print); doPrint(); return; }
     var rs = e.target.closest('[data-reset]'); if (rs) return resetPanel(rs.dataset.reset);
   });
   root.addEventListener('change', function (e) {
