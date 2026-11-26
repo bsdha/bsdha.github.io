@@ -18,9 +18,7 @@
 
   // --- Các tính năng "Sắp ra mắt": mỗi mục có đường dẫn riêng, nhưng cùng dùng chung
   // 1 trang nội dung "page-comingsoon" (xem actuallyShowPage bên dưới). ---
-  const SOON_KEYS = [
-    'ped-dose', 'antibiotic-renal-dose', 'insulin-sliding-scale'
-  ];
+  const SOON_KEYS = [];
   SOON_KEYS.forEach(k => {
     const path = '/' + k;
     const key = 'soon:' + k;
@@ -36,6 +34,9 @@
   PATH_MAP['/diem-cap-cuu-nhi'] = 'emscores';
   PATH_MAP['/diem-cap-cuu-nhi/'] = 'emscores';
   KEY_PATH['emscores'] = '/diem-cap-cuu-nhi';
+  PATH_MAP['/lieu-thuoc'] = 'drugdose';
+  PATH_MAP['/lieu-thuoc/'] = 'drugdose';
+  KEY_PATH['drugdose'] = '/lieu-thuoc';
   PATH_MAP['/tinh-lieu'] = 'dosecalc';
   PATH_MAP['/tinh-lieu/'] = 'dosecalc';
   KEY_PATH['dosecalc'] = '/tinh-lieu';
