@@ -1,6 +1,7 @@
 /* Trang "Tính liều & dịch truyền" (/tinh-lieu) — gộp 4 công cụ đơn giản vào 1 trang:
    1) Liều hạ sốt theo cân nặng  2) Bơm tiêm điện / thuốc vận mạch
    3) Cân bằng dịch vào - ra     4) Dịch duy trì theo cân nặng (Nhi)
+   5) Insulin hiệu chỉnh (thang trượt / công thức 1800-1500)
    Mọi phép tính chạy ngay trên trình duyệt, KHÔNG gửi/lưu dữ liệu bệnh nhân lên máy chủ. */
 (function () {
   var root = document.getElementById('dcRoot');
@@ -13,7 +14,7 @@
     '#page-dosecalc .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:26px}',
     '#page-dosecalc .card h1{margin:0 0 6px;font-size:19px;font-weight:800}',
     '#page-dosecalc .card .sub{margin:0 0 18px;font-size:13px;color:var(--muted);line-height:1.5}',
-    '#page-dosecalc .dc-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px}',
+    '#page-dosecalc .dc-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin-bottom:18px}',
     '#page-dosecalc .dc-tab{border:1px solid var(--border);background:var(--field);color:var(--text);border-radius:12px;padding:10px 6px;cursor:pointer;font:inherit;font-size:12.5px;font-weight:700;line-height:1.25;text-align:center}',
     '#page-dosecalc .dc-tab .ic{display:block;font-size:20px;margin-bottom:3px}',
     '#page-dosecalc .dc-tab.active{border-color:var(--green);background:var(--green-light);color:var(--green)}',
@@ -225,12 +226,72 @@
     log('dosecalc_maint');
   }
 
+
+  /* ---------- 5) Insulin hiệu chỉnh (thang trượt) ---------- */
+  var SCALES = {
+    s: { n: 'Nhạy cảm cao (gầy, cao tuổi, suy thận, tổng liều < 40 đv/ngày)', d: [1, 2, 3, 4, 5] },
+    u: { n: 'Trung bình / thông thường (tổng liều 40–80 đv/ngày)', d: [2, 4, 6, 8, 10] },
+    r: { n: 'Đề kháng (béo phì, dùng corticoid, tổng liều > 80 đv/ngày)', d: [3, 6, 9, 12, 15] }
+  };
+  var BANDS = [[150, 199, '150–199', '8,3–11,0'], [200, 249, '200–249', '11,1–13,8'], [250, 299, '250–299', '13,9–16,6'], [300, 349, '300–349', '16,7–19,4'], [350, 9999, '≥ 350', '≥ 19,4']];
+  var insHtml =
+    '<h2 class="dc-h">🩸 Insulin hiệu chỉnh (thang trượt)</h2>' +
+    '<p class="dc-d">Liều insulin tác dụng nhanh/regular <b>bổ sung</b> theo đường huyết trước ăn. Dùng cùng insulin nền/bữa theo y lệnh, không dùng đơn độc kéo dài.</p>' +
+    '<div class="row"><div class="field"><label for="inMode">Cách tính</label><select id="inMode"><option value="scale">Thang trượt (3 mức nhạy cảm)</option><option value="formula">Công thức 1800/1500</option></select></div>' +
+    '<div class="field"><label for="inUnit">Đơn vị đường huyết</label><select id="inUnit"><option value="mg">mg/dL</option><option value="mmol">mmol/L</option></select></div></div>' +
+    '<div class="row">' + field('inG', 'Đường huyết', 'VD: 245 hoặc 13,6') + '<div class="field" id="inTimeW"><label for="inTime">Thời điểm</label><select id="inTime"><option value="meal">Trước bữa ăn</option><option value="bed">Trước ngủ (giảm 50%)</option></select></div></div>' +
+    '<div class="row" id="inScaleW"><div class="field" style="grid-column:1/-1"><label for="inSens">Mức nhạy cảm insulin</label><select id="inSens">' +
+    Object.keys(SCALES).map(function (k) { return '<option value="' + k + '"' + (k === 'u' ? ' selected' : '') + '>' + SCALES[k].n + '</option>'; }).join('') + '</select></div></div>' +
+    '<div id="inFormW" style="display:none"><div class="row">' + field('inTdd', 'Tổng liều insulin/ngày (đơn vị)', 'VD: 50') +
+    '<div class="field"><label for="inType">Loại insulin hiệu chỉnh</label><select id="inType"><option value="1800">Tác dụng nhanh (quy tắc 1800)</option><option value="1500">Regular (quy tắc 1500)</option></select></div></div>' +
+    '<div class="row">' + field('inTarget', 'Đường huyết mục tiêu (cùng đơn vị)', 'mặc định 150 mg/dL (8,3 mmol/L)') + '</div></div>' +
+    foot('in', 'Tính liều hiệu chỉnh');
+  function calcIns() {
+    var mode = $('inMode').value, mmol = $('inUnit').value === 'mmol', g = num('inG');
+    if (!(g > 0)) return showErr('in', 'Vui lòng nhập đường huyết hợp lệ.');
+    var bg = mmol ? g * 18 : g, gShow = mmol ? fmt(g, 1) + ' mmol/L (' + fmt(bg, 0) + ' mg/dL)' : fmt(g, 0) + ' mg/dL (' + fmt(bg / 18, 1) + ' mmol/L)';
+    showErr('in', '');
+    var html = '', note = '';
+    if (bg < 70) {
+      html = '<div class="dc-big">0<small>đơn vị</small></div><div class="dc-line">Đường huyết ' + gShow + '</div><span class="dc-tag bad">' + (bg < 54 ? 'Hạ đường huyết nặng' : 'Hạ đường huyết') + ' — KHÔNG tiêm insulin</span>' +
+        '<div class="dc-warn">⚠️ Xử trí hạ đường huyết ngay theo phác đồ (đường nhanh 15–20 g nếu tỉnh; truyền glucose nếu lơ mơ/không uống được), kiểm tra lại sau 15 phút và báo bác sĩ.</div>';
+      showRes('in', html); log('dosecalc_insulin'); return;
+    }
+    var dose, tag, cls = 'ok';
+    if (mode === 'scale') {
+      var sc = SCALES[$('inSens').value], bed = $('inTime').value === 'bed', idx = -1;
+      BANDS.forEach(function (b, i) { if (bg >= b[0] && bg <= b[1] + 0.99) idx = i; });
+      dose = idx < 0 ? 0 : sc.d[idx];
+      if (bed) { dose = bg >= 200 ? Math.floor(dose / 2) : 0; note = 'Trước ngủ: dùng 50% liều bảng (làm tròn xuống) và chỉ hiệu chỉnh khi ≥ 200 mg/dL (11,1 mmol/L).'; }
+      html = '<div class="dc-big">' + dose + '<small>đơn vị insulin</small></div><div class="dc-line">Đường huyết ' + gShow + ' · ' + sc.n + (bed ? ' · trước ngủ' : '') + '</div>';
+      html += '<table class="dc-tb"><tr><th>Đường huyết mg/dL (mmol/L)</th><th>Liều bảng (đv)</th></tr><tr><td>&lt; 150 (&lt; 8,3)</td><td>0</td></tr>' +
+        BANDS.map(function (b, i) { return '<tr' + (i === idx ? ' style="font-weight:800;background:var(--green-light)"' : '') + '><td>' + b[2] + ' (' + b[3] + ')</td><td>' + sc.d[i] + '</td></tr>'; }).join('') + '</table>';
+      if (dose === 0 && !bed) { tag = 'Không cần liều hiệu chỉnh'; }
+    } else {
+      var tdd = num('inTdd'), k = parseInt($('inType').value, 10), tg = num('inTarget');
+      if (!(tdd > 0)) return showErr('in', 'Công thức 1800/1500 cần tổng liều insulin/ngày.');
+      var tgt = isFinite(tg) && tg > 0 ? (mmol ? tg * 18 : tg) : 150;
+      var cf = k / tdd, raw = Math.max(0, (bg - tgt) / cf);
+      dose = Math.round(raw * 2) / 2;
+      html = '<div class="dc-big">' + fmt(dose, 1) + '<small>đơn vị insulin</small></div><div class="dc-line">Đường huyết ' + gShow + ' · mục tiêu ' + fmt(tgt, 0) + ' mg/dL</div>' +
+        '<div class="dc-line">Hệ số nhạy cảm: 1 đơn vị hạ khoảng <b>' + fmt(cf, 0) + ' mg/dL</b> (' + fmt(cf / 18, 1) + ' mmol/L) · tính ' + fmt(raw, 2) + ' → làm tròn 0,5 đv</div>';
+      if (bg <= tgt) tag = 'Đường huyết ≤ mục tiêu: không cần liều hiệu chỉnh';
+    }
+    if (bg >= 400) { tag = 'Đường huyết ≥ 400 mg/dL (22,2 mmol/L) — báo bác sĩ'; cls = 'bad'; note += ' Kiểm tra ketone/dấu hiệu mất nước, toan ceton (nhất là đái tháo đường type 1).'; }
+    else if (bg >= 350 && mode === 'scale') { cls = 'warn'; tag = tag || 'Mức cao — theo dõi sát, báo bác sĩ nếu kéo dài'; }
+    if (tag) html += '<span class="dc-tag ' + cls + '">' + tag + '</span>';
+    if (note) html += '<div class="dc-line">' + note + '</div>';
+    html += '<div class="dc-warn">⚠️ Bảng/công thức phổ biến, KHÔNG thay y lệnh. Thực hiện đúng loại insulin, thời điểm tiêm so với bữa ăn và ngưỡng báo bác sĩ theo phác đồ của khoa. Giảm nguy cơ hạ đường huyết ở bệnh nhân ăn kém, suy thận, người già. Khuyến cáo hiện nay: ưu tiên phác đồ nền–bữa, thang trượt chỉ dùng hỗ trợ.</div>';
+    showRes('in', html); log('dosecalc_insulin');
+  }
+
   /* ---------- dựng giao diện ---------- */
   var TOOLS = [
     { id: 'fv', ic: '🌡️', t: 'Liều hạ sốt', html: feverHtml, run: calcFever },
     { id: 'pm', ic: '💉', t: 'Bơm tiêm điện', html: pumpHtml, run: calcPump },
     { id: 'io', ic: '🧮', t: 'Cân bằng dịch', html: ioHtml, run: calcIo },
-    { id: 'mt', ic: '🍼', t: 'Dịch duy trì Nhi', html: mtHtml, run: calcMaint }
+    { id: 'mt', ic: '🍼', t: 'Dịch duy trì Nhi', html: mtHtml, run: calcMaint },
+    { id: 'in', ic: '🩸', t: 'Insulin hiệu chỉnh', html: insHtml, run: calcIns }
   ];
   root.innerHTML =
     '<div class="dc-tabs" role="tablist">' + TOOLS.map(function (t, i) {
@@ -247,6 +308,10 @@
   $('pmMode').addEventListener('change', function () {
     $('pmValLbl').textContent = $('pmMode').value === 'rate' ? 'Liều (mcg/kg/phút)' : 'Tốc độ bơm (mL/giờ)';
     $('pmVal').placeholder = $('pmMode').value === 'rate' ? 'VD: 0,1' : 'VD: 4,5';
+  });
+  $('inMode').addEventListener('change', function () {
+    var sc = $('inMode').value === 'scale';
+    $('inScaleW').style.display = sc ? '' : 'none'; $('inTimeW').style.display = sc ? '' : 'none'; $('inFormW').style.display = sc ? 'none' : '';
   });
   $('pmDrug').dispatchEvent(new Event('change'));
   $('pmDrug').value = 'nor'; $('pmDrug').dispatchEvent(new Event('change'));
