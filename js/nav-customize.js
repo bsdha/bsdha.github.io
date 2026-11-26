@@ -81,11 +81,27 @@
   function clearPrefs() {
     try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
   }
+  // Mục MỚI (chưa có trong cấu hình đã lưu của người dùng) được chèn ngay sau mục đứng
+  // trước nó trong thứ tự gốc, để nằm đúng nhóm của mình; trước đây chúng bị dồn xuống cuối
+  // toàn bộ sidebar (nên lọt vào nhóm khác khi thêm công cụ mới).
   function fullOrder(order) {
     const set = {};
     order.forEach(function (k) { set[k] = true; });
     const merged = order.slice();
-    DEFAULT_ORDER.forEach(function (k) { if (!set[k]) merged.push(k); });
+    DEFAULT_ORDER.forEach(function (k, i) {
+      if (set[k]) return;
+      let at = -1;
+      for (let j = i - 1; j >= 0 && at === -1; j--) {
+        const p = merged.indexOf(DEFAULT_ORDER[j]);
+        if (p !== -1) at = p + 1;
+      }
+      for (let j = i + 1; j < DEFAULT_ORDER.length && at === -1; j++) {
+        const p = merged.indexOf(DEFAULT_ORDER[j]);
+        if (p !== -1) at = p;
+      }
+      if (at === -1) merged.push(k); else merged.splice(at, 0, k);
+      set[k] = true;
+    });
     return merged;
   }
   function orderValueOf(order, key) {
