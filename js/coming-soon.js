@@ -2,9 +2,6 @@
   // Thông tin hiển thị (icon + tên) cho từng tính năng "Sắp ra mắt", khớp với các
   // khoá "soon:xxx" được khai báo trong js/spa-router.js.
   const SOON_META = {
-    'ped-dose': { icon: '🧒', label: 'Liều thuốc trẻ em theo cân nặng' },
-    'antibiotic-renal-dose': { icon: '💊', label: 'Chỉnh liều kháng sinh theo chức năng thận' },
-    'insulin-sliding-scale': { icon: '🩸', label: 'Thang trượt Insulin' }
   };
 
   const iconEl = document.getElementById('soonPageIcon');
