@@ -19,7 +19,7 @@
   // --- Các tính năng "Sắp ra mắt": mỗi mục có đường dẫn riêng, nhưng cùng dùng chung
   // 1 trang nội dung "page-comingsoon" (xem actuallyShowPage bên dưới). ---
   const SOON_KEYS = [
-    'vitals-chart', 'ped-dose', 'wound-care', 'transfusion-monitor', 'handoff-checklist', 'antibiotic-renal-dose', 'insulin-sliding-scale', 'cvc-care-checklist'
+    'ped-dose', 'antibiotic-renal-dose', 'insulin-sliding-scale'
   ];
   SOON_KEYS.forEach(k => {
     const path = '/' + k;
@@ -30,6 +30,9 @@
   });
 
   // Danh sách bệnh nhân nội trú (bảng sinh hiệu đi buồng) — tính năng đã hoạt động thật.
+  PATH_MAP['/checklist-theo-doi'] = 'ckforms';
+  PATH_MAP['/checklist-theo-doi/'] = 'ckforms';
+  KEY_PATH['ckforms'] = '/checklist-theo-doi';
   PATH_MAP['/diem-cap-cuu-nhi'] = 'emscores';
   PATH_MAP['/diem-cap-cuu-nhi/'] = 'emscores';
   KEY_PATH['emscores'] = '/diem-cap-cuu-nhi';
