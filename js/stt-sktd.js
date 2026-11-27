@@ -62,7 +62,7 @@
   function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
   function intVal(id, def){ const v = parseInt(el(id).value, 10); return isNaN(v) ? def : v; }
   function cell(unit, date, n){
-    return '<div class="sk-cell"><span class="sk-unit">' + esc(unit) + '</span><span class="sk-date">' + esc(date) + '</span><span class="sk-num">' + n + '</span></div>';
+    return '<div class="sk-cell"><span class="sk-unit">' + esc(unit) + '</span><span class="sk-date">' + esc(date) + '</span><span class="sk-num' + (n >= 1000 ? ' sk-n4' : '') + '">' + n + '</span></div>';
   }
   function fit(){
     const desk = el('skDesk'), box = el('skSheets');
@@ -89,7 +89,7 @@
     for(let p = 0; p < pages; p++){
       let html = '';
       for(let i = 0; i < PER_PAGE && n <= end; i++, n++) html += cell(unit, date, n);
-      out += '<div class="sk-sheet"><div class="sk-grid">' + html + '</div></div>';
+      out += '<div class="sk-pageno">Trang ' + (p + 1) + ' / ' + pages + '</div><div class="sk-sheet"><div class="sk-grid">' + html + '</div></div>';
     }
     box.innerHTML = out;
     fit();
@@ -150,10 +150,12 @@
     page.classList.add('sk-printing');
     box.style.zoom = 1;
     void page.offsetHeight;
-    setTimeout(() => {
+    const go = () => setTimeout(() => {
       window.print();
       setTimeout(() => { page.classList.remove('sk-printing'); fit(); }, 300);
     }, 50);
+    // Chờ phông chữ tải xong để bản in dùng đúng kiểu chữ
+    if(document.fonts && document.fonts.ready) document.fonts.ready.then(go, go); else go();
   });
 
   setToday();
